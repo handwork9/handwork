@@ -9,9 +9,11 @@ import {
   Dimensions,
   StatusBar,
   Animated,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, FONTS } from '../../constants/theme';
@@ -21,6 +23,24 @@ import { formatNumber, formatCurrency } from '../../utils/formatters';
 import { riderService } from '../../services/orderService';
 
 const { width } = Dimensions.get('window');
+
+// Helper function to format date
+const formatDeliveryDate = (dateString: string): string => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffTime = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays === 0) {
+    return `Today, ${date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`;
+  } else if (diffDays === 1) {
+    return `Yesterday, ${date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`;
+  } else if (diffDays < 7) {
+    return date.toLocaleDateString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit', hour12: true });
+  } else {
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+  }
+};
 
 interface EarningsData {
   today: number;
@@ -46,6 +66,7 @@ type TimeFilter = 'today' | 'week' | 'month' | 'all';
 
 export default function EarningsScreen() {
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation<any>();
   const { colors, isDark } = useTheme();
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('week');
   const [refreshing, setRefreshing] = useState(false);
@@ -198,15 +219,27 @@ export default function EarningsScreen() {
         </View>
 
         {/* Pending Payout */}
-        {earnings?.pendingPayout && earnings.pendingPayout > 0 && (
+        {earnings?.pendingPayout && (typeof earnings.pendingPayout === 'string' ? parseFloat(earnings.pendingPayout) : earnings.pendingPayout) > 0 && (
           <View style={[styles.payoutCard, { backgroundColor: isDark ? `${COLORS.success}20` : COLORS.successLight, borderColor: COLORS.success }]}>
             <View style={styles.payoutInfo}>
               <Text style={[styles.payoutLabel, { color: colors.textSecondary }]}>Pending Payout</Text>
               <Text style={styles.payoutAmount}>
-                {formatCurrency(earnings.pendingPayout ?? 0)}
+                {formatCurrency(typeof earnings.pendingPayout === 'string' ? parseFloat(earnings.pendingPayout) : earnings.pendingPayout ?? 0)}
               </Text>
             </View>
-            <TouchableOpacity style={styles.withdrawButton}>
+            <TouchableOpacity 
+              style={styles.withdrawButton}
+              onPress={() => {
+                const payoutAmount = typeof earnings.pendingPayout === 'string' 
+                  ? parseFloat(earnings.pendingPayout) 
+                  : earnings.pendingPayout;
+                if (payoutAmount > 0) {
+                  navigation.navigate('Withdraw', { balance: payoutAmount });
+                } else {
+                  Alert.alert('No Balance', 'You don\'t have any pending payout to withdraw.');
+                }
+              }}
+            >
               <Text style={styles.withdrawButtonText}>Withdraw</Text>
             </TouchableOpacity>
           </View>
@@ -250,9 +283,18 @@ export default function EarningsScreen() {
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Deliveries</Text>
           {earnings?.recentDeliveries && earnings.recentDeliveries.length > 0 ? (
             earnings.recentDeliveries.map((delivery) => (
-              <View key={delivery.id} style={[styles.deliveryCard, { backgroundColor: isDark ? colors.card : COLORS.surface }]}>
+              <TouchableOpacity 
+                key={delivery.id} 
+                style={[styles.deliveryCard, { backgroundColor: isDark ? colors.card : COLORS.surface }]}
+                onPress={() => navigation.navigate('DeliveryReceipt', { 
+                  deliveryId: delivery.id,
+                  amount: delivery.amount,
+                  date: delivery.date,
+                })}
+                activeOpacity={0.7}
+              >
                 <View style={styles.deliveryInfo}>
-                  <Text style={[styles.deliveryDate, { color: colors.text }]}>{delivery.date}</Text>
+                  <Text style={[styles.deliveryDate, { color: colors.text }]}>{formatDeliveryDate(delivery.date)}</Text>
                   <View style={styles.deliveryDetails}>
                     <View style={styles.deliveryDetailRow}>
                       <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
@@ -264,10 +306,13 @@ export default function EarningsScreen() {
                     </View>
                   </View>
                 </View>
-                <Text style={styles.deliveryAmount}>
-                  +{formatCurrency(delivery.amount ?? 0)}
-                </Text>
-              </View>
+                <View style={styles.deliveryRight}>
+                  <Text style={styles.deliveryAmount}>
+                    +{formatCurrency(delivery.amount ?? 0)}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
+                </View>
+              </TouchableOpacity>
             ))
           ) : (
             <View style={[styles.emptyState, { backgroundColor: isDark ? colors.card : COLORS.surface }]}>
@@ -581,6 +626,11 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.sm,
     fontFamily: FONTS.regular,
     color: COLORS.textSecondary,
+  },
+  deliveryRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
   },
   deliveryAmount: {
     fontSize: FONT_SIZES.lg,

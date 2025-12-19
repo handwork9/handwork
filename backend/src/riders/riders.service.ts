@@ -346,10 +346,10 @@ export class RidersService {
     startOfWeek.setHours(0, 0, 0, 0);
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    // Fetch delivered orders for this rider
+    // Fetch delivered orders for this rider (use assignedRiderId which is the correct column)
     const allDeliveredOrders = await this.orderRepository.find({
       where: {
-        riderId,
+        assignedRiderId: riderId,
         status: OrderStatus.DELIVERED,
       },
       order: { createdAt: 'DESC' },
@@ -406,8 +406,15 @@ export class RidersService {
     }
 
     const totalDeliveries = allDeliveredOrders.length;
-    const totalEarnings = rider.totalEarnings || 0;
+    const totalEarnings = typeof rider.totalEarnings === 'string' 
+      ? parseFloat(rider.totalEarnings) 
+      : (rider.totalEarnings || 0);
     const averagePerDelivery = totalDeliveries > 0 ? totalEarnings / totalDeliveries : 0;
+
+    // Ensure walletBalance is a number (decimal columns return strings in PostgreSQL)
+    const pendingPayout = typeof rider.walletBalance === 'string' 
+      ? parseFloat(rider.walletBalance) 
+      : (rider.walletBalance || 0);
 
     return {
       today: todayEarnings,
@@ -415,7 +422,7 @@ export class RidersService {
       thisMonth: thisMonthEarnings,
       totalDeliveries,
       averagePerDelivery: Math.round(averagePerDelivery),
-      pendingPayout: rider.walletBalance || 0,
+      pendingPayout,
       recentDeliveries,
       weeklyBreakdown: days.map(day => ({
         day,

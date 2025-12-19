@@ -17,6 +17,7 @@ import ActiveDeliveryScreen from '../screens/rider/ActiveDeliveryScreen';
 import EarningsScreen from '../screens/rider/EarningsScreen';
 import DeliveryConfirmationScreen from '../screens/rider/DeliveryConfirmationScreen';
 import DeliveryChatScreen from '../screens/rider/DeliveryChatScreen';
+import DeliveryReceiptScreen from '../screens/rider/DeliveryReceiptScreen';
 import ProfileScreen from '../screens/shared/ProfileScreen';
 import GoPremiumScreen from '../screens/buyer/GoPremiumScreen';
 
@@ -200,6 +201,11 @@ export function RiderNavigator() {
           title: 'Delivery Complete',
           headerShown: false,
         }}
+      />
+      <Stack.Screen
+        name="DeliveryReceipt"
+        component={DeliveryReceiptScreen}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="DeliveryChat"

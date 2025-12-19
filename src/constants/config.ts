@@ -4,7 +4,7 @@ export const MOCK_MODE = false; // Backend is now available
 // Use your machine's IP for mobile device/emulator access
 // For iOS Simulator, localhost works. For Android emulator, use 10.0.2.2
 // For real devices, use your machine's IP address
-const DEV_API_HOST = '172.20.10.3'; // Your local network IP
+const DEV_API_HOST = '192.168.0.138'; // Your local network IP
 
 export const API_CONFIG = {
   BASE_URL: __DEV__ 

@@ -640,6 +640,7 @@ export type RiderStackParamList = {
   ActiveDelivery: undefined;
   Earnings: undefined;
   DeliveryConfirmation: { deliveryId: string; earnings: number };
+  DeliveryReceipt: { deliveryId: string; amount?: number; date?: string };
   DeliveryChat: { contactId: string; contactName: string; contactPhone: string; contactRole: 'buyer' | 'farmer'; orderId: string };
   Settings: undefined;
   Wallet: undefined;
