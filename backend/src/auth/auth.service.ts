@@ -1,0 +1,785 @@
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+  BadRequestException,
+  Logger,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import * as bcrypt from 'bcrypt';
+import { OAuth2Client } from 'google-auth-library';
+import { User } from '../database/entities/user.entity';
+import { UsersService } from '../users/users.service';
+import { OtpService } from './otp.service';
+import { EmailService } from '../email/email.service';
+import { PaystackService } from '../payments/paystack.service';
+import { SessionsService } from './sessions.service';
+import { DeviceType } from '../database/entities/session.entity';
+import { SignupDto, LoginDto, RefreshTokenDto, VerifyOtpDto, TwoFactorLoginDto, GoogleLoginDto } from './dto';
+import { JwtPayload, AuthTokens } from './interfaces';
+import { UserRole } from '../common/enums';
+
+// Response type for login when 2FA is required
+export interface TwoFactorRequiredResponse {
+  requiresTwoFactor: true;
+  tempToken: string;
+  message: string;
+}
+
+// Response type for successful login
+export interface LoginSuccessResponse {
+  user: User;
+  tokens: AuthTokens;
+  requiresTwoFactor?: false;
+}
+
+export type LoginResponse = LoginSuccessResponse | TwoFactorRequiredResponse;
+
+@Injectable()
+export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+  private googleClient: OAuth2Client;
+
+  constructor(
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    private readonly usersService: UsersService,
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
+    private readonly otpService: OtpService,
+    private readonly emailService: EmailService,
+    @Inject(forwardRef(() => PaystackService))
+    private readonly paystackService: PaystackService,
+    private readonly sessionsService: SessionsService,
+  ) {
+    // Initialize Google OAuth client
+    const googleClientId = this.configService.get<string>('GOOGLE_CLIENT_ID');
+    if (googleClientId) {
+      this.googleClient = new OAuth2Client(googleClientId);
+    }
+  }
+
+  async signup(dto: SignupDto, deviceInfo?: { ip?: string; userAgent?: string; location?: string }): Promise<{ user: User; tokens: AuthTokens }> {
+    // Check if phone already exists
+    const existingPhone = await this.userRepository.findOne({
+      where: { phone: dto.phone },
+    });
+    if (existingPhone) {
+      throw new ConflictException('Phone number already registered');
+    }
+
+    // Check if email already exists
+    if (dto.email) {
+      const existingEmail = await this.userRepository.findOne({
+        where: { email: dto.email },
+      });
+      if (existingEmail) {
+        throw new ConflictException('Email already registered');
+      }
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(dto.password, 10);
+
+    // Create user
+    const user = this.userRepository.create({
+      name: dto.name,
+      phone: dto.phone,
+      email: dto.email,
+      password: hashedPassword,
+      role: dto.role,
+      state: dto.state,
+      city: dto.city,
+      address: dto.address,
+    });
+
+    await this.userRepository.save(user);
+
+    // Setup Paystack customer and DVA for wallet top-up (async, don't block response)
+    this.setupPaystackAccount(user).catch((err) => {
+      this.logger.error(`Failed to setup Paystack account for user ${user.id}: ${err.message}`);
+    });
+
+    // Generate tokens
+    const tokens = await this.generateTokens(user);
+
+    // Save refresh token
+    await this.updateRefreshToken(user.id, tokens.refreshToken);
+
+    // Create session for tracking active devices
+    const parsedDevice = this.parseDeviceInfo(deviceInfo?.userAgent);
+    const session = await this.sessionsService.createSession({
+      userId: user.id,
+      deviceName: parsedDevice.deviceName,
+      deviceType: parsedDevice.deviceType,
+      os: parsedDevice.os,
+      osVersion: parsedDevice.osVersion,
+      ip: deviceInfo?.ip,
+      location: deviceInfo?.location,
+      refreshToken: tokens.refreshToken,
+    });
+
+    // Add session ID to access token
+    const tokensWithSession = await this.generateTokensWithSession(user, session.id);
+
+    // Send welcome email (async, don't block response)
+    this.emailService.sendWelcomeEmail(user, deviceInfo).catch((err) => {
+      console.error('Failed to send welcome email:', err);
+    });
+
+    return { user, tokens: tokensWithSession };
+  }
+
+  /**
+   * Setup Paystack customer and DVA (Dedicated Virtual Account) for a user
+   * This enables wallet top-up via bank transfer
+   */
+  private async setupPaystackAccount(user: User): Promise<void> {
+    try {
+      const result = await this.paystackService.setupUserPaystackAccount(user);
+      
+      if (result.success) {
+        this.logger.log(
+          `Paystack DVA created for user ${user.id}: ${result.dvaAccountNumber} (${result.dvaBankName})`
+        );
+      } else {
+        this.logger.warn(`Paystack DVA setup incomplete for user ${user.id}`);
+      }
+    } catch (error) {
+      this.logger.error(`Paystack setup failed for user ${user.id}: ${error.message}`);
+      // Don't throw - user account is still created, DVA can be retried later
+    }
+  }
+
+  async login(dto: LoginDto, twoFactorCode?: string, deviceInfo?: { ip?: string; userAgent?: string; location?: string }): Promise<LoginResponse> {
+    // Find user by email or phone
+    const user = await this.userRepository.findOne({
+      where: [{ email: dto.identifier }, { phone: dto.identifier }],
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    // Verify password
+    const isPasswordValid = await bcrypt.compare(dto.password, user.password);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    if (!user.isActive) {
+      throw new UnauthorizedException('Account is deactivated');
+    }
+
+    // Check if 2FA is enabled
+    if (user.isTwoFactorEnabled) {
+      // If no 2FA code provided, return a temporary token
+      if (!twoFactorCode) {
+        const tempToken = await this.generateTempToken(user);
+        return {
+          requiresTwoFactor: true,
+          tempToken,
+          message: 'Two-factor authentication required',
+        };
+      }
+
+      // Verify the 2FA code
+      if (!user.twoFactorSecret) {
+        throw new UnauthorizedException('Two-factor authentication not configured properly');
+      }
+      const { authenticator } = await import('otplib');
+      const isValidCode = authenticator.verify({
+        token: twoFactorCode,
+        secret: user.twoFactorSecret,
+      });
+
+      if (!isValidCode) {
+        throw new UnauthorizedException('Invalid two-factor authentication code');
+      }
+    }
+
+    // Generate tokens
+    const tokens = await this.generateTokens(user);
+
+    // Save refresh token
+    await this.updateRefreshToken(user.id, tokens.refreshToken);
+
+    // Create session for tracking active devices
+    const parsedDevice = this.parseDeviceInfo(deviceInfo?.userAgent);
+    const session = await this.sessionsService.createSession({
+      userId: user.id,
+      deviceName: parsedDevice.deviceName,
+      deviceType: parsedDevice.deviceType,
+      os: parsedDevice.os,
+      osVersion: parsedDevice.osVersion,
+      ip: deviceInfo?.ip,
+      location: deviceInfo?.location,
+      refreshToken: tokens.refreshToken,
+    });
+
+    // Add session ID to access token
+    const tokensWithSession = await this.generateTokensWithSession(user, session.id);
+
+    // Send login notification email (async, don't block response)
+    this.emailService.sendLoginNotification(user, deviceInfo).catch((err) => {
+      console.error('Failed to send login notification:', err);
+    });
+
+    return { user, tokens: tokensWithSession, requiresTwoFactor: false };
+  }
+
+  /**
+   * Complete login with 2FA code after initial login returned tempToken
+   */
+  async loginWithTwoFactor(dto: TwoFactorLoginDto, deviceInfo?: { ip?: string; userAgent?: string; location?: string }): Promise<LoginSuccessResponse> {
+    // Verify temp token and get user ID
+    const payload = await this.verifyTempToken(dto.tempToken);
+    
+    const user = await this.userRepository.findOne({
+      where: { id: payload.sub },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Invalid session');
+    }
+
+    if (!user.isTwoFactorEnabled || !user.twoFactorSecret) {
+      throw new BadRequestException('Two-factor authentication is not enabled');
+    }
+
+    // Verify the 2FA code
+    const { authenticator } = await import('otplib');
+    const isValidCode = authenticator.verify({
+      token: dto.code,
+      secret: user.twoFactorSecret,
+    });
+
+    if (!isValidCode) {
+      throw new UnauthorizedException('Invalid two-factor authentication code');
+    }
+
+    // Generate tokens
+    const tokens = await this.generateTokens(user);
+
+    // Save refresh token
+    await this.updateRefreshToken(user.id, tokens.refreshToken);
+
+    // Create session for tracking active devices
+    const parsedDevice = this.parseDeviceInfo(deviceInfo?.userAgent);
+    const session = await this.sessionsService.createSession({
+      userId: user.id,
+      deviceName: parsedDevice.deviceName,
+      deviceType: parsedDevice.deviceType,
+      os: parsedDevice.os,
+      osVersion: parsedDevice.osVersion,
+      ip: deviceInfo?.ip,
+      location: deviceInfo?.location,
+      refreshToken: tokens.refreshToken,
+    });
+
+    // Add session ID to access token
+    const tokensWithSession = await this.generateTokensWithSession(user, session.id);
+
+    // Send login notification email (async, don't block response)
+    this.emailService.sendLoginNotification(user, deviceInfo).catch((err) => {
+      console.error('Failed to send login notification:', err);
+    });
+
+    return { user, tokens: tokensWithSession };
+  }
+
+  /**
+   * Login or signup with Google
+   */
+  async googleLogin(dto: GoogleLoginDto, deviceInfo?: { ip?: string; userAgent?: string; location?: string }): Promise<LoginSuccessResponse> {
+    if (!this.googleClient) {
+      throw new BadRequestException('Google Sign-In is not configured');
+    }
+
+    try {
+      // Verify the Google ID token
+      const ticket = await this.googleClient.verifyIdToken({
+        idToken: dto.idToken,
+        audience: this.configService.get<string>('GOOGLE_CLIENT_ID'),
+      });
+
+      const payload = ticket.getPayload();
+      if (!payload) {
+        throw new UnauthorizedException('Invalid Google token');
+      }
+
+      const { email, name, sub: googleId, picture } = payload;
+
+      if (!email) {
+        throw new BadRequestException('Email is required from Google account');
+      }
+
+      // Check if user exists with this email
+      let user = await this.userRepository.findOne({
+        where: { email },
+      });
+
+      if (user) {
+        // Update Google ID if not set
+        if (!user.googleId) {
+          user.googleId = googleId;
+          await this.userRepository.save(user);
+        }
+
+        // Generate tokens
+        const tokens = await this.generateTokens(user);
+        await this.updateRefreshToken(user.id, tokens.refreshToken);
+
+        // Create session for tracking active devices
+        const parsedDevice = this.parseDeviceInfo(deviceInfo?.userAgent);
+        const session = await this.sessionsService.createSession({
+          userId: user.id,
+          deviceName: parsedDevice.deviceName,
+          deviceType: parsedDevice.deviceType,
+          os: parsedDevice.os,
+          osVersion: parsedDevice.osVersion,
+          ip: deviceInfo?.ip,
+          location: deviceInfo?.location,
+          refreshToken: tokens.refreshToken,
+        });
+
+        // Add session ID to access token
+        const tokensWithSession = await this.generateTokensWithSession(user, session.id);
+
+        // Send login notification email (async)
+        this.emailService.sendLoginNotification(user, {
+          ...deviceInfo,
+          userAgent: deviceInfo?.userAgent ? `${deviceInfo.userAgent} (Google Sign-In)` : 'Google Sign-In',
+        }).catch((err) => {
+          this.logger.error('Failed to send login notification:', err);
+        });
+
+        return { user, tokens: tokensWithSession };
+      }
+
+      // Create new user from Google data
+      const randomPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12);
+      const hashedPassword = await bcrypt.hash(randomPassword, 10);
+
+      user = this.userRepository.create({
+        name: name || email.split('@')[0],
+        email,
+        googleId,
+        password: hashedPassword,
+        role: dto.role || UserRole.BUYER,
+        isPhoneVerified: false,
+        avatar: picture,
+      });
+
+      await this.userRepository.save(user);
+
+      // Generate tokens
+      const tokens = await this.generateTokens(user);
+      await this.updateRefreshToken(user.id, tokens.refreshToken);
+
+      // Create session for tracking active devices
+      const parsedDevice = this.parseDeviceInfo(deviceInfo?.userAgent);
+      const session = await this.sessionsService.createSession({
+        userId: user.id,
+        deviceName: parsedDevice.deviceName,
+        deviceType: parsedDevice.deviceType,
+        os: parsedDevice.os,
+        osVersion: parsedDevice.osVersion,
+        ip: deviceInfo?.ip,
+        location: deviceInfo?.location,
+        refreshToken: tokens.refreshToken,
+      });
+
+      // Add session ID to access token
+      const tokensWithSession = await this.generateTokensWithSession(user, session.id);
+
+      // Send welcome email (async)
+      this.emailService.sendWelcomeEmail(user, deviceInfo).catch((err) => {
+        this.logger.error('Failed to send welcome email:', err);
+      });
+
+      return { user, tokens: tokensWithSession };
+    } catch (error) {
+      this.logger.error('Google login error:', error);
+      if (error instanceof UnauthorizedException || error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new UnauthorizedException('Failed to verify Google token');
+    }
+  }
+
+  /**
+   * Generate a short-lived temp token for 2FA flow
+   */
+  private async generateTempToken(user: User): Promise<string> {
+    const payload = {
+      sub: user.id,
+      type: '2fa_pending',
+    };
+
+    return this.jwtService.signAsync(payload, {
+      secret: this.configService.get('jwt.accessSecret'),
+      expiresIn: '5m', // Token valid for 5 minutes
+    });
+  }
+
+  /**
+   * Verify temp token from 2FA flow
+   */
+  private async verifyTempToken(token: string): Promise<{ sub: string; type: string }> {
+    try {
+      const payload = await this.jwtService.verifyAsync(token, {
+        secret: this.configService.get('jwt.accessSecret'),
+      });
+      
+      if (payload.type !== '2fa_pending') {
+        throw new UnauthorizedException('Invalid token type');
+      }
+      
+      return payload;
+    } catch {
+      throw new UnauthorizedException('Invalid or expired session');
+    }
+  }
+
+  async validateUser(identifier: string, password: string): Promise<User | null> {
+    const user = await this.userRepository.findOne({
+      where: [{ email: identifier }, { phone: identifier }],
+    });
+
+    if (user && (await bcrypt.compare(password, user.password))) {
+      return user;
+    }
+    return null;
+  }
+
+  async refreshTokens(dto: RefreshTokenDto): Promise<AuthTokens> {
+    const payload = await this.verifyRefreshToken(dto.refreshToken);
+    
+    const user = await this.userRepository.findOne({
+      where: { id: payload.sub },
+    });
+
+    if (!user || !user.refreshToken) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    const isRefreshTokenValid = await bcrypt.compare(dto.refreshToken, user.refreshToken);
+    if (!isRefreshTokenValid) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    const tokens = await this.generateTokens(user);
+    await this.updateRefreshToken(user.id, tokens.refreshToken);
+
+    return tokens;
+  }
+
+  async logout(userId: string): Promise<void> {
+    await this.userRepository.update(userId, { refreshToken: undefined });
+  }
+
+  async requestOtp(phone: string): Promise<{ otpId: string; expiresIn: number }> {
+    return this.otpService.createOtp(phone);
+  }
+
+  async verifyOtp(dto: VerifyOtpDto): Promise<LoginResponse> {
+    const isValid = await this.otpService.verifyOtp(dto.otpId, dto.code);
+    if (!isValid) {
+      throw new BadRequestException('Invalid or expired OTP');
+    }
+
+    // Get phone from OTP record
+    const phone = await this.otpService.getPhoneByOtpId(dto.otpId);
+    if (!phone) {
+      throw new BadRequestException('OTP not found');
+    }
+
+    // Find or create user
+    let user = await this.userRepository.findOne({ where: { phone } });
+    
+    if (!user) {
+      // Create new user with phone only
+      user = this.userRepository.create({
+        phone,
+        name: 'User',
+        password: await bcrypt.hash(Math.random().toString(36), 10),
+        isPhoneVerified: true,
+      });
+      await this.userRepository.save(user);
+    } else {
+      // Mark phone as verified
+      user.isPhoneVerified = true;
+      await this.userRepository.save(user);
+
+      // Check if 2FA is enabled - require TOTP code
+      if (user.isTwoFactorEnabled) {
+        const tempToken = await this.generateTempToken(user);
+        return {
+          requiresTwoFactor: true,
+          tempToken,
+          message: 'Two-factor authentication required',
+        };
+      }
+    }
+
+    // Generate tokens
+    const tokens = await this.generateTokens(user);
+    await this.updateRefreshToken(user.id, tokens.refreshToken);
+
+    return { user, tokens, requiresTwoFactor: false };
+  }
+
+  async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    // Verify current password
+    const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    // Hash new password and save
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await this.userRepository.update(userId, { password: hashedPassword });
+
+    // Send password changed confirmation email
+    this.emailService.sendPasswordChangedEmail(user).catch((err) => {
+      console.error('Failed to send password changed email:', err);
+    });
+  }
+
+  async forgotPassword(identifier: string): Promise<{ otpId: string; message: string }> {
+    // Find user by email or phone
+    const user = await this.userRepository.findOne({
+      where: [{ email: identifier }, { phone: identifier }],
+    });
+
+    if (!user) {
+      // Don't reveal if user exists - return success anyway for security
+      return {
+        otpId: 'fake-id',
+        message: 'If an account exists with this email/phone, you will receive a password reset code',
+      };
+    }
+
+    // Generate OTP using the existing createOtp method (which also sends SMS)
+    const otp = await this.otpService.createOtp(user.phone);
+
+    // Also send via email if available
+    if (user.email) {
+      // Get the OTP code from the database for email
+      const otpRecord = await this.otpService.getOtpById(otp.otpId);
+      if (otpRecord) {
+        this.emailService.sendPasswordResetEmail(user, otpRecord.code, 10).catch((err) => {
+          console.error('Failed to send password reset email:', err);
+        });
+      }
+    }
+
+    return {
+      otpId: otp.otpId,
+      message: 'Password reset code sent to your registered phone/email',
+    };
+  }
+
+  async resetPassword(otpId: string, code: string, newPassword: string): Promise<{ message: string }> {
+    // Get phone from OTP
+    const phone = await this.otpService.getPhoneByOtpId(otpId);
+    
+    if (!phone) {
+      throw new BadRequestException('Invalid or expired reset code');
+    }
+
+    // Verify OTP
+    const isValid = await this.otpService.verifyOtp(otpId, code);
+    
+    if (!isValid) {
+      throw new BadRequestException('Invalid or expired code');
+    }
+
+    // Find user by phone
+    const user = await this.userRepository.findOne({
+      where: { phone },
+    });
+
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    // Check if new password is the same as old password
+    const isSamePassword = await bcrypt.compare(newPassword, user.password);
+    if (isSamePassword) {
+      throw new BadRequestException('New password must be different from your current password');
+    }
+
+    // Hash new password and save
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await this.userRepository.update(user.id, { password: hashedPassword });
+
+    // Send password changed confirmation email
+    if (user.email) {
+      this.emailService.sendPasswordChangedEmail(user).catch((err) => {
+        console.error('Failed to send password changed email:', err);
+      });
+    }
+
+    return { message: 'Password reset successfully. You can now login with your new password.' };
+  }
+
+  private parseDeviceInfo(userAgent?: string): { deviceName: string; deviceType: DeviceType; os: string; osVersion?: string } {
+    if (!userAgent) {
+      return { deviceName: 'Unknown Device', deviceType: DeviceType.UNKNOWN, os: 'Unknown' };
+    }
+
+    let deviceName = 'Unknown Device';
+    let deviceType = DeviceType.UNKNOWN;
+    let os = 'Unknown';
+    let osVersion: string | undefined;
+
+    // Detect Handwork App (custom format: Handwork/1.0.0 (iOS 17.0; Apple iPhone 15) Expo)
+    const handworkMatch = userAgent.match(/Handwork\/[\d.]+ \((\w+) ([\d.]+);?\s*([^)]+)\)/);
+    if (handworkMatch) {
+      os = handworkMatch[1]; // iOS or Android
+      osVersion = handworkMatch[2];
+      const deviceInfo = handworkMatch[3].trim();
+      deviceType = DeviceType.MOBILE;
+      deviceName = deviceInfo || (os === 'iOS' ? 'iPhone (Handwork App)' : 'Android (Handwork App)');
+      return { deviceName, deviceType, os, osVersion };
+    }
+
+    // Detect Expo/React Native apps with older format
+    if (userAgent.includes('Expo') || userAgent.includes('expo')) {
+      // Expo apps - try to detect platform
+      if (userAgent.includes('iOS') || userAgent.includes('iPhone') || userAgent.includes('iPad')) {
+        deviceType = DeviceType.MOBILE;
+        os = 'iOS';
+        deviceName = 'iPhone (Handwork App)';
+        const iosMatch = userAgent.match(/iOS[\/\s]?(\d+\.?\d*)/i);
+        if (iosMatch) osVersion = iosMatch[1];
+      } else if (userAgent.includes('Android')) {
+        deviceType = DeviceType.MOBILE;
+        os = 'Android';
+        deviceName = 'Android (Handwork App)';
+        const androidMatch = userAgent.match(/Android[\/\s]?(\d+\.?\d*)/i);
+        if (androidMatch) osVersion = androidMatch[1];
+      } else {
+        deviceType = DeviceType.MOBILE;
+        os = 'Mobile';
+        deviceName = 'Handwork App';
+      }
+    }
+    // Detect OS and version from standard browser user agents
+    else if (userAgent.includes('iPhone')) {
+      deviceType = DeviceType.MOBILE;
+      os = 'iOS';
+      const match = userAgent.match(/iPhone OS (\d+[_\d]*)/);
+      if (match) osVersion = match[1].replace(/_/g, '.');
+      deviceName = 'iPhone';
+    } else if (userAgent.includes('iPad')) {
+      deviceType = DeviceType.TABLET;
+      os = 'iPadOS';
+      const match = userAgent.match(/CPU OS (\d+[_\d]*)/);
+      if (match) osVersion = match[1].replace(/_/g, '.');
+      deviceName = 'iPad';
+    } else if (userAgent.includes('Android')) {
+      deviceType = userAgent.includes('Mobile') ? DeviceType.MOBILE : DeviceType.TABLET;
+      os = 'Android';
+      const match = userAgent.match(/Android (\d+\.?\d*)/);
+      if (match) osVersion = match[1];
+      deviceName = deviceType === DeviceType.MOBILE ? 'Android Phone' : 'Android Tablet';
+    } else if (userAgent.includes('Windows')) {
+      deviceType = DeviceType.DESKTOP;
+      os = 'Windows';
+      if (userAgent.includes('Windows NT 10')) osVersion = '10';
+      else if (userAgent.includes('Windows NT 11')) osVersion = '11';
+      deviceName = 'Windows PC';
+    } else if (userAgent.includes('Macintosh') || userAgent.includes('Mac OS')) {
+      deviceType = DeviceType.DESKTOP;
+      os = 'macOS';
+      const match = userAgent.match(/Mac OS X (\d+[_\d]*)/);
+      if (match) osVersion = match[1].replace(/_/g, '.');
+      deviceName = 'Mac';
+    } else if (userAgent.includes('Linux')) {
+      deviceType = DeviceType.DESKTOP;
+      os = 'Linux';
+      deviceName = 'Linux PC';
+    } else if (userAgent.includes('okhttp') || userAgent.includes('Axios')) {
+      // React Native apps using axios often show okhttp or axios in user agent
+      deviceType = DeviceType.MOBILE;
+      os = 'Mobile';
+      deviceName = 'Handwork App';
+    }
+
+    return { deviceName, deviceType, os, osVersion };
+  }
+
+  private async generateTokens(user: User): Promise<AuthTokens> {
+    const payload: JwtPayload = {
+      sub: user.id,
+      phone: user.phone,
+      email: user.email,
+      role: user.role,
+    };
+
+    const [accessToken, refreshToken] = await Promise.all([
+      this.jwtService.signAsync(payload, {
+        secret: this.configService.get('jwt.accessSecret'),
+        expiresIn: this.configService.get('jwt.accessExpiresIn'),
+      }),
+      this.jwtService.signAsync(payload, {
+        secret: this.configService.get('jwt.refreshSecret'),
+        expiresIn: this.configService.get('jwt.refreshExpiresIn'),
+      }),
+    ]);
+
+    return { accessToken, refreshToken };
+  }
+
+  private async generateTokensWithSession(user: User, sessionId: string): Promise<AuthTokens> {
+    const payload: JwtPayload & { sessionId: string } = {
+      sub: user.id,
+      phone: user.phone,
+      email: user.email,
+      role: user.role,
+      sessionId,
+    };
+
+    const [accessToken, refreshToken] = await Promise.all([
+      this.jwtService.signAsync(payload, {
+        secret: this.configService.get('jwt.accessSecret'),
+        expiresIn: this.configService.get('jwt.accessExpiresIn'),
+      }),
+      this.jwtService.signAsync(payload, {
+        secret: this.configService.get('jwt.refreshSecret'),
+        expiresIn: this.configService.get('jwt.refreshExpiresIn'),
+      }),
+    ]);
+
+    return { accessToken, refreshToken };
+  }
+
+  private async updateRefreshToken(userId: string, refreshToken: string): Promise<void> {
+    const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
+    await this.userRepository.update(userId, { refreshToken: hashedRefreshToken });
+  }
+
+  private async verifyRefreshToken(token: string): Promise<JwtPayload> {
+    try {
+      return await this.jwtService.verifyAsync(token, {
+        secret: this.configService.get('jwt.refreshSecret'),
+      });
+    } catch {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+  }
+}

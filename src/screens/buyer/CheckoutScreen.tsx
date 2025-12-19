@@ -1,0 +1,2427 @@
+import React, { useState, useMemo, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Alert,
+  ActivityIndicator,
+  Modal,
+  TextInput as RNTextInput,
+} from 'react-native';
+import { WebView } from 'react-native-webview';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useMutation } from '@tanstack/react-query';
+import { useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
+import { BuyerStackParamList, DeliveryType } from '../../types';
+import { Button, TextInput } from '../../components/common';
+import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, FONTS } from '../../constants/theme';
+import { useAppSelector, useAppDispatch } from '../../store';
+import { clearCart } from '../../store/slices/cartSlice';
+import { selectDefaultAddress, selectAddresses, Address } from '../../store/slices/addressSlice';
+import { selectPaymentMethods, selectDefaultPaymentMethod, PaymentMethod as SavedPaymentMethod } from '../../store/slices/paymentSlice';
+import { orderService } from '../../services/orderService';
+import { walletService, WalletBalance } from '../../services/walletService';
+import { paymentService } from '../../services/paymentService';
+import { 
+  calculateDeliveryPrice, 
+  formatDeliveryFee, 
+  getAmountForFreeDelivery,
+  qualifiesForFreeDelivery,
+} from '../../services/deliveryPricingService';
+import { useTheme } from '../../context/ThemeContext';
+
+type Props = NativeStackScreenProps<BuyerStackParamList, 'Checkout'>;
+
+const DELIVERY_OPTIONS: { type: DeliveryType; label: string; description: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  {
+    type: 'ASAP',
+    label: 'ASAP',
+    description: 'Get it in 30-60 min',
+    icon: 'car-sport',
+  },
+  {
+    type: 'SCHEDULED',
+    label: 'Scheduled',
+    description: 'Pick a time slot',
+    icon: 'calendar',
+  },
+];
+
+type PaymentMethod = 'card' | 'wallet' | 'payForMe';
+
+export default function CheckoutScreen({ navigation }: Props) {
+  const dispatch = useAppDispatch();
+  const insets = useSafeAreaInsets();
+  const { items, total } = useAppSelector((state) => state.cart);
+  const { user } = useAppSelector((state) => state.auth);
+  const defaultAddress = useAppSelector(selectDefaultAddress);
+  const allAddresses = useAppSelector(selectAddresses);
+  const savedPaymentMethods = useAppSelector(selectPaymentMethods);
+  const defaultSavedCard = useAppSelector(selectDefaultPaymentMethod);
+  const savedCards = savedPaymentMethods.filter(m => m.type === 'card');
+  const { colors, isDark } = useTheme();
+  
+  const [deliveryType, setDeliveryType] = useState<DeliveryType>('ASAP');
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string | null>(null);
+  const [promoCode, setPromoCode] = useState('');
+  const [promoApplied, setPromoApplied] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card');
+  const [walletBalance, setWalletBalance] = useState<WalletBalance | null>(null);
+  const [isLoadingWallet, setIsLoadingWallet] = useState(true);
+  const [selectedAddress, setSelectedAddress] = useState<Address | null>(defaultAddress || null);
+  const [showAddressPicker, setShowAddressPicker] = useState(false);
+  const [orderNotes, setOrderNotes] = useState('');
+  const [riderNote, setRiderNote] = useState('');
+  const [farmerMessage, setFarmerMessage] = useState('');
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  
+  // Send as Gift state
+  const [isGift, setIsGift] = useState(false);
+  const [giftRecipientName, setGiftRecipientName] = useState('');
+  const [giftRecipientPhone, setGiftRecipientPhone] = useState('');
+  const [giftMessage, setGiftMessage] = useState('');
+  
+  // Paystack payment modal state
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentUrl, setPaymentUrl] = useState('');
+  const [paymentReference, setPaymentReference] = useState('');
+  const [pendingOrderData, setPendingOrderData] = useState<any>(null);
+  
+  // Pay for Me modal state
+  const [showPayForMeModal, setShowPayForMeModal] = useState(false);
+  const [payForMeEmail, setPayForMeEmail] = useState('');
+  const [payForMeName, setPayForMeName] = useState('');
+  const [payForMePhone, setPayForMePhone] = useState('');
+  const [payForMeLink, setPayForMeLink] = useState('');
+  const [isGeneratingPayLink, setIsGeneratingPayLink] = useState(false);
+  
+  // Time slot modal state
+  const [showTimeSlotModal, setShowTimeSlotModal] = useState(false);
+  const [payLinkGenerated, setPayLinkGenerated] = useState(false);
+
+  // Fetch wallet balance on screen focus
+  useFocusEffect(
+    useCallback(() => {
+      const fetchWalletBalance = async () => {
+        try {
+          setIsLoadingWallet(true);
+          const balance = await walletService.getBalance();
+          setWalletBalance(balance);
+        } catch (error) {
+          console.error('Failed to fetch wallet balance:', error);
+        } finally {
+          setIsLoadingWallet(false);
+        }
+      };
+      fetchWalletBalance();
+    }, [])
+  );
+
+  // Calculate delivery pricing dynamically
+  const estimatedDistanceKm = 5.2;
+  
+  const deliveryPricing = useMemo(() => {
+    return calculateDeliveryPrice({
+      distanceKm: estimatedDistanceKm,
+      orderTotal: total,
+      isExpress: deliveryType === 'ASAP',
+      isScheduled: deliveryType === 'SCHEDULED',
+    });
+  }, [estimatedDistanceKm, total, deliveryType]);
+
+  // Generate available time slots for scheduled delivery
+  const timeSlots = useMemo(() => {
+    const slots: { id: string; label: string; date: string; time: string; isoDate: string }[] = [];
+    const now = new Date();
+    const currentHour = now.getHours();
+    
+    // Generate slots for today (if before 6 PM) and next 2 days
+    for (let dayOffset = 0; dayOffset < 3; dayOffset++) {
+      const date = new Date(now);
+      date.setDate(date.getDate() + dayOffset);
+      
+      const dateLabel = dayOffset === 0 ? 'Today' : dayOffset === 1 ? 'Tomorrow' : 
+        date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      
+      // Time windows: 9-12, 12-3, 3-6, 6-9
+      const windows = [
+        { start: 9, end: 12, label: '9 AM - 12 PM' },
+        { start: 12, end: 15, label: '12 PM - 3 PM' },
+        { start: 15, end: 18, label: '3 PM - 6 PM' },
+        { start: 18, end: 21, label: '6 PM - 9 PM' },
+      ];
+      
+      windows.forEach((window, idx) => {
+        // Skip past time slots for today
+        if (dayOffset === 0 && currentHour >= window.start) return;
+        
+        // Create ISO date for the slot start time
+        const slotDate = new Date(date);
+        slotDate.setHours(window.start, 0, 0, 0);
+        
+        slots.push({
+          id: `${dayOffset}-${idx}`,
+          label: `${dateLabel}, ${window.label}`,
+          date: dateLabel,
+          time: window.label,
+          isoDate: slotDate.toISOString(),
+        });
+      });
+    }
+    
+    return slots;
+  }, []);
+
+  const deliveryFee = deliveryPricing.deliveryFee;
+  const serviceFee = Math.round(total * 0.02); // 2% service fee
+  const discount = promoApplied ? 500 : 0;
+  const finalTotal = total + deliveryFee + serviceFee - discount;
+  
+  const hasFreeDelivery = qualifiesForFreeDelivery(total);
+  const amountForFreeDelivery = getAmountForFreeDelivery(total);
+
+  const createOrderMutation = useMutation({
+    mutationFn: orderService.createOrder,
+    onSuccess: (response) => {
+      console.log('Order created successfully:', response);
+      if (response.success) {
+        dispatch(clearCart());
+        // Navigate to Order Confirmation screen with order details
+        navigation.replace('OrderConfirmation', {
+          orderId: response.data.id,
+          orderNumber: response.data.orderNumber || response.data.id.slice(-8).toUpperCase(),
+          total: finalTotal,
+          itemCount: items.length,
+          paymentMethod: paymentMethod,
+          estimatedDelivery: deliveryType === 'SCHEDULED' ? getScheduledDeliveryTime() : 'Within 45 mins',
+        });
+      }
+    },
+    onError: (error: any) => {
+      console.log('Order creation error:', error);
+      console.log('Error response:', error?.response?.data);
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to create order. Please try again.';
+      Alert.alert(
+        'Order Failed',
+        Array.isArray(errorMessage) ? errorMessage.join('\n') : errorMessage
+      );
+    },
+  });
+
+  const handleApplyPromo = () => {
+    if (promoCode.toLowerCase() === 'fresh10') {
+      setPromoApplied(true);
+      Alert.alert('Promo applied!', 'You saved ₦500');
+    } else {
+      Alert.alert('Invalid code', 'This promo code is not valid');
+    }
+  };
+
+  // Get the ISO date for the selected time slot
+  const getScheduledDeliveryTime = () => {
+    if (deliveryType !== 'SCHEDULED' || !selectedTimeSlot) return undefined;
+    const slot = timeSlots.find(s => s.id === selectedTimeSlot);
+    return slot?.isoDate;
+  };
+
+  const canAffordWithWallet = walletBalance ? walletBalance.available >= finalTotal : false;
+
+  const handlePlaceOrder = async () => {
+    if (items.length === 0) {
+      Alert.alert('Cart is empty', 'Add items to your cart first');
+      return;
+    }
+
+    if (deliveryType === 'SCHEDULED' && !selectedTimeSlot) {
+      Alert.alert('Select Time Slot', 'Please select a delivery time slot for your scheduled order');
+      return;
+    }
+
+    // Validate gift details if sending as gift
+    if (isGift) {
+      if (!giftRecipientName.trim()) {
+        Alert.alert('Gift Recipient Required', 'Please enter the recipient\'s name');
+        return;
+      }
+      if (!giftRecipientPhone.trim()) {
+        Alert.alert('Gift Recipient Phone Required', 'Please enter the recipient\'s phone number');
+        return;
+      }
+    }
+
+    if (paymentMethod === 'wallet') {
+      if (!canAffordWithWallet) {
+        Alert.alert(
+          'Insufficient Balance',
+          `Your wallet balance is ₦${walletBalance?.available.toLocaleString() || 0}. You need ₦${finalTotal.toLocaleString()} to complete this order.`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { 
+              text: 'Top Up Wallet', 
+              onPress: () => navigation.navigate('TopUp' as any) 
+            },
+          ]
+        );
+        return;
+      }
+
+      try {
+        setIsProcessingPayment(true);
+        
+        const orderId = 'order-' + Date.now();
+        const paymentResult = await walletService.payWithWallet({
+          amount: finalTotal,
+          orderId,
+          description: `Order #${orderId}`,
+        });
+
+        if (paymentResult.status !== 'completed') {
+          Alert.alert('Payment Failed', 'Failed to process wallet payment');
+          return;
+        }
+
+        createOrderMutation.mutate({
+          deliveryAddress: {
+            address: selectedAddress ? `${selectedAddress.addressLine1}${selectedAddress.addressLine2 ? ', ' + selectedAddress.addressLine2 : ''}` : user?.address || 'Unknown address',
+            city: selectedAddress?.city || user?.city || 'Unknown city',
+            state: selectedAddress?.state || user?.state || 'Unknown state',
+            lat: 6.5244,
+            lng: 3.3792,
+          },
+          discountCode: promoApplied ? promoCode : undefined,
+          paymentMethod: 'wallet',
+          deliveryType,
+          scheduledDeliveryTime: getScheduledDeliveryTime(),
+          notes: orderNotes || undefined,
+          riderNote: riderNote || undefined,
+          farmerMessage: farmerMessage || undefined,
+          items: items.map(item => ({ productId: item.productId, quantity: item.quantity })),
+          isGift: isGift || undefined,
+          giftDetails: isGift ? {
+            recipientName: giftRecipientName,
+            recipientPhone: giftRecipientPhone,
+            message: giftMessage || undefined,
+          } : undefined,
+        });
+      } catch (error: any) {
+        const errorMessage = error?.response?.data?.message || error?.message || 'Something went wrong. Please try again.';
+        Alert.alert('Error', errorMessage);
+      } finally {
+        setIsProcessingPayment(false);
+      }
+      return;
+    }
+
+    // For Pay for Me, open the modal to enter recipient details
+    if (paymentMethod === 'payForMe') {
+      setShowPayForMeModal(true);
+      return;
+    }
+
+    // For card payments, initialize Paystack payment
+    try {
+      setIsProcessingPayment(true);
+      
+      // Store order data for after payment verification
+      const orderData = {
+        deliveryAddress: {
+          address: selectedAddress ? `${selectedAddress.addressLine1}${selectedAddress.addressLine2 ? ', ' + selectedAddress.addressLine2 : ''}` : user?.address || 'Unknown address',
+          city: selectedAddress?.city || user?.city || 'Unknown city',
+          state: selectedAddress?.state || user?.state || 'Unknown state',
+          lat: 6.5244,
+          lng: 3.3792,
+        },
+        discountCode: promoApplied ? promoCode : undefined,
+        paymentMethod: 'card',
+        deliveryType,
+        scheduledDeliveryTime: getScheduledDeliveryTime(),
+        notes: orderNotes || undefined,
+        riderNote: riderNote || undefined,
+        farmerMessage: farmerMessage || undefined,
+        items: items.map(item => ({ productId: item.productId, quantity: item.quantity })),
+        isGift: isGift || undefined,
+        giftDetails: isGift ? {
+          recipientName: giftRecipientName,
+          recipientPhone: giftRecipientPhone,
+          message: giftMessage || undefined,
+        } : undefined,
+      };
+      setPendingOrderData(orderData);
+      
+      // Initialize Paystack payment
+      const result = await paymentService.initializePaystackPayment({
+        amount: finalTotal,
+        type: 'order_payment',
+      });
+      
+      if (result && result.authorizationUrl) {
+        setPaymentUrl(result.authorizationUrl);
+        setPaymentReference(result.reference);
+        setShowPaymentModal(true);
+      } else {
+        Alert.alert('Error', 'Failed to initialize payment. Please try again.');
+      }
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || 'Something went wrong. Please try again.';
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
+
+  // Handle Paystack WebView navigation
+  const handlePaymentWebViewNavigation = (navState: any) => {
+    const { url, title } = navState;
+    
+    if (!url) return;
+    
+    console.log('WebView URL:', url);
+    console.log('WebView Title:', title);
+    
+    // Check for success in page title (Paystack shows "Transaction Successful" or similar)
+    if (title && (
+      title.toLowerCase().includes('success') ||
+      title.toLowerCase().includes('approved') ||
+      title.toLowerCase().includes('completed')
+    )) {
+      setShowPaymentModal(false);
+      setPaymentUrl('');
+      verifyPaymentAndCreateOrder(paymentReference);
+      return;
+    }
+    
+    // Check for success/callback URL patterns (Paystack redirects)
+    if (
+      url.includes('callback') || 
+      url.includes('trxref=') || 
+      url.includes('reference=')
+    ) {
+      setShowPaymentModal(false);
+      setPaymentUrl('');
+      verifyPaymentAndCreateOrder(paymentReference);
+      return;
+    }
+    
+    // Check for cancel patterns
+    if (url.includes('cancel') || url.includes('close') || url.includes('failed')) {
+      setShowPaymentModal(false);
+      setPaymentUrl('');
+      setPendingOrderData(null);
+      Alert.alert('Payment Cancelled', 'You cancelled the payment.');
+      return;
+    }
+  };
+
+  // JavaScript to inject into WebView to detect Paystack success
+  const injectedJavaScript = `
+    (function() {
+      // Monitor for success messages in the page
+      const observer = new MutationObserver(function(mutations) {
+        const bodyText = document.body.innerText || '';
+        if (
+          bodyText.includes('Transaction Successful') ||
+          bodyText.includes('Payment Successful') ||
+          bodyText.includes('Your payment was successful') ||
+          bodyText.includes('Transaction successful')
+        ) {
+          window.ReactNativeWebView.postMessage(JSON.stringify({ status: 'success', event: 'payment_complete' }));
+        }
+      });
+      
+      observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+      
+      // Also check on load
+      setTimeout(function() {
+        const bodyText = document.body.innerText || '';
+        if (
+          bodyText.includes('Transaction Successful') ||
+          bodyText.includes('Payment Successful') ||
+          bodyText.includes('Your payment was successful')
+        ) {
+          window.ReactNativeWebView.postMessage(JSON.stringify({ status: 'success', event: 'payment_complete' }));
+        }
+      }, 1000);
+    })();
+    true;
+  `;
+
+  // Handle URL requests before loading (better for catching redirects)
+  const handleShouldStartLoad = (request: any) => {
+    const { url } = request;
+    
+    // Check if this is a callback/redirect URL
+    if (url.includes('callback') || url.includes('trxref=') || url.includes('reference=')) {
+      // Close modal and verify payment
+      setTimeout(() => {
+        setShowPaymentModal(false);
+        setPaymentUrl('');
+        verifyPaymentAndCreateOrder(paymentReference);
+      }, 100);
+      return false; // Don't load this URL in WebView
+    }
+    
+    return true; // Allow other URLs
+  };
+
+  // Verify payment and create order
+  const verifyPaymentAndCreateOrder = async (reference: string) => {
+    try {
+      setIsProcessingPayment(true);
+      
+      // Verify payment with Paystack
+      const verifyResult = await paymentService.verifyPaystackPayment(reference);
+      
+      console.log('Payment verification result:', verifyResult);
+      
+      if (verifyResult.status === 'success') {
+        // Payment successful, create order
+        if (pendingOrderData) {
+          console.log('Creating order with data:', {
+            ...pendingOrderData,
+            paymentReference: reference,
+          });
+          createOrderMutation.mutate({
+            ...pendingOrderData,
+            paymentReference: reference,
+          });
+        } else {
+          console.log('No pending order data!');
+          Alert.alert('Error', 'Order data was lost. Please try again.');
+        }
+      } else {
+        Alert.alert('Payment Failed', 'Your payment could not be verified. Please try again.');
+      }
+    } catch (error: any) {
+      console.log('Payment verification error:', error);
+      Alert.alert('Error', error?.message || 'Failed to verify payment. Please contact support.');
+    } finally {
+      setIsProcessingPayment(false);
+      setPendingOrderData(null);
+    }
+  };
+
+  // Handle close payment modal
+  const handleClosePaymentModal = () => {
+    Alert.alert(
+      'Cancel Payment?',
+      'Are you sure you want to cancel this payment?',
+      [
+        { text: 'Continue Payment', style: 'cancel' },
+        { 
+          text: 'Cancel', 
+          style: 'destructive',
+          onPress: async () => {
+            // Cancel payment on backend (sends cancellation email)
+            if (paymentReference) {
+              try {
+                await paymentService.cancelPaystackPayment(paymentReference);
+              } catch (error) {
+                console.log('Failed to cancel payment on backend:', error);
+              }
+            }
+            setShowPaymentModal(false);
+            setPaymentUrl('');
+            setPaymentReference('');
+            setPendingOrderData(null);
+          }
+        },
+      ]
+    );
+  };
+
+  // Handle Generate Pay for Me Link
+  const handleGeneratePayForMeLink = async () => {
+    // Validate inputs
+    if (!payForMeName.trim()) {
+      Alert.alert('Name Required', 'Please enter the name of the person who will pay');
+      return;
+    }
+    if (!payForMeEmail.trim()) {
+      Alert.alert('Email Required', 'Please enter the email of the person who will pay');
+      return;
+    }
+    
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(payForMeEmail.trim())) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address');
+      return;
+    }
+
+    try {
+      setIsGeneratingPayLink(true);
+      
+      const result = await paymentService.generatePayForMeLink({
+        amount: finalTotal,
+        recipientName: payForMeName.trim(),
+        recipientEmail: payForMeEmail.trim(),
+        recipientPhone: payForMePhone.trim() || undefined,
+        description: `Payment for order - ${items.length} item${items.length > 1 ? 's' : ''} (₦${finalTotal.toLocaleString()})`,
+      });
+
+      if (result.success && result.paymentLink) {
+        setPayForMeLink(result.paymentLink);
+        setPaymentReference(result.reference);
+        setPayLinkGenerated(true);
+      } else {
+        Alert.alert('Error', 'Failed to generate payment link. Please try again.');
+      }
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to generate payment link';
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setIsGeneratingPayLink(false);
+    }
+  };
+
+  // Share Pay for Me link
+  const handleSharePayForMeLink = async () => {
+    if (!payForMeLink) return;
+    
+    try {
+      const { Share } = require('react-native');
+      await Share.share({
+        message: `Hi ${payForMeName}! Please help me pay for my order using this link:\n\n${payForMeLink}\n\nTotal amount: ₦${finalTotal.toLocaleString()}\n\nThank you! 🙏`,
+        title: 'Pay for My Order',
+      });
+    } catch (error) {
+      console.log('Share error:', error);
+    }
+  };
+
+  // Copy Pay for Me link to clipboard
+  const handleCopyPayForMeLink = async () => {
+    if (!payForMeLink) return;
+    
+    try {
+      const { Clipboard } = require('react-native');
+      // Use expo-clipboard if available, fallback to RN Clipboard
+      try {
+        const ExpoClipboard = require('expo-clipboard');
+        await ExpoClipboard.setStringAsync(payForMeLink);
+      } catch {
+        Clipboard.setString(payForMeLink);
+      }
+      Alert.alert('Copied!', 'Payment link copied to clipboard');
+    } catch (error) {
+      console.log('Copy error:', error);
+    }
+  };
+
+  // Close Pay for Me modal
+  const handleClosePayForMeModal = () => {
+    if (payLinkGenerated) {
+      Alert.alert(
+        'Payment Link Created',
+        'A payment link has been generated. Make sure to share it before closing.',
+        [
+          { text: 'Keep Open', style: 'cancel' },
+          { 
+            text: 'Close Anyway', 
+            style: 'destructive',
+            onPress: () => resetPayForMeState()
+          },
+        ]
+      );
+    } else {
+      resetPayForMeState();
+    }
+  };
+
+  const resetPayForMeState = () => {
+    setShowPayForMeModal(false);
+    setPayForMeName('');
+    setPayForMeEmail('');
+    setPayForMePhone('');
+    setPayForMeLink('');
+    setPayLinkGenerated(false);
+  };
+
+  return (
+    <View style={[styles.container, { backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
+      {/* Fixed Header */}
+      <View style={[styles.fixedHeader, { paddingTop: insets.top + 8, backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
+        </TouchableOpacity>
+        <Text style={[styles.fixedHeaderTitle, { color: colors.text }]}>Checkout</Text>
+        <View style={styles.placeholder} />
+      </View>
+
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Delivery Address */}
+        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>DELIVERY ADDRESS</Text>
+        <View style={[styles.insetCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+          <TouchableOpacity 
+            style={styles.addressRow}
+            onPress={() => setShowAddressPicker(true)}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.addressIconContainer, { backgroundColor: isDark ? 'rgba(0, 122, 255, 0.15)' : '#E5F1FF' }]}>
+              <Ionicons name="location" size={20} color={colors.primary} />
+            </View>
+            <View style={styles.addressDetails}>
+              <Text style={[styles.addressLabel, { color: colors.text }]}>
+                {selectedAddress ? selectedAddress.addressLine1 : 'No address saved'}
+              </Text>
+              <Text style={[styles.addressText, { color: colors.textSecondary }]}>
+                {selectedAddress ? `${selectedAddress.city}, ${selectedAddress.state}` : 'Tap to add address'}
+              </Text>
+            </View>
+            <Text style={[styles.changeText, { color: colors.primary }]}>Change</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Send as Gift Option */}
+        <View style={[styles.insetCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', marginTop: 16 }]}>
+          <TouchableOpacity
+            style={styles.giftToggleRow}
+            onPress={() => setIsGift(!isGift)}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.giftIconContainer, { backgroundColor: isGift ? '#FCE4EC' : (isDark ? colors.surface : '#F2F2F7') }]}>
+              <Ionicons name="gift" size={20} color={isGift ? '#E91E63' : colors.textSecondary} />
+            </View>
+            <View style={styles.giftToggleContent}>
+              <Text style={[styles.giftToggleLabel, { color: colors.text }]}>Send as a Gift</Text>
+              <Text style={[styles.giftToggleDesc, { color: colors.textSecondary }]}>
+                {isGift ? 'Gift details below' : 'Add gift message & recipient'}
+              </Text>
+            </View>
+            <View style={[
+              styles.toggleSwitch,
+              { backgroundColor: isGift ? '#E91E63' : (isDark ? 'rgba(255,255,255,0.2)' : '#E5E5EA') }
+            ]}>
+              <View style={[
+                styles.toggleKnob,
+                { transform: [{ translateX: isGift ? 18 : 2 }] }
+              ]} />
+            </View>
+          </TouchableOpacity>
+          
+          {/* Gift Details - Shown when isGift is true */}
+          {isGift && (
+            <View style={[styles.giftDetailsContainer, { borderTopColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60, 60, 67, 0.12)' }]}>
+              <View style={styles.giftInputGroup}>
+                <Text style={[styles.giftInputLabel, { color: colors.text }]}>Recipient's Name *</Text>
+                <View style={[styles.giftInputWrapper, { backgroundColor: isDark ? colors.surface : '#F2F2F7', borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E5EA' }]}>
+                  <Ionicons name="person-outline" size={18} color={colors.textSecondary} style={styles.giftInputIcon} />
+                  <RNTextInput
+                    placeholder="Enter recipient's name"
+                    value={giftRecipientName}
+                    onChangeText={setGiftRecipientName}
+                    style={[styles.giftInput, { color: colors.text }]}
+                    placeholderTextColor={colors.textSecondary}
+                  />
+                </View>
+              </View>
+              
+              <View style={styles.giftInputGroup}>
+                <Text style={[styles.giftInputLabel, { color: colors.text }]}>Recipient's Phone *</Text>
+                <View style={[styles.giftInputWrapper, { backgroundColor: isDark ? colors.surface : '#F2F2F7', borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E5EA' }]}>
+                  <Ionicons name="call-outline" size={18} color={colors.textSecondary} style={styles.giftInputIcon} />
+                  <RNTextInput
+                    placeholder="Enter phone number"
+                    value={giftRecipientPhone}
+                    onChangeText={setGiftRecipientPhone}
+                    keyboardType="phone-pad"
+                    style={[styles.giftInput, { color: colors.text }]}
+                    placeholderTextColor={colors.textSecondary}
+                  />
+                </View>
+              </View>
+              
+              <View style={styles.giftInputGroup}>
+                <Text style={[styles.giftInputLabel, { color: colors.text }]}>Gift Message</Text>
+                <View style={[styles.giftInputWrapper, styles.giftMessageWrapper, { backgroundColor: isDark ? colors.surface : '#F2F2F7', borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E5EA' }]}>
+                  <Ionicons name="chatbubble-outline" size={18} color={colors.textSecondary} style={[styles.giftInputIcon, { marginTop: 12 }]} />
+                  <RNTextInput
+                    placeholder="Add a personal message (optional)"
+                    value={giftMessage}
+                    onChangeText={setGiftMessage}
+                    multiline
+                    numberOfLines={3}
+                    style={[styles.giftMessageInput, { color: colors.text }]}
+                    placeholderTextColor={colors.textSecondary}
+                    textAlignVertical="top"
+                  />
+                </View>
+              </View>
+            </View>
+          )}
+        </View>
+
+        {/* Delivery Time */}
+        <Text style={[styles.sectionTitle, { color: colors.textSecondary, marginTop: 24 }]}>DELIVERY TIME</Text>
+        <View style={styles.deliveryOptionsRow}>
+          {DELIVERY_OPTIONS.map((option) => {
+            const isSelected = deliveryType === option.type;
+            return (
+              <TouchableOpacity
+                key={option.type}
+                style={[
+                  styles.deliveryOption,
+                  { backgroundColor: isDark ? colors.card : '#FFFFFF' },
+                  isSelected && { borderColor: colors.primary, borderWidth: 2 },
+                ]}
+                onPress={() => setDeliveryType(option.type)}
+                activeOpacity={0.7}
+              >
+                <View style={[
+                  styles.deliveryIconContainer,
+                  { backgroundColor: isSelected 
+                    ? (isDark ? 'rgba(0, 122, 255, 0.15)' : '#E5F1FF') 
+                    : (isDark ? colors.surface : '#F2F2F7') 
+                  }
+                ]}>
+                  <Ionicons 
+                    name={option.icon} 
+                    size={20} 
+                    color={isSelected ? colors.primary : colors.textSecondary} 
+                  />
+                </View>
+                <Text style={[
+                  styles.deliveryLabel,
+                  { color: isSelected ? colors.primary : colors.text },
+                ]}>
+                  {option.label}
+                </Text>
+                <Text style={[styles.deliveryDescription, { color: colors.textSecondary }]}>
+                  {option.description}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* Time Slot Picker - Only show when Scheduled is selected */}
+        {deliveryType === 'SCHEDULED' && (
+          <>
+            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>SELECT TIME SLOT</Text>
+            <TouchableOpacity
+              style={[styles.insetCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}
+              onPress={() => setShowTimeSlotModal(true)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.timeSlotSelector}>
+                <View style={[styles.timeSlotSelectorIcon, { backgroundColor: isDark ? 'rgba(0, 122, 255, 0.15)' : '#E5F1FF' }]}>
+                  <Ionicons name="time-outline" size={20} color={colors.primary} />
+                </View>
+                <View style={styles.timeSlotSelectorContent}>
+                  {selectedTimeSlot ? (
+                    <>
+                      <Text style={[styles.timeSlotSelectorLabel, { color: colors.text }]}>
+                        {timeSlots.find(s => s.id === selectedTimeSlot)?.date}
+                      </Text>
+                      <Text style={[styles.timeSlotSelectorValue, { color: colors.textSecondary }]}>
+                        {timeSlots.find(s => s.id === selectedTimeSlot)?.time}
+                      </Text>
+                    </>
+                  ) : (
+                    <>
+                      <Text style={[styles.timeSlotSelectorLabel, { color: colors.text }]}>
+                        Choose delivery time
+                      </Text>
+                      <Text style={[styles.timeSlotSelectorValue, { color: colors.textSecondary }]}>
+                        Tap to select a time slot
+                      </Text>
+                    </>
+                  )}
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+              </View>
+            </TouchableOpacity>
+          </>
+        )}
+
+        {/* Payment Method */}
+        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>PAYMENT METHOD</Text>
+        <View style={[styles.insetCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+          {/* Wallet Option */}
+          <TouchableOpacity
+            style={[
+              styles.paymentListRow,
+              { borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60, 60, 67, 0.12)' },
+            ]}
+            onPress={() => setPaymentMethod('wallet')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.paymentIconBg, { backgroundColor: '#E8F5E9' }]}>
+              <Ionicons name="wallet" size={18} color="#43A047" />
+            </View>
+            <View style={styles.paymentOptionInfo}>
+              <Text style={[styles.paymentOptionLabel, { color: colors.text }]}>Wallet Balance</Text>
+              {isLoadingWallet ? (
+                <ActivityIndicator size="small" color={colors.textSecondary} />
+              ) : (
+                <Text style={[
+                  styles.paymentOptionBalance,
+                  { color: canAffordWithWallet ? '#43A047' : COLORS.error }
+                ]}>
+                  ₦{(walletBalance?.available || 0).toLocaleString()}
+                  {!canAffordWithWallet && ' (Insufficient)'}
+                </Text>
+              )}
+            </View>
+            <View style={[
+              styles.radioButton,
+              { borderColor: paymentMethod === 'wallet' ? colors.primary : (isDark ? 'rgba(255,255,255,0.2)' : '#C7C7CC') },
+            ]}>
+              {paymentMethod === 'wallet' && <View style={[styles.radioButtonInner, { backgroundColor: colors.primary }]} />}
+            </View>
+          </TouchableOpacity>
+
+          {/* Card Payment Option */}
+          <TouchableOpacity
+            style={[
+              styles.paymentListRow,
+              { borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60, 60, 67, 0.12)' },
+            ]}
+            onPress={() => setPaymentMethod('card')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.paymentIconBg, { backgroundColor: '#E3F2FD' }]}>
+              <Ionicons name="card" size={18} color="#1976D2" />
+            </View>
+            <View style={styles.paymentOptionInfo}>
+              <Text style={[styles.paymentOptionLabel, { color: colors.text }]}>
+                {savedCards.length > 0 ? `Card •••• ${savedCards[0]?.cardNumber?.slice(-4) || ''}` : 'Pay with Card'}
+              </Text>
+              <Text style={[styles.paymentOptionDesc, { color: colors.textSecondary }]}>
+                {savedCards.length > 0 ? 'Secure payment' : 'Visa, Mastercard, Verve'}
+              </Text>
+            </View>
+            <View style={[
+              styles.radioButton,
+              { borderColor: paymentMethod === 'card' ? colors.primary : (isDark ? 'rgba(255,255,255,0.2)' : '#C7C7CC') },
+            ]}>
+              {paymentMethod === 'card' && <View style={[styles.radioButtonInner, { backgroundColor: colors.primary }]} />}
+            </View>
+          </TouchableOpacity>
+
+          {/* Pay for Me Option */}
+          <TouchableOpacity
+            style={[styles.paymentListRow, { borderBottomWidth: 0 }]}
+            onPress={() => setPaymentMethod('payForMe')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.paymentIconBg, { backgroundColor: '#FFF3E0' }]}>
+              <Ionicons name="people" size={18} color="#FF6B00" />
+            </View>
+            <View style={styles.paymentOptionInfo}>
+              <Text style={[styles.paymentOptionLabel, { color: colors.text }]}>Pay for Me</Text>
+              <Text style={[styles.paymentOptionDesc, { color: colors.textSecondary }]}>Send payment link to someone</Text>
+            </View>
+            <View style={[
+              styles.radioButton,
+              { borderColor: paymentMethod === 'payForMe' ? colors.primary : (isDark ? 'rgba(255,255,255,0.2)' : '#C7C7CC') },
+            ]}>
+              {paymentMethod === 'payForMe' && <View style={[styles.radioButtonInner, { backgroundColor: colors.primary }]} />}
+            </View>
+          </TouchableOpacity>
+        </View>
+        
+        {/* Top Up Link */}
+        {paymentMethod === 'wallet' && !canAffordWithWallet && (
+          <TouchableOpacity 
+            style={styles.topUpLink}
+            onPress={() => navigation.navigate('TopUp' as any)}
+          >
+            <Ionicons name="add-circle-outline" size={18} color={colors.primary} />
+            <Text style={[styles.topUpLinkText, { color: colors.primary }]}>Top up your wallet</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Promo Code */}
+        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>PROMO CODE</Text>
+        <View style={[styles.insetCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', padding: 12 }]}>
+          <View style={styles.promoContainer}>
+            <TextInput
+              placeholder="Enter promo code"
+              value={promoCode}
+              onChangeText={setPromoCode}
+              containerStyle={styles.promoInput}
+              disabled={promoApplied}
+            />
+            <Button
+              title={promoApplied ? 'Applied' : 'Apply'}
+              variant="outline"
+              size="medium"
+              onPress={handleApplyPromo}
+              disabled={promoApplied || !promoCode}
+            />
+          </View>
+        </View>
+
+        {/* Message for Farmer */}
+        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>MESSAGE FOR FARMER</Text>
+        <View style={[styles.insetCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+          <View style={styles.farmerMessageHeader}>
+            <View style={[styles.farmerMessageIcon, { backgroundColor: isDark ? 'rgba(76, 175, 80, 0.15)' : '#E8F5E9' }]}>
+              <Ionicons name="leaf" size={18} color="#43A047" />
+            </View>
+            <View style={styles.farmerMessageHeaderText}>
+              <Text style={[styles.farmerMessageTitle, { color: colors.text }]}>Special Requests</Text>
+              <Text style={[styles.farmerMessageSubtitle, { color: colors.textSecondary }]}>
+                Let the farmer know your preferences
+              </Text>
+            </View>
+          </View>
+          <View style={[styles.farmerMessageInputContainer, { borderTopColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60, 60, 67, 0.08)' }]}>
+            <TextInput
+              placeholder="e.g., Pick ripe ones only, no stems, extra fresh..."
+              value={farmerMessage}
+              onChangeText={setFarmerMessage}
+              multiline
+              numberOfLines={3}
+              containerStyle={styles.farmerMessageInput}
+              style={{ minHeight: 70, textAlignVertical: 'top', fontSize: 13 }}
+            />
+          </View>
+        </View>
+
+        {/* Delivery Instructions */}
+        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>DELIVERY INSTRUCTIONS</Text>
+        <View style={[styles.insetCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', padding: 12 }]}>
+          <TextInput
+            placeholder="Gate code, leave at door, etc."
+            value={orderNotes}
+            onChangeText={setOrderNotes}
+            containerStyle={styles.notesInput}
+            style={{ minHeight: 40 }}
+          />
+        </View>
+
+        {/* Note for Rider */}
+        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>NOTE FOR RIDER</Text>
+        <View style={[styles.insetCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+          <View style={styles.riderNoteHeader}>
+            <View style={[styles.riderNoteIconBg, { backgroundColor: isDark ? 'rgba(0, 122, 255, 0.15)' : '#E5F1FF' }]}>
+              <Ionicons name="bicycle" size={18} color={colors.primary} />
+            </View>
+            <Text style={[styles.riderNoteHeaderText, { color: colors.textSecondary }]}>
+              Special instructions for the delivery rider
+            </Text>
+          </View>
+          <View style={[styles.riderNoteInputContainer, { borderTopColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60, 60, 67, 0.08)' }]}>
+            <TextInput
+              placeholder="e.g., Call when you arrive, use back entrance, look for the red gate..."
+              value={riderNote}
+              onChangeText={setRiderNote}
+              multiline
+              numberOfLines={2}
+              containerStyle={styles.riderNoteInput}
+              style={{ minHeight: 50, textAlignVertical: 'top' }}
+            />
+          </View>
+        </View>
+
+        {/* Order Summary */}
+        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>ORDER SUMMARY</Text>
+        <View style={[styles.insetCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+          <View style={[styles.summaryRow, styles.summaryRowBorder, { borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60, 60, 67, 0.12)' }]}>
+            <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
+              Items ({items.reduce((sum, i) => sum + i.quantity, 0)})
+            </Text>
+            <Text style={[styles.summaryValue, { color: colors.text }]}>₦{total.toLocaleString()}</Text>
+          </View>
+          <View style={[styles.summaryRow, styles.summaryRowBorder, { borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60, 60, 67, 0.12)' }]}>
+            <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
+              Delivery ({estimatedDistanceKm.toFixed(1)} km)
+            </Text>
+            {hasFreeDelivery ? (
+              <Text style={[styles.summaryValue, { color: '#34C759', fontWeight: '600' }]}>FREE</Text>
+            ) : (
+              <Text style={[styles.summaryValue, { color: colors.text }]}>{formatDeliveryFee(deliveryFee)}</Text>
+            )}
+          </View>
+          {!hasFreeDelivery && amountForFreeDelivery > 0 && (
+            <TouchableOpacity 
+              style={styles.freeDeliveryHint} 
+              onPress={() => navigation.goBack()}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="information-circle" size={14} color={colors.primary} />
+              <Text style={[styles.freeDeliveryHintText, { color: colors.primary }]}>
+                Add ₦{amountForFreeDelivery.toLocaleString()} more for free delivery
+              </Text>
+              <Ionicons name="chevron-forward" size={14} color={colors.primary} />
+            </TouchableOpacity>
+          )}
+          {deliveryType === 'ASAP' && deliveryPricing.breakdown.expressPremium > 0 && (
+            <View style={[styles.summaryRow, styles.summaryRowBorder, { borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60, 60, 67, 0.12)' }]}>
+              <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Express Premium</Text>
+              <Text style={[styles.summaryValue, { color: colors.text }]}>
+                +₦{deliveryPricing.breakdown.expressPremium.toLocaleString()}
+              </Text>
+            </View>
+          )}
+          {promoApplied && (
+            <View style={[styles.summaryRow, styles.summaryRowBorder, { borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60, 60, 67, 0.12)' }]}>
+              <Text style={[styles.summaryLabel, { color: '#34C759' }]}>Discount</Text>
+              <Text style={[styles.summaryValue, { color: '#34C759' }]}>-₦{discount.toLocaleString()}</Text>
+            </View>
+          )}
+          <View style={[styles.summaryRow, styles.summaryRowBorder, { borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60, 60, 67, 0.12)' }]}>
+            <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Service Fee (2%)</Text>
+            <Text style={[styles.summaryValue, { color: colors.text }]}>₦{serviceFee.toLocaleString()}</Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={[styles.totalLabel, { color: colors.text }]}>Total</Text>
+            <Text style={[styles.totalValue, { color: colors.primary }]}>₦{finalTotal.toLocaleString()}</Text>
+          </View>
+          <Text style={[styles.estimatedTimeText, { color: colors.textSecondary }]}>
+            Estimated delivery: {deliveryPricing.estimatedTime} mins
+          </Text>
+        </View>
+
+        {/* Terms of Use Section */}
+        <View style={[styles.termsSection, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+          <Text style={[styles.termsText, { color: colors.textSecondary }]}>
+            By placing this order, you agree to our{' '}
+            <Text style={[styles.termsLink, { color: colors.primary }]}>Terms of Service</Text>
+            {' '}and{' '}
+            <Text style={[styles.termsLink, { color: colors.primary }]}>Privacy Policy</Text>.
+          </Text>
+          <View style={styles.termsInfo}>
+            <Ionicons name="shield-checkmark-outline" size={16} color={colors.textSecondary} />
+            <Text style={[styles.termsInfoText, { color: colors.textSecondary }]}>
+              Your payment information is securely encrypted
+            </Text>
+          </View>
+        </View>
+
+        <View style={{ height: 120 }} />
+      </ScrollView>
+
+      {/* Fixed Bottom Bar */}
+      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12, backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+        <Button
+          title={`Place Order • ₦${finalTotal.toLocaleString()}`}
+          onPress={handlePlaceOrder}
+          loading={createOrderMutation.isPending || isProcessingPayment}
+          disabled={paymentMethod === 'wallet' && !canAffordWithWallet}
+          fullWidth
+        />
+      </View>
+
+      {/* Paystack Payment WebView Modal */}
+      <Modal
+        visible={showPaymentModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={handleClosePaymentModal}
+      >
+        <View style={[styles.paymentModalContainer, { backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
+          <View style={[styles.paymentModalHeader, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+            <TouchableOpacity onPress={handleClosePaymentModal} style={styles.paymentModalCloseBtn}>
+              <Ionicons name="close" size={24} color={colors.text} />
+            </TouchableOpacity>
+            <Text style={[styles.paymentModalTitle, { color: colors.text }]}>Complete Payment</Text>
+            <View style={styles.placeholder} />
+          </View>
+          
+          {paymentUrl ? (
+            <WebView
+              source={{ uri: paymentUrl }}
+              onNavigationStateChange={handlePaymentWebViewNavigation}
+              onShouldStartLoadWithRequest={handleShouldStartLoad}
+              injectedJavaScript={injectedJavaScript}
+              style={styles.paymentWebView}
+              startInLoadingState
+              javaScriptEnabled
+              domStorageEnabled
+              renderLoading={() => (
+                <View style={styles.webViewLoading}>
+                  <ActivityIndicator size="large" color={colors.primary} />
+                  <Text style={[styles.webViewLoadingText, { color: colors.textSecondary }]}>
+                    Loading secure payment...
+                  </Text>
+                </View>
+              )}
+              onMessage={(event) => {
+                // Handle messages from injected JS or Paystack
+                try {
+                  const data = JSON.parse(event.nativeEvent.data);
+                  if (data.status === 'success' || data.event === 'successful' || data.event === 'payment_complete') {
+                    setShowPaymentModal(false);
+                    setPaymentUrl('');
+                    verifyPaymentAndCreateOrder(paymentReference);
+                  }
+                } catch (e) {
+                  // Not a JSON message, ignore
+                }
+              }}
+            />
+          ) : (
+            <View style={styles.webViewLoading}>
+              <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+          )}
+        </View>
+      </Modal>
+
+      {/* Pay for Me Modal */}
+      <Modal
+        visible={showPayForMeModal}
+        animationType="slide"
+        transparent
+        onRequestClose={handleClosePayForMeModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.payForMeModalContent, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Pay for Me</Text>
+              <TouchableOpacity onPress={handleClosePayForMeModal}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            {!payLinkGenerated ? (
+              <ScrollView style={styles.payForMeForm} showsVerticalScrollIndicator={false}>
+                <Text style={[styles.payForMeDescription, { color: colors.textSecondary }]}>
+                  Enter the details of the person who will pay for your order. We'll generate a secure payment link to share with them.
+                </Text>
+
+                <View style={styles.payForMeInputGroup}>
+                  <Text style={[styles.payForMeLabel, { color: colors.text }]}>Their Name *</Text>
+                  <View style={[styles.payForMeInputContainer, { backgroundColor: isDark ? colors.surface : '#F2F2F7', borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E5EA' }]}>
+                    <Ionicons name="person-outline" size={18} color={colors.textSecondary} style={styles.payForMeInputIcon} />
+                    <RNTextInput
+                      placeholder="Enter their name"
+                      value={payForMeName}
+                      onChangeText={setPayForMeName}
+                      style={[styles.payForMeInput, { color: colors.text }]}
+                      placeholderTextColor={colors.textSecondary}
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.payForMeInputGroup}>
+                  <Text style={[styles.payForMeLabel, { color: colors.text }]}>Their Email *</Text>
+                  <View style={[styles.payForMeInputContainer, { backgroundColor: isDark ? colors.surface : '#F2F2F7', borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E5EA' }]}>
+                    <Ionicons name="mail-outline" size={18} color={colors.textSecondary} style={styles.payForMeInputIcon} />
+                    <RNTextInput
+                      placeholder="Enter their email"
+                      value={payForMeEmail}
+                      onChangeText={setPayForMeEmail}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      style={[styles.payForMeInput, { color: colors.text }]}
+                      placeholderTextColor={colors.textSecondary}
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.payForMeInputGroup}>
+                  <Text style={[styles.payForMeLabel, { color: colors.text }]}>Their Phone (Optional)</Text>
+                  <View style={[styles.payForMeInputContainer, { backgroundColor: isDark ? colors.surface : '#F2F2F7', borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E5EA' }]}>
+                    <Ionicons name="call-outline" size={18} color={colors.textSecondary} style={styles.payForMeInputIcon} />
+                    <RNTextInput
+                      placeholder="Enter their phone number"
+                      value={payForMePhone}
+                      onChangeText={setPayForMePhone}
+                      keyboardType="phone-pad"
+                      style={[styles.payForMeInput, { color: colors.text }]}
+                      placeholderTextColor={colors.textSecondary}
+                    />
+                  </View>
+                </View>
+
+                <View style={[styles.payForMeAmountCard, { backgroundColor: isDark ? colors.surface : '#F8F9FA' }]}>
+                  <Text style={[styles.payForMeAmountLabel, { color: colors.textSecondary }]}>Amount to Pay</Text>
+                  <Text style={[styles.payForMeAmount, { color: colors.primary }]}>₦{finalTotal.toLocaleString()}</Text>
+                </View>
+
+                <View style={[styles.payForMeInfoCard, { backgroundColor: isDark ? 'rgba(0, 122, 255, 0.1)' : '#E5F1FF' }]}>
+                  <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
+                  <Text style={[styles.payForMeInfoText, { color: colors.primary }]}>
+                    The payment link expires in 24 hours. You'll be notified when the payment is completed.
+                  </Text>
+                </View>
+
+                <Button
+                  title={isGeneratingPayLink ? 'Generating Link...' : 'Generate Payment Link'}
+                  onPress={handleGeneratePayForMeLink}
+                  loading={isGeneratingPayLink}
+                  fullWidth
+                  style={{ marginTop: 16 }}
+                />
+              </ScrollView>
+            ) : (
+              <View style={styles.payForMeSuccess}>
+                <View style={[styles.payForMeSuccessIcon, { backgroundColor: '#E8F5E9' }]}>
+                  <Ionicons name="checkmark-circle" size={48} color="#43A047" />
+                </View>
+                <Text style={[styles.payForMeSuccessTitle, { color: colors.text }]}>Payment Link Ready!</Text>
+                <Text style={[styles.payForMeSuccessDesc, { color: colors.textSecondary }]}>
+                  Share this link with {payForMeName} to complete the payment.
+                </Text>
+
+                <View style={[styles.payForMeLinkBox, { backgroundColor: isDark ? colors.surface : '#F2F2F7' }]}>
+                  <Text style={[styles.payForMeLinkText, { color: colors.text }]} numberOfLines={2}>
+                    {payForMeLink}
+                  </Text>
+                </View>
+
+                <View style={styles.payForMeActions}>
+                  <TouchableOpacity 
+                    style={[styles.payForMeActionBtn, { backgroundColor: colors.primary }]}
+                    onPress={handleSharePayForMeLink}
+                  >
+                    <Ionicons name="share-outline" size={20} color="#FFFFFF" />
+                    <Text style={styles.payForMeActionBtnText}>Share Link</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.payForMeActionBtn, { backgroundColor: isDark ? colors.surface : '#F2F2F7' }]}
+                    onPress={handleCopyPayForMeLink}
+                  >
+                    <Ionicons name="copy-outline" size={20} color={colors.text} />
+                    <Text style={[styles.payForMeActionBtnText, { color: colors.text }]}>Copy</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <TouchableOpacity 
+                  style={styles.payForMeDoneBtn}
+                  onPress={resetPayForMeState}
+                >
+                  <Text style={[styles.payForMeDoneBtnText, { color: colors.primary }]}>Done</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Time Slot Selection Modal */}
+      <Modal
+        visible={showTimeSlotModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowTimeSlotModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.timeSlotModalContent, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Select Time Slot</Text>
+              <TouchableOpacity onPress={() => setShowTimeSlotModal(false)}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.timeSlotModalList} showsVerticalScrollIndicator={false}>
+              <Text style={[styles.timeSlotModalDescription, { color: colors.textSecondary }]}>
+                Choose your preferred delivery time. We'll do our best to deliver within the selected window.
+              </Text>
+
+              {timeSlots.length === 0 ? (
+                <View style={styles.noSlotsContainer}>
+                  <View style={[styles.noSlotsIcon, { backgroundColor: isDark ? colors.surface : '#F2F2F7' }]}>
+                    <Ionicons name="time-outline" size={32} color={colors.textSecondary} />
+                  </View>
+                  <Text style={[styles.noSlotsTitle, { color: colors.text }]}>No Slots Available</Text>
+                  <Text style={[styles.noSlotsText, { color: colors.textSecondary }]}>
+                    No time slots available for today. Please check back tomorrow.
+                  </Text>
+                </View>
+              ) : (
+                <>
+                  {/* Group slots by date */}
+                  {['Today', 'Tomorrow'].map(dateGroup => {
+                    const slotsForDate = timeSlots.filter(s => s.date === dateGroup);
+                    if (slotsForDate.length === 0) return null;
+                    
+                    return (
+                      <View key={dateGroup} style={styles.timeSlotDateGroup}>
+                        <Text style={[styles.timeSlotDateHeader, { color: colors.text }]}>{dateGroup}</Text>
+                        {slotsForDate.map((slot) => {
+                          const isSelected = selectedTimeSlot === slot.id;
+                          return (
+                            <TouchableOpacity
+                              key={slot.id}
+                              style={[
+                                styles.timeSlotOption,
+                                { 
+                                  backgroundColor: isSelected 
+                                    ? (isDark ? 'rgba(0, 122, 255, 0.15)' : '#E5F1FF') 
+                                    : (isDark ? colors.surface : '#F8F9FA'),
+                                  borderColor: isSelected ? colors.primary : 'transparent',
+                                },
+                              ]}
+                              onPress={() => {
+                                setSelectedTimeSlot(slot.id);
+                                setShowTimeSlotModal(false);
+                              }}
+                              activeOpacity={0.7}
+                            >
+                              <View style={[
+                                styles.timeSlotOptionIcon,
+                                { backgroundColor: isSelected 
+                                  ? (isDark ? 'rgba(0, 122, 255, 0.2)' : '#CCE4FF') 
+                                  : (isDark ? 'rgba(255,255,255,0.1)' : '#FFFFFF') 
+                                }
+                              ]}>
+                                <Ionicons 
+                                  name="time-outline" 
+                                  size={20} 
+                                  color={isSelected ? colors.primary : colors.textSecondary} 
+                                />
+                              </View>
+                              <Text style={[
+                                styles.timeSlotOptionText,
+                                { color: isSelected ? colors.primary : colors.text },
+                              ]}>
+                                {slot.time}
+                              </Text>
+                              {isSelected && (
+                                <View style={[styles.timeSlotCheckmark, { backgroundColor: colors.primary }]}>
+                                  <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                                </View>
+                              )}
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    );
+                  })}
+                  
+                  {/* Other dates */}
+                  {timeSlots.filter(s => s.date !== 'Today' && s.date !== 'Tomorrow').length > 0 && (
+                    <View style={styles.timeSlotDateGroup}>
+                      <Text style={[styles.timeSlotDateHeader, { color: colors.text }]}>Later This Week</Text>
+                      {timeSlots.filter(s => s.date !== 'Today' && s.date !== 'Tomorrow').map((slot) => {
+                        const isSelected = selectedTimeSlot === slot.id;
+                        return (
+                          <TouchableOpacity
+                            key={slot.id}
+                            style={[
+                              styles.timeSlotOption,
+                              { 
+                                backgroundColor: isSelected 
+                                  ? (isDark ? 'rgba(0, 122, 255, 0.15)' : '#E5F1FF') 
+                                  : (isDark ? colors.surface : '#F8F9FA'),
+                                borderColor: isSelected ? colors.primary : 'transparent',
+                              },
+                            ]}
+                            onPress={() => {
+                              setSelectedTimeSlot(slot.id);
+                              setShowTimeSlotModal(false);
+                            }}
+                            activeOpacity={0.7}
+                          >
+                            <View style={[
+                              styles.timeSlotOptionIcon,
+                              { backgroundColor: isSelected 
+                                ? (isDark ? 'rgba(0, 122, 255, 0.2)' : '#CCE4FF') 
+                                : (isDark ? 'rgba(255,255,255,0.1)' : '#FFFFFF') 
+                              }
+                            ]}>
+                              <Ionicons 
+                                name="calendar-outline" 
+                                size={20} 
+                                color={isSelected ? colors.primary : colors.textSecondary} 
+                              />
+                            </View>
+                            <View style={styles.timeSlotOptionTextContainer}>
+                              <Text style={[
+                                styles.timeSlotOptionText,
+                                { color: isSelected ? colors.primary : colors.text },
+                              ]}>
+                                {slot.date}
+                              </Text>
+                              <Text style={[
+                                styles.timeSlotOptionSubtext,
+                                { color: isSelected ? colors.primary : colors.textSecondary },
+                              ]}>
+                                {slot.time}
+                              </Text>
+                            </View>
+                            {isSelected && (
+                              <View style={[styles.timeSlotCheckmark, { backgroundColor: colors.primary }]}>
+                                <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                              </View>
+                            )}
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  )}
+                </>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Address Picker Modal */}
+      <Modal
+        visible={showAddressPicker}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowAddressPicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Select Delivery Address</Text>
+              <TouchableOpacity onPress={() => setShowAddressPicker(false)}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.addressList}>
+              {allAddresses.length === 0 ? (
+                <View style={styles.emptyAddresses}>
+                  <Ionicons name="location-outline" size={48} color={colors.textSecondary} />
+                  <Text style={[styles.emptyAddressesText, { color: colors.textSecondary }]}>
+                    No saved addresses
+                  </Text>
+                  <Button
+                    title="Add New Address"
+                    variant="outline"
+                    size="medium"
+                    onPress={() => {
+                      setShowAddressPicker(false);
+                      navigation.navigate('MyAddress' as any);
+                    }}
+                  />
+                </View>
+              ) : (
+                allAddresses.map((address) => (
+                  <TouchableOpacity
+                    key={address.id}
+                    style={[
+                      styles.addressOption,
+                      { borderColor: selectedAddress?.id === address.id ? colors.primary : (isDark ? 'rgba(255,255,255,0.1)' : '#E5E5EA') },
+                      selectedAddress?.id === address.id && { backgroundColor: isDark ? 'rgba(0, 122, 255, 0.1)' : '#E5F1FF' },
+                    ]}
+                    onPress={() => {
+                      setSelectedAddress(address);
+                      setShowAddressPicker(false);
+                    }}
+                  >
+                    <View style={styles.addressOptionContent}>
+                      <View style={styles.addressOptionHeader}>
+                        <Text style={[styles.addressOptionLabel, { color: colors.text }]}>
+                          {address.label || 'Address'}
+                        </Text>
+                        {address.isDefault && (
+                          <View style={[styles.defaultBadge, { backgroundColor: colors.primary }]}>
+                            <Text style={styles.defaultBadgeText}>Default</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={[styles.addressOptionLine1, { color: colors.text }]}>
+                        {address.addressLine1}
+                      </Text>
+                      {address.addressLine2 && (
+                        <Text style={[styles.addressOptionLine2, { color: colors.textSecondary }]}>
+                          {address.addressLine2}
+                        </Text>
+                      )}
+                      <Text style={[styles.addressOptionCity, { color: colors.textSecondary }]}>
+                        {address.city}, {address.state}
+                      </Text>
+                    </View>
+                    {selectedAddress?.id === address.id && (
+                      <Ionicons name="checkmark-circle" size={24} color={colors.primary} />
+                    )}
+                  </TouchableOpacity>
+                ))
+              )}
+            </ScrollView>
+            
+            {allAddresses.length > 0 && (
+              <TouchableOpacity 
+                style={[styles.addNewAddressButton, { borderTopColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E5EA' }]}
+                onPress={() => {
+                  setShowAddressPicker(false);
+                  navigation.navigate('MyAddress' as any);
+                }}
+              >
+                <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
+                <Text style={[styles.addNewAddressText, { color: colors.primary }]}>Add New Address</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  fixedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  fixedHeaderTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  placeholder: {
+    width: 40,
+  },
+  scrollContent: {
+    paddingTop: 8,
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '500',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    marginBottom: 8,
+    marginLeft: 32,
+    marginTop: 16,
+  },
+  insetCard: {
+    marginHorizontal: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  addressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  addressIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addressDetails: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  addressLabel: {
+    fontSize: 15,
+    fontFamily: FONTS.medium,
+  },
+  addressText: {
+    fontSize: 13,
+    fontFamily: FONTS.regular,
+    marginTop: 2,
+  },
+  deliveryOptionsRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  deliveryOption: {
+    flex: 1,
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  deliveryIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  deliveryLabel: {
+    fontSize: 15,
+    fontFamily: FONTS.semiBold,
+    marginBottom: 2,
+  },
+  deliveryDescription: {
+    fontSize: 12,
+    fontFamily: FONTS.regular,
+    textAlign: 'center',
+  },
+  paymentOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  paymentOptionBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  paymentIconBg: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  paymentOptionInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  paymentOptionLabel: {
+    fontSize: 15,
+    fontFamily: FONTS.medium,
+  },
+  paymentOptionBalance: {
+    fontSize: 13,
+    fontFamily: FONTS.regular,
+    marginTop: 2,
+  },
+  paymentOptionDesc: {
+    fontSize: 13,
+    fontFamily: FONTS.regular,
+    marginTop: 2,
+  },
+  radioButton: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  radioButtonInner: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  defaultMethodBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginRight: 8,
+  },
+  defaultMethodBadgeText: {
+    fontSize: 11,
+    fontFamily: FONTS.medium,
+  },
+  addCardLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  addCardLinkText: {
+    fontSize: 14,
+    fontFamily: FONTS.semiBold,
+  },
+  topUpLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 12,
+    paddingVertical: 8,
+  },
+  topUpLinkText: {
+    fontSize: 14,
+    fontFamily: FONTS.semiBold,
+  },
+  promoContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  promoInput: {
+    flex: 1,
+    marginBottom: 0,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  summaryRowBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  summaryLabel: {
+    fontSize: 15,
+    fontFamily: FONTS.regular,
+  },
+  summaryValue: {
+    fontSize: 15,
+    fontFamily: FONTS.regular,
+  },
+  freeDeliveryHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    marginTop: -4,
+  },
+  freeDeliveryHintText: {
+    fontSize: 12,
+    fontFamily: FONTS.regular,
+  },
+  totalLabel: {
+    fontSize: 17,
+    fontFamily: FONTS.semiBold,
+  },
+  totalValue: {
+    fontSize: 20,
+    fontFamily: FONTS.bold,
+  },
+  estimatedTimeText: {
+    fontSize: 13,
+    fontFamily: FONTS.regular,
+    textAlign: 'center',
+    paddingBottom: 16,
+  },
+  bottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingTop: 16,
+    paddingHorizontal: 16,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  timeSlotsScrollContent: {
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+    gap: 12,
+  },
+  timeSlotCard: {
+    width: 110,
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'transparent',
+    position: 'relative',
+  },
+  timeSlotIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  timeSlotCardDate: {
+    fontSize: 14,
+    fontFamily: FONTS.semiBold,
+    marginBottom: 2,
+    textAlign: 'center',
+  },
+  timeSlotCardTime: {
+    fontSize: 11,
+    fontFamily: FONTS.regular,
+    textAlign: 'center',
+  },
+  selectedCheckmark: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  noSlotsContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  noSlotsText: {
+    fontSize: 14,
+    fontFamily: FONTS.regular,
+    textAlign: 'center',
+  },
+  changeText: {
+    fontSize: 14,
+    fontFamily: FONTS.semiBold,
+  },
+  notesInput: {
+    marginBottom: 0,
+  },
+  // Address Picker Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '80%',
+    paddingBottom: 24,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontFamily: FONTS.semiBold,
+  },
+  addressList: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+  emptyAddresses: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 48,
+    gap: 16,
+  },
+  emptyAddressesText: {
+    fontSize: 16,
+    fontFamily: FONTS.regular,
+  },
+  addressOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  addressOptionContent: {
+    flex: 1,
+  },
+  addressOptionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  addressOptionLabel: {
+    fontSize: 15,
+    fontFamily: FONTS.semiBold,
+  },
+  defaultBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  defaultBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontFamily: FONTS.medium,
+  },
+  addressOptionLine1: {
+    fontSize: 14,
+    fontFamily: FONTS.regular,
+    marginBottom: 2,
+  },
+  addressOptionLine2: {
+    fontSize: 13,
+    fontFamily: FONTS.regular,
+    marginBottom: 2,
+  },
+  addressOptionCity: {
+    fontSize: 13,
+    fontFamily: FONTS.regular,
+  },
+  addNewAddressButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 16,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  addNewAddressText: {
+    fontSize: 15,
+    fontFamily: FONTS.semiBold,
+  },
+  // Paystack Payment Modal Styles
+  paymentModalContainer: {
+    flex: 1,
+  },
+  paymentModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  paymentModalCloseBtn: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  paymentModalTitle: {
+    fontSize: 17,
+    fontFamily: FONTS.semiBold,
+  },
+  paymentWebView: {
+    flex: 1,
+  },
+  webViewLoading: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+  },
+  webViewLoadingText: {
+    fontSize: 14,
+    fontFamily: FONTS.regular,
+  },
+  // Gift Option Styles
+  giftToggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  giftIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  giftToggleContent: {
+    flex: 1,
+  },
+  giftToggleLabel: {
+    fontSize: 16,
+    fontFamily: FONTS.semiBold,
+    marginBottom: 2,
+  },
+  giftToggleDesc: {
+    fontSize: 13,
+    fontFamily: FONTS.regular,
+  },
+  toggleSwitch: {
+    width: 50,
+    height: 30,
+    borderRadius: 15,
+    justifyContent: 'center',
+  },
+  toggleKnob: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  giftDetailsContainer: {
+    borderTopWidth: 1,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  giftInputGroup: {
+    marginBottom: 16,
+  },
+  giftInputLabel: {
+    fontSize: 14,
+    fontFamily: FONTS.medium,
+    marginBottom: 8,
+  },
+  giftInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 48,
+  },
+  giftMessageWrapper: {
+    height: 'auto',
+    minHeight: 90,
+    alignItems: 'flex-start',
+    paddingVertical: 4,
+  },
+  giftInputIcon: {
+    marginRight: 10,
+    width: 20,
+  },
+  giftInput: {
+    flex: 1,
+    fontSize: 15,
+    fontFamily: FONTS.regular,
+    padding: 0,
+    height: '100%',
+  },
+  giftMessageInput: {
+    flex: 1,
+    fontSize: 15,
+    fontFamily: FONTS.regular,
+    padding: 0,
+    paddingTop: 12,
+    paddingBottom: 12,
+    minHeight: 80,
+  },
+  riderNoteHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  riderNoteIconBg: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  riderNoteHeaderText: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: FONTS.regular,
+  },
+  riderNoteInputContainer: {
+    borderTopWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  riderNoteInput: {
+    marginBottom: 0,
+  },
+  riderNoteInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  riderNoteText: {
+    flex: 1,
+    marginLeft: 12,
+    fontSize: 13,
+    fontFamily: FONTS.regular,
+    lineHeight: 18,
+  },
+  termsSection: {
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 16,
+    padding: 16,
+    borderRadius: 16,
+  },
+  termsText: {
+    fontSize: 13,
+    fontFamily: FONTS.regular,
+    lineHeight: 20,
+    textAlign: 'center',
+  },
+  termsLink: {
+    fontFamily: FONTS.medium,
+  },
+  termsInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(60, 60, 67, 0.12)',
+  },
+  termsInfoText: {
+    fontSize: 12,
+    fontFamily: FONTS.regular,
+    marginLeft: 6,
+  },
+  // Payment List Row Styles
+  paymentListRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  // Pay for Me Modal Styles
+  payForMeModalContent: {
+    marginHorizontal: 16,
+    borderRadius: 20,
+    maxHeight: '85%',
+  },
+  payForMeForm: {
+    padding: 20,
+  },
+  payForMeDescription: {
+    fontSize: 14,
+    fontFamily: FONTS.regular,
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  payForMeInputGroup: {
+    marginBottom: 16,
+  },
+  payForMeLabel: {
+    fontSize: 14,
+    fontFamily: FONTS.medium,
+    marginBottom: 8,
+  },
+  payForMeInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 48,
+  },
+  payForMeInputIcon: {
+    marginRight: 10,
+  },
+  payForMeInput: {
+    flex: 1,
+    fontSize: 15,
+    fontFamily: FONTS.regular,
+  },
+  payForMeAmountCard: {
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginVertical: 16,
+  },
+  payForMeAmountLabel: {
+    fontSize: 13,
+    fontFamily: FONTS.regular,
+    marginBottom: 4,
+  },
+  payForMeAmount: {
+    fontSize: 28,
+    fontFamily: FONTS.bold,
+  },
+  payForMeInfoCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 12,
+    borderRadius: 10,
+    gap: 10,
+  },
+  payForMeInfoText: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: FONTS.regular,
+    lineHeight: 18,
+  },
+  payForMeSuccess: {
+    padding: 24,
+    alignItems: 'center',
+  },
+  payForMeSuccessIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  payForMeSuccessTitle: {
+    fontSize: 20,
+    fontFamily: FONTS.bold,
+    marginBottom: 8,
+  },
+  payForMeSuccessDesc: {
+    fontSize: 14,
+    fontFamily: FONTS.regular,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  payForMeLinkBox: {
+    padding: 16,
+    borderRadius: 12,
+    width: '100%',
+    marginBottom: 20,
+  },
+  payForMeLinkText: {
+    fontSize: 13,
+    fontFamily: FONTS.regular,
+    textAlign: 'center',
+  },
+  payForMeActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  payForMeActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    gap: 8,
+  },
+  payForMeActionBtnText: {
+    fontSize: 15,
+    fontFamily: FONTS.semiBold,
+    color: '#FFFFFF',
+  },
+  payForMeDoneBtn: {
+    paddingVertical: 12,
+  },
+  payForMeDoneBtnText: {
+    fontSize: 15,
+    fontFamily: FONTS.semiBold,
+  },
+  // Farmer Message Styles
+  farmerMessageHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  farmerMessageIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  farmerMessageHeaderText: {
+    flex: 1,
+  },
+  farmerMessageTitle: {
+    fontSize: 16,
+    fontFamily: FONTS.semiBold,
+    marginBottom: 2,
+  },
+  farmerMessageSubtitle: {
+    fontSize: 13,
+    fontFamily: FONTS.regular,
+  },
+  farmerMessageInputContainer: {
+    borderTopWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  farmerMessageInput: {
+    marginBottom: 0,
+  },
+  // Time Slot Selector Styles
+  timeSlotSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  timeSlotSelectorIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  timeSlotSelectorContent: {
+    flex: 1,
+  },
+  timeSlotSelectorLabel: {
+    fontSize: 16,
+    fontFamily: FONTS.semiBold,
+    marginBottom: 2,
+  },
+  timeSlotSelectorValue: {
+    fontSize: 14,
+    fontFamily: FONTS.regular,
+  },
+  // Time Slot Modal Styles
+  timeSlotModalContent: {
+    marginHorizontal: 16,
+    borderRadius: 20,
+    maxHeight: '80%',
+  },
+  timeSlotModalList: {
+    padding: 20,
+  },
+  timeSlotModalDescription: {
+    fontSize: 14,
+    fontFamily: FONTS.regular,
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  timeSlotDateGroup: {
+    marginBottom: 20,
+  },
+  timeSlotDateHeader: {
+    fontSize: 16,
+    fontFamily: FONTS.semiBold,
+    marginBottom: 12,
+  },
+  timeSlotOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 10,
+    borderWidth: 2,
+  },
+  timeSlotOptionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  timeSlotOptionTextContainer: {
+    flex: 1,
+  },
+  timeSlotOptionText: {
+    flex: 1,
+    fontSize: 15,
+    fontFamily: FONTS.medium,
+  },
+  timeSlotOptionSubtext: {
+    fontSize: 13,
+    fontFamily: FONTS.regular,
+    marginTop: 2,
+  },
+  timeSlotCheckmark: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  noSlotsIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  noSlotsTitle: {
+    fontSize: 18,
+    fontFamily: FONTS.semiBold,
+    marginBottom: 8,
+  },
+});

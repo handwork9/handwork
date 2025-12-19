@@ -1,0 +1,900 @@
+import React, { useRef, useEffect, useState, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Animated,
+  Dimensions,
+  StatusBar,
+  Alert,
+  Modal,
+  ActivityIndicator,
+} from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, FONTS } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
+import { useAppSelector } from '../../store';
+import { walletService, WalletBalance } from '../../services/walletService';
+import { farmerSubscriptionService } from '../../services/farmerSubscriptionService';
+import { FarmerActivationIllustration } from '../../assets/illustrations/hero';
+
+const { width } = Dimensions.get('window');
+
+const ACTIVATION_FEE = 25000;
+const ACTIVATION_FEE_DISPLAY = '₦25,000';
+
+const BENEFITS = [
+  {
+    icon: 'storefront' as const,
+    title: 'Your Store',
+    description: 'Create your digital farm store',
+    color: '#34C759',
+  },
+  {
+    icon: 'people' as const,
+    title: 'Customers',
+    description: 'Reach thousands of buyers',
+    color: '#FF9500',
+  },
+  {
+    icon: 'card' as const,
+    title: 'Payments',
+    description: 'Get paid to your bank',
+    color: '#007AFF',
+  },
+  {
+    icon: 'bar-chart' as const,
+    title: 'Analytics',
+    description: 'Track your sales growth',
+    color: '#AF52DE',
+  },
+];
+
+const FEATURES = [
+  { icon: 'checkmark-circle' as const, text: 'One-time payment - No monthly fees' },
+  { icon: 'checkmark-circle' as const, text: 'Lifetime access to farmer dashboard' },
+  { icon: 'checkmark-circle' as const, text: 'Unlimited product listings' },
+  { icon: 'checkmark-circle' as const, text: 'Direct customer messaging' },
+  { icon: 'checkmark-circle' as const, text: 'Order management system' },
+  { icon: 'checkmark-circle' as const, text: 'Sales analytics & reports' },
+  { icon: 'checkmark-circle' as const, text: 'Promotional tools access' },
+  { icon: 'checkmark-circle' as const, text: 'Priority support for farmers' },
+];
+
+export default function FarmerActivationScreen() {
+  const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
+  const { user } = useAppSelector((state) => state.auth);
+  const { colors, isDark } = useTheme();
+  
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'card'>('wallet');
+  const [walletBalance, setWalletBalance] = useState<WalletBalance | null>(null);
+  const [isLoadingWallet, setIsLoadingWallet] = useState(true);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
+  // Fetch wallet balance on screen focus
+  useFocusEffect(
+    useCallback(() => {
+      const fetchWalletBalance = async () => {
+        try {
+          setIsLoadingWallet(true);
+          const balance = await walletService.getBalance();
+          setWalletBalance(balance);
+        } catch (error) {
+          console.error('Failed to fetch wallet balance:', error);
+        } finally {
+          setIsLoadingWallet(false);
+        }
+      };
+      fetchWalletBalance();
+    }, [])
+  );
+  
+  // Animations
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const scrollY = useRef(new Animated.Value(0)).current;
+
+  // Header animation
+  const headerOpacity = scrollY.interpolate({
+    inputRange: [0, 50],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
+  const titleOpacity = scrollY.interpolate({
+    inputRange: [0, 50],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  const canAffordWithWallet = walletBalance ? walletBalance.available >= ACTIVATION_FEE : false;
+
+  const handleActivate = () => {
+    setShowPaymentModal(true);
+  };
+
+  const handleConfirmPayment = async () => {
+    if (paymentMethod === 'wallet') {
+      if (!canAffordWithWallet) {
+        Alert.alert(
+          'Insufficient Balance',
+          `Your wallet balance is ₦${walletBalance?.available?.toLocaleString() || 0}. You need ${ACTIVATION_FEE_DISPLAY} to activate.`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { 
+              text: 'Top Up Wallet', 
+              onPress: () => {
+                setShowPaymentModal(false);
+                (navigation as any).navigate('TopUp');
+              }
+            },
+          ]
+        );
+        return;
+      }
+
+      try {
+        setIsProcessingPayment(true);
+        
+        // Call actual API to activate account - this debits wallet first on backend
+        const result = await farmerSubscriptionService.activateAccount('wallet');
+
+        if (result.success) {
+          setShowPaymentModal(false);
+          Alert.alert(
+            'Activation Successful! 🎉',
+            result.message || 'Your farmer account is now active. You can start listing products immediately.',
+            [{ text: 'Start Selling', onPress: () => navigation.goBack() }]
+          );
+        } else {
+          Alert.alert('Activation Failed', result.message || 'Something went wrong. Please try again.');
+        }
+      } catch (error: any) {
+        const errorMessage = error?.response?.data?.message || error?.message || 'Something went wrong. Please try again.';
+        Alert.alert('Error', errorMessage);
+      } finally {
+        setIsProcessingPayment(false);
+      }
+    } else {
+      // Handle card payment - show message that card payment requires external confirmation
+      Alert.alert(
+        'Card Payment',
+        'Card payment is currently being processed. You will receive a confirmation once the payment is verified.',
+        [{ text: 'OK', style: 'default' }]
+      );
+    }
+  };
+
+  return (
+    <View style={[styles.container, { backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      
+      {/* Fixed Header */}
+      <View style={[styles.fixedHeader, { paddingTop: insets.top, backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
+        </TouchableOpacity>
+        <View style={styles.headerContent}>
+          <Animated.Text style={[styles.headerTitle, { color: colors.text, opacity: titleOpacity, position: 'absolute' }]}>
+            Become a Seller
+          </Animated.Text>
+          <Animated.View style={[styles.headerCompact, { opacity: headerOpacity }]}>
+            <View style={styles.headerLeaf}>
+              <Ionicons name="leaf" size={20} color="#34C759" />
+            </View>
+            <Text style={[styles.headerCompactTitle, { color: colors.text }]}>Become a Seller</Text>
+          </Animated.View>
+        </View>
+        <View style={styles.headerSpacer} />
+      </View>
+
+      <Animated.ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 140 }}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true }
+        )}
+        scrollEventThrottle={16}
+      >
+        {/* Hero Section */}
+        <View style={styles.heroSection}>
+          <LinearGradient
+            colors={isDark ? ['#1B5E20', '#2E7D32'] : ['#2E7D32', '#43A047']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.heroGradient}
+          >
+            <View style={styles.heroIconContainer}>
+              <FarmerActivationIllustration size={100} />
+            </View>
+            <Text style={styles.heroTitle}>Start Selling Today</Text>
+            <Text style={styles.heroSubtitle}>One-time payment, lifetime access to all features</Text>
+            
+            {/* Price Badge */}
+            <View style={styles.priceBadgeContainer}>
+              <View style={styles.priceBadge}>
+                <Text style={styles.priceText}>{ACTIVATION_FEE_DISPLAY}</Text>
+                <Text style={styles.priceSubtext}>one-time</Text>
+              </View>
+            </View>
+          </LinearGradient>
+        </View>
+
+        {/* Quick Benefits */}
+        <Animated.View 
+          style={[
+            styles.quickBenefitsContainer,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            }
+          ]}
+        >
+          {BENEFITS.map((benefit, index) => (
+            <View 
+              key={index} 
+              style={[
+                styles.quickBenefitCard,
+                { backgroundColor: isDark ? colors.card : '#DEDEE0' }
+              ]}
+            >
+              <View style={[styles.quickBenefitIcon, { backgroundColor: `${benefit.color}15` }]}>
+                <Ionicons name={benefit.icon} size={22} color={benefit.color} />
+              </View>
+              <Text style={[styles.quickBenefitTitle, { color: colors.text }]}>{benefit.title}</Text>
+            </View>
+          ))}
+        </Animated.View>
+
+        {/* Features Section */}
+        <Animated.View
+          style={[
+            styles.section,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
+        >
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>WHAT'S INCLUDED</Text>
+          <View style={[styles.featuresCard, { backgroundColor: isDark ? colors.card : '#DEDEE0' }]}>
+            {FEATURES.map((feature, idx) => (
+              <View key={idx}>
+                <View style={styles.featureRow}>
+                  <Ionicons name={feature.icon} size={22} color="#34C759" />
+                  <Text style={[styles.featureText, { color: colors.text }]}>
+                    {feature.text}
+                  </Text>
+                </View>
+                {idx < FEATURES.length - 1 && (
+                  <View style={[styles.separator, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60, 60, 67, 0.12)' }]} />
+                )}
+              </View>
+            ))}
+          </View>
+        </Animated.View>
+
+        {/* FAQ Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>FAQ</Text>
+          <View style={[styles.faqCard, { backgroundColor: isDark ? colors.card : '#DEDEE0' }]}>
+            <View style={styles.faqItem}>
+              <Text style={[styles.faqQuestion, { color: colors.text }]}>Is this a one-time payment?</Text>
+              <Text style={[styles.faqAnswer, { color: colors.textSecondary }]}>
+                Yes! Pay once and get lifetime access to all farmer features.
+              </Text>
+            </View>
+            <View style={[styles.separator, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60, 60, 67, 0.12)' }]} />
+            <View style={styles.faqItem}>
+              <Text style={[styles.faqQuestion, { color: colors.text }]}>When can I start selling?</Text>
+              <Text style={[styles.faqAnswer, { color: colors.textSecondary }]}>
+                Immediately after payment! Start listing products right away.
+              </Text>
+            </View>
+            <View style={[styles.separator, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60, 60, 67, 0.12)' }]} />
+            <View style={styles.faqItem}>
+              <Text style={[styles.faqQuestion, { color: colors.text }]}>How do I get paid?</Text>
+              <Text style={[styles.faqAnswer, { color: colors.textSecondary }]}>
+                Payments go to your wallet. Withdraw to your bank anytime.
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Trust Badges */}
+        <View style={[styles.trustSection, { backgroundColor: isDark ? colors.card : '#DEDEE0' }]}>
+          <View style={styles.trustBadge}>
+            <Ionicons name="shield-checkmark" size={24} color="#34C759" />
+            <Text style={[styles.trustText, { color: colors.textSecondary }]}>Secure</Text>
+          </View>
+          <View style={styles.trustBadge}>
+            <Ionicons name="lock-closed" size={24} color="#007AFF" />
+            <Text style={[styles.trustText, { color: colors.textSecondary }]}>Protected</Text>
+          </View>
+          <View style={styles.trustBadge}>
+            <Ionicons name="headset" size={24} color="#FF9500" />
+            <Text style={[styles.trustText, { color: colors.textSecondary }]}>Support</Text>
+          </View>
+        </View>
+      </Animated.ScrollView>
+
+      {/* Bottom Activate Bar */}
+      <View style={[
+        styles.bottomBar, 
+        { 
+          paddingBottom: insets.bottom + SPACING.md,
+          backgroundColor: isDark ? colors.card : '#FFFFFF',
+          borderTopColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60, 60, 67, 0.12)',
+        }
+      ]}>
+        <View style={styles.selectedPlanInfo}>
+          <Text style={[styles.selectedPlanLabel, { color: colors.textSecondary }]}>
+            Activation Fee
+          </Text>
+          <Text style={[styles.selectedPlanPrice, { color: colors.text }]}>
+            {ACTIVATION_FEE_DISPLAY}
+            <Text style={[styles.selectedPlanPeriod, { color: colors.textSecondary }]}> one-time</Text>
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={styles.subscribeButton}
+          onPress={handleActivate}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={['#2E7D32', '#43A047']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.subscribeGradient}
+          >
+            <Ionicons name="rocket" size={18} color="#FFFFFF" />
+            <Text style={styles.subscribeText}>Activate Now</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
+
+      {/* Payment Method Modal */}
+      <Modal
+        visible={showPaymentModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowPaymentModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { paddingBottom: insets.bottom + SPACING.lg, backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Complete Payment</Text>
+              <TouchableOpacity onPress={() => setShowPaymentModal(false)}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Order Summary */}
+            <View style={[styles.orderSummary, { backgroundColor: isDark ? colors.background : '#F5F5F5' }]}>
+              <Text style={[styles.summaryTitle, { color: colors.textSecondary }]}>ORDER SUMMARY</Text>
+              <View style={styles.summaryRow}>
+                <Text style={[styles.summaryLabel, { color: colors.text }]}>
+                  Farmer Account Activation
+                </Text>
+                <Text style={[styles.summaryValue, { color: colors.text }]}>
+                  {ACTIVATION_FEE_DISPLAY}
+                </Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Type</Text>
+                <Text style={[styles.summaryValue, { color: colors.textSecondary }]}>
+                  One-time fee
+                </Text>
+              </View>
+              <View style={[styles.summaryRow, styles.summaryTotal]}>
+                <Text style={[styles.totalLabel, { color: colors.text }]}>Total</Text>
+                <Text style={[styles.totalValue, { color: '#43A047' }]}>
+                  {ACTIVATION_FEE_DISPLAY}
+                </Text>
+              </View>
+            </View>
+
+            {/* Payment Methods */}
+            <Text style={[styles.paymentMethodTitle, { color: colors.text }]}>Payment Method</Text>
+            
+            {/* Wallet Option */}
+            <TouchableOpacity
+              style={[
+                styles.paymentOption,
+                { backgroundColor: isDark ? colors.background : '#F5F5F5', borderColor: paymentMethod === 'wallet' ? '#43A047' : (isDark ? colors.border : '#E0E0E0') },
+              ]}
+              onPress={() => setPaymentMethod('wallet')}
+            >
+              <View style={styles.paymentOptionLeft}>
+                <Ionicons name="wallet" size={24} color="#43A047" />
+                <View style={styles.paymentOptionInfo}>
+                  <Text style={[styles.paymentOptionLabel, { color: colors.text }]}>Wallet</Text>
+                  {isLoadingWallet ? (
+                    <ActivityIndicator size="small" color={COLORS.gray} />
+                  ) : (
+                    <Text style={[styles.paymentOptionBalance, { color: canAffordWithWallet ? colors.textSecondary : '#EF4444' }]}>
+                      Balance: ₦{(walletBalance?.available || 0).toLocaleString()}
+                      {!canAffordWithWallet && ' (Insufficient)'}
+                    </Text>
+                  )}
+                </View>
+              </View>
+              <View style={[
+                styles.radioOuter,
+                { borderColor: paymentMethod === 'wallet' ? '#43A047' : (isDark ? colors.border : '#C7C7CC') }
+              ]}>
+                {paymentMethod === 'wallet' && <View style={[styles.radioInner, { backgroundColor: '#43A047' }]} />}
+              </View>
+            </TouchableOpacity>
+
+            {/* Card Option */}
+            <TouchableOpacity
+              style={[
+                styles.paymentOption,
+                { backgroundColor: isDark ? colors.background : '#F5F5F5', borderColor: paymentMethod === 'card' ? '#43A047' : (isDark ? colors.border : '#E0E0E0') },
+              ]}
+              onPress={() => setPaymentMethod('card')}
+            >
+              <View style={styles.paymentOptionLeft}>
+                <Ionicons name="card" size={24} color="#FF9500" />
+                <View style={styles.paymentOptionInfo}>
+                  <Text style={[styles.paymentOptionLabel, { color: colors.text }]}>Card Payment</Text>
+                  <Text style={[styles.paymentOptionBalance, { color: colors.textSecondary }]}>
+                    Visa, Mastercard, Verve
+                  </Text>
+                </View>
+              </View>
+              <View style={[
+                styles.radioOuter,
+                { borderColor: paymentMethod === 'card' ? '#43A047' : (isDark ? colors.border : '#C7C7CC') }
+              ]}>
+                {paymentMethod === 'card' && <View style={[styles.radioInner, { backgroundColor: '#43A047' }]} />}
+              </View>
+            </TouchableOpacity>
+
+            {/* Top Up Link */}
+            {paymentMethod === 'wallet' && !canAffordWithWallet && (
+              <TouchableOpacity 
+                style={styles.topUpLink}
+                onPress={() => {
+                  setShowPaymentModal(false);
+                  (navigation as any).navigate('TopUp');
+                }}
+              >
+                <Ionicons name="add-circle-outline" size={18} color="#43A047" />
+                <Text style={[styles.topUpLinkText, { color: '#43A047' }]}>Top up your wallet</Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Confirm Button */}
+            <TouchableOpacity
+              style={styles.confirmButton}
+              onPress={handleConfirmPayment}
+              disabled={isProcessingPayment || (paymentMethod === 'wallet' && !canAffordWithWallet)}
+            >
+              <LinearGradient
+                colors={(paymentMethod === 'wallet' && !canAffordWithWallet) 
+                  ? ['#B0B0B0', '#C0C0C0'] 
+                  : ['#2E7D32', '#43A047']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.confirmGradient}
+              >
+                {isProcessingPayment ? (
+                  <ActivityIndicator color={COLORS.white} />
+                ) : (
+                  <>
+                    <Ionicons name="checkmark-circle" size={20} color="#FFF" />
+                    <Text style={styles.confirmText}>Confirm Payment</Text>
+                  </>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  fixedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.md,
+    paddingBottom: SPACING.sm,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerContent: {
+    flex: 1,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 34,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
+    textAlign: 'center',
+  },
+  headerCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerLeaf: {
+    marginRight: 8,
+  },
+  headerCompactTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+  },
+  headerSpacer: {
+    width: 40,
+  },
+  heroSection: {
+    paddingHorizontal: SPACING.md,
+    marginBottom: SPACING.md,
+  },
+  heroGradient: {
+    borderRadius: 20,
+    padding: SPACING.xl,
+    alignItems: 'center',
+  },
+  heroIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
+  heroTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
+    color: '#FFFFFF',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  heroSubtitle: {
+    fontSize: 15,
+    fontFamily: FONTS.regular,
+    color: 'rgba(255,255,255,0.9)',
+    textAlign: 'center',
+    marginBottom: SPACING.md,
+  },
+  priceBadgeContainer: {
+    marginTop: SPACING.sm,
+  },
+  priceBadge: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    borderRadius: 20,
+    alignItems: 'center',
+  },
+  priceText: {
+    fontSize: 28,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
+    color: '#FFFFFF',
+  },
+  priceSubtext: {
+    fontSize: 13,
+    fontFamily: FONTS.regular,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
+  },
+  quickBenefitsContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: SPACING.md,
+    gap: 8,
+    marginBottom: SPACING.lg,
+  },
+  quickBenefitCard: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: SPACING.md,
+    borderRadius: 16,
+  },
+  quickBenefitIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  quickBenefitTitle: {
+    fontSize: 11,
+    fontWeight: '500',
+    fontFamily: FONTS.medium,
+    textAlign: 'center',
+  },
+  section: {
+    paddingHorizontal: SPACING.md,
+    marginBottom: SPACING.lg,
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '400',
+    fontFamily: FONTS.regular,
+    letterSpacing: 0.5,
+    marginBottom: 8,
+    marginLeft: SPACING.md,
+  },
+  featuresCard: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  featureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: SPACING.md,
+    gap: 12,
+  },
+  featureText: {
+    fontSize: 15,
+    fontFamily: FONTS.regular,
+    flex: 1,
+  },
+  separator: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 50,
+  },
+  faqCard: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  faqItem: {
+    padding: SPACING.md,
+  },
+  faqQuestion: {
+    fontSize: 15,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+    marginBottom: 4,
+  },
+  faqAnswer: {
+    fontSize: 14,
+    fontFamily: FONTS.regular,
+    lineHeight: 20,
+  },
+  trustSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.xl,
+    paddingVertical: SPACING.lg,
+    borderRadius: 12,
+  },
+  trustBadge: {
+    alignItems: 'center',
+    gap: SPACING.xs,
+  },
+  trustText: {
+    fontSize: 12,
+    fontWeight: '500',
+    fontFamily: FONTS.medium,
+  },
+  bottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  selectedPlanInfo: {
+    flex: 1,
+  },
+  selectedPlanLabel: {
+    fontSize: 13,
+    fontFamily: FONTS.regular,
+  },
+  selectedPlanPrice: {
+    fontSize: 22,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
+  },
+  selectedPlanPeriod: {
+    fontSize: 14,
+    fontWeight: '400',
+    fontFamily: FONTS.regular,
+  },
+  subscribeButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  subscribeGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    gap: 8,
+  },
+  subscribeText: {
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+    color: '#FFFFFF',
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: SPACING.lg,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.lg,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
+  },
+  orderSummary: {
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    marginBottom: SPACING.lg,
+  },
+  summaryTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+    marginBottom: SPACING.sm,
+    textTransform: 'uppercase',
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  summaryLabel: {
+    fontSize: 14,
+    fontFamily: FONTS.regular,
+  },
+  summaryValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+  },
+  summaryTotal: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.1)',
+    paddingTop: 8,
+    marginTop: 8,
+  },
+  totalLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
+  },
+  totalValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    fontFamily: FONTS.bold,
+  },
+  paymentMethodTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+    marginBottom: SPACING.sm,
+  },
+  paymentOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 2,
+    marginBottom: SPACING.sm,
+  },
+  paymentOptionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.md,
+  },
+  paymentOptionInfo: {},
+  paymentOptionLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+  },
+  paymentOptionBalance: {
+    fontSize: 13,
+    fontFamily: FONTS.regular,
+    marginTop: 2,
+  },
+  radioOuter: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  radioInner: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  topUpLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.xs,
+    marginTop: SPACING.sm,
+    marginBottom: SPACING.md,
+    paddingVertical: SPACING.sm,
+  },
+  topUpLinkText: {
+    fontSize: 15,
+    fontWeight: '500',
+    fontFamily: FONTS.medium,
+  },
+  confirmButton: {
+    marginTop: SPACING.md,
+  },
+  confirmGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: BORDER_RADIUS.lg,
+    gap: 8,
+  },
+  confirmText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
+  },
+});

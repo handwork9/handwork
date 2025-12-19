@@ -1,0 +1,96 @@
+import { NestFactory } from '@nestjs/core';
+import { ValidationPipe, VersioningType } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { IoAdapter } from '@nestjs/platform-socket.io';
+import helmet from 'helmet';
+import * as bodyParser from 'body-parser';
+import { AppModule } from './app.module';
+import { ResponseInterceptor } from './common/interceptors/response.interceptor';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+  const configService = app.get(ConfigService);
+
+  // Increase body size limit for image uploads (50MB)
+  app.use(bodyParser.json({ limit: '50mb' }));
+  app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
+
+  // Security
+  app.use(helmet());
+
+  // CORS - Allow all origins in development for mobile app access
+  const isDev = configService.get('NODE_ENV') !== 'production';
+  app.enableCors({
+    origin: isDev ? true : configService.get('FRONTEND_URL', 'https://handwork.com'),
+    credentials: true,
+  });
+
+  // API Prefix
+  app.setGlobalPrefix(configService.get('API_PREFIX', 'api/v1'));
+
+  // Global Response Interceptor
+  app.useGlobalInterceptors(new ResponseInterceptor());
+
+  // Validation
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+      transformOptions: {
+        enableImplicitConversion: true,
+      },
+    }),
+  );
+
+  // WebSocket Adapter
+  app.useWebSocketAdapter(new IoAdapter(app));
+
+  // Swagger Documentation
+  if (configService.get('NODE_ENV') !== 'production') {
+    const config = new DocumentBuilder()
+      .setTitle('Handwork Marketplace API')
+      .setDescription(
+        'API documentation for Handwork Marketplace - connecting farmers, buyers, and riders',
+      )
+      .setVersion('1.0')
+      .addBearerAuth(
+        {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          name: 'JWT',
+          description: 'Enter JWT token',
+          in: 'header',
+        },
+        'JWT-auth',
+      )
+      .addTag('Auth', 'Authentication and authorization endpoints')
+      .addTag('Users', 'User management endpoints')
+      .addTag('Products', 'Product catalog endpoints')
+      .addTag('Cart', 'Shopping cart endpoints')
+      .addTag('Orders', 'Order management endpoints')
+      .addTag('Riders', 'Rider management endpoints')
+      .addTag('Dispatch', 'Dispatch and delivery endpoints')
+      .addTag('Payments', 'Payment processing endpoints')
+      .addTag('Notifications', 'Notification endpoints')
+      .addTag('Admin', 'Administrative endpoints')
+      .build();
+
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('docs', app, document, {
+      swaggerOptions: {
+        persistAuthorization: true,
+      },
+    });
+  }
+
+  const port = configService.get('PORT', 3000);
+  await app.listen(port);
+
+  console.log(`🚀 Handwork API running on: http://localhost:${port}`);
+  console.log(`📚 Swagger docs available at: http://localhost:${port}/docs`);
+}
+
+bootstrap();

@@ -1,0 +1,153 @@
+import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { CacheModule } from '@nestjs/cache-manager';
+import { BullModule } from '@nestjs/bullmq';
+import { ScheduleModule } from '@nestjs/schedule';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { redisStore } from 'cache-manager-redis-yet';
+import { join } from 'path';
+
+// Configuration
+import { appConfig } from './config/app.config';
+import { databaseConfig } from './config/database.config';
+import { jwtConfig } from './config/jwt.config';
+import { redisConfig } from './config/redis.config';
+import { servicesConfig } from './config/services.config';
+import { dispatchConfig } from './config/dispatch.config';
+
+// Feature Modules
+import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
+import { ProductsModule } from './products/products.module';
+import { CartModule } from './cart/cart.module';
+import { OrdersModule } from './orders/orders.module';
+import { RidersModule } from './riders/riders.module';
+import { DispatchModule } from './dispatch/dispatch.module';
+import { PaymentsModule } from './payments/payments.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { AdminModule } from './admin/admin.module';
+import { HealthModule } from './health/health.module';
+import { ChatModule } from './chat/chat.module';
+import { SupportModule } from './support/support.module';
+import { WalletModule } from './wallet/wallet.module';
+import { ReferralsModule } from './referrals/referrals.module';
+import { RewardsModule } from './rewards/rewards.module';
+import { FavoritesModule } from './favorites/favorites.module';
+import { PromotionsModule } from './promotions/promotions.module';
+import { DiscountsModule } from './discounts/discounts.module';
+import { EmailModule } from './email/email.module';
+import { ReviewsModule } from './reviews/reviews.module';
+import { RecommendationModule } from './recommendations/recommendation.module';
+import { FarmersModule } from './farmers/farmers.module';
+import { UploadsModule } from './uploads/uploads.module';
+
+@Module({
+  imports: [
+    // Configuration
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [appConfig, databaseConfig, jwtConfig, redisConfig, servicesConfig, dispatchConfig],
+      envFilePath: ['.env', '.env.local'],
+    }),
+
+    // Schedule module for cron jobs
+    ScheduleModule.forRoot(),
+
+    // Serve static files from uploads directory
+    ServeStaticModule.forRoot({
+      rootPath: join(process.cwd(), 'uploads'),
+      serveRoot: '/uploads',
+    }),
+
+    // Database
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        type: 'postgres',
+        host: configService.get('database.host'),
+        port: configService.get('database.port'),
+        username: configService.get('database.username'),
+        password: configService.get('database.password'),
+        database: configService.get('database.name'),
+        ssl: configService.get('database.ssl') ? { rejectUnauthorized: false } : false,
+        entities: [__dirname + '/**/*.entity{.ts,.js}'],
+        synchronize: configService.get('NODE_ENV') === 'development',
+        logging: configService.get('NODE_ENV') === 'development',
+      }),
+      inject: [ConfigService],
+    }),
+
+    // Redis Cache
+    CacheModule.registerAsync({
+      isGlobal: true,
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        store: await redisStore({
+          socket: {
+            host: configService.get('redis.host'),
+            port: configService.get('redis.port'),
+          },
+          password: configService.get('redis.password') || undefined,
+        }),
+        ttl: 60 * 1000, // 1 minute default
+      }),
+      inject: [ConfigService],
+    }),
+
+    // BullMQ for Job Queues
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        connection: {
+          host: configService.get('redis.host'),
+          port: configService.get('redis.port'),
+          password: configService.get('redis.password') || undefined,
+        },
+      }),
+      inject: [ConfigService],
+    }),
+
+    // Rate Limiting
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        throttlers: [
+          {
+            ttl: configService.get('THROTTLE_TTL', 60) * 1000,
+            limit: configService.get('THROTTLE_LIMIT', 100),
+          },
+        ],
+      }),
+      inject: [ConfigService],
+    }),
+
+    // Feature Modules
+    AuthModule,
+    UsersModule,
+    ProductsModule,
+    CartModule,
+    OrdersModule,
+    RidersModule,
+    DispatchModule,
+    PaymentsModule,
+    NotificationsModule,
+    AdminModule,
+    HealthModule,
+    ChatModule,
+    SupportModule,
+    WalletModule,
+    ReferralsModule,
+    RewardsModule,
+    FavoritesModule,
+    PromotionsModule,
+    DiscountsModule,
+    EmailModule,
+    ReviewsModule,
+    RecommendationModule,
+    FarmersModule,
+    UploadsModule,
+  ],
+})
+export class AppModule {}
