@@ -47,6 +47,9 @@ export function AuthNavigator() {
 
   const checkOnboardingStatus = async () => {
     try {
+      // DEV ONLY: Reset onboarding to see it again - REMOVE THIS LINE IN PRODUCTION
+      await AsyncStorage.removeItem(ONBOARDING_KEY);
+      
       const value = await AsyncStorage.getItem(ONBOARDING_KEY);
       setHasCompletedOnboarding(value === 'true');
     } catch (error) {
