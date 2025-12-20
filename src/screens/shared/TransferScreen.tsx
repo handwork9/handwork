@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { walletService } from '../../services/walletService';
+import { SPACING, FONT_SIZES, FONTS } from '../../constants/theme';
 
 interface RecentRecipient {
   id: string;
@@ -154,11 +155,12 @@ export default function TransferScreen() {
     <View style={[styles.container, { backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <TouchableOpacity
+          style={[styles.backButton, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
+          onPress={() => navigation.goBack()}
+        >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Transfer</Text>
-        <View style={{ width: 40 }} />
       </View>
 
       <KeyboardAvoidingView
@@ -171,6 +173,12 @@ export default function TransferScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
+          {/* Page Title Section */}
+          <View style={styles.pageTitleSection}>
+            <Text style={[styles.pageTitle, { color: colors.text }]}>Transfer</Text>
+            <Text style={[styles.pageSubtitle, { color: colors.textSecondary }]}>Send money to friends and family</Text>
+          </View>
+
           {/* Balance Card */}
           <View style={[styles.balanceCard, { backgroundColor: isDark ? colors.card : '#DEDEE0' }]}>
             <View style={styles.balanceCentered}>
@@ -558,19 +566,26 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingHorizontal: 24,
+    paddingBottom: 8,
   },
   backButton: {
     width: 40,
     height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   keyboardView: {
     flex: 1,
@@ -579,8 +594,21 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 24,
     paddingBottom: 120,
+  },
+  pageTitleSection: {
+    marginBottom: SPACING.xl,
+  },
+  pageTitle: {
+    fontSize: 28,
+    fontFamily: FONTS.bold,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  pageSubtitle: {
+    fontSize: FONT_SIZES.md,
+    fontFamily: FONTS.regular,
   },
   balanceCard: {
     borderRadius: 12,

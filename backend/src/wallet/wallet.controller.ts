@@ -17,7 +17,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PinService } from '../auth/pin.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { WalletOwnerType, TransactionCategory } from '../database/entities/wallet-transaction.entity';
-import { UserRole } from '../common/enums';
+import { User } from '../database/entities/user.entity';
 import { UsersService } from '../users/users.service';
 
 @ApiTags('Wallet')
@@ -33,18 +33,33 @@ export class WalletController {
 
   @Get('balance')
   @ApiOperation({ summary: 'Get current wallet balance' })
-  async getBalance(@CurrentUser() user: { userId: string; role: UserRole }) {
+  async getBalance(@CurrentUser() user: User) {
     // Determine owner type based on role
     let balance = 0;
     
-    if (user.role === UserRole.RIDER) {
-      balance = await this.walletService.getRiderWalletBalance(user.userId);
-    } else if (user.role === UserRole.FARMER) {
-      balance = await this.walletService.getUserWalletBalance(user.userId);
-    } else {
-      // BUYER
-      balance = await this.walletService.getUserWalletBalance(user.userId);
+    console.log(`[WalletController] ========== BALANCE REQUEST ==========`);
+    console.log(`[WalletController] User id: ${user?.id}, role: ${user?.role}`);
+    
+    try {
+      if (user.role === 'rider') {
+        console.log(`[WalletController] Fetching RIDER balance for userId: ${user.id}`);
+        balance = await this.walletService.getRiderWalletBalance(user.id);
+        console.log(`[WalletController] RIDER balance returned: ${balance}`);
+      } else if (user.role === 'farmer') {
+        console.log(`[WalletController] Fetching FARMER balance for userId: ${user.id}`);
+        balance = await this.walletService.getUserWalletBalance(user.id);
+      } else {
+        // BUYER
+        console.log(`[WalletController] Fetching BUYER balance for userId: ${user.id}`);
+        balance = await this.walletService.getUserWalletBalance(user.id);
+      }
+    } catch (error) {
+      console.error(`[WalletController] ERROR getting balance:`, error.message);
+      // Return 0 balance if user not found in respective table
+      balance = 0;
     }
+    
+    console.log(`[WalletController] Final balance: ${balance}`);
 
     return {
       available: balance,
@@ -61,17 +76,27 @@ export class WalletController {
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'category', required: false, enum: TransactionCategory })
   async getTransactions(
-    @CurrentUser() user: { userId: string; role: UserRole },
+    @CurrentUser() user: User,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('category') category?: TransactionCategory,
   ) {
-    const ownerType = user.role === UserRole.RIDER 
-      ? WalletOwnerType.RIDER 
-      : WalletOwnerType.FARMER;
+    let ownerId = user.id;
+    let ownerType = WalletOwnerType.FARMER;
+
+    // For riders, use the rider entity ID as ownerId
+    if (user.role === 'rider') {
+      ownerType = WalletOwnerType.RIDER;
+      const riderId = await this.walletService.getRiderIdByUserId(user.id);
+      if (riderId) {
+        ownerId = riderId;
+      }
+    }
+
+    console.log(`[WalletController] getTransactions - userId: ${user.id}, ownerId: ${ownerId}, ownerType: ${ownerType}`);
 
     return this.walletService.getTransactionHistory(
-      user.userId,
+      ownerId,
       ownerType,
       page,
       limit,
@@ -90,16 +115,24 @@ export class WalletController {
   @ApiQuery({ name: 'startDate', required: false })
   @ApiQuery({ name: 'endDate', required: false })
   async getEarningsSummary(
-    @CurrentUser() user: { userId: string; role: UserRole },
+    @CurrentUser() user: User,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ) {
-    const ownerType = user.role === UserRole.RIDER 
-      ? WalletOwnerType.RIDER 
-      : WalletOwnerType.FARMER;
+    let ownerId = user.id;
+    let ownerType = WalletOwnerType.FARMER;
+
+    // For riders, use the rider entity ID as ownerId
+    if (user.role === 'rider') {
+      ownerType = WalletOwnerType.RIDER;
+      const riderId = await this.walletService.getRiderIdByUserId(user.id);
+      if (riderId) {
+        ownerId = riderId;
+      }
+    }
 
     return this.walletService.getEarningsSummary(
-      user.userId,
+      ownerId,
       ownerType,
       startDate ? new Date(startDate) : undefined,
       endDate ? new Date(endDate) : undefined,
@@ -122,20 +155,20 @@ export class WalletController {
   })
   @ApiResponse({ status: 200, description: 'Transfer completed successfully' })
   async transfer(
-    @CurrentUser() user: { userId: string; role: UserRole },
+    @CurrentUser() user: User,
     @Body() body: { amount: number; recipientPhone: string; pin?: string },
   ) {
     // Check if user has PIN enabled and verify it
-    const pinStatus = await this.pinService.hasPin(user.userId);
+    const pinStatus = await this.pinService.hasPin(user.id);
     if (pinStatus.isPinEnabled) {
       if (!body.pin) {
         throw new Error('Transaction PIN is required');
       }
-      await this.pinService.verifyPin(user.userId, body.pin);
+      await this.pinService.verifyPin(user.id, body.pin);
     }
 
     return this.walletService.transferToUser(
-      user.userId,
+      user.id,
       body.recipientPhone,
       body.amount,
     );
@@ -158,20 +191,20 @@ export class WalletController {
   })
   @ApiResponse({ status: 200, description: 'Payment completed successfully' })
   async payWithWallet(
-    @CurrentUser() user: { userId: string; role: UserRole },
+    @CurrentUser() user: User,
     @Body() body: { amount: number; description: string; orderId?: string; pin?: string },
   ) {
     // Check if user has PIN enabled and verify it
-    const pinStatus = await this.pinService.hasPin(user.userId);
+    const pinStatus = await this.pinService.hasPin(user.id);
     if (pinStatus.isPinEnabled) {
       if (!body.pin) {
         throw new Error('Transaction PIN is required');
       }
-      await this.pinService.verifyPin(user.userId, body.pin);
+      await this.pinService.verifyPin(user.id, body.pin);
     }
 
     return this.walletService.payForService(
-      user.userId,
+      user.id,
       body.amount,
       body.description,
       body.orderId,
@@ -193,11 +226,11 @@ export class WalletController {
   })
   @ApiResponse({ status: 200, description: 'Premium payment processed' })
   async payForPremium(
-    @CurrentUser() user: { userId: string; role: UserRole },
+    @CurrentUser() user: User,
     @Body() body: { tier: string; amount: number },
   ) {
     // Default to monthly duration
-    return this.usersService.subscribeToPremium(user.userId, {
+    return this.usersService.subscribeToPremium(user.id, {
       tier: body.tier as 'basic' | 'gold' | 'platinum',
       duration: 'monthly',
       paymentMethod: 'wallet',

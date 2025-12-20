@@ -12,6 +12,7 @@ import {
   Animated,
   Platform,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -116,31 +117,32 @@ export default function TransactionDetailScreen() {
     <View style={[styles.container, dynamicStyles.container]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       
-      {/* Floating Back Button */}
-      <TouchableOpacity
-        style={[styles.floatingBackButton, { top: insets.top + 10, backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
-        onPress={() => navigation.goBack()}
-        activeOpacity={0.7}
-        accessibilityLabel="Go back"
-      >
-        <Ionicons name="arrow-back" size={24} color={colors.text} />
-      </TouchableOpacity>
-
-      {/* Floating Share Button */}
-      <TouchableOpacity
-        style={[styles.floatingShareButton, { top: insets.top + 10, backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
-        onPress={handleShare}
-        activeOpacity={0.7}
-        accessibilityLabel="Share transaction"
-      >
-        <Ionicons name="share-outline" size={22} color="#16A34A" />
-      </TouchableOpacity>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity
+          style={[styles.backButton, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.7}
+          accessibilityLabel="Go back"
+        >
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
+        </TouchableOpacity>
+        <View style={{ flex: 1 }} />
+        <TouchableOpacity
+          style={[styles.shareButton, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
+          onPress={handleShare}
+          activeOpacity={0.7}
+          accessibilityLabel="Share transaction"
+        >
+          <Ionicons name="share-outline" size={22} color="#16A34A" />
+        </TouchableOpacity>
+      </View>
 
       <Animated.ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingTop: insets.top + 60, paddingBottom: insets.bottom + 40 },
+          { paddingTop: 16, paddingBottom: insets.bottom + 40 },
         ]}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
@@ -148,9 +150,10 @@ export default function TransactionDetailScreen() {
         )}
         scrollEventThrottle={16}
       >
-        {/* Section Header */}
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionHeaderTitle, dynamicStyles.text]}>Transaction Details</Text>
+        {/* Page Title Section */}
+        <View style={styles.pageTitleSection}>
+          <Text style={[styles.pageTitle, { color: colors.text }]}>Transaction Details</Text>
+          <Text style={[styles.pageSubtitle, { color: colors.textSecondary }]}>View your transaction information</Text>
         </View>
 
         {/* Amount Card */}
@@ -203,7 +206,19 @@ export default function TransactionDetailScreen() {
         <View style={[styles.card, dynamicStyles.card]}>
           <View style={styles.detailRow}>
             <Text style={[styles.detailLabel, dynamicStyles.textSecondary]}>Reference ID</Text>
-            <Text style={[styles.detailValue, dynamicStyles.text]}>TXN-{transaction.id.padStart(8, '0')}</Text>
+            <View style={styles.detailValueWithCopy}>
+              <Text style={[styles.detailValue, dynamicStyles.text, { flex: 0 }]} numberOfLines={1}>TXN-{transaction.id.slice(0, 8).toUpperCase()}</Text>
+              <TouchableOpacity
+                style={styles.copyButton}
+                onPress={async () => {
+                  await Clipboard.setStringAsync(`TXN-${transaction.id}`);
+                  Alert.alert('Copied', 'Reference ID copied to clipboard');
+                }}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="copy-outline" size={18} color="#16A34A" />
+              </TouchableOpacity>
+            </View>
           </View>
           <View style={[styles.separator, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60, 60, 67, 0.12)' }]} />
           
@@ -317,14 +332,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  floatingBackButton: {
-    position: 'absolute',
-    left: SPACING.md,
-    zIndex: 100,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF',
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingBottom: 8,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     ...Platform.select({
@@ -339,14 +356,10 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  floatingShareButton: {
-    position: 'absolute',
-    right: SPACING.md,
-    zIndex: 100,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF',
+  shareButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     ...Platform.select({
@@ -362,19 +375,20 @@ const styles = StyleSheet.create({
     }),
   },
   scrollContent: {
-    paddingHorizontal: SPACING.md,
+    paddingHorizontal: 24,
   },
-  sectionHeader: {
-    marginBottom: SPACING.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(60, 60, 67, 0.12)',
-    paddingBottom: SPACING.sm,
+  pageTitleSection: {
+    marginBottom: SPACING.xl,
   },
-  sectionHeaderTitle: {
+  pageTitle: {
     fontSize: 28,
     fontFamily: FONTS.bold,
-    fontWeight: '800',
-    letterSpacing: -0.5,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  pageSubtitle: {
+    fontSize: FONT_SIZES.md,
+    fontFamily: FONTS.regular,
   },
   sectionSubHeader: {
     marginBottom: SPACING.sm,
@@ -508,11 +522,27 @@ const styles = StyleSheet.create({
   detailLabel: {
     fontSize: FONT_SIZES.md,
     fontFamily: FONTS.regular,
+    flexShrink: 0,
+    marginRight: SPACING.md,
   },
   detailValue: {
     fontSize: FONT_SIZES.md,
     fontFamily: FONTS.medium,
     fontWeight: '500',
+    flex: 1,
+    textAlign: 'right',
+  },
+  detailValueWithCopy: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'flex-end',
+    gap: 8,
+  },
+  copyButton: {
+    padding: 6,
+    borderRadius: 8,
+    backgroundColor: 'rgba(22, 163, 74, 0.1)',
   },
   separator: {
     height: StyleSheet.hairlineWidth,

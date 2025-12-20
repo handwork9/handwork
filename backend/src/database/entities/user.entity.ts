@@ -62,6 +62,13 @@ export class User {
   @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
   longitude: number;
 
+  // Nationality fields
+  @Column({ nullable: true, length: 100 })
+  nationality: string;
+
+  @Column({ nullable: true, length: 10 })
+  nationalityCode: string;
+
   @Column({ default: false })
   isPhoneVerified: boolean;
 

@@ -17,13 +17,16 @@ import { SessionsController } from './sessions.controller';
 import { User } from '../database/entities/user.entity';
 import { OtpCode } from '../database/entities/otp-code.entity';
 import { Session } from '../database/entities/session.entity';
+import { Rider } from '../database/entities/rider.entity';
+import { RiderGuarantor } from '../database/entities/rider-guarantor.entity';
+import { FarmerProfile } from '../database/entities/farmer-profile.entity';
 import { UsersModule } from '../users/users.module';
 import { EmailModule } from '../email/email.module';
 import { PaymentsModule } from '../payments/payments.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, OtpCode, Session]),
+    TypeOrmModule.forFeature([User, OtpCode, Session, Rider, RiderGuarantor, FarmerProfile]),
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],

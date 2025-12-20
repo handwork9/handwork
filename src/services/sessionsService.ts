@@ -41,16 +41,22 @@ const sessionsService = {
    * Get all active sessions for the current user
    */
   async getSessions(): Promise<Session[]> {
-    const response = await apiClient.get<SessionsResponse>('/sessions');
-    return response.sessions || [];
+    const response = await apiClient.get<{ success: boolean; data: SessionsResponse } | SessionsResponse>('/sessions');
+    console.log('[sessionsService] getSessions response:', JSON.stringify(response));
+    // API returns {success: true, data: {sessions: [...]}}, extract the data
+    const data = (response as any)?.data || response;
+    return data.sessions || [];
   },
 
   /**
    * Get login history for the current user
    */
   async getLoginHistory(): Promise<LoginActivity[]> {
-    const response = await apiClient.get<LoginHistoryResponse>('/sessions/login-history');
-    return response.activities || [];
+    const response = await apiClient.get<{ success: boolean; data: LoginHistoryResponse } | LoginHistoryResponse>('/sessions/login-history');
+    console.log('[sessionsService] getLoginHistory response:', JSON.stringify(response));
+    // API returns {success: true, data: {activities: [...]}}, extract the data
+    const data = (response as any)?.data || response;
+    return data.activities || [];
   },
 
   /**

@@ -35,22 +35,41 @@ export interface NotificationSettings {
 
 class NotificationService {
   async getNotifications(page: number = 1, limit: number = 20): Promise<NotificationsResponse> {
-    return apiClient.get<NotificationsResponse>('/notifications', {
+    const response = await apiClient.get<{ success: boolean; data: NotificationsResponse } | NotificationsResponse>('/notifications', {
       params: { page, limit },
     });
+    // Handle wrapped response from backend
+    if (response && typeof response === 'object' && 'success' in response && 'data' in response) {
+      return response.data;
+    }
+    return response as NotificationsResponse;
   }
 
   async getUnreadCount(): Promise<number> {
-    const response = await apiClient.get<{ unreadCount: number }>('/notifications/unread-count');
-    return response.unreadCount;
+    const response = await apiClient.get<{ success: boolean; data: { unreadCount: number } } | { unreadCount: number }>('/notifications/unread-count');
+    // Handle wrapped response from backend
+    if (response && typeof response === 'object' && 'success' in response && 'data' in response) {
+      return (response.data as { unreadCount: number }).unreadCount;
+    }
+    return (response as { unreadCount: number }).unreadCount;
   }
 
   async markAsRead(notificationId: string): Promise<Notification> {
-    return apiClient.patch<Notification>(`/notifications/${notificationId}/read`);
+    const response = await apiClient.patch<{ success: boolean; data: Notification } | Notification>(`/notifications/${notificationId}/read`);
+    // Handle wrapped response from backend
+    if (response && typeof response === 'object' && 'success' in response && 'data' in response) {
+      return response.data;
+    }
+    return response as Notification;
   }
 
   async markAllAsRead(): Promise<{ updated: number }> {
-    return apiClient.patch<{ updated: number }>('/notifications/read-all');
+    const response = await apiClient.patch<{ success: boolean; data: { updated: number } } | { updated: number }>('/notifications/read-all');
+    // Handle wrapped response from backend
+    if (response && typeof response === 'object' && 'success' in response && 'data' in response) {
+      return response.data;
+    }
+    return response as { updated: number };
   }
 
   async deleteNotification(notificationId: string): Promise<void> {

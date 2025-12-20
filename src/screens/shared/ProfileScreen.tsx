@@ -58,6 +58,83 @@ interface MenuSection {
   items: MenuItem[];
 }
 
+// Skeleton loading component for stat items
+const SkeletonStatItem: React.FC<{ isDark: boolean; index: number }> = ({ isDark, index }) => {
+  const pulseAnim = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 0.3,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    // Stagger the animation start based on index
+    const timeout = setTimeout(() => animation.start(), index * 150);
+    return () => {
+      clearTimeout(timeout);
+      animation.stop();
+    };
+  }, [pulseAnim, index]);
+
+  const backgroundColor = isDark ? '#3C3C3E' : '#E5E7EB';
+
+  return (
+    <View style={skeletonStyles.container}>
+      <Animated.View 
+        style={[
+          skeletonStyles.iconPlaceholder, 
+          { backgroundColor, opacity: pulseAnim }
+        ]} 
+      />
+      <Animated.View 
+        style={[
+          skeletonStyles.valuePlaceholder, 
+          { backgroundColor, opacity: pulseAnim }
+        ]} 
+      />
+      <Animated.View 
+        style={[
+          skeletonStyles.labelPlaceholder, 
+          { backgroundColor, opacity: pulseAnim }
+        ]} 
+      />
+    </View>
+  );
+};
+
+const skeletonStyles = StyleSheet.create({
+  container: {
+    alignItems: 'center',
+  },
+  iconPlaceholder: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    marginBottom: 4,
+  },
+  valuePlaceholder: {
+    width: 50,
+    height: 20,
+    borderRadius: 4,
+    marginBottom: 4,
+  },
+  labelPlaceholder: {
+    width: 60,
+    height: 12,
+    borderRadius: 4,
+  },
+});
+
+
 export default function ProfileScreen() {
   const navigation = useNavigation();
   const dispatch = useAppDispatch();
@@ -332,8 +409,8 @@ export default function ProfileScreen() {
       });
     }
 
-    // Payment Methods - only for buyers (riders/farmers receive payments, don't pay)
-    if (user?.role === 'buyer') {
+    // Payment Methods - for buyers (to pay) and riders (to receive payments/withdrawals)
+    if (user?.role === 'buyer' || user?.role === 'rider') {
       items.push({
         icon: 'card',
         label: t('wallet.paymentMethods'),
@@ -581,9 +658,13 @@ export default function ProfileScreen() {
         {/* Stats Row */}
         <View style={[styles.statsContainer, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
           {isLoadingStats ? (
-            <View style={styles.statsLoadingContainer}>
-              <ActivityIndicator size="small" color="#16A34A" />
-            </View>
+            <>
+              {[0, 1, 2].map((index) => (
+                <View key={index} style={styles.statItem}>
+                  <SkeletonStatItem isDark={isDark} index={index} />
+                </View>
+              ))}
+            </>
           ) : (
             roleConfig.stats.map((stat, index) => (
               <View key={stat.label} style={styles.statItem}>

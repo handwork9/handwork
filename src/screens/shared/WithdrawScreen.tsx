@@ -37,12 +37,15 @@ const WITHDRAWAL_CONFIG = {
   maxFee: 100,
 };
 
-export default function WithdrawScreen() {
+export default function WithdrawScreen({ route }: { route?: { params?: { balance?: number } } }) {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
+  
+  // Get balance from route params if passed (e.g., from EarningsScreen)
+  const initialBalance = route?.params?.balance ?? 0;
 
-  const [walletBalance, setWalletBalance] = useState(0);
+  const [walletBalance, setWalletBalance] = useState(initialBalance);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<BankAccount | null>(null);
   const [amount, setAmount] = useState('');
@@ -85,17 +88,34 @@ export default function WithdrawScreen() {
   const loadData = async () => {
     try {
       setIsLoading(true);
+      console.log('[WithdrawScreen] Loading data, initialBalance from route:', initialBalance);
+      
       const [balance, accounts] = await Promise.all([
         walletService.getBalance(),
         withdrawalService.getBankAccounts(),
       ]);
-      setWalletBalance(balance.available);
+      
+      console.log('[WithdrawScreen] Raw balance response:', JSON.stringify(balance));
+      
+      // Use API balance, but keep route param balance if API returns 0
+      const apiBalance = typeof balance.available === 'string' 
+        ? parseFloat(balance.available) 
+        : (balance.available || 0);
+      
+      console.log('[WithdrawScreen] Parsed API balance:', apiBalance);
+      
+      if (apiBalance > 0 || !initialBalance) {
+        setWalletBalance(apiBalance);
+      } else {
+        console.log('[WithdrawScreen] Using initialBalance from route:', initialBalance);
+      }
       setBankAccounts(accounts);
       if (accounts.length > 0) {
         setSelectedAccount(accounts[0]);
       }
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error('[WithdrawScreen] Error loading data:', error);
+      // Keep initialBalance from route params on error
     } finally {
       setIsLoading(false);
     }
@@ -234,24 +254,25 @@ export default function WithdrawScreen() {
     <View style={[styles.container, dynamicStyles.container]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       
-      {/* Floating Back Button */}
-      <TouchableOpacity
-        style={[styles.floatingBackButton, { top: insets.top + 10, backgroundColor: isDark ? '#2C2C2E' : 'rgba(255, 255, 255, 0.9)' }]}
-        onPress={() => navigation.goBack()}
-        activeOpacity={0.7}
-        accessibilityLabel="Go back"
-      >
-        <Ionicons name="arrow-back" size={24} color={colors.text} />
-      </TouchableOpacity>
-
-      {/* History Button */}
-      <TouchableOpacity
-        style={[styles.floatingHistoryButton, { top: insets.top + 10 }, dynamicStyles.card]}
-        onPress={() => (navigation as any).navigate('WithdrawalHistory')}
-        activeOpacity={0.7}
-      >
-        <Ionicons name="time-outline" size={22} color={colors.text} />
-      </TouchableOpacity>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity
+          style={[styles.backButton, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.7}
+          accessibilityLabel="Go back"
+        >
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
+        </TouchableOpacity>
+        <View style={{ flex: 1 }} />
+        <TouchableOpacity
+          style={[styles.historyButton, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
+          onPress={() => (navigation as any).navigate('WithdrawalHistory')}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="time-outline" size={22} color={colors.text} />
+        </TouchableOpacity>
+      </View>
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -261,7 +282,7 @@ export default function WithdrawScreen() {
           style={styles.content}
           contentContainerStyle={[
             styles.contentContainer,
-            { paddingTop: insets.top + 60, paddingBottom: insets.bottom + 120 },
+            { paddingTop: 16, paddingBottom: insets.bottom + 120 },
           ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -271,9 +292,10 @@ export default function WithdrawScreen() {
           )}
           scrollEventThrottle={16}
         >
-          {/* Section Header */}
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionHeaderTitle, dynamicStyles.text]}>Withdraw Funds</Text>
+          {/* Page Title Section */}
+          <View style={styles.pageTitleSection}>
+            <Text style={[styles.pageTitle, { color: colors.text }]}>Withdraw Funds</Text>
+            <Text style={[styles.pageSubtitle, { color: colors.textSecondary }]}>Transfer money to your bank account</Text>
           </View>
 
           {/* Balance Card */}
@@ -349,50 +371,36 @@ export default function WithdrawScreen() {
           </View>
 
           {/* Amount Section - Floating Label Style */}
-          <View style={styles.floatingInputContainer}>
-            <View style={styles.floatingInputRow}>
-              <View style={styles.floatingInputContent}>
-                <Animated.Text style={[{
-                  position: 'absolute',
-                  left: 0,
-                  top: amountAnimValue.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [16, -8],
-                  }),
-                  fontSize: amountAnimValue.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [16, 12],
-                  }),
-                  color: amountAnimValue.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [isDark ? '#9CA3AF' : '#6B7280', '#16A34A'],
-                  }),
-                  backgroundColor: isDark ? colors.background : '#F2F2F7',
-                  paddingHorizontal: 4,
-                  zIndex: 1,
-                  fontFamily: FONTS.regular,
-                }]}>
-                  Enter amount
-                </Animated.Text>
-                <RNTextInput
-                  style={[styles.floatingInput, dynamicStyles.text]}
-                  value={amount}
-                  onChangeText={handleAmountChange}
-                  onFocus={() => setAmountFocused(true)}
-                  onBlur={() => setAmountFocused(false)}
-                  placeholderTextColor="transparent"
-                  keyboardType="number-pad"
-                />
-              </View>
-              <View style={styles.floatingInputIcons}>
-                <MaterialCommunityIcons
-                  name="cash-multiple"
-                  size={22}
-                  color={amountFocused ? '#16A34A' : isDark ? '#6B7280' : '#9CA3AF'}
-                />
+          <View style={styles.amountSectionHeader}>
+            <Text style={[styles.amountSectionTitle, dynamicStyles.textSecondary]}>
+              ENTER AMOUNT
+            </Text>
+          </View>
+          <View style={[styles.inputCard, dynamicStyles.card]}>
+            <View style={styles.floatingInputContainer}>
+              <View style={styles.floatingInputRow}>
+                <View style={styles.floatingInputContent}>
+                  <Text style={[styles.currencyPrefix, dynamicStyles.text]}>₦</Text>
+                  <RNTextInput
+                    style={[styles.floatingInput, dynamicStyles.text]}
+                    value={amount}
+                    onChangeText={handleAmountChange}
+                    onFocus={() => setAmountFocused(true)}
+                    onBlur={() => setAmountFocused(false)}
+                    placeholder="0"
+                    placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
+                    keyboardType="number-pad"
+                  />
+                </View>
+                <View style={styles.floatingInputIcons}>
+                  <MaterialCommunityIcons
+                    name="cash-multiple"
+                    size={22}
+                    color={amountFocused ? '#16A34A' : isDark ? '#6B7280' : '#9CA3AF'}
+                  />
+                </View>
               </View>
             </View>
-            <View style={[styles.floatingInputLine, (amountFocused || amount) && styles.floatingInputLineFocused]} />
           </View>
 
           {/* Quick Amounts */}
@@ -700,36 +708,47 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F2F2F7',
   },
-  floatingBackButton: {
-    position: 'absolute',
-    left: 16,
-    zIndex: 10,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
+  header: {
+    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    paddingHorizontal: 24,
+    paddingBottom: 8,
   },
-  floatingHistoryButton: {
-    position: 'absolute',
-    right: 16,
-    zIndex: 10,
+  backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    justifyContent: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  historyButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   keyboardView: {
     flex: 1,
@@ -740,19 +759,18 @@ const styles = StyleSheet.create({
   contentContainer: {
     paddingHorizontal: 24,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    marginBottom: SPACING.lg,
-    paddingBottom: SPACING.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(60, 60, 67, 0.12)',
+  pageTitleSection: {
+    marginBottom: SPACING.xl,
   },
-  sectionHeaderTitle: {
-    fontSize: FONT_SIZES.lg,
-    fontWeight: '600',
-    fontFamily: FONTS.semiBold,
+  pageTitle: {
+    fontSize: 28,
+    fontFamily: FONTS.bold,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  pageSubtitle: {
+    fontSize: FONT_SIZES.md,
+    fontFamily: FONTS.regular,
   },
   balanceCard: {
     backgroundColor: '#FFFFFF',
@@ -888,35 +906,43 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: FONTS.regular,
   },
-  // Floating Label Input Styles
+  // Amount Input Card Styles
+  inputCard: {
+    borderRadius: 16,
+    marginBottom: SPACING.lg,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
   floatingInputContainer: {
-    marginBottom: 28,
+    padding: SPACING.md,
   },
   floatingInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 20,
-    paddingBottom: 12,
   },
   floatingInputContent: {
     flex: 1,
-    position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  currencyPrefix: {
+    fontSize: 28,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
+    marginRight: 4,
   },
   floatingInput: {
-    fontSize: 16,
+    flex: 1,
+    fontSize: 28,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
     paddingVertical: 8,
-    fontFamily: FONTS.regular,
   },
   floatingInputIcons: {
     marginLeft: 12,
-  },
-  floatingInputLine: {
-    height: 1,
-    backgroundColor: 'rgba(60, 60, 67, 0.12)',
-  },
-  floatingInputLineFocused: {
-    height: 2,
-    backgroundColor: '#16A34A',
   },
   quickAmountsCard: {
     borderRadius: 16,

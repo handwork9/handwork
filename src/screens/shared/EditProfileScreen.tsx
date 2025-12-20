@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  TextInput as RNTextInput,
   Alert,
   Image,
   Modal,
@@ -17,7 +16,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { COLORS, SPACING, FONT_SIZES, FONTS } from '../../constants/theme';
@@ -25,136 +24,6 @@ import { useAppSelector, useAppDispatch } from '../../store';
 import { updateUser } from '../../store/slices/authSlice';
 import { useTheme } from '../../context/ThemeContext';
 import { authService } from '../../services/authService';
-
-// FloatingInput Component for Edit Modal
-interface FloatingInputProps {
-  label: string;
-  value: string;
-  onChangeText: (text: string) => void;
-  icon?: string;
-  iconColor?: string;
-  placeholder?: string;
-  keyboardType?: 'default' | 'email-address' | 'phone-pad';
-  multiline?: boolean;
-  numberOfLines?: number;
-  autoFocus?: boolean;
-}
-
-const FloatingInput: React.FC<FloatingInputProps> = ({
-  label,
-  value,
-  onChangeText,
-  icon,
-  iconColor = '#16A34A',
-  placeholder,
-  keyboardType = 'default',
-  multiline = false,
-  numberOfLines = 1,
-  autoFocus = false,
-}) => {
-  const { colors, isDark } = useTheme();
-  const [isFocused, setIsFocused] = useState(false);
-  const animatedValue = useRef(new Animated.Value(value ? 1 : 0)).current;
-
-  useEffect(() => {
-    Animated.timing(animatedValue, {
-      toValue: isFocused || value ? 1 : 0,
-      duration: 200,
-      useNativeDriver: false,
-    }).start();
-  }, [isFocused, value]);
-
-  const labelStyle = {
-    position: 'absolute' as const,
-    left: 0,
-    top: animatedValue.interpolate({
-      inputRange: [0, 1],
-      outputRange: [16, -8],
-    }),
-    fontSize: animatedValue.interpolate({
-      inputRange: [0, 1],
-      outputRange: [16, 12],
-    }),
-    color: animatedValue.interpolate({
-      inputRange: [0, 1],
-      outputRange: [isDark ? '#9CA3AF' : '#6B7280', '#16A34A'],
-    }),
-    backgroundColor: isDark ? colors.background : '#F2F2F7',
-    paddingHorizontal: 4,
-    zIndex: 1,
-  };
-
-  return (
-    <View style={floatingStyles.container}>
-      <View style={floatingStyles.inputRow}>
-        <View style={floatingStyles.inputContent}>
-          <Animated.Text style={[labelStyle, { fontFamily: Platform.OS === 'ios' ? 'Avenir-Medium' : 'sans-serif' }]}>
-            {label}
-          </Animated.Text>
-          <RNTextInput
-            style={[
-              floatingStyles.input,
-              { color: colors.text },
-              multiline && { height: numberOfLines * 24, textAlignVertical: 'top' },
-            ]}
-            value={value}
-            onChangeText={onChangeText}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
-            keyboardType={keyboardType}
-            autoCorrect={false}
-            placeholderTextColor="transparent"
-            multiline={multiline}
-            numberOfLines={numberOfLines}
-            autoFocus={autoFocus}
-          />
-        </View>
-        {icon && (
-          <View style={floatingStyles.iconContainer}>
-            <Ionicons
-              name={icon as any}
-              size={22}
-              color={isFocused ? '#16A34A' : isDark ? '#6B7280' : '#9CA3AF'}
-            />
-          </View>
-        )}
-      </View>
-      <View style={[floatingStyles.underline, isFocused && floatingStyles.underlineFocused]} />
-    </View>
-  );
-};
-
-const floatingStyles = StyleSheet.create({
-  container: {
-    marginBottom: 24,
-  },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingTop: 20,
-    paddingBottom: 12,
-  },
-  inputContent: {
-    flex: 1,
-    position: 'relative',
-  },
-  input: {
-    fontSize: 16,
-    paddingVertical: 8,
-    fontFamily: Platform.OS === 'ios' ? 'Avenir-Medium' : 'sans-serif',
-  },
-  iconContainer: {
-    marginLeft: 12,
-  },
-  underline: {
-    height: 1,
-    backgroundColor: '#E5E7EB',
-  },
-  underlineFocused: {
-    height: 2,
-    backgroundColor: '#16A34A',
-  },
-});
 
 interface EditField {
   key: string;
@@ -178,12 +47,23 @@ function EditModal({ visible, field, onClose, onSave }: EditModalProps) {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const [value, setValue] = useState(field?.value || '');
+  const [isFocused, setIsFocused] = useState(false);
+  const labelAnim = useRef(new Animated.Value(field?.value ? 1 : 0)).current;
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (field) {
       setValue(field.value);
+      labelAnim.setValue(field.value ? 1 : 0);
     }
   }, [field]);
+
+  useEffect(() => {
+    Animated.timing(labelAnim, {
+      toValue: isFocused || value ? 1 : 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  }, [isFocused, value]);
 
   const handleSave = () => {
     onSave(value);
@@ -191,6 +71,24 @@ function EditModal({ visible, field, onClose, onSave }: EditModalProps) {
   };
 
   if (!field) return null;
+
+  const labelStyle = {
+    position: 'absolute' as const,
+    left: 0,
+    top: labelAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [20, 0],
+    }),
+    fontSize: labelAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [18, 14],
+    }),
+    color: labelAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [isDark ? '#9CA3AF' : '#6B7280', COLORS.primary],
+    }),
+    fontFamily: FONTS.medium,
+  };
 
   return (
     <Modal
@@ -202,48 +100,65 @@ function EditModal({ visible, field, onClose, onSave }: EditModalProps) {
       <KeyboardAvoidingView 
         style={[styles.modalContainer, { backgroundColor: isDark ? colors.background : '#F2F2F7' }]}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        {/* Floating Cancel Button */}
-        <TouchableOpacity 
-          style={[styles.modalFloatingCancel, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}
-          onPress={onClose}
-        >
-          <Ionicons name="close" size={24} color={colors.text} />
-        </TouchableOpacity>
-
-        {/* Floating Save Button */}
-        <TouchableOpacity 
-          style={styles.modalFloatingSave}
-          onPress={handleSave}
-        >
-          <Ionicons name="checkmark" size={20} color="#FFFFFF" />
-          <Text style={styles.modalFloatingSaveText}>Save</Text>
-        </TouchableOpacity>
-
-        {/* Modal Title */}
-        <View style={styles.modalTitleContainer}>
-          <Text style={[styles.modalTitleLarge, { color: colors.text }]}>{field.label}</Text>
+        {/* Header */}
+        <View style={[styles.modalHeader, { paddingTop: insets.top + SPACING.sm }]}>
+          <TouchableOpacity
+            style={[styles.backButton, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}
+            onPress={onClose}
+          >
+            <Ionicons name="close" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.modalSaveButton}
+            onPress={handleSave}
+          >
+            <Ionicons name="checkmark" size={20} color="#FFFFFF" />
+            <Text style={styles.modalSaveText}>Save</Text>
+          </TouchableOpacity>
         </View>
 
-        <View style={styles.modalContent}>
-          <FloatingInput
-            label={field.label}
-            value={value}
-            onChangeText={setValue}
-            icon={field.icon}
-            iconColor={field.iconColor}
-            placeholder={field.placeholder}
-            keyboardType={field.keyboardType}
-            multiline={field.multiline}
-            numberOfLines={field.multiline ? 4 : 1}
-            autoFocus
-          />
-          
-          <Text style={[styles.modalHint, { color: colors.textSecondary }]}>
-            Enter your {field.label.toLowerCase()} above
-          </Text>
-        </View>
+        <ScrollView 
+          contentContainerStyle={styles.modalScrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Title */}
+          <View style={styles.titleContainer}>
+            <Text style={[styles.title, { color: colors.text }]}>Edit {field.label}</Text>
+            <Text style={[styles.subtitle, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+              Update your {field.label.toLowerCase()}
+            </Text>
+          </View>
+
+          {/* Input */}
+          <View style={styles.inputContainer}>
+            <View style={styles.inputWrapper}>
+              <Animated.Text style={labelStyle}>
+                {field.label}
+              </Animated.Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  { color: colors.text },
+                  field.multiline && { height: 100, textAlignVertical: 'top' },
+                ]}
+                value={value}
+                onChangeText={setValue}
+                onFocus={() => setIsFocused(true)}
+                onBlur={() => setIsFocused(false)}
+                keyboardType={field.keyboardType}
+                autoCorrect={false}
+                multiline={field.multiline}
+                autoFocus
+              />
+            </View>
+            <View style={[
+              styles.inputLine,
+              isFocused && styles.inputLineFocused,
+              { backgroundColor: isFocused ? COLORS.primary : isDark ? '#3C3C3E' : '#E5E7EB' },
+            ]} />
+          </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -265,18 +180,83 @@ export default function EditProfileScreen() {
   const [state, setState] = useState(user?.state || '');
   const [avatar, setAvatar] = useState<string | null>(user?.avatar || null);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Phone verification state
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [otpId, setOtpId] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [otpCountdown, setOtpCountdown] = useState(0);
 
   // Modal state
   const [modalVisible, setModalVisible] = useState(false);
   const [editingField, setEditingField] = useState<EditField | null>(null);
 
-  // Scroll animation
-  const scrollY = useRef(new Animated.Value(0)).current;
-  const headerOpacity = scrollY.interpolate({
-    inputRange: [0, 80],
-    outputRange: [0, 1],
-    extrapolate: 'clamp',
-  });
+  // OTP countdown timer
+  useEffect(() => {
+    if (otpCountdown > 0) {
+      const timer = setTimeout(() => setOtpCountdown(otpCountdown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [otpCountdown]);
+
+  // Send OTP for phone verification
+  const handleSendOtp = async () => {
+    if (!user?.phone) {
+      Alert.alert('Error', 'Please add a phone number first');
+      return;
+    }
+    
+    setIsSendingOtp(true);
+    try {
+      const response = await authService.sendOTP(user.phone);
+      if (response.success && response.data?.otpId) {
+        setOtpId(response.data.otpId);
+        setShowOtpModal(true);
+        setOtpCountdown(60);
+        Alert.alert('Success', 'OTP sent to your phone number');
+      } else {
+        Alert.alert('Error', response.message || 'Failed to send OTP');
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to send OTP');
+    } finally {
+      setIsSendingOtp(false);
+    }
+  };
+
+  // Verify OTP
+  const handleVerifyOtp = async () => {
+    if (otp.length !== 6) {
+      Alert.alert('Error', 'Please enter a valid 6-digit OTP');
+      return;
+    }
+    
+    if (!otpId) {
+      Alert.alert('Error', 'Please request a new OTP');
+      return;
+    }
+    
+    setIsVerifying(true);
+    try {
+      const response = await authService.verifyOTP(otpId, otp);
+      if (response.success) {
+        // Update user in store
+        dispatch(updateUser({ isPhoneVerified: true }));
+        setShowOtpModal(false);
+        setOtp('');
+        setOtpId('');
+        Alert.alert('Success', 'Phone number verified successfully!');
+      } else {
+        Alert.alert('Error', response.message || 'Invalid OTP');
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to verify OTP');
+    } finally {
+      setIsVerifying(false);
+    }
+  };
 
   const hasChanges = 
     name !== (user?.name || '') ||
@@ -464,46 +444,42 @@ export default function EditProfileScreen() {
     <View style={[styles.container, { backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       
-      {/* Floating Back Button */}
-      <TouchableOpacity
-        style={[styles.floatingBackButton, { top: insets.top + 10, backgroundColor: isDark ? colors.card : '#FFFFFF' }]}
-        onPress={handleDiscard}
-        activeOpacity={0.7}
-      >
-        <Ionicons name="chevron-back" size={28} color={colors.text} />
-      </TouchableOpacity>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + SPACING.sm }]}>
+        <TouchableOpacity
+          style={[styles.backButton, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}
+          onPress={handleDiscard}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="chevron-back" size={24} color={colors.text} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.headerSaveButton,
+            !hasChanges && styles.headerSaveButtonDisabled
+          ]}
+          onPress={handleSave}
+          activeOpacity={0.7}
+          disabled={!hasChanges || isLoading}
+        >
+          {isLoading ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <Text style={styles.headerSaveText}>Save</Text>
+          )}
+        </TouchableOpacity>
+      </View>
 
-      {/* Floating Save Button */}
-      <TouchableOpacity
-        style={[
-          styles.floatingSaveButton, 
-          { top: insets.top + 10 },
-          !hasChanges && styles.floatingSaveButtonDisabled
-        ]}
-        onPress={handleSave}
-        activeOpacity={0.7}
-        disabled={!hasChanges || isLoading}
-      >
-        {isLoading ? (
-          <ActivityIndicator size="small" color="#FFFFFF" />
-        ) : (
-          <Text style={styles.floatingSaveText}>Save</Text>
-        )}
-      </TouchableOpacity>
-
-      <Animated.ScrollView 
+      <ScrollView 
         showsVerticalScrollIndicator={false} 
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + 70 }]}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: true }
-        )}
-        scrollEventThrottle={16}
+        contentContainerStyle={styles.content}
       >
-        {/* Page Title */}
-        <View style={styles.pageTitleSection}>
-          <Text style={[styles.pageTitle, { color: colors.text }]}>Edit Profile</Text>
-          <Text style={[styles.pageSubtitle, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>Update your personal information</Text>
+        {/* Title */}
+        <View style={styles.titleContainer}>
+          <Text style={[styles.title, { color: colors.text }]}>Edit Profile</Text>
+          <Text style={[styles.subtitle, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+            Update your personal information
+          </Text>
         </View>
 
         {/* Avatar Section */}
@@ -513,7 +489,7 @@ export default function EditProfileScreen() {
               {avatar ? (
                 <Image source={{ uri: avatar }} style={styles.avatarImage} />
               ) : (
-                <View style={[styles.avatar, { backgroundColor: '#16A34A' }]}>
+                <View style={[styles.avatar, { backgroundColor: COLORS.primary }]}>
                   <Text style={styles.avatarText}>
                     {name.charAt(0).toUpperCase() || '?'}
                   </Text>
@@ -525,9 +501,7 @@ export default function EditProfileScreen() {
             </View>
           </TouchableOpacity>
           <TouchableOpacity onPress={handleChangePhoto}>
-            <Text style={styles.changePhotoText}>
-              Change Photo
-            </Text>
+            <Text style={styles.changePhotoText}>Change Photo</Text>
           </TouchableOpacity>
         </View>
 
@@ -566,22 +540,37 @@ export default function EditProfileScreen() {
             </View>
             <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
               <Text style={[styles.infoLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>Phone Verified</Text>
-              <View style={styles.verifiedBadge}>
-                <Ionicons 
-                  name={user?.isPhoneVerified ? 'checkmark-circle' : 'close-circle'} 
-                  size={18} 
-                  color={user?.isPhoneVerified ? '#16A34A' : '#EF4444'} 
-                />
-                <Text style={{ color: user?.isPhoneVerified ? '#16A34A' : '#EF4444', fontSize: 14, fontWeight: '500' }}>
-                  {user?.isPhoneVerified ? 'Verified' : 'Not Verified'}
-                </Text>
+              <View style={styles.verifiedBadgeRow}>
+                <View style={styles.verifiedBadge}>
+                  <Ionicons 
+                    name={user?.isPhoneVerified ? 'checkmark-circle' : 'close-circle'} 
+                    size={18} 
+                    color={user?.isPhoneVerified ? COLORS.primary : '#EF4444'} 
+                  />
+                  <Text style={{ color: user?.isPhoneVerified ? COLORS.primary : '#EF4444', fontSize: 14, fontFamily: FONTS.medium }}>
+                    {user?.isPhoneVerified ? 'Verified' : 'Not Verified'}
+                  </Text>
+                </View>
+                {!user?.isPhoneVerified && user?.phone && (
+                  <TouchableOpacity
+                    style={styles.verifyNowButton}
+                    onPress={handleSendOtp}
+                    disabled={isSendingOtp}
+                  >
+                    {isSendingOtp ? (
+                      <ActivityIndicator size="small" color={COLORS.primary} />
+                    ) : (
+                      <Text style={styles.verifyNowText}>Verify Now</Text>
+                    )}
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           </View>
         </View>
 
         {/* Delete Account */}
-        <View style={[styles.section, { marginTop: 16 }]}>
+        <View style={[styles.section, { marginTop: SPACING.md }]}>
           <TouchableOpacity
             style={[styles.deleteButton, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEF2F2', borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : '#FECACA' }]}
             onPress={() => (navigation as any).navigate('DeleteAccount')}
@@ -590,7 +579,70 @@ export default function EditProfileScreen() {
             <Text style={styles.deleteText}>Delete Account</Text>
           </TouchableOpacity>
         </View>
-      </Animated.ScrollView>
+      </ScrollView>
+
+      {/* OTP Verification Modal */}
+      <Modal
+        visible={showOtpModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowOtpModal(false)}
+      >
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.otpModalOverlay}
+        >
+          <View style={[styles.otpModalContent, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+            <View style={styles.otpModalHandle} />
+            
+            <View style={styles.otpModalHeader}>
+              <Text style={[styles.otpModalTitle, { color: colors.text }]}>Verify Phone Number</Text>
+              <TouchableOpacity onPress={() => { setShowOtpModal(false); setOtp(''); }}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+            
+            <Text style={[styles.otpModalSubtitle, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+              Enter the 6-digit code sent to {user?.phone}
+            </Text>
+            
+            <View style={[styles.otpInputContainer, { backgroundColor: isDark ? colors.background : '#F9FAFB', borderColor: isDark ? colors.border : '#E5E7EB' }]}>
+              <TextInput
+                style={[styles.otpInput, { color: colors.text }]}
+                value={otp}
+                onChangeText={(text) => setOtp(text.replace(/[^0-9]/g, '').slice(0, 6))}
+                keyboardType="number-pad"
+                maxLength={6}
+                placeholder="000000"
+                placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
+                autoFocus
+              />
+            </View>
+            
+            <TouchableOpacity
+              style={[styles.otpVerifyButton, otp.length !== 6 && styles.otpVerifyButtonDisabled]}
+              onPress={handleVerifyOtp}
+              disabled={otp.length !== 6 || isVerifying}
+            >
+              {isVerifying ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.otpVerifyButtonText}>Verify</Text>
+              )}
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.otpResendButton}
+              onPress={handleSendOtp}
+              disabled={otpCountdown > 0 || isSendingOtp}
+            >
+              <Text style={[styles.otpResendText, { color: otpCountdown > 0 ? '#9CA3AF' : '#16A34A' }]}>
+                {otpCountdown > 0 ? `Resend OTP in ${otpCountdown}s` : 'Resend OTP'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       {/* Edit Modal */}
       <EditModal
@@ -607,68 +659,54 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  floatingBackButton: {
-    position: 'absolute',
-    left: 16,
-    zIndex: 10,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
+  header: {
+    flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.lg,
+    paddingBottom: SPACING.md,
   },
-  floatingSaveButton: {
-    position: 'absolute',
-    right: 16,
-    zIndex: 10,
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerSaveButton: {
     paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 22,
-    backgroundColor: '#16A34A',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#16A34A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: COLORS.primary,
   },
-  floatingSaveButtonDisabled: {
+  headerSaveButtonDisabled: {
     backgroundColor: '#D1D5DB',
-    shadowOpacity: 0,
   },
-  floatingSaveText: {
+  headerSaveText: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: FONT_SIZES.sm,
     fontFamily: FONTS.semiBold,
   },
   content: {
-    paddingHorizontal: 24,
+    paddingHorizontal: SPACING.lg,
     paddingBottom: 100,
   },
-  pageTitleSection: {
-    marginBottom: 24,
+  titleContainer: {
+    marginBottom: SPACING.xl,
   },
-  pageTitle: {
+  title: {
     fontSize: 28,
-    color: '#1F2937',
-    marginBottom: 8,
     fontFamily: FONTS.bold,
+    marginBottom: SPACING.sm,
   },
-  pageSubtitle: {
-    fontSize: 15,
-    color: '#6B7280',
+  subtitle: {
+    fontSize: FONT_SIZES.md,
     fontFamily: FONTS.regular,
+    lineHeight: 22,
   },
   avatarSection: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: SPACING.xl,
   },
   avatarWrapper: {
     position: 'relative',
@@ -697,48 +735,42 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: '#16A34A',
+    backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
-    borderColor: '#F2F2F7',
   },
   changePhotoText: {
-    fontSize: 15,
-    color: '#16A34A',
-    marginTop: 12,
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.primary,
+    marginTop: SPACING.sm,
     fontFamily: FONTS.semiBold,
   },
   section: {
-    marginBottom: 32,
+    marginBottom: SPACING.xl,
   },
   sectionHeader: {
-    marginBottom: 16,
+    marginBottom: SPACING.md,
   },
   sectionTitle: {
-    fontSize: 18,
-    color: '#1F2937',
+    fontSize: FONT_SIZES.lg,
     fontFamily: FONTS.semiBold,
   },
   fieldItem: {
-    marginBottom: 20,
+    marginBottom: SPACING.lg,
   },
   fieldContent: {
-    paddingBottom: 12,
+    paddingBottom: SPACING.sm,
   },
   fieldLabel: {
-    fontSize: 12,
-    color: '#16A34A',
+    fontSize: FONT_SIZES.xs,
+    color: COLORS.primary,
     marginBottom: 4,
-    fontFamily: FONTS.regular,
+    fontFamily: FONTS.medium,
   },
   fieldValue: {
-    fontSize: 16,
-    color: '#1F2937',
+    fontSize: FONT_SIZES.md,
     fontFamily: FONTS.regular,
-  },
-  fieldValueEmpty: {
-    color: '#9CA3AF',
   },
   fieldLine: {
     height: 1,
@@ -754,7 +786,6 @@ const styles = StyleSheet.create({
     bottom: 10,
   },
   infoCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 14,
     padding: 4,
   },
@@ -763,29 +794,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 14,
-    paddingHorizontal: 16,
+    paddingHorizontal: SPACING.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
   infoLabel: {
-    fontSize: 15,
-    color: '#6B7280',
+    fontSize: FONT_SIZES.md,
     fontFamily: FONTS.regular,
   },
   infoValue: {
-    fontSize: 15,
-    color: '#1F2937',
+    fontSize: FONT_SIZES.md,
     fontFamily: FONTS.medium,
   },
   roleBadge: {
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
-    backgroundColor: '#DCFCE7',
   },
   roleText: {
-    fontSize: 14,
-    color: '#16A34A',
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.primary,
     fontFamily: FONTS.semiBold,
   },
   verifiedBadge: {
@@ -793,80 +820,156 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
+  verifiedBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  verifyNowButton: {
+    backgroundColor: 'rgba(22, 163, 74, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(22, 163, 74, 0.3)',
+  },
+  verifyNowText: {
+    color: COLORS.primary,
+    fontSize: FONT_SIZES.xs,
+    fontFamily: FONTS.semiBold,
+  },
   deleteButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
     borderRadius: 14,
-    backgroundColor: '#FEF2F2',
     borderWidth: 1,
-    borderColor: '#FECACA',
   },
   deleteText: {
     color: '#EF4444',
-    fontSize: 16,
+    fontSize: FONT_SIZES.md,
     fontFamily: FONTS.semiBold,
   },
-  // Modal styles
+  // OTP Modal styles
+  otpModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  otpModalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: SPACING.lg,
+    paddingBottom: 40,
+    paddingTop: 12,
+  },
+  otpModalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#D1D5DB',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  otpModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  otpModalTitle: {
+    fontSize: 20,
+    fontFamily: FONTS.bold,
+  },
+  otpModalSubtitle: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: FONTS.regular,
+    marginBottom: SPACING.lg,
+  },
+  otpInputContainer: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: SPACING.md,
+    marginBottom: SPACING.lg,
+  },
+  otpInput: {
+    fontSize: 24,
+    fontFamily: FONTS.semiBold,
+    textAlign: 'center',
+    letterSpacing: 8,
+  },
+  otpVerifyButton: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
+  otpVerifyButtonDisabled: {
+    backgroundColor: '#9CA3AF',
+  },
+  otpVerifyButtonText: {
+    color: '#FFFFFF',
+    fontSize: FONT_SIZES.md,
+    fontFamily: FONTS.semiBold,
+  },
+  otpResendButton: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  otpResendText: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: FONTS.medium,
+  },
+  // Edit Modal styles
   modalContainer: {
     flex: 1,
   },
-  modalFloatingCancel: {
-    position: 'absolute',
-    left: 16,
-    top: 16,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  modalFloatingSave: {
-    position: 'absolute',
-    right: 16,
-    top: 16,
+  modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#16A34A',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.lg,
+    paddingBottom: SPACING.md,
+  },
+  modalSaveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 22,
+    borderRadius: 20,
     gap: 6,
-    zIndex: 10,
-    shadowColor: '#16A34A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
   },
-  modalFloatingSaveText: {
+  modalSaveText: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: FONT_SIZES.sm,
     fontFamily: FONTS.semiBold,
   },
-  modalTitleContainer: {
-    paddingTop: 80,
-    paddingHorizontal: 20,
-    marginBottom: 24,
+  modalScrollContent: {
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.xl,
   },
-  modalTitleLarge: {
-    fontSize: 28,
-    fontFamily: FONTS.bold,
+  inputContainer: {
+    marginBottom: SPACING.xl,
   },
-  modalContent: {
-    paddingHorizontal: 20,
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: 24,
+    paddingBottom: 12,
   },
-  modalHint: {
-    fontSize: FONT_SIZES.xs,
-    marginTop: SPACING.sm,
-    fontFamily: FONTS.regular,
+  input: {
+    flex: 1,
+    fontSize: 18,
+    fontFamily: FONTS.medium,
+    paddingVertical: 8,
+  },
+  inputLine: {
+    height: 1,
+  },
+  inputLineFocused: {
+    height: 2,
   },
 });

@@ -129,6 +129,11 @@ export default function EarningsScreen() {
     return <LoadingState />;
   }
 
+  // Handle error state
+  if (error) {
+    console.error('[EarningsScreen] Error fetching earnings:', error);
+  }
+
   const maxEarning = getMaxWeeklyEarning();
 
   return (

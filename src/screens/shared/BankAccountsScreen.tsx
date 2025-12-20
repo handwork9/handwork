@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -67,12 +67,30 @@ export default function BankAccountsScreen() {
     loadBanks();
   }, []);
 
+  // Debounce timer ref
+  const verifyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
+    // Clear any existing timeout
+    if (verifyTimeoutRef.current) {
+      clearTimeout(verifyTimeoutRef.current);
+    }
+
     if (accountNumber.length === 10 && selectedBank) {
-      verifyAccount();
+      // Debounce verification by 500ms to avoid rate limiting
+      verifyTimeoutRef.current = setTimeout(() => {
+        verifyAccount();
+      }, 500);
     } else {
       setVerifiedAccountName('');
     }
+
+    // Cleanup on unmount
+    return () => {
+      if (verifyTimeoutRef.current) {
+        clearTimeout(verifyTimeoutRef.current);
+      }
+    };
   }, [accountNumber, selectedBank]);
 
   const loadBankAccounts = async () => {

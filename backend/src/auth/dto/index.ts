@@ -1,6 +1,40 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsEmail, IsOptional, MinLength, IsEnum, IsNotEmpty, Matches } from 'class-validator';
+import { IsString, IsEmail, IsOptional, MinLength, IsEnum, IsNotEmpty, Matches, IsArray, ValidateNested, IsBoolean } from 'class-validator';
+import { Type } from 'class-transformer';
 import { UserRole } from '../../common/enums';
+
+// Guarantor DTO for rider signup
+export class GuarantorDto {
+  @ApiProperty({ example: 'John Doe' })
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @ApiProperty({ example: '+2348012345678' })
+  @IsString()
+  @IsNotEmpty()
+  phone: string;
+
+  @ApiProperty({ example: 'Engineer' })
+  @IsString()
+  @IsOptional()
+  occupation?: string;
+
+  @ApiProperty({ example: 'Uncle' })
+  @IsString()
+  @IsOptional()
+  relationship?: string;
+
+  @ApiProperty({ example: '123 Main Street, Lagos' })
+  @IsString()
+  @IsNotEmpty()
+  address: string;
+
+  @ApiProperty({ required: false, description: 'URL to ID document image' })
+  @IsString()
+  @IsOptional()
+  idDocument?: string;
+}
 
 export class SignupDto {
   @ApiProperty({ example: 'John Doe' })
@@ -42,6 +76,122 @@ export class SignupDto {
   @IsString()
   @IsOptional()
   address?: string;
+
+  @ApiProperty({ example: 'Nigeria', required: false })
+  @IsString()
+  @IsOptional()
+  nationality?: string;
+
+  @ApiProperty({ example: 'NG', required: false })
+  @IsString()
+  @IsOptional()
+  nationalityCode?: string;
+
+  @ApiProperty({ required: false })
+  @IsBoolean()
+  @IsOptional()
+  marketingConsent?: boolean;
+
+  // ===== RIDER SPECIFIC FIELDS =====
+  @ApiProperty({ example: 'Honda CBR 150', required: false })
+  @IsString()
+  @IsOptional()
+  bikeModel?: string;
+
+  @ApiProperty({ example: 'ABC-123XY', required: false })
+  @IsString()
+  @IsOptional()
+  plateNumber?: string;
+
+  @ApiProperty({ example: 'Red', required: false })
+  @IsString()
+  @IsOptional()
+  bikeColor?: string;
+
+  @ApiProperty({ required: false, description: 'URL to drivers license image' })
+  @IsString()
+  @IsOptional()
+  driversLicense?: string;
+
+  @ApiProperty({ type: [GuarantorDto], required: false })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => GuarantorDto)
+  @IsOptional()
+  guarantors?: GuarantorDto[];
+
+  // ===== FARMER SPECIFIC FIELDS =====
+  @ApiProperty({ example: 'Green Acres Farm', required: false })
+  @IsString()
+  @IsOptional()
+  farmName?: string;
+
+  @ApiProperty({ example: 'crop', required: false })
+  @IsString()
+  @IsOptional()
+  farmType?: string;
+
+  @ApiProperty({ example: '50 acres', required: false })
+  @IsString()
+  @IsOptional()
+  farmSize?: string;
+
+  @ApiProperty({ type: [String], required: false, example: ['Vegetables', 'Fruits'] })
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  productCategories?: string[];
+
+  @ApiProperty({ example: 'First Bank', required: false })
+  @IsString()
+  @IsOptional()
+  bankName?: string;
+
+  @ApiProperty({ example: '1234567890', required: false })
+  @IsString()
+  @IsOptional()
+  accountNumber?: string;
+
+  @ApiProperty({ example: 'John Doe', required: false })
+  @IsString()
+  @IsOptional()
+  accountName?: string;
+
+  @ApiProperty({ example: '12345678901', required: false, description: 'National ID Number' })
+  @IsString()
+  @IsOptional()
+  nin?: string;
+
+  @ApiProperty({ required: false, description: 'URL to farm document image' })
+  @IsString()
+  @IsOptional()
+  farmDocument?: string;
+
+  @ApiProperty({ required: false, description: 'URL to ID document image' })
+  @IsString()
+  @IsOptional()
+  idDocument?: string;
+
+  @ApiProperty({ required: false, description: 'URL to CAC registration document' })
+  @IsString()
+  @IsOptional()
+  cacDocument?: string;
+
+  // ===== BUYER SPECIFIC FIELDS =====
+  @ApiProperty({ example: 'card', required: false, enum: ['card', 'bank'] })
+  @IsString()
+  @IsOptional()
+  paymentMethod?: string;
+
+  @ApiProperty({ required: false, description: 'Card number (for card payment method)' })
+  @IsString()
+  @IsOptional()
+  cardNumber?: string;
+
+  @ApiProperty({ required: false, description: 'Card expiry (for card payment method)' })
+  @IsString()
+  @IsOptional()
+  cardExpiry?: string;
 }
 
 export class LoginDto {

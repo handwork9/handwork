@@ -150,13 +150,40 @@ export class WalletService {
   }
 
   /**
-   * Get wallet balance for a rider
+   * Get wallet balance for a rider by their userId
    */
-  async getRiderWalletBalance(riderId: string): Promise<number> {
-    const rider = await this.riderRepository.findOne({ where: { id: riderId } });
+  async getRiderWalletBalance(userId: string): Promise<number> {
+    console.log(`[WalletService] Looking up rider with userId: ${userId}`);
+    const rider = await this.riderRepository.findOne({ where: { userId } });
+    console.log(`[WalletService] Rider found:`, rider ? `Yes (id: ${rider.id}, walletBalance: ${rider.walletBalance})` : 'No');
     if (!rider) {
+      this.logger.warn(`Rider not found for userId: ${userId}`);
       throw new NotFoundException('Rider not found');
     }
+    this.logger.log(`Rider wallet balance for userId ${userId}: ${rider.walletBalance}`);
+    const balance = Number(rider.walletBalance) || 0;
+    console.log(`[WalletService] Parsed balance: ${balance}`);
+    return balance;
+  }
+
+  /**
+   * Get rider entity ID by user ID
+   */
+  async getRiderIdByUserId(userId: string): Promise<string | null> {
+    const rider = await this.riderRepository.findOne({ where: { userId } });
+    return rider?.id || null;
+  }
+
+  /**
+   * Get wallet balance for a rider by their riderId (rider entity's primary key)
+   */
+  async getRiderWalletBalanceByRiderId(riderId: string): Promise<number> {
+    const rider = await this.riderRepository.findOne({ where: { id: riderId } });
+    if (!rider) {
+      this.logger.warn(`Rider not found for riderId: ${riderId}`);
+      throw new NotFoundException('Rider not found');
+    }
+    this.logger.log(`Rider wallet balance for riderId ${riderId}: ${rider.walletBalance}`);
     return Number(rider.walletBalance) || 0;
   }
 
@@ -562,7 +589,7 @@ export class WalletService {
 
     const currentBalance =
       ownerType === WalletOwnerType.RIDER
-        ? await this.getRiderWalletBalance(ownerId)
+        ? await this.getRiderWalletBalanceByRiderId(ownerId)
         : await this.getUserWalletBalance(ownerId);
 
     // Calculate time-based earnings

@@ -145,7 +145,7 @@ export default function MaintenanceScreen({ navigation }: Props) {
 
           <TouchableOpacity
             style={styles.signUpButton}
-            onPress={() => navigation.navigate('Signup')}
+            onPress={() => navigation.navigate('SignupRole')}
             activeOpacity={0.8}
           >
             <Text style={styles.signUpButtonText}>Sign Up</Text>

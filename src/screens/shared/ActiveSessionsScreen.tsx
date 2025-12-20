@@ -192,27 +192,28 @@ export default function ActiveSessionsScreen() {
     <View style={[styles.container, { backgroundColor: isDark ? colors.background : "#F2F2F7" }]}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
-      {/* Floating Back Button */}
-      <TouchableOpacity
-        style={[styles.floatingBackButton, { top: insets.top + 10, backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
-        onPress={() => navigation.goBack()}
-        activeOpacity={0.7}
-      >
-        <Ionicons name="chevron-back" size={28} color={colors.text} />
-      </TouchableOpacity>
+      {/* Fixed Header */}
+      <View style={[styles.header, { paddingTop: insets.top, backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
+        <TouchableOpacity
+          style={styles.headerBackButton}
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="chevron-back" size={28} color={colors.text} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Active Sessions</Text>
+        <View style={styles.headerRightPlaceholder} />
+      </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 70 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: 16 }]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#16A34A" />
         }
       >
-        {/* Page Title */}
-        <View style={styles.pageTitleSection}>
-          <Text style={[styles.pageTitle, { color: colors.text }]}>Active Sessions</Text>
-          <Text style={[styles.pageSubtitle, { color: colors.textSecondary }]}>Devices logged into your account</Text>
-        </View>
+        {/* Subtitle */}
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Devices logged into your account</Text>
 
         {/* Current Session */}
         {currentSession && (
@@ -326,6 +327,29 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+    paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(60, 60, 67, 0.18)',
+  },
+  headerBackButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 17,
+    fontFamily: FONTS.semiBold,
+    textAlign: 'center',
+  },
+  headerRightPlaceholder: {
+    width: 44,
+  },
   loadingContainer: {
     justifyContent: 'center',
     alignItems: 'center',
@@ -335,37 +359,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: FONTS.regular,
   },
-  floatingBackButton: {
-    position: "absolute",
-    left: 16,
-    zIndex: 10,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#FFFFFF",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
   scrollContent: {
     paddingHorizontal: 24,
   },
-  pageTitleSection: {
-    marginBottom: 32,
-  },
-  pageTitle: {
-    fontSize: 28,
-    marginBottom: 8,
-    fontFamily: FONTS.bold,
-  },
-  pageSubtitle: {
-    fontSize: 16,
+  subtitle: {
+    fontSize: 15,
     color: "#6B7280",
     fontFamily: FONTS.regular,
+    marginBottom: 20,
   },
   sessionItem: {
     flexDirection: "row",

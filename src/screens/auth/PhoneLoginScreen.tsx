@@ -4,14 +4,13 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  TextInput,
+  TextInput as RNTextInput,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   Alert,
   StatusBar,
   Animated,
-  Dimensions,
   Keyboard,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -19,53 +18,43 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AuthStackParamList } from '../../types';
 import { useTheme } from '../../context/ThemeContext';
-import { COLORS, SPACING, FONTS } from '../../constants/theme';
-import { triggerHaptic, triggerSuccessHaptic, triggerErrorHaptic } from '../../utils/haptics';
+import { COLORS, SPACING, FONT_SIZES, FONTS } from '../../constants/theme';
+import { triggerHaptic, triggerErrorHaptic } from '../../utils/haptics';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'PhoneLogin'>;
-
-const { width } = Dimensions.get('window');
 
 export default function PhoneLoginScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
   
   const [phone, setPhone] = useState('');
+  const [phoneFocused, setPhoneFocused] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
-  // Animation values
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
+  const phoneRef = useRef<RNTextInput>(null);
+  const phoneAnimValue = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.spring(slideAnim, {
-        toValue: 0,
-        tension: 50,
-        friction: 8,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    setTimeout(() => phoneRef.current?.focus(), 300);
   }, []);
 
+  useEffect(() => {
+    Animated.timing(phoneAnimValue, {
+      toValue: phoneFocused || phone ? 1 : 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  }, [phoneFocused, phone]);
+
   const formatPhoneNumber = (text: string) => {
-    // Remove all non-digit characters
     let cleaned = text.replace(/\D/g, '');
     
-    // If user enters full number starting with 234, remove the country code
     if (cleaned.startsWith('234') && cleaned.length > 10) {
       cleaned = '0' + cleaned.slice(3);
     }
     
-    // Limit to 11 digits (Nigerian format: 0XXX XXX XXXX)
     const limited = cleaned.slice(0, 11);
     
-    // Format: 0XXX XXX XXXX
     if (limited.length <= 4) {
       return limited;
     } else if (limited.length <= 7) {
@@ -83,19 +72,14 @@ export default function PhoneLoginScreen({ navigation }: Props) {
   const getCleanPhoneNumber = () => {
     const cleaned = phone.replace(/\D/g, '');
     
-    // Convert to international format (+234XXXXXXXXXX)
     if (cleaned.startsWith('0')) {
-      // User entered: 08012345678 → +2348012345678
       return '+234' + cleaned.slice(1);
     } else if (cleaned.startsWith('234')) {
-      // User entered: 2348012345678 → +2348012345678
       return '+' + cleaned;
     } else if (cleaned.length === 10) {
-      // User entered: 8012345678 (without leading 0) → +2348012345678
       return '+234' + cleaned;
     }
     
-    // Fallback: assume Nigerian number
     return '+234' + cleaned;
   };
 
@@ -113,7 +97,6 @@ export default function PhoneLoginScreen({ navigation }: Props) {
     triggerHaptic();
 
     try {
-      // Navigate to OTP screen with phone login mode
       const internationalPhone = getCleanPhoneNumber();
       navigation.navigate('OTPVerification', { 
         phone: internationalPhone,
@@ -127,114 +110,131 @@ export default function PhoneLoginScreen({ navigation }: Props) {
     }
   };
 
+  const createLabelStyle = (animValue: Animated.Value) => ({
+    position: 'absolute' as const,
+    left: 0,
+    top: animValue.interpolate({
+      inputRange: [0, 1],
+      outputRange: [20, -8],
+    }),
+    fontSize: animValue.interpolate({
+      inputRange: [0, 1],
+      outputRange: [16, 12],
+    }),
+    color: animValue.interpolate({
+      inputRange: [0, 1],
+      outputRange: [isDark ? '#9CA3AF' : '#6B7280', COLORS.primary],
+    }),
+    backgroundColor: isDark ? colors.background : '#F2F2F7',
+    paddingHorizontal: 4,
+    zIndex: 1,
+  });
+
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? colors.background : '#F9FAFB' }]}>
+    <View style={[styles.container, { backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
+        </TouchableOpacity>
+      </View>
+
       <KeyboardAvoidingView
+        style={styles.content}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
       >
         <ScrollView
-          contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 20 }]}
+          style={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
         >
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity
-              onPress={() => navigation.goBack()}
-              style={[styles.backButton, { backgroundColor: isDark ? '#1F2937' : '#FFFFFF' }]}
-            >
-              <Ionicons name="arrow-back" size={24} color={colors.text} />
-            </TouchableOpacity>
-          </View>
-
-          <Animated.View
-            style={[
-              styles.content,
-              {
-                opacity: fadeAnim,
-                transform: [{ translateY: slideAnim }],
-              },
-            ]}
-          >
-            {/* Icon */}
-            <View style={styles.iconContainer}>
-              <View style={[styles.iconCircle, { backgroundColor: '#DCFCE7' }]}>
-                <MaterialCommunityIcons name="phone-outline" size={40} color="#16A34A" />
-              </View>
-            </View>
-
-            {/* Title */}
-            <Text style={[styles.title, { color: colors.text }]}>Login with Phone</Text>
+          <View style={styles.titleContainer}>
+            <Text style={[styles.title, { color: colors.text }]}>
+              Login with Phone
+            </Text>
             <Text style={[styles.subtitle, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
               Enter your phone number and we'll send you a verification code
             </Text>
+          </View>
 
-            {/* Phone Input */}
-            <View style={styles.inputSection}>
-              <Text style={[styles.inputLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+          {/* Phone Input */}
+          <View style={styles.inputContainer}>
+            <View style={styles.inputWrapper}>
+              <Animated.Text style={[createLabelStyle(phoneAnimValue), styles.label]}>
                 Phone Number
-              </Text>
-              <View style={[
-                styles.phoneInputContainer,
-                { 
-                  backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
-                  borderColor: isDark ? '#374151' : '#E5E7EB',
-                }
-              ]}>
+              </Animated.Text>
+              <View style={styles.phoneInputRow}>
                 <View style={styles.countryCode}>
                   <Text style={styles.flag}>🇳🇬</Text>
                   <Text style={[styles.countryCodeText, { color: colors.text }]}>+234</Text>
                 </View>
-                <View style={[styles.dividerVertical, { backgroundColor: isDark ? '#374151' : '#E5E7EB' }]} />
-                <TextInput
+                <View style={[styles.phoneDivider, { backgroundColor: isDark ? '#374151' : '#E5E7EB' }]} />
+                <RNTextInput
+                  ref={phoneRef}
                   style={[styles.phoneInput, { color: colors.text }]}
-                  placeholder="0812 345 6789"
-                  placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
                   value={phone}
                   onChangeText={handlePhoneChange}
+                  onFocus={() => setPhoneFocused(true)}
+                  onBlur={() => setPhoneFocused(false)}
                   keyboardType="phone-pad"
                   maxLength={14}
-                  autoFocus
+                  placeholder=""
+                  placeholderTextColor="transparent"
                 />
               </View>
+              <MaterialCommunityIcons
+                name="phone-outline"
+                size={22}
+                color={phoneFocused ? COLORS.primary : isDark ? '#6B7280' : '#9CA3AF'}
+              />
             </View>
-
-            {/* Request OTP Button */}
-            <TouchableOpacity
+            <View
               style={[
-                styles.submitButton,
-                (!phone || phone.replace(/\D/g, '').length < 10) && styles.submitButtonDisabled,
+                styles.inputLine,
+                { backgroundColor: isDark ? '#374151' : '#E5E7EB' },
+                phoneFocused && styles.inputLineFocused,
               ]}
-              onPress={handleRequestOTP}
-              activeOpacity={0.8}
-              disabled={isLoading || phone.replace(/\D/g, '').length < 10}
-            >
-              <Text style={styles.submitButtonText}>
-                {isLoading ? 'Sending...' : 'Get Verification Code'}
-              </Text>
-              <Ionicons name="arrow-forward" size={20} color="#FFFFFF" style={styles.buttonIcon} />
-            </TouchableOpacity>
+            />
+          </View>
 
-            {/* Info */}
-            <View style={styles.infoSection}>
-              <Ionicons name="shield-checkmark" size={18} color="#16A34A" />
-              <Text style={[styles.infoText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                We'll send you a 6-digit code via SMS to verify your number
-              </Text>
-            </View>
+          {/* Info Note */}
+          <View style={[styles.infoContainer, { backgroundColor: isDark ? '#1E3A2F' : '#ECFDF5' }]}>
+            <Ionicons name="shield-checkmark" size={20} color={COLORS.primary} />
+            <Text style={[styles.infoText, { color: isDark ? '#86EFAC' : '#065F46' }]}>
+              We'll send you a 6-digit code via SMS to verify your number
+            </Text>
+          </View>
 
-            {/* Back to Email Login */}
-            <TouchableOpacity
-              onPress={() => navigation.goBack()}
-              style={styles.backToEmail}
-            >
-              <MaterialCommunityIcons name="email-outline" size={18} color="#16A34A" />
-              <Text style={styles.backToEmailText}>Login with Email instead</Text>
-            </TouchableOpacity>
-          </Animated.View>
+          {/* Continue Button */}
+          <TouchableOpacity
+            style={[
+              styles.continueButton,
+              { backgroundColor: COLORS.primary },
+              (phone.replace(/\D/g, '').length < 10) && styles.continueButtonDisabled,
+            ]}
+            onPress={handleRequestOTP}
+            disabled={isLoading || phone.replace(/\D/g, '').length < 10}
+          >
+            <Text style={styles.continueButtonText}>
+              {isLoading ? 'Sending...' : 'Get Verification Code'}
+            </Text>
+            {!isLoading && <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />}
+          </TouchableOpacity>
+
+          {/* Back to Email Login */}
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backToEmail}
+          >
+            <MaterialCommunityIcons name="email-outline" size={18} color={COLORS.primary} />
+            <Text style={styles.backToEmailText}>Login with Email instead</Text>
+          </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -245,73 +245,56 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingBottom: 40,
-  },
   header: {
-    marginBottom: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.lg,
+    paddingBottom: SPACING.md,
   },
   backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   content: {
     flex: 1,
-    alignItems: 'center',
   },
-  iconContainer: {
-    marginBottom: 24,
+  scrollContent: {
+    flex: 1,
+    paddingHorizontal: SPACING.lg,
   },
-  iconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+  titleContainer: {
+    marginBottom: SPACING.xl * 2,
+    marginTop: SPACING.xl,
   },
   title: {
     fontSize: 28,
     fontFamily: FONTS.bold,
-    marginBottom: 8,
-    textAlign: 'center',
+    marginBottom: SPACING.sm,
   },
   subtitle: {
-    fontSize: 15,
+    fontSize: FONT_SIZES.md,
     fontFamily: FONTS.regular,
-    textAlign: 'center',
     lineHeight: 22,
-    marginBottom: 32,
-    paddingHorizontal: 20,
   },
-  inputSection: {
-    width: '100%',
-    marginBottom: 24,
+  inputContainer: {
+    marginBottom: SPACING.xl,
   },
-  inputLabel: {
-    fontSize: 14,
-    fontFamily: FONTS.medium,
-    marginBottom: 8,
-  },
-  phoneInputContainer: {
+  inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1.5,
-    borderRadius: 12,
-    height: 56,
-    paddingHorizontal: 12,
+    paddingTop: 24,
+    paddingBottom: 12,
+  },
+  label: {
+    fontFamily: FONTS.medium,
+  },
+  phoneInputRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   countryCode: {
     flexDirection: 'row',
@@ -319,14 +302,14 @@ const styles = StyleSheet.create({
     paddingRight: 12,
   },
   flag: {
-    fontSize: 20,
+    fontSize: 18,
     marginRight: 6,
   },
   countryCodeText: {
     fontSize: 16,
     fontFamily: FONTS.medium,
   },
-  dividerVertical: {
+  phoneDivider: {
     width: 1,
     height: 24,
     marginRight: 12,
@@ -336,55 +319,56 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontFamily: FONTS.medium,
     letterSpacing: 1,
+    paddingVertical: 8,
   },
-  submitButton: {
-    width: '100%',
-    height: 54,
-    backgroundColor: '#16A34A',
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#16A34A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+  inputLine: {
+    height: 1,
   },
-  submitButtonDisabled: {
-    backgroundColor: '#9CA3AF',
-    shadowOpacity: 0,
+  inputLineFocused: {
+    height: 2,
+    backgroundColor: COLORS.primary,
   },
-  submitButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontFamily: FONTS.semiBold,
-  },
-  buttonIcon: {
-    marginLeft: 8,
-  },
-  infoSection: {
+  infoContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginTop: 24,
-    paddingHorizontal: 16,
     gap: 10,
+    padding: SPACING.md,
+    borderRadius: 12,
+    marginBottom: SPACING.xl,
   },
   infoText: {
     flex: 1,
-    fontSize: 13,
+    fontSize: FONT_SIZES.sm,
     fontFamily: FONTS.regular,
-    lineHeight: 18,
+    lineHeight: 20,
+  },
+  continueButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 12,
+    gap: 8,
+    marginBottom: SPACING.xl,
+  },
+  continueButtonDisabled: {
+    opacity: 0.5,
+  },
+  continueButtonText: {
+    fontSize: FONT_SIZES.md,
+    fontFamily: FONTS.semiBold,
+    color: '#FFFFFF',
   },
   backToEmail: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 32,
+    justifyContent: 'center',
     gap: 8,
+    marginTop: SPACING.md,
   },
   backToEmailText: {
-    color: '#16A34A',
-    fontSize: 15,
+    color: COLORS.primary,
+    fontSize: FONT_SIZES.md,
     fontFamily: FONTS.medium,
   },
 });

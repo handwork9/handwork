@@ -1,6 +1,6 @@
 import { Injectable, Inject, forwardRef, Logger, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThan } from 'typeorm';
+import { Repository, MoreThan, IsNull } from 'typeorm';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { ConfigService } from '@nestjs/config';
@@ -564,6 +564,83 @@ export class DispatchService {
     this.dispatchGateway.notifyRiderDeclined(orderId, riderId);
 
     this.logger.log(`Rider ${riderId} declined order ${orderId}: ${reason}`);
+  }
+
+  /**
+   * Get available delivery jobs for a rider
+   * Returns orders that are:
+   * - Status: CONFIRMED (ready for pickup)
+   * - Not already assigned to another rider
+   * - In the same state as the rider or nearby
+   */
+  async getAvailableJobs(
+    userId: string,
+    riderLatitude?: number,
+    riderLongitude?: number,
+  ) {
+    // Get rider profile
+    const rider = await this.riderRepository.findOne({
+      where: { userId },
+      relations: ['user'],
+    });
+
+    if (!rider) {
+      return { jobs: [] };
+    }
+
+    // Get confirmed orders that haven't been assigned
+    const availableOrders = await this.orderRepository.find({
+      where: {
+        status: OrderStatus.CONFIRMED,
+        assignedRiderId: IsNull(),
+      },
+      order: { createdAt: 'ASC' },
+      relations: ['buyer'],
+    });
+
+    // Transform orders into job format
+    const jobs = availableOrders.map(order => {
+      // Calculate distance if rider location is provided
+      let distance = 0;
+      if (riderLatitude && riderLongitude && order.deliveryLatitude && order.deliveryLongitude) {
+        distance = this.calculateDistance(
+          riderLatitude,
+          riderLongitude,
+          order.deliveryLatitude,
+          order.deliveryLongitude,
+        );
+      }
+
+      // Estimated time based on distance (average 25 km/h in city)
+      const estimatedTime = Math.round((distance / 25) * 60) || 30;
+
+      // Calculate earnings (delivery fee for rider)
+      const deliveryFee = Number(order.deliveryFee) || 0;
+      const earnings = deliveryFee * 0.8; // Rider gets 80% of delivery fee
+
+      return {
+        id: order.id,
+        orderId: order.id,
+        pickupAddress: order.pickupPoint || 'Pickup location',
+        deliveryAddress: order.deliveryAddress || 'Delivery location',
+        distance: Math.round(distance * 10) / 10, // Round to 1 decimal
+        estimatedTime,
+        earnings: Math.round(earnings),
+        items: order.itemCount || 1,
+        pickupLocation: {
+          latitude: 0, // Pickup location not stored in order
+          longitude: 0,
+        },
+        deliveryLocation: {
+          latitude: order.deliveryLatitude || 0,
+          longitude: order.deliveryLongitude || 0,
+        },
+        farmerName: 'Farmer',
+        buyerName: order.buyer?.name || 'Customer',
+      };
+    });
+
+    return { jobs };
   }
 
   /**

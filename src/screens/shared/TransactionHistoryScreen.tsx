@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,14 +10,19 @@ import {
   Animated,
   Platform,
   Dimensions,
+  Modal,
+  Pressable,
+  ActivityIndicator,
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { SPACING, FONT_SIZES, FONTS } from '../../constants/theme';
 import { formatCurrency } from '../../utils/formatters';
 import { TransactionHistoryIllustration } from '../../assets/illustrations/hero';
+import walletService, { WalletTransaction } from '../../services/walletService';
 
 const { width } = Dimensions.get('window');
 
@@ -35,6 +40,79 @@ interface Transaction {
 
 const FILTER_OPTIONS = ['All', 'Credit', 'Debit'];
 
+// Helper to format transaction date
+const formatTransactionDate = (dateString: string): string => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  
+  const timeStr = date.toLocaleTimeString('en-US', { 
+    hour: 'numeric', 
+    minute: '2-digit',
+    hour12: true 
+  });
+  
+  if (diffDays === 0) {
+    return `Today, ${timeStr}`;
+  } else if (diffDays === 1) {
+    return `Yesterday, ${timeStr}`;
+  } else if (diffDays < 7) {
+    const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+    return `${dayName}, ${timeStr}`;
+  } else {
+    const dateStr = date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric' 
+    });
+    return `${dateStr}, ${timeStr}`;
+  }
+};
+
+// Helper to map API transaction to display format
+const mapTransaction = (tx: any): Transaction => {
+  // Backend uses type: 'credit' | 'debit' directly
+  const isCredit = tx.type === 'credit';
+  
+  // Use category for title if available, otherwise use type
+  const categoryLabels: Record<string, string> = {
+    'order_earnings': 'Order Earnings',
+    'delivery_earnings': 'Delivery Earnings',
+    'commission_deduction': 'Commission',
+    'withdrawal': 'Withdrawal',
+    'refund': 'Refund',
+    'bonus': 'Bonus',
+    'penalty': 'Penalty',
+    'wallet_topup': 'Wallet Top-up',
+    'transfer': 'Transfer',
+    'subscription': 'Subscription',
+    'promotion': 'Promotion',
+    'purchase': 'Purchase',
+    'bill_payment': 'Bill Payment',
+    // Legacy types from frontend service
+    'top_up': 'Wallet Top-up',
+    'payment': 'Payment',
+    'cashback': 'Cashback',
+    'transfer_in': 'Transfer Received',
+    'transfer_out': 'Transfer Sent',
+    'premium': 'Premium Subscription',
+  };
+  
+  const title = categoryLabels[tx.category] || categoryLabels[tx.type] || (isCredit ? 'Credit' : 'Debit');
+  
+  return {
+    id: tx.id,
+    type: isCredit ? 'credit' : 'debit',
+    title,
+    description: tx.description || tx.reference || '',
+    amount: parseFloat(tx.amount) || 0,
+    date: formatTransactionDate(tx.createdAt),
+    icon: isCredit ? 'arrow-down' : 'arrow-up',
+    iconColor: isCredit ? '#16A34A' : '#EF4444',
+    iconBg: isCredit ? '#DCFCE7' : '#FEE2E2',
+  };
+};
+
 export default function TransactionHistoryScreen() {
   const { colors, isDark } = useTheme();
   const navigation = useNavigation();
@@ -42,11 +120,51 @@ export default function TransactionHistoryScreen() {
   const insets = useSafeAreaInsets();
   const scrollY = useRef(new Animated.Value(0)).current;
 
-  const { transactions = [] } = (route.params as { transactions: Transaction[] }) || {};
+  // Route params can optionally pass transactions
+  const routeTransactions = (route.params as { transactions?: Transaction[] })?.transactions;
 
+  const [transactions, setTransactions] = useState<Transaction[]>(routeTransactions || []);
+  const [isLoading, setIsLoading] = useState(!routeTransactions);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('All');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showFilterModal, setShowFilterModal] = useState(false);
+
+  // Fetch transactions from API
+  const fetchTransactions = useCallback(async () => {
+    try {
+      const response = await walletService.getTransactions({ limit: 100 });
+      console.log('[TransactionHistoryScreen] API response:', JSON.stringify(response));
+      
+      // Handle both { data: [...] } and direct array responses
+      const txList = Array.isArray(response) ? response : (response?.data || []);
+      
+      const mapped = txList.map(mapTransaction);
+      console.log('[TransactionHistoryScreen] Mapped transactions:', mapped.length);
+      setTransactions(mapped);
+    } catch (error) {
+      console.error('[TransactionHistoryScreen] Error fetching transactions:', error);
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  // Fetch on mount if no route params
+  useEffect(() => {
+    if (!routeTransactions) {
+      fetchTransactions();
+    }
+  }, [routeTransactions, fetchTransactions]);
+
+  // Refresh on focus
+  useFocusEffect(
+    useCallback(() => {
+      if (!routeTransactions) {
+        fetchTransactions();
+      }
+    }, [routeTransactions, fetchTransactions])
+  );
 
   // Dynamic styles based on theme
   const dynamicStyles = useMemo(() => ({
@@ -97,9 +215,7 @@ export default function TransactionHistoryScreen() {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    // Simulate refresh
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsRefreshing(false);
+    await fetchTransactions();
   };
 
   const renderTransactionItem = (transaction: Transaction, index: number, items: Transaction[]) => {
@@ -164,21 +280,23 @@ export default function TransactionHistoryScreen() {
     <View style={[styles.container, dynamicStyles.container]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       
-      {/* Floating Back Button */}
-      <TouchableOpacity
-        style={[styles.floatingBackButton, { top: insets.top + 10, backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
-        onPress={() => navigation.goBack()}
-        activeOpacity={0.7}
-        accessibilityLabel="Go back"
-      >
-        <Ionicons name="arrow-back" size={24} color={colors.text} />
-      </TouchableOpacity>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity
+          style={[styles.backButton, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.7}
+          accessibilityLabel="Go back"
+        >
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
+        </TouchableOpacity>
+      </View>
 
       <Animated.ScrollView
         style={styles.content}
         contentContainerStyle={[
           styles.contentContainer,
-          { paddingTop: insets.top + 60, paddingBottom: insets.bottom + 40 },
+          { paddingTop: 16, paddingBottom: insets.bottom + 40 },
         ]}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -190,94 +308,146 @@ export default function TransactionHistoryScreen() {
         )}
         scrollEventThrottle={16}
       >
-        {/* Hero Illustration */}
-        <View style={styles.heroIllustrationContainer}>
-          <TransactionHistoryIllustration size={100} />
+        {/* Page Title Section */}
+        <View style={styles.pageTitleSection}>
+          <Text style={[styles.pageTitle, { color: colors.text }]}>Transaction History</Text>
+          <Text style={[styles.pageSubtitle, { color: colors.textSecondary }]}>View all your wallet transactions</Text>
         </View>
-
-        {/* Section Header */}
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionHeaderTitle, dynamicStyles.text]}>Transaction History</Text>
-        </View>
-
-        {/* Search Bar */}
-        <View style={[styles.searchContainer, dynamicStyles.card]}>
-          <Ionicons name="search" size={20} color={colors.textSecondary} />
-          <TextInput
-            style={[styles.searchInput, dynamicStyles.text]}
-            placeholder="Search transactions..."
-            placeholderTextColor={colors.textSecondary}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <View style={[styles.clearButton, { backgroundColor: isDark ? colors.background : '#F3F4F6' }]}>
-                <Ionicons name="close" size={14} color={colors.textSecondary} />
+        {/* Hero Card */}
+        <View style={styles.heroCard}>
+          <LinearGradient
+            colors={['#059669', '#10B981', '#34D399']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.heroCardGradient}
+          >
+            {/* Decorative circles */}
+            <View style={styles.heroDecorCircle1} />
+            <View style={styles.heroDecorCircle2} />
+            <View style={styles.heroDecorCircle3} />
+            
+            {/* Header with illustration */}
+            <View style={styles.heroHeader}>
+              <View style={styles.heroTitleContainer}>
+                <Text style={styles.heroTitle}>Transaction Summary</Text>
+                <Text style={styles.heroSubtitle}>
+                  {transactions.length} transaction{transactions.length !== 1 ? 's' : ''} total
+                </Text>
               </View>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/* Stats Summary */}
-        <View style={[styles.statsCard, dynamicStyles.card]}>
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <View style={[styles.statIconContainer, { backgroundColor: '#DCFCE7' }]}>
-                <MaterialCommunityIcons name="arrow-down-circle-outline" size={22} color="#16A34A" />
-              </View>
-              <View>
-                <Text style={[styles.statLabel, dynamicStyles.textSecondary]}>Total Credit</Text>
-                <Text style={[styles.statValue, { color: '#16A34A' }]}>{formatCurrency(totalCredit ?? 0)}</Text>
+              <View style={styles.heroIllustration}>
+                <TransactionHistoryIllustration size={70} />
               </View>
             </View>
-            <View style={[styles.statDivider, { backgroundColor: 'rgba(60, 60, 67, 0.12)' }]} />
-            <View style={styles.statItem}>
-              <View style={[styles.statIconContainer, { backgroundColor: '#FEE2E2' }]}>
-                <MaterialCommunityIcons name="arrow-up-circle-outline" size={22} color="#EF4444" />
+            
+            {/* Summary Stats */}
+            <View style={styles.heroStats}>
+              <View style={styles.heroStatItem}>
+                <View style={styles.heroStatIconWrapper}>
+                  <View style={[styles.heroStatIcon, { backgroundColor: 'rgba(255,255,255,0.95)' }]}>
+                    <Ionicons name="trending-up" size={20} color="#059669" />
+                  </View>
+                </View>
+                <Text style={styles.heroStatLabel}>Total Income</Text>
+                <Text style={styles.heroStatValue}>
+                  +{formatCurrency(totalCredit)}
+                </Text>
               </View>
-              <View>
-                <Text style={[styles.statLabel, dynamicStyles.textSecondary]}>Total Debit</Text>
-                <Text style={[styles.statValue, { color: '#EF4444' }]}>{formatCurrency(totalDebit ?? 0)}</Text>
+              
+              <View style={styles.heroStatDivider} />
+              
+              <View style={styles.heroStatItem}>
+                <View style={styles.heroStatIconWrapper}>
+                  <View style={[styles.heroStatIcon, { backgroundColor: 'rgba(255,255,255,0.95)' }]}>
+                    <Ionicons name="trending-down" size={20} color="#EF4444" />
+                  </View>
+                </View>
+                <Text style={styles.heroStatLabel}>Total Expenses</Text>
+                <Text style={styles.heroStatValue}>
+                  -{formatCurrency(totalDebit)}
+                </Text>
               </View>
             </View>
-          </View>
+            
+            {/* Net Balance */}
+            <View style={styles.heroNetBalance}>
+              <Text style={styles.heroNetLabel}>Net Balance</Text>
+              <Text style={[styles.heroNetValue, { color: totalCredit - totalDebit >= 0 ? '#FFFFFF' : '#FEF2F2' }]}>
+                {totalCredit - totalDebit >= 0 ? '+' : ''}{formatCurrency(totalCredit - totalDebit)}
+              </Text>
+            </View>
+          </LinearGradient>
         </View>
 
-        {/* Filter Tabs */}
-        <View style={styles.filterSectionHeader}>
-          <Text style={[styles.filterSectionTitle, dynamicStyles.textSecondary]}>FILTER BY TYPE</Text>
-        </View>
-        <View style={[styles.filterCard, dynamicStyles.card]}>
-          <View style={styles.filterTabs}>
-            {FILTER_OPTIONS.map((filter) => {
-              const isSelected = selectedFilter === filter;
-              return (
-                <TouchableOpacity
-                  key={filter}
-                  style={[
-                    styles.filterTab,
-                    isSelected && styles.filterTabSelected,
-                  ]}
-                  onPress={() => setSelectedFilter(filter)}
-                >
-                  <Text
-                    style={[
-                      styles.filterTabText,
-                      dynamicStyles.text,
-                      isSelected && styles.filterTabTextSelected,
-                    ]}
-                  >
-                    {filter}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+        {/* Search Bar with Filter Button */}
+        <View style={styles.searchFilterRow}>
+          <View style={[styles.searchContainer, dynamicStyles.card, { flex: 1 }]}>
+            <Ionicons name="search" size={20} color={colors.textSecondary} />
+            <TextInput
+              style={[styles.searchInput, dynamicStyles.text]}
+              placeholder="Search transactions..."
+              placeholderTextColor={colors.textSecondary}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <View style={[styles.clearButton, { backgroundColor: isDark ? colors.background : '#F3F4F6' }]}>
+                  <Ionicons name="close" size={14} color={colors.textSecondary} />
+                </View>
+              </TouchableOpacity>
+            )}
           </View>
+          
+          <TouchableOpacity
+            style={[
+              styles.filterButton,
+              dynamicStyles.card,
+              selectedFilter !== 'All' && styles.filterButtonActive,
+            ]}
+            onPress={() => setShowFilterModal(true)}
+            activeOpacity={0.7}
+          >
+            <Ionicons 
+              name="filter" 
+              size={20} 
+              color={selectedFilter !== 'All' ? '#FFFFFF' : colors.text} 
+            />
+            {selectedFilter !== 'All' && (
+              <View style={styles.filterBadge}>
+                <Text style={styles.filterBadgeText}>1</Text>
+              </View>
+            )}
+          </TouchableOpacity>
         </View>
+        
+        {/* Active Filter Chip */}
+        {selectedFilter !== 'All' && (
+          <View style={styles.activeFilterContainer}>
+            <View style={[styles.activeFilterChip, { backgroundColor: selectedFilter === 'Credit' ? '#DCFCE7' : '#FEE2E2' }]}>
+              <Ionicons 
+                name={selectedFilter === 'Credit' ? 'arrow-down-circle' : 'arrow-up-circle'} 
+                size={16} 
+                color={selectedFilter === 'Credit' ? '#16A34A' : '#EF4444'} 
+              />
+              <Text style={[styles.activeFilterText, { color: selectedFilter === 'Credit' ? '#16A34A' : '#EF4444' }]}>
+                {selectedFilter} Only
+              </Text>
+              <TouchableOpacity onPress={() => setSelectedFilter('All')} style={styles.clearFilterBtn}>
+                <Ionicons name="close-circle" size={18} color={selectedFilter === 'Credit' ? '#16A34A' : '#EF4444'} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
 
         {/* Transactions List */}
-        {Object.keys(groupedTransactions).length > 0 ? (
+        {isLoading ? (
+          <View style={[styles.emptyCard, dynamicStyles.card]}>
+            <View style={styles.emptyContainer}>
+              <ActivityIndicator size="large" color="#16A34A" />
+              <Text style={[styles.emptyTitle, dynamicStyles.text, { marginTop: SPACING.md }]}>Loading Transactions...</Text>
+            </View>
+          </View>
+        ) : Object.keys(groupedTransactions).length > 0 ? (
           Object.entries(groupedTransactions).map(([date, items]) => (
             <View key={date}>
               <View style={styles.dateSectionHeader}>
@@ -306,6 +476,123 @@ export default function TransactionHistoryScreen() {
           </View>
         )}
       </Animated.ScrollView>
+      
+      {/* Filter Modal */}
+      <Modal
+        visible={showFilterModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowFilterModal(false)}
+      >
+        <Pressable 
+          style={styles.modalOverlay} 
+          onPress={() => setShowFilterModal(false)}
+        >
+          <Pressable style={[styles.modalContent, dynamicStyles.card]} onPress={(e) => e.stopPropagation()}>
+            {/* Modal Handle */}
+            <View style={styles.modalHandle} />
+            
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, dynamicStyles.text]}>Filter by Type</Text>
+              <TouchableOpacity 
+                style={styles.modalCloseBtn} 
+                onPress={() => setShowFilterModal(false)}
+              >
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+            
+            {/* Filter Options */}
+            <View style={styles.modalOptions}>
+              {FILTER_OPTIONS.map((filter) => {
+                const isSelected = selectedFilter === filter;
+                const getFilterIcon = () => {
+                  switch (filter) {
+                    case 'Credit': return 'arrow-down-circle';
+                    case 'Debit': return 'arrow-up-circle';
+                    default: return 'swap-horizontal-outline';
+                  }
+                };
+                const getFilterColor = () => {
+                  if (!isSelected) return colors.textSecondary;
+                  switch (filter) {
+                    case 'Credit': return '#16A34A';
+                    case 'Debit': return '#EF4444';
+                    default: return '#16A34A';
+                  }
+                };
+                return (
+                  <TouchableOpacity
+                    key={filter}
+                    style={[
+                      styles.modalOption,
+                      { backgroundColor: isDark ? '#3C3C3E' : '#F9FAFB' },
+                      isSelected && {
+                        backgroundColor: filter === 'Credit' ? '#DCFCE7' : filter === 'Debit' ? '#FEE2E2' : '#DCFCE7',
+                        borderColor: getFilterColor(),
+                        borderWidth: 2,
+                      },
+                    ]}
+                    onPress={() => {
+                      setSelectedFilter(filter);
+                      setShowFilterModal(false);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[
+                      styles.modalOptionIcon, 
+                      { backgroundColor: isSelected ? getFilterColor() + '20' : isDark ? '#4A4A4C' : '#E5E7EB' }
+                    ]}>
+                      <Ionicons 
+                        name={getFilterIcon() as any} 
+                        size={24} 
+                        color={getFilterColor()} 
+                      />
+                    </View>
+                    <View style={styles.modalOptionContent}>
+                      <Text style={[
+                        styles.modalOptionTitle, 
+                        dynamicStyles.text,
+                        isSelected && { color: getFilterColor(), fontWeight: '700' }
+                      ]}>
+                        {filter === 'All' ? 'All Transactions' : `${filter} Only`}
+                      </Text>
+                      <Text style={[styles.modalOptionDesc, dynamicStyles.textSecondary]}>
+                        {filter === 'All' 
+                          ? 'Show all credit and debit transactions'
+                          : filter === 'Credit'
+                          ? 'Show only incoming transactions'
+                          : 'Show only outgoing transactions'
+                        }
+                      </Text>
+                    </View>
+                    {isSelected && (
+                      <View style={[styles.modalCheckmark, { backgroundColor: getFilterColor() }]}>
+                        <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            
+            {/* Reset Button */}
+            {selectedFilter !== 'All' && (
+              <TouchableOpacity
+                style={[styles.resetFilterBtn, { borderColor: isDark ? '#4A4A4C' : '#E5E7EB' }]}
+                onPress={() => {
+                  setSelectedFilter('All');
+                  setShowFilterModal(false);
+                }}
+              >
+                <Ionicons name="refresh" size={18} color={colors.textSecondary} />
+                <Text style={[styles.resetFilterText, dynamicStyles.textSecondary]}>Reset Filter</Text>
+              </TouchableOpacity>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -314,14 +601,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  floatingBackButton: {
-    position: 'absolute',
-    left: SPACING.md,
-    zIndex: 100,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF',
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingBottom: 8,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     ...Platform.select({
@@ -340,24 +629,183 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    paddingHorizontal: SPACING.md,
+    paddingHorizontal: 24,
   },
-  heroIllustrationContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: SPACING.md,
+  pageTitleSection: {
+    marginBottom: SPACING.xl,
   },
-  sectionHeader: {
-    marginBottom: SPACING.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(60, 60, 67, 0.12)',
-    paddingBottom: SPACING.sm,
-  },
-  sectionHeaderTitle: {
+  pageTitle: {
     fontSize: 28,
     fontFamily: FONTS.bold,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  pageSubtitle: {
+    fontSize: FONT_SIZES.md,
+    fontFamily: FONTS.regular,
+  },
+  heroCard: {
+    marginBottom: SPACING.lg,
+    borderRadius: 28,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#059669',
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.35,
+        shadowRadius: 20,
+      },
+      android: {
+        elevation: 12,
+      },
+    }),
+  },
+  heroCardGradient: {
+    padding: SPACING.xl,
+    paddingBottom: SPACING.lg,
+    borderRadius: 28,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  heroDecorCircle1: {
+    position: 'absolute',
+    top: -60,
+    right: -60,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  heroDecorCircle2: {
+    position: 'absolute',
+    bottom: -40,
+    left: -40,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  heroDecorCircle3: {
+    position: 'absolute',
+    top: 40,
+    left: 30,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  heroHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: SPACING.lg,
+  },
+  heroTitleContainer: {
+    flex: 1,
+  },
+  heroTitle: {
+    fontSize: 22,
+    fontFamily: FONTS.bold,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  heroSubtitle: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: FONTS.medium,
+    color: 'rgba(255,255,255,0.75)',
+  },
+  heroIllustration: {
+    marginLeft: SPACING.md,
+  },
+  heroStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 20,
+    padding: SPACING.lg,
+    marginBottom: SPACING.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  heroStatItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  heroStatIconWrapper: {
+    marginBottom: 8,
+  },
+  heroStatIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  heroStatLabel: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.75)',
+    fontFamily: FONTS.medium,
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  heroStatValue: {
+    fontSize: 20,
+    fontFamily: FONTS.bold,
     fontWeight: '800',
-    letterSpacing: -0.5,
+    color: '#FFFFFF',
+  },
+  heroStatDivider: {
+    width: 1,
+    height: 60,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    marginHorizontal: SPACING.md,
+  },
+  heroNetBalance: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: SPACING.md,
+  },
+  heroNetLabel: {
+    fontSize: FONT_SIZES.sm,
+    color: 'rgba(255,255,255,0.8)',
+    fontFamily: FONTS.semiBold,
+  },
+  heroNetValue: {
+    fontSize: 18,
+    fontFamily: FONTS.bold,
+    fontWeight: '700',
+  },
+  heroFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  heroFooterText: {
+    fontSize: FONT_SIZES.sm,
+    color: 'rgba(255,255,255,0.8)',
+    fontFamily: FONTS.medium,
+  },
+  searchFilterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: SPACING.md,
   },
   searchContainer: {
     flexDirection: 'row',
@@ -365,7 +813,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingHorizontal: SPACING.md,
     gap: 10,
-    marginBottom: SPACING.lg,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -377,6 +824,65 @@ const styles = StyleSheet.create({
         elevation: 2,
       },
     }),
+  },
+  filterButton: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  filterButtonActive: {
+    backgroundColor: '#16A34A',
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#EF4444',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterBadgeText: {
+    fontSize: 10,
+    fontFamily: FONTS.bold,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  activeFilterContainer: {
+    marginBottom: SPACING.lg,
+  },
+  activeFilterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    gap: 6,
+  },
+  activeFilterText: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: FONTS.semiBold,
+    fontWeight: '600',
+  },
+  clearFilterBtn: {
+    marginLeft: 2,
   },
   searchInput: {
     flex: 1,
@@ -417,13 +923,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-  statIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   statLabel: {
     fontSize: FONT_SIZES.xs,
     fontFamily: FONTS.medium,
@@ -439,55 +938,6 @@ const styles = StyleSheet.create({
     width: 1,
     height: 40,
     marginHorizontal: SPACING.md,
-  },
-  filterSectionHeader: {
-    marginBottom: SPACING.sm,
-    marginLeft: 4,
-  },
-  filterSectionTitle: {
-    fontSize: FONT_SIZES.xs,
-    fontFamily: FONTS.medium,
-    fontWeight: '600',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
-  filterCard: {
-    borderRadius: 16,
-    marginBottom: SPACING.lg,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
-  },
-  filterTabs: {
-    flexDirection: 'row',
-    padding: 8,
-    gap: 8,
-  },
-  filterTab: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center',
-    backgroundColor: 'transparent',
-  },
-  filterTabSelected: {
-    backgroundColor: '#16A34A',
-  },
-  filterTabText: {
-    fontSize: FONT_SIZES.sm,
-    fontFamily: FONTS.medium,
-    fontWeight: '600',
-  },
-  filterTabTextSelected: {
-    color: '#FFFFFF',
   },
   dateSectionHeader: {
     marginBottom: SPACING.sm,
@@ -609,5 +1059,112 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.regular,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingBottom: 40,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(60, 60, 67, 0.3)',
+    alignSelf: 'center',
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(60, 60, 67, 0.12)',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: FONTS.semiBold,
+    fontWeight: '600',
+  },
+  modalCloseBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalOptions: {
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.lg,
+    gap: 12,
+  },
+  modalOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SPACING.md,
+    borderRadius: 16,
+    gap: 14,
+  },
+  modalOptionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalOptionContent: {
+    flex: 1,
+  },
+  modalOptionTitle: {
+    fontSize: FONT_SIZES.md,
+    fontFamily: FONTS.semiBold,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  modalOptionDesc: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: FONTS.regular,
+  },
+  modalCheckmark: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  resetFilterBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: SPACING.lg,
+    marginHorizontal: SPACING.lg,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  resetFilterText: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: FONTS.medium,
+    fontWeight: '500',
   },
 });

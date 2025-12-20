@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, FONT_SIZES, FONTS } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
 import { notificationService } from '../../services/notificationService';
+import { useAppSelector } from '../../store';
 
 interface Notification {
   id: string;
@@ -116,6 +117,7 @@ export function NotificationDetailScreen() {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
   const { notification } = route.params;
+  const { user } = useAppSelector((state) => state.auth);
   
   const config = getNotificationConfig(notification.type);
   const dateInfo = formatDateTime(notification.createdAt);
@@ -219,18 +221,31 @@ export function NotificationDetailScreen() {
     );
   };
 
+  // Helper function to navigate to the appropriate order screen based on user role
+  const navigateToOrderScreen = (orderId: string) => {
+    if (user?.role === 'rider') {
+      // ActiveDelivery is a tab screen, navigate to the tab
+      (navigation as any).navigate('RiderTabs', { screen: 'ActiveDelivery' });
+    } else if (user?.role === 'farmer') {
+      (navigation as any).navigate('FarmerOrderDetail', { orderId });
+    } else {
+      // Default to buyer
+      (navigation as any).navigate('OrderTracking', { orderId });
+    }
+  };
+
   const handleAction = () => {
     switch (notification.type) {
       case 'order':
         if (notification.orderId) {
-          (navigation as any).navigate('OrderTracking', { orderId: notification.orderId });
+          navigateToOrderScreen(notification.orderId);
         } else {
           navigation.goBack();
         }
         break;
       case 'delivery':
         if (notification.orderId) {
-          (navigation as any).navigate('OrderTracking', { orderId: notification.orderId });
+          navigateToOrderScreen(notification.orderId);
         } else {
           navigation.goBack();
         }

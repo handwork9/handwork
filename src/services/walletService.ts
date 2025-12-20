@@ -196,9 +196,17 @@ export const walletService = {
    */
   async getBalance(): Promise<WalletBalance> {
     try {
-      const response = await apiClient.get<WalletBalance>('/wallet/balance');
-      return response;
+      console.log('[walletService] Fetching balance...');
+      const response = await apiClient.get<{ success: boolean; data: WalletBalance }>('/wallet/balance');
+      console.log('[walletService] Balance response:', JSON.stringify(response));
+      
+      // API returns {success: true, data: {...}}, extract the data
+      const balanceData = (response as any)?.data || response;
+      console.log('[walletService] Extracted balance data:', JSON.stringify(balanceData));
+      
+      return balanceData;
     } catch (error) {
+      console.error('[walletService] Error fetching balance:', error);
       // Mock data for development
       return {
         available: 15000,
@@ -218,11 +226,14 @@ export const walletService = {
     limit?: number;
   }): Promise<PaginatedResponse<WalletTransaction>> {
     try {
-      const response = await apiClient.get<PaginatedResponse<WalletTransaction>>(
+      const response = await apiClient.get<{ success: boolean; data: PaginatedResponse<WalletTransaction> } | PaginatedResponse<WalletTransaction>>(
         '/wallet/transactions',
         { params }
       );
-      return response;
+      // API wraps response in { success: true, data: {...} }
+      const result = (response as any)?.data || response;
+      console.log('[walletService] getTransactions result:', JSON.stringify(result));
+      return result;
     } catch (error) {
       // Mock data for development
       const now = new Date();

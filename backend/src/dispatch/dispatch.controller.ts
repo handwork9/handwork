@@ -7,6 +7,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Query,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -15,13 +16,15 @@ import {
   ApiBearerAuth,
   ApiParam,
   ApiBody,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { DispatchService, DispatchResult } from './dispatch.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { UserRole } from '../common/enums';
-import { DispatchLog } from '../database/entities';
+import { DispatchLog, User } from '../database/entities';
 
 @ApiTags('Dispatch')
 @ApiBearerAuth()
@@ -29,6 +32,27 @@ import { DispatchLog } from '../database/entities';
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class DispatchController {
   constructor(private readonly dispatchService: DispatchService) {}
+
+  @Get('available-jobs')
+  @Roles(UserRole.RIDER)
+  @ApiOperation({ summary: 'Get available delivery jobs for rider' })
+  @ApiQuery({ name: 'latitude', required: false, description: 'Rider latitude' })
+  @ApiQuery({ name: 'longitude', required: false, description: 'Rider longitude' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of available jobs',
+  })
+  async getAvailableJobs(
+    @CurrentUser() user: User,
+    @Query('latitude') latitude?: string,
+    @Query('longitude') longitude?: string,
+  ) {
+    return this.dispatchService.getAvailableJobs(
+      user.id,
+      latitude ? parseFloat(latitude) : undefined,
+      longitude ? parseFloat(longitude) : undefined,
+    );
+  }
 
   @Post('order/:orderId')
   @Roles(UserRole.ADMIN, UserRole.BUYER)

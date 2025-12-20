@@ -190,18 +190,26 @@ export default function WithdrawalHistoryScreen() {
     <View style={[styles.container, dynamicStyles.container]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       
-      {/* Floating Back Button */}
-      <TouchableOpacity
-        style={[styles.floatingBackButton, { top: insets.top + 10, backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
-        onPress={() => navigation.goBack()}
-        activeOpacity={0.7}
-        accessibilityLabel="Go back"
-      >
-        <Ionicons name="arrow-back" size={24} color={colors.text} />
-      </TouchableOpacity>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity
+          style={[styles.backButton, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.7}
+          accessibilityLabel="Go back"
+        >
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Page Title Section */}
+      <View style={[styles.pageTitleSection, { marginTop: 16 }]}>
+        <Text style={[styles.pageTitle, { color: colors.text }]}>Withdrawal History</Text>
+        <Text style={[styles.pageSubtitle, { color: colors.textSecondary }]}>View all your withdrawal requests</Text>
+      </View>
 
       {/* Filter Tabs */}
-      <View style={[styles.filterContainer, { marginTop: insets.top + 64 }]}>
+      <View style={styles.filterContainer}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -355,14 +363,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  floatingBackButton: {
-    position: 'absolute',
-    left: SPACING.md,
-    zIndex: 100,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF',
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingBottom: 8,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     ...Platform.select({
@@ -376,6 +386,20 @@ const styles = StyleSheet.create({
         elevation: 4,
       },
     }),
+  },
+  pageTitleSection: {
+    paddingHorizontal: 24,
+    marginBottom: SPACING.md,
+  },
+  pageTitle: {
+    fontSize: 28,
+    fontFamily: FONTS.bold,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  pageSubtitle: {
+    fontSize: FONT_SIZES.md,
+    fontFamily: FONTS.regular,
   },
   filterContainer: {
     marginHorizontal: SPACING.md,

@@ -665,16 +665,18 @@ export default function PaymentMethodsScreen() {
     <View style={[styles.container, { backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       
-      {/* Floating Back Button */}
-      <TouchableOpacity
-        style={[styles.floatingBackButton, { top: insets.top + 10, backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
-        onPress={() => navigation.goBack()}
-      >
-        <Ionicons name="arrow-back" size={24} color={colors.text} />
-      </TouchableOpacity>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
+        <TouchableOpacity
+          style={[styles.backButton, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={20} color={colors.text} />
+        </TouchableOpacity>
+      </View>
 
       {/* Page Title */}
-      <View style={[styles.pageTitleContainer, { marginTop: insets.top + 70 }]}>
+      <View style={styles.pageTitleContainer}>
         <Text style={[styles.pageTitle, { color: colors.text }]}>Payment Methods</Text>
         <Text style={[styles.pageSubtitle, { color: colors.textSecondary }]}>
           Manage your payment options
@@ -798,22 +800,22 @@ export default function PaymentMethodsScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={[styles.modalContainer, { backgroundColor: isDark ? colors.background : '#F2F2F7' }]}
         >
-          {/* Floating Cancel Button */}
-          <TouchableOpacity 
-            style={[styles.modalFloatingCancel, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
-            onPress={() => { setShowAddModal(false); resetForm(); }}
-          >
-            <Ionicons name="close" size={24} color={colors.text} />
-          </TouchableOpacity>
-
-          {/* Floating Add Button */}
-          <TouchableOpacity 
-            style={styles.modalFloatingSave}
-            onPress={selectedType === 'card' ? handleAddCard : handleAddBank}
-          >
-            <Ionicons name="checkmark" size={20} color="#FFFFFF" />
-            <Text style={styles.modalFloatingSaveText}>Add</Text>
-          </TouchableOpacity>
+          {/* Modal Header */}
+          <View style={[styles.modalHeader, { paddingTop: insets.top + 10 }]}>
+            <TouchableOpacity 
+              style={[styles.modalBackButton, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
+              onPress={() => { setShowAddModal(false); resetForm(); }}
+            >
+              <Ionicons name="close" size={20} color={colors.text} />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.modalSaveButton}
+              onPress={selectedType === 'card' ? handleAddCard : handleAddBank}
+            >
+              <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+              <Text style={styles.modalSaveButtonText}>Add</Text>
+            </TouchableOpacity>
+          </View>
 
           {/* Modal Title */}
           <View style={styles.modalTitleContainer}>
@@ -1270,16 +1272,18 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  floatingBackButton: {
-    position: 'absolute',
-    left: 16,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF',
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -1551,48 +1555,45 @@ const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
   },
-  modalFloatingCancel: {
-    position: 'absolute',
-    left: 16,
-    top: 16,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF',
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  modalBackButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
   },
-  modalFloatingSave: {
-    position: 'absolute',
-    right: 16,
-    top: 16,
+  modalSaveButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#16A34A',
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 22,
+    borderRadius: 20,
     gap: 6,
-    zIndex: 10,
     shadowColor: '#16A34A',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
   },
-  modalFloatingSaveText: {
+  modalSaveButtonText: {
     color: '#FFFFFF',
     fontSize: 15,
     fontFamily: FONTS.semiBold,
   },
   modalTitleContainer: {
-    paddingTop: 80,
     paddingHorizontal: 20,
     marginBottom: 24,
   },

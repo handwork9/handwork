@@ -52,13 +52,25 @@ export default function WalletScreen() {
   const loadWalletData = async () => {
     try {
       const walletBalance = await walletService.getBalance();
+      console.log('[WalletScreen] Raw balance response:', JSON.stringify(walletBalance));
+      
       // Handle different response structures: { available } or { balance }
-      const availableBalance = (walletBalance as any)?.available ?? (walletBalance as any)?.balance ?? 0;
+      // Also handle decimal strings from PostgreSQL
+      let availableBalance = (walletBalance as any)?.available ?? (walletBalance as any)?.balance ?? 0;
+      if (typeof availableBalance === 'string') {
+        availableBalance = parseFloat(availableBalance) || 0;
+      }
+      console.log('[WalletScreen] Parsed balance:', availableBalance);
       setBalance(availableBalance);
       
       const txHistory = await walletService.getTransactions({ page: 1, limit: 5 });
+      console.log('[WalletScreen] Raw txHistory response:', JSON.stringify(txHistory));
       // Backend returns PaginatedResponseDto with 'data' property
-      const transactionData = Array.isArray((txHistory as any)?.data) ? (txHistory as any).data : [];
+      // After walletService extraction: { data: [...], total, page, ... }
+      const transactionData = Array.isArray((txHistory as any)?.data) ? (txHistory as any).data : 
+                              Array.isArray(txHistory) ? txHistory : [];
+      console.log('[WalletScreen] transactionData:', JSON.stringify(transactionData));
+      console.log('[WalletScreen] transactionData length:', transactionData.length);
       setTransactions(transactionData.map((tx: any) => ({
         id: tx.id || String(Math.random()),
         type: tx.type === 'credit' ? 'credit' : 'debit', // Backend uses 'credit' | 'debit' for type
@@ -68,7 +80,7 @@ export default function WalletScreen() {
         date: tx.createdAt ? new Date(tx.createdAt).toLocaleDateString() : new Date().toLocaleDateString(),
       })));
     } catch (error) {
-      console.error('Failed to load wallet data:', error);
+      console.error('[WalletScreen] Failed to load wallet data:', error);
       // Set defaults on error
       setBalance(0);
       setTransactions([]);
@@ -97,24 +109,26 @@ export default function WalletScreen() {
     <View style={[styles.container, dynamicStyles.container]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       
-      {/* Floating Back Button */}
-      <TouchableOpacity
-        style={[styles.floatingBackButton, { top: insets.top + 10, backgroundColor: isDark ? '#2C2C2E' : 'rgba(255, 255, 255, 0.9)' }]}
-        onPress={() => {
-          triggerHaptic();
-          navigation.goBack();
-        }}
-        activeOpacity={0.7}
-        accessibilityLabel="Go back"
-      >
-        <Ionicons name="arrow-back" size={24} color={colors.text} />
-      </TouchableOpacity>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity
+          style={[styles.backButton, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
+          onPress={() => {
+            triggerHaptic();
+            navigation.goBack();
+          }}
+          activeOpacity={0.7}
+          accessibilityLabel="Go back"
+        >
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
+        </TouchableOpacity>
+      </View>
 
       <Animated.ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingTop: insets.top + 60, paddingBottom: insets.bottom + 40 },
+          { paddingTop: 16, paddingBottom: insets.bottom + 40 },
         ]}
         refreshControl={
           <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={colors.primary} />
@@ -125,9 +139,10 @@ export default function WalletScreen() {
         )}
         scrollEventThrottle={16}
       >
-        {/* Section Header */}
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionHeaderTitle, dynamicStyles.text]}>My Wallet</Text>
+        {/* Page Title Section */}
+        <View style={styles.pageTitleSection}>
+          <Text style={[styles.pageTitle, { color: colors.text }]}>My Wallet</Text>
+          <Text style={[styles.pageSubtitle, { color: colors.textSecondary }]}>Manage your balance and transactions</Text>
         </View>
 
         {/* Balance Card */}
@@ -153,7 +168,12 @@ export default function WalletScreen() {
               style={styles.actionButton}
               onPress={() => {
                 triggerHaptic();
-                (navigation as any).navigate(action.screen);
+                // Pass balance to TopUp and Withdraw screens
+                if (action.screen === 'Withdraw' || action.screen === 'TopUp') {
+                  (navigation as any).navigate(action.screen, { balance });
+                } else {
+                  (navigation as any).navigate(action.screen);
+                }
               }}
               activeOpacity={0.8}
             >
@@ -252,39 +272,46 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F2F2F7',
   },
-  floatingBackButton: {
-    position: 'absolute',
-    left: 16,
-    zIndex: 10,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingBottom: 8,
+  },
+  backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    justifyContent: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 24,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    marginBottom: SPACING.lg,
-    paddingBottom: SPACING.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(60, 60, 67, 0.12)',
+  pageTitleSection: {
+    marginBottom: SPACING.xl,
   },
-  sectionHeaderTitle: {
-    fontSize: FONT_SIZES.lg,
-    fontWeight: '600',
-    fontFamily: FONTS.semiBold,
+  pageTitle: {
+    fontSize: 28,
+    fontFamily: FONTS.bold,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  pageSubtitle: {
+    fontSize: FONT_SIZES.md,
+    fontFamily: FONTS.regular,
   },
   balanceCard: {
     backgroundColor: '#FFFFFF',

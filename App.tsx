@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, LogBox, View, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -23,6 +23,7 @@ import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { loadAddresses } from './src/store/slices/addressSlice';
 import { PersistGate } from 'redux-persist/integration/react';
 import { ActivityIndicator } from 'react-native';
+import { AnimatedSplashScreen } from './src/components/common/AnimatedSplashScreen';
 
 // Initialize i18n
 import './src/i18n';
@@ -72,11 +73,17 @@ export default function App() {
     'Poppins-Bold': Poppins_700Bold,
   });
 
+  const [showSplash, setShowSplash] = useState(true);
+
   const onLayoutRootView = useCallback(async () => {
     if (fontsLoaded) {
       await SplashScreen.hideAsync();
     }
   }, [fontsLoaded]);
+
+  const handleSplashComplete = useCallback(() => {
+    setShowSplash(false);
+  }, []);
 
   if (!fontsLoaded) {
     return null;
@@ -90,6 +97,9 @@ export default function App() {
             <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY}>
               <ThemeProvider>
                 <AppContent />
+                {showSplash && (
+                  <AnimatedSplashScreen onAnimationComplete={handleSplashComplete} />
+                )}
               </ThemeProvider>
             </StripeProvider>
           </QueryClientProvider>

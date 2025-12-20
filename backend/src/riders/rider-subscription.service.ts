@@ -198,7 +198,7 @@ export class RiderSubscriptionService {
     if (paymentMethod === 'wallet') {
       try {
         // Check wallet balance first
-        const balance = await this.walletService.getRiderWalletBalance(riderId);
+        const balance = await this.walletService.getRiderWalletBalanceByRiderId(riderId);
         if (balance < price) {
           throw new BadRequestException(
             `Insufficient wallet balance. Required: ₦${price.toLocaleString()}, Available: ₦${balance.toLocaleString()}`

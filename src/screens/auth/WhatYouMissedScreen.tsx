@@ -370,7 +370,7 @@ export default function WhatYouMissedScreen({ navigation }: Props) {
         {/* CTA Button */}
         <TouchableOpacity
           style={styles.ctaButton}
-          onPress={() => navigation.navigate('Signup')}
+          onPress={() => navigation.navigate('SignupRole')}
         >
           <LinearGradient
             colors={['#16A34A', '#22C55E']}

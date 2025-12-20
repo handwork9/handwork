@@ -246,8 +246,11 @@ export const withdrawalService = {
    * Verify bank account details
    */
   async verifyAccount(data: VerifyAccountRequest): Promise<VerifyAccountResponse> {
-    const response = await apiClient.post<VerifyAccountResponse>('/bank-accounts/verify', data);
-    return response;
+    const response = await apiClient.post<{ success: boolean; data: VerifyAccountResponse } | VerifyAccountResponse>('/bank-accounts/verify', data);
+    // API wraps response in { success: true, data: {...} }
+    const result = (response as any)?.data || response;
+    console.log('[withdrawalService] verifyAccount result:', JSON.stringify(result));
+    return result;
   },
 
   /**

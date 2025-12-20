@@ -14,6 +14,9 @@ import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { OAuth2Client } from 'google-auth-library';
 import { User } from '../database/entities/user.entity';
+import { Rider } from '../database/entities/rider.entity';
+import { RiderGuarantor } from '../database/entities/rider-guarantor.entity';
+import { FarmerProfile } from '../database/entities/farmer-profile.entity';
 import { UsersService } from '../users/users.service';
 import { OtpService } from './otp.service';
 import { EmailService } from '../email/email.service';
@@ -22,7 +25,7 @@ import { SessionsService } from './sessions.service';
 import { DeviceType } from '../database/entities/session.entity';
 import { SignupDto, LoginDto, RefreshTokenDto, VerifyOtpDto, TwoFactorLoginDto, GoogleLoginDto } from './dto';
 import { JwtPayload, AuthTokens } from './interfaces';
-import { UserRole } from '../common/enums';
+import { UserRole, VehicleType } from '../common/enums';
 
 // Response type for login when 2FA is required
 export interface TwoFactorRequiredResponse {
@@ -48,6 +51,12 @@ export class AuthService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(Rider)
+    private readonly riderRepository: Repository<Rider>,
+    @InjectRepository(RiderGuarantor)
+    private readonly guarantorRepository: Repository<RiderGuarantor>,
+    @InjectRepository(FarmerProfile)
+    private readonly farmerProfileRepository: Repository<FarmerProfile>,
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
@@ -96,9 +105,18 @@ export class AuthService {
       state: dto.state,
       city: dto.city,
       address: dto.address,
+      nationality: dto.nationality,
+      nationalityCode: dto.nationalityCode,
     });
 
     await this.userRepository.save(user);
+
+    // Create role-specific profiles
+    if (dto.role === UserRole.RIDER) {
+      await this.createRiderProfile(user.id, dto);
+    } else if (dto.role === UserRole.FARMER) {
+      await this.createFarmerProfile(user.id, dto);
+    }
 
     // Setup Paystack customer and DVA for wallet top-up (async, don't block response)
     this.setupPaystackAccount(user).catch((err) => {
@@ -780,6 +798,81 @@ export class AuthService {
       });
     } catch {
       throw new UnauthorizedException('Invalid refresh token');
+    }
+  }
+
+  /**
+   * Create rider profile with bike details and guarantors
+   */
+  private async createRiderProfile(userId: string, dto: SignupDto): Promise<Rider> {
+    try {
+      // Create rider profile
+      const rider = this.riderRepository.create({
+        userId,
+        state: dto.state || '',
+        city: dto.city,
+        vehicleType: VehicleType.MOTORCYCLE,
+        vehicleModel: dto.bikeModel,
+        vehiclePlate: dto.plateNumber,
+        vehicleColor: dto.bikeColor,
+        licenseImage: dto.driversLicense,
+        isOnline: false,
+        isAvailable: false,
+      });
+
+      const savedRider = await this.riderRepository.save(rider);
+
+      // Create guarantors if provided
+      if (dto.guarantors && dto.guarantors.length > 0) {
+        const guarantors = dto.guarantors.map((g) =>
+          this.guarantorRepository.create({
+            riderId: savedRider.id,
+            name: g.name,
+            phone: g.phone,
+            occupation: g.occupation,
+            relationship: g.relationship,
+            address: g.address,
+            idImage: g.idDocument,
+          }),
+        );
+
+        await this.guarantorRepository.save(guarantors);
+      }
+
+      this.logger.log(`Rider profile created for user ${userId}`);
+      return savedRider;
+    } catch (error) {
+      this.logger.error(`Failed to create rider profile for user ${userId}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Create farmer profile with farm details and verification documents
+   */
+  private async createFarmerProfile(userId: string, dto: SignupDto): Promise<FarmerProfile> {
+    try {
+      const farmerProfile = this.farmerProfileRepository.create({
+        userId,
+        farmName: dto.farmName,
+        farmType: dto.farmType,
+        farmSize: dto.farmSize,
+        farmAddress: dto.address,
+        primaryProducts: dto.productCategories?.join(', '),
+        bankName: dto.bankName,
+        bankAccountNumber: dto.accountNumber,
+        bankAccountName: dto.accountName,
+        farmerId: dto.idDocument,
+        farmPhotos: dto.farmDocument,
+        businessRegistrationNumber: dto.cacDocument,
+      });
+
+      const savedProfile = await this.farmerProfileRepository.save(farmerProfile);
+      this.logger.log(`Farmer profile created for user ${userId}`);
+      return savedProfile;
+    } catch (error) {
+      this.logger.error(`Failed to create farmer profile for user ${userId}: ${error.message}`);
+      throw error;
     }
   }
 }

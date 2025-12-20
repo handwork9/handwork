@@ -146,39 +146,37 @@ export const authService = {
   /**
    * Send OTP to phone number
    */
-  async sendOTP(phone: string): Promise<ApiResponse<{ message: string }>> {
+  async sendOTP(phone: string): Promise<ApiResponse<{ otpId: string; expiresIn: number }>> {
     if (MOCK_MODE) {
       await delay(500);
       console.log(`[MOCK] OTP sent to ${phone}: 123456`);
       return {
         success: true,
-        data: { message: 'OTP sent successfully' },
+        data: { otpId: 'mock-otp-id', expiresIn: 300 },
       };
     }
-    return apiClient.post('/auth/send-otp', { phone });
+    return apiClient.post('/auth/otp/request', { phone });
   },
 
   /**
    * Verify OTP
    */
-  async verifyOTP(phone: string, otp: string): Promise<ApiResponse<{
-    verified: boolean;
-    token?: string;
+  async verifyOTP(otpId: string, code: string): Promise<ApiResponse<{
+    user?: User;
+    accessToken?: string;
+    refreshToken?: string;
   }>> {
     if (MOCK_MODE) {
       await delay(500);
       // Accept "123456" as valid OTP in mock mode
-      const isValid = otp === '123456';
+      const isValid = code === '123456';
       return {
         success: isValid,
-        data: {
-          verified: isValid,
-          token: isValid ? 'mock_verification_token' : undefined,
-        },
+        data: {},
         message: isValid ? 'OTP verified' : 'Invalid OTP',
       };
     }
-    return apiClient.post('/auth/verify-otp', { phone, otp });
+    return apiClient.post('/auth/otp/verify', { otpId, code });
   },
 
   /**

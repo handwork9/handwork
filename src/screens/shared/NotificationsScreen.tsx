@@ -16,12 +16,14 @@ import { COLORS, SPACING, FONT_SIZES, SHADOWS, FONTS } from '../../constants/the
 import { EmptyState } from '../../components/common';
 import { notificationService, Notification } from '../../services/notificationService';
 import { useTheme } from '../../context/ThemeContext';
+import { useAppSelector } from '../../store';
 
 export function NotificationsScreen() {
   const navigation = useNavigation();
   const queryClient = useQueryClient();
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
+  const { user } = useAppSelector((state) => state.auth);
 
   const {
     data,
@@ -102,11 +104,20 @@ export function NotificationsScreen() {
     }
     
     if (notification.orderId) {
-      (navigation as any).navigate('OrderTracking', { orderId: notification.orderId });
+      // Navigate based on user role
+      if (user?.role === 'rider') {
+        // ActiveDelivery is a tab screen, navigate to the tab
+        (navigation as any).navigate('RiderTabs', { screen: 'ActiveDelivery' });
+      } else if (user?.role === 'farmer') {
+        (navigation as any).navigate('FarmerOrderDetail', { orderId: notification.orderId });
+      } else {
+        // Default to buyer
+        (navigation as any).navigate('OrderTracking', { orderId: notification.orderId });
+      }
     } else {
       (navigation as any).navigate('NotificationDetail', { notification });
     }
-  }, [markAsReadMutation, navigation]);
+  }, [markAsReadMutation, navigation, user?.role]);
 
   const handleMarkAllAsRead = useCallback(() => {
     markAllAsReadMutation.mutate();

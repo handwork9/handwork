@@ -38,12 +38,17 @@ interface DvaDetails {
   message: string;
 }
 
-export default function TopUpScreen() {
+export default function TopUpScreen({ route }: { route?: { params?: { balance?: number } } }) {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
   
-  const [balance, setBalance] = useState<WalletBalance | null>(null);
+  // Get balance from route params if passed (e.g., from WalletScreen)
+  const initialBalance = route?.params?.balance ?? 0;
+  
+  const [balance, setBalance] = useState<WalletBalance | null>(
+    initialBalance > 0 ? { available: initialBalance, pending: 0, total: initialBalance, currency: 'NGN' } : null
+  );
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -94,9 +99,25 @@ export default function TopUpScreen() {
     try {
       setIsFetchingBalance(true);
       const walletBalance = await walletService.getBalance();
-      setBalance(walletBalance);
+      console.log('[TopUpScreen] Raw balance response:', JSON.stringify(walletBalance));
+      
+      // Handle decimal strings from PostgreSQL
+      const availableBalance = typeof walletBalance.available === 'string' 
+        ? parseFloat(walletBalance.available) 
+        : (walletBalance.available || 0);
+      
+      console.log('[TopUpScreen] Parsed balance:', availableBalance);
+      
+      // Use API balance, but keep route param balance if API returns 0
+      if (availableBalance > 0 || !initialBalance) {
+        setBalance({
+          ...walletBalance,
+          available: availableBalance,
+        });
+      }
     } catch (error) {
-      console.error('Failed to fetch balance:', error);
+      console.error('[TopUpScreen] Failed to fetch balance:', error);
+      // Keep initialBalance from route params on error
     } finally {
       setIsFetchingBalance(false);
     }
@@ -281,15 +302,17 @@ export default function TopUpScreen() {
     <View style={[styles.container, dynamicStyles.container]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       
-      {/* Floating Back Button */}
-      <TouchableOpacity
-        style={[styles.floatingBackButton, { top: insets.top + 10, backgroundColor: isDark ? '#2C2C2E' : 'rgba(255, 255, 255, 0.9)' }]}
-        onPress={() => navigation.goBack()}
-        activeOpacity={0.7}
-        accessibilityLabel="Go back"
-      >
-        <Ionicons name="arrow-back" size={24} color={colors.text} />
-      </TouchableOpacity>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity
+          style={[styles.backButton, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.7}
+          accessibilityLabel="Go back"
+        >
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
+        </TouchableOpacity>
+      </View>
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -299,7 +322,7 @@ export default function TopUpScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={[
             styles.scrollContent,
-            { paddingTop: insets.top + 60, paddingBottom: insets.bottom + 120 },
+            { paddingTop: 16, paddingBottom: insets.bottom + 120 },
           ]}
           onScroll={Animated.event(
             [{ nativeEvent: { contentOffset: { y: scrollY } } }],
@@ -307,9 +330,10 @@ export default function TopUpScreen() {
           )}
           scrollEventThrottle={16}
         >
-          {/* Section Header */}
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionHeaderTitle, dynamicStyles.text]}>Top Up Wallet</Text>
+          {/* Page Title Section */}
+          <View style={styles.pageTitleSection}>
+            <Text style={[styles.pageTitle, { color: colors.text }]}>Top Up Wallet</Text>
+            <Text style={[styles.pageSubtitle, { color: colors.textSecondary }]}>Add money to your wallet balance</Text>
           </View>
 
           {/* Current Balance Card */}
@@ -343,54 +367,38 @@ export default function TopUpScreen() {
             </View>
           </View>
 
-          {/* Custom Amount - Floating Label Style */}
-          <View style={styles.floatingInputContainer}>
-            <View style={styles.floatingInputRow}>
-              <View style={styles.floatingInputContent}>
-                <Animated.Text style={[{
-                  position: 'absolute',
-                  left: 0,
-                  top: customAmountAnimValue.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [16, -8],
-                  }),
-                  fontSize: customAmountAnimValue.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [16, 12],
-                  }),
-                  color: customAmountAnimValue.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [isDark ? '#9CA3AF' : '#6B7280', '#16A34A'],
-                  }),
-                  backgroundColor: isDark ? colors.background : '#F2F2F7',
-                  paddingHorizontal: 4,
-                  zIndex: 1,
-                  fontFamily: FONTS.regular,
-                }]}>
-                  Or enter custom amount
-                </Animated.Text>
-                <RNTextInput
-                  style={[styles.floatingInput, dynamicStyles.text]}
-                  placeholderTextColor="transparent"
-                  keyboardType="numeric"
-                  value={customAmount}
-                  onFocus={() => setCustomAmountFocused(true)}
-                  onBlur={() => setCustomAmountFocused(false)}
-                  onChangeText={(text) => {
-                    setCustomAmount(text.replace(/[^0-9]/g, ''));
-                    setSelectedAmount(null);
-                  }}
-                />
-              </View>
-              <View style={styles.floatingInputIcons}>
-                <MaterialCommunityIcons
-                  name="cash-plus"
-                  size={22}
-                  color={customAmountFocused ? '#16A34A' : isDark ? '#6B7280' : '#9CA3AF'}
-                />
+          {/* Custom Amount */}
+          <View style={styles.amountSectionHeader}>
+            <Text style={[styles.amountSectionTitle, dynamicStyles.textSecondary]}>OR ENTER AMOUNT</Text>
+          </View>
+          <View style={[styles.inputCard, dynamicStyles.card]}>
+            <View style={styles.floatingInputContainer}>
+              <View style={styles.floatingInputRow}>
+                <View style={styles.floatingInputContent}>
+                  <Text style={[styles.currencyPrefix, dynamicStyles.text]}>₦</Text>
+                  <RNTextInput
+                    style={[styles.floatingInput, dynamicStyles.text]}
+                    placeholder="0"
+                    placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
+                    keyboardType="numeric"
+                    value={customAmount}
+                    onFocus={() => setCustomAmountFocused(true)}
+                    onBlur={() => setCustomAmountFocused(false)}
+                    onChangeText={(text) => {
+                      setCustomAmount(text.replace(/[^0-9]/g, ''));
+                      setSelectedAmount(null);
+                    }}
+                  />
+                </View>
+                <View style={styles.floatingInputIcons}>
+                  <MaterialCommunityIcons
+                    name="cash-plus"
+                    size={22}
+                    color={customAmountFocused ? '#16A34A' : isDark ? '#6B7280' : '#9CA3AF'}
+                  />
+                </View>
               </View>
             </View>
-            <View style={[styles.floatingInputLine, (customAmountFocused || customAmount) && styles.floatingInputLineFocused]} />
           </View>
           <Text style={[styles.amountHint, dynamicStyles.textSecondary]}>
             Min: ₦{TOPUP_CONFIG.minAmount.toLocaleString()} • Max: ₦{TOPUP_CONFIG.maxAmount.toLocaleString()}
@@ -629,39 +637,46 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F2F2F7',
   },
-  floatingBackButton: {
-    position: 'absolute',
-    left: 16,
-    zIndex: 10,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingBottom: 8,
+  },
+  backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    justifyContent: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 24,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    marginBottom: SPACING.lg,
-    paddingBottom: SPACING.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(60, 60, 67, 0.12)',
+  pageTitleSection: {
+    marginBottom: SPACING.xl,
   },
-  sectionHeaderTitle: {
-    fontSize: FONT_SIZES.lg,
-    fontWeight: '600',
-    fontFamily: FONTS.semiBold,
+  pageTitle: {
+    fontSize: 28,
+    fontFamily: FONTS.bold,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  pageSubtitle: {
+    fontSize: FONT_SIZES.md,
+    fontFamily: FONTS.regular,
   },
   balanceCard: {
     backgroundColor: '#FFFFFF',
@@ -767,35 +782,43 @@ const styles = StyleSheet.create({
   presetAmountTextSelected: {
     color: '#16A34A',
   },
-  // Floating Label Input Styles
+  // Amount Input Card Styles
+  inputCard: {
+    borderRadius: 16,
+    marginBottom: SPACING.lg,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
   floatingInputContainer: {
-    marginBottom: 28,
+    padding: SPACING.md,
   },
   floatingInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 20,
-    paddingBottom: 12,
   },
   floatingInputContent: {
     flex: 1,
-    position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  currencyPrefix: {
+    fontSize: 28,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
+    marginRight: 4,
   },
   floatingInput: {
-    fontSize: 16,
+    flex: 1,
+    fontSize: 28,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
     paddingVertical: 8,
-    fontFamily: FONTS.regular,
   },
   floatingInputIcons: {
     marginLeft: 12,
-  },
-  floatingInputLine: {
-    height: 1,
-    backgroundColor: '#E5E7EB',
-  },
-  floatingInputLineFocused: {
-    height: 2,
-    backgroundColor: '#16A34A',
   },
   amountHint: {
     fontSize: 12,

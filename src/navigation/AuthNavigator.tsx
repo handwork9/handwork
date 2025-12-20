@@ -14,6 +14,23 @@ import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 import TwoFactorVerificationScreen from '../screens/auth/TwoFactorVerificationScreen';
 import PhoneLoginScreen from '../screens/auth/PhoneLoginScreen';
 
+// Multi-step Signup Screens
+import {
+  SignupRoleScreen,
+  SignupEmailScreen,
+  SignupPhoneScreen,
+  SignupPasswordScreen,
+  SignupPersonalInfoScreen,
+  SignupNationalityScreen,
+  SignupAddressScreen,
+  SignupAgreementScreen,
+  SignupBikeDetailsScreen,
+  SignupGuarantorsScreen,
+  SignupFarmDetailsScreen,
+  SignupFarmVerificationScreen,
+  SignupPaymentScreen,
+} from '../screens/auth/signup';
+
 const Stack = createNativeStackNavigator<AuthStackParamList>();
 
 export function AuthNavigator() {
@@ -34,6 +51,22 @@ export function AuthNavigator() {
       <Stack.Screen name="OTPVerification" component={OTPVerificationScreen} />
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
       <Stack.Screen name="TwoFactorVerification" component={TwoFactorVerificationScreen} />
+      
+      {/* Multi-step Signup Flow */}
+      <Stack.Screen name="SignupRole" component={SignupRoleScreen} />
+      <Stack.Screen name="SignupEmail" component={SignupEmailScreen} />
+      <Stack.Screen name="SignupPhone" component={SignupPhoneScreen} />
+      <Stack.Screen name="SignupPassword" component={SignupPasswordScreen} />
+      <Stack.Screen name="SignupPersonalInfo" component={SignupPersonalInfoScreen} />
+      <Stack.Screen name="SignupNationality" component={SignupNationalityScreen} />
+      <Stack.Screen name="SignupAddress" component={SignupAddressScreen} />
+      <Stack.Screen name="SignupAgreement" component={SignupAgreementScreen} />
+      {/* Role-specific Signup Screens */}
+      <Stack.Screen name="SignupBikeDetails" component={SignupBikeDetailsScreen} />
+      <Stack.Screen name="SignupGuarantors" component={SignupGuarantorsScreen} />
+      <Stack.Screen name="SignupFarmDetails" component={SignupFarmDetailsScreen} />
+      <Stack.Screen name="SignupFarmVerification" component={SignupFarmVerificationScreen} />
+      <Stack.Screen name="SignupPayment" component={SignupPaymentScreen} />
     </Stack.Navigator>
   );
 }

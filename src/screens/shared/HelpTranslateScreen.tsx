@@ -96,17 +96,21 @@ export default function HelpTranslateScreen() {
     <View style={[styles.container, { backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
-      {/* Normal Header */}
-      <View style={[styles.header, { paddingTop: insets.top, backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
-          style={styles.backButton}
+          style={[styles.backButton, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}
           activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
+          <Ionicons name="arrow-back" size={20} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Help Translate</Text>
-        <View style={styles.headerPlaceholder} />
+      </View>
+
+      {/* Page Title */}
+      <View style={styles.pageTitleSection}>
+        <Text style={[styles.pageTitle, { color: colors.text }]}>Help Translate</Text>
+        <Text style={[styles.pageSubtitle, { color: colors.textSecondary }]}>Help us reach more farmers</Text>
       </View>
 
       <ScrollView
@@ -306,11 +310,8 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(60, 60, 67, 0.12)',
+    paddingHorizontal: 20,
+    marginBottom: 20,
   },
   backButton: {
     width: 40,
@@ -318,18 +319,27 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    fontFamily: FONTS.semiBold,
+  pageTitleSection: {
+    paddingHorizontal: 20,
+    marginBottom: 24,
   },
-  headerPlaceholder: {
-    width: 40,
+  pageTitle: {
+    fontSize: 28,
+    fontFamily: FONTS.bold,
+  },
+  pageSubtitle: {
+    fontSize: 15,
+    marginTop: 4,
+    fontFamily: FONTS.regular,
   },
   scrollContent: {
     paddingHorizontal: 16,
-    paddingTop: 16,
   },
   heroCard: {
     borderRadius: 20,

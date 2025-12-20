@@ -130,24 +130,27 @@ export default function HelpCenterScreen() {
     <View style={[styles.container, { backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
-      {/* Floating Back Button */}
-      <TouchableOpacity
-        style={[styles.floatingBackButton, { top: insets.top + 10, backgroundColor: isDark ? colors.card : '#FFFFFF' }]}
-        onPress={() => navigation.goBack()}
-        activeOpacity={0.7}
-      >
-        <Ionicons name="chevron-back" size={28} color={colors.text} />
-      </TouchableOpacity>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
+        <TouchableOpacity
+          style={[styles.backButton, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="arrow-back" size={20} color={colors.text} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Page Title */}
+      <View style={styles.pageTitleSection}>
+        <Text style={[styles.pageTitle, { color: colors.text }]}>Help Center</Text>
+        <Text style={[styles.pageSubtitle, { color: colors.textSecondary }]}>How can we help you today?</Text>
+      </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 70 }]}
+        contentContainerStyle={styles.scrollContent}
       >
-        {/* Page Title */}
-        <View style={styles.pageTitleSection}>
-          <Text style={[styles.pageTitle, { color: colors.text }]}>Help Center</Text>
-          <Text style={styles.pageSubtitle}>How can we help you today?</Text>
-        </View>
 
         {/* Search */}
         <View style={[styles.searchContainer, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
@@ -325,14 +328,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  floatingBackButton: {
-    position: 'absolute',
-    left: 16,
-    zIndex: 10,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF',
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -345,6 +350,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   pageTitleSection: {
+    paddingHorizontal: 24,
     marginBottom: 24,
   },
   pageTitle: {

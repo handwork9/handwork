@@ -21,7 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AuthStackParamList } from '../../types';
 import { authService } from '../../services/authService';
 import { useTheme } from '../../context/ThemeContext';
-import { FONTS } from '../../constants/theme';
+import { COLORS, SPACING, FONT_SIZES, FONTS } from '../../constants/theme';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'ForgotPassword'>;
 
@@ -43,184 +43,6 @@ const passwordSchema = yup.object({
 type EmailFormData = yup.InferType<typeof emailSchema>;
 type PasswordFormData = yup.InferType<typeof passwordSchema>;
 
-// FloatingInput Component
-interface FloatingInputProps {
-  label: string;
-  value: string;
-  onChangeText: (text: string) => void;
-  onBlur?: () => void;
-  icon?: string;
-  error?: string;
-  keyboardType?: 'default' | 'email-address' | 'numeric' | 'phone-pad';
-  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
-  secureTextEntry?: boolean;
-}
-
-const FloatingInput: React.FC<FloatingInputProps & { isDark?: boolean; colors?: any }> = ({
-  label,
-  value,
-  onChangeText,
-  onBlur,
-  icon,
-  error,
-  keyboardType = 'default',
-  autoCapitalize = 'sentences',
-  secureTextEntry = false,
-  isDark = false,
-  colors,
-}) => {
-  const [isFocused, setIsFocused] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const animatedValue = useRef(new Animated.Value(value ? 1 : 0)).current;
-
-  const handleFocus = () => {
-    setIsFocused(true);
-    Animated.timing(animatedValue, {
-      toValue: 1,
-      duration: 200,
-      useNativeDriver: false,
-    }).start();
-  };
-
-  const handleBlur = () => {
-    setIsFocused(false);
-    if (!value) {
-      Animated.timing(animatedValue, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: false,
-      }).start();
-    }
-    onBlur?.();
-  };
-
-  const labelTop = animatedValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: [16, -8],
-  });
-
-  const labelFontSize = animatedValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: [16, 12],
-  });
-
-  const labelColor = animatedValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: [isDark ? '#9CA3AF' : '#8E8E93', isFocused ? '#16A34A' : isDark ? '#9CA3AF' : '#6B7280'],
-  });
-
-  return (
-    <View style={floatingStyles.container}>
-      <View style={[floatingStyles.inputRow, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}>
-        <View style={floatingStyles.inputWrapper}>
-          {icon && (
-            <MaterialCommunityIcons
-              name={icon as any}
-              size={22}
-              color={isFocused ? '#16A34A' : isDark ? '#6B7280' : '#8E8E93'}
-              style={floatingStyles.icon}
-            />
-          )}
-          <View style={floatingStyles.inputContainer}>
-            <Animated.Text
-              style={[
-                floatingStyles.label,
-                {
-                  top: labelTop,
-                  fontSize: labelFontSize,
-                  color: labelColor,
-                  left: icon ? 0 : 0,
-                  backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF',
-                  paddingHorizontal: value || isFocused ? 4 : 0,
-                },
-              ]}
-            >
-              {label}
-            </Animated.Text>
-            <RNTextInput
-              style={[floatingStyles.input, { color: isDark ? '#F9FAFB' : '#1F2937' }]}
-              value={value}
-              onChangeText={onChangeText}
-              onFocus={handleFocus}
-              onBlur={handleBlur}
-              keyboardType={keyboardType}
-              autoCapitalize={autoCapitalize}
-              secureTextEntry={secureTextEntry && !showPassword}
-              placeholderTextColor="transparent"
-            />
-          </View>
-          {secureTextEntry && (
-            <TouchableOpacity
-              onPress={() => setShowPassword(!showPassword)}
-              style={floatingStyles.eyeIcon}
-            >
-              <Ionicons
-                name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                size={22}
-                color={isDark ? '#6B7280' : '#8E8E93'}
-              />
-            </TouchableOpacity>
-          )}
-        </View>
-        <View
-          style={[
-            floatingStyles.underline,
-            { backgroundColor: error ? '#EF4444' : isFocused ? '#16A34A' : isDark ? '#374151' : '#E5E7EB' },
-          ]}
-        />
-      </View>
-      {error && <Text style={floatingStyles.errorText}>{error}</Text>}
-    </View>
-  );
-};
-
-const floatingStyles = StyleSheet.create({
-  container: {
-    marginBottom: 20,
-  },
-  inputRow: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  icon: {
-    marginRight: 10,
-  },
-  eyeIcon: {
-    padding: 4,
-  },
-  inputContainer: {
-    flex: 1,
-    position: 'relative',
-  },
-  label: {
-    position: 'absolute',
-    fontFamily: Platform.OS === 'ios' ? 'Avenir-Medium' : 'sans-serif',
-    zIndex: 1,
-  },
-  input: {
-    fontSize: 16,
-    color: '#1F2937',
-    paddingVertical: 16,
-    fontFamily: Platform.OS === 'ios' ? 'Avenir-Medium' : 'sans-serif',
-  },
-  underline: {
-    height: 1,
-    width: '100%',
-  },
-  errorText: {
-    color: '#EF4444',
-    fontSize: 12,
-    marginTop: 6,
-    marginLeft: 34,
-    fontFamily: Platform.OS === 'ios' ? 'Avenir-Medium' : 'sans-serif',
-  },
-});
-
 export default function ForgotPasswordScreen({ navigation }: Props) {
   const [step, setStep] = useState<'email' | 'otp' | 'password' | 'success'>('email');
   const [isLoading, setIsLoading] = useState(false);
@@ -228,7 +50,22 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
   const [otpId, setOtpId] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [countdown, setCountdown] = useState(0);
+  const [emailFocused, setEmailFocused] = useState(false);
+  const [newPasswordFocused, setNewPasswordFocused] = useState(false);
+  const [confirmPasswordFocused, setConfirmPasswordFocused] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
   const otpInputRefs = useRef<(RNTextInput | null)[]>([]);
+  const emailRef = useRef<RNTextInput>(null);
+  const newPasswordRef = useRef<RNTextInput>(null);
+  const confirmPasswordRef = useRef<RNTextInput>(null);
+  
+  const emailAnimValue = useRef(new Animated.Value(0)).current;
+  const newPasswordAnimValue = useRef(new Animated.Value(0)).current;
+  const confirmPasswordAnimValue = useRef(new Animated.Value(0)).current;
+  const progressAnim = useRef(new Animated.Value(0)).current;
+  
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
 
@@ -244,6 +81,47 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
     defaultValues: { newPassword: '', confirmPassword: '' },
   });
 
+  const emailValue = emailForm.watch('email');
+  const newPasswordValue = passwordForm.watch('newPassword');
+  const confirmPasswordValue = passwordForm.watch('confirmPassword');
+
+  useEffect(() => {
+    let targetProgress = 0;
+    if (step === 'email') targetProgress = 0.33;
+    else if (step === 'otp') targetProgress = 0.66;
+    else if (step === 'password') targetProgress = 1;
+    
+    Animated.timing(progressAnim, {
+      toValue: targetProgress,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+  }, [step]);
+
+  useEffect(() => {
+    Animated.timing(emailAnimValue, {
+      toValue: emailFocused || emailValue ? 1 : 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  }, [emailFocused, emailValue]);
+
+  useEffect(() => {
+    Animated.timing(newPasswordAnimValue, {
+      toValue: newPasswordFocused || newPasswordValue ? 1 : 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  }, [newPasswordFocused, newPasswordValue]);
+
+  useEffect(() => {
+    Animated.timing(confirmPasswordAnimValue, {
+      toValue: confirmPasswordFocused || confirmPasswordValue ? 1 : 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  }, [confirmPasswordFocused, confirmPasswordValue]);
+
   // Countdown timer for resend
   useEffect(() => {
     if (countdown > 0) {
@@ -251,6 +129,31 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
       return () => clearTimeout(timer);
     }
   }, [countdown]);
+
+  const createLabelStyle = (animValue: Animated.Value) => ({
+    position: 'absolute' as const,
+    left: 0,
+    top: animValue.interpolate({
+      inputRange: [0, 1],
+      outputRange: [20, -8],
+    }),
+    fontSize: animValue.interpolate({
+      inputRange: [0, 1],
+      outputRange: [16, 12],
+    }),
+    color: animValue.interpolate({
+      inputRange: [0, 1],
+      outputRange: [isDark ? '#9CA3AF' : '#6B7280', COLORS.primary],
+    }),
+    backgroundColor: isDark ? colors.background : '#F2F2F7',
+    paddingHorizontal: 4,
+    zIndex: 1,
+  });
+
+  const progressWidth = progressAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0%', '100%'],
+  });
 
   // Handle email submission
   const onSubmitEmail = async (data: EmailFormData) => {
@@ -275,7 +178,6 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
   // Handle OTP input
   const handleOtpChange = (index: number, value: string) => {
     if (value.length > 1) {
-      // Handle paste
       const digits = value.replace(/\D/g, '').slice(0, 6).split('');
       const newOtp = [...otp];
       digits.forEach((digit, i) => {
@@ -292,7 +194,6 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
     newOtp[index] = value.replace(/\D/g, '');
     setOtp(newOtp);
 
-    // Auto-focus next input
     if (value && index < 5) {
       otpInputRefs.current[index + 1]?.focus();
     }
@@ -326,7 +227,6 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
         Alert.alert('Error', response.message || 'Failed to reset password');
       }
     } catch (error: any) {
-      // Check if it's an invalid OTP error
       if (error.message?.toLowerCase().includes('otp') || error.message?.toLowerCase().includes('code')) {
         Alert.alert('Invalid Code', 'The verification code is incorrect or expired. Please try again.');
         setStep('otp');
@@ -358,53 +258,94 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
     }
   };
 
+  const getStepNumber = () => {
+    if (step === 'email') return 1;
+    if (step === 'otp') return 2;
+    if (step === 'password') return 3;
+    return 3;
+  };
+
   // Render Step 1: Email
   const renderEmailStep = () => (
     <>
-      <View style={styles.iconSection}>
-        <View style={[styles.iconContainer, { backgroundColor: isDark ? '#1A3D2B' : '#DCFCE7' }]}>
-          <MaterialCommunityIcons name="lock-reset" size={44} color="#16A34A" />
-        </View>
-        <Text style={[styles.title, { color: isDark ? '#F9FAFB' : '#1F2937' }]}>Forgot password?</Text>
+      <View style={styles.titleContainer}>
+        <Text style={[styles.title, { color: colors.text }]}>
+          Forgot password?
+        </Text>
         <Text style={[styles.subtitle, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
           No worries! Enter your email and we'll send you a verification code to reset your password.
         </Text>
       </View>
 
-      <View style={styles.formSection}>
+      <View style={styles.inputContainer}>
         <Controller
           control={emailForm.control}
           name="email"
           render={({ field: { onChange, onBlur, value } }) => (
-            <FloatingInput
-              label="Email Address"
-              value={value}
-              onChangeText={onChange}
-              onBlur={onBlur}
-              icon="email-outline"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              error={emailForm.formState.errors.email?.message}
-              isDark={isDark}
-              colors={colors}
-            />
+            <>
+              <View style={styles.inputWrapper}>
+                <Animated.Text style={[createLabelStyle(emailAnimValue), styles.label]}>
+                  Email Address
+                </Animated.Text>
+                <RNTextInput
+                  ref={emailRef}
+                  style={[styles.input, { color: colors.text }]}
+                  value={value}
+                  onChangeText={onChange}
+                  onFocus={() => setEmailFocused(true)}
+                  onBlur={() => {
+                    setEmailFocused(false);
+                    onBlur();
+                  }}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  placeholder=""
+                  placeholderTextColor="transparent"
+                  returnKeyType="done"
+                  onSubmitEditing={emailForm.handleSubmit(onSubmitEmail)}
+                />
+                <MaterialCommunityIcons
+                  name="email-outline"
+                  size={22}
+                  color={emailFocused ? COLORS.primary : isDark ? '#6B7280' : '#9CA3AF'}
+                />
+              </View>
+              <View
+                style={[
+                  styles.inputLine,
+                  { backgroundColor: isDark ? '#374151' : '#E5E7EB' },
+                  emailFocused && styles.inputLineFocused,
+                  emailForm.formState.errors.email && styles.inputLineError,
+                ]}
+              />
+              {emailForm.formState.errors.email && (
+                <Text style={styles.errorText}>{emailForm.formState.errors.email.message}</Text>
+              )}
+            </>
           )}
         />
       </View>
 
       <TouchableOpacity
-        style={[styles.submitButton, isLoading && styles.submitButtonDisabled]}
+        style={[
+          styles.continueButton,
+          { backgroundColor: COLORS.primary },
+          isLoading && styles.continueButtonDisabled,
+        ]}
         onPress={emailForm.handleSubmit(onSubmitEmail)}
-        activeOpacity={0.8}
         disabled={isLoading}
       >
-        <Text style={styles.submitButtonText}>
+        <Text style={styles.continueButtonText}>
           {isLoading ? 'Sending...' : 'Send Verification Code'}
         </Text>
+        {!isLoading && <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />}
       </TouchableOpacity>
 
       <View style={styles.footer}>
-        <Text style={[styles.footerText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>Remember your password? </Text>
+        <Text style={[styles.footerText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+          Remember your password?{' '}
+        </Text>
         <TouchableOpacity onPress={() => navigation.navigate('Login')}>
           <Text style={styles.footerLink}>Sign In</Text>
         </TouchableOpacity>
@@ -415,11 +356,10 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
   // Render Step 2: OTP
   const renderOtpStep = () => (
     <>
-      <View style={styles.iconSection}>
-        <View style={[styles.iconContainer, { backgroundColor: isDark ? '#1A3D2B' : '#DCFCE7' }]}>
-          <MaterialCommunityIcons name="email-check" size={44} color="#16A34A" />
-        </View>
-        <Text style={[styles.title, { color: isDark ? '#F9FAFB' : '#1F2937' }]}>Enter verification code</Text>
+      <View style={styles.titleContainer}>
+        <Text style={[styles.title, { color: colors.text }]}>
+          Enter verification code
+        </Text>
         <Text style={[styles.subtitle, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
           We sent a 6-digit code to{'\n'}
           <Text style={styles.emailHighlight}>{email}</Text>
@@ -433,8 +373,11 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
             ref={(ref) => { otpInputRefs.current[index] = ref; }}
             style={[
               styles.otpInput,
-              { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF', borderColor: isDark ? '#374151' : '#E5E7EB', color: isDark ? '#F9FAFB' : '#1F2937' },
-              digit && [styles.otpInputFilled, { backgroundColor: isDark ? '#1A3D2B' : '#F0FDF4' }],
+              { 
+                backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF', 
+                borderColor: digit ? COLORS.primary : isDark ? '#374151' : '#E5E7EB', 
+                color: colors.text 
+              },
             ]}
             value={digit}
             onChangeText={(value) => handleOtpChange(index, value)}
@@ -447,16 +390,22 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
       </View>
 
       <TouchableOpacity
-        style={[styles.submitButton, otp.join('').length !== 6 && styles.submitButtonDisabled]}
+        style={[
+          styles.continueButton,
+          { backgroundColor: COLORS.primary },
+          otp.join('').length !== 6 && styles.continueButtonDisabled,
+        ]}
         onPress={verifyOtp}
-        activeOpacity={0.8}
         disabled={otp.join('').length !== 6}
       >
-        <Text style={styles.submitButtonText}>Verify Code</Text>
+        <Text style={styles.continueButtonText}>Verify Code</Text>
+        <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
       </TouchableOpacity>
 
       <View style={styles.resendContainer}>
-        <Text style={[styles.resendText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>Didn't receive the code? </Text>
+        <Text style={[styles.resendText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+          Didn't receive the code?{' '}
+        </Text>
         <TouchableOpacity onPress={resendOtp} disabled={countdown > 0 || isLoading}>
           <Text style={[styles.resendLink, countdown > 0 && styles.resendLinkDisabled]}>
             {countdown > 0 ? `Resend in ${countdown}s` : 'Resend'}
@@ -472,7 +421,9 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
         }}
       >
         <Ionicons name="arrow-back" size={18} color={isDark ? '#9CA3AF' : '#6B7280'} />
-        <Text style={[styles.changeEmailText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>Change email address</Text>
+        <Text style={[styles.changeEmailText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+          Change email address
+        </Text>
       </TouchableOpacity>
     </>
   );
@@ -480,63 +431,132 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
   // Render Step 3: New Password
   const renderPasswordStep = () => (
     <>
-      <View style={styles.iconSection}>
-        <View style={[styles.iconContainer, { backgroundColor: isDark ? '#1A3D2B' : '#DCFCE7' }]}>
-          <MaterialCommunityIcons name="lock-check" size={44} color="#16A34A" />
-        </View>
-        <Text style={[styles.title, { color: isDark ? '#F9FAFB' : '#1F2937' }]}>Create new password</Text>
+      <View style={styles.titleContainer}>
+        <Text style={[styles.title, { color: colors.text }]}>
+          Create new password
+        </Text>
         <Text style={[styles.subtitle, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
           Your new password must be different from previously used passwords.
         </Text>
       </View>
 
-      <View style={styles.formSection}>
+      <View style={styles.inputContainer}>
         <Controller
           control={passwordForm.control}
           name="newPassword"
           render={({ field: { onChange, onBlur, value } }) => (
-            <FloatingInput
-              label="New Password"
-              value={value}
-              onChangeText={onChange}
-              onBlur={onBlur}
-              icon="lock-outline"
-              secureTextEntry
-              error={passwordForm.formState.errors.newPassword?.message}
-              isDark={isDark}
-              colors={colors}
-            />
+            <>
+              <View style={styles.inputWrapper}>
+                <Animated.Text style={[createLabelStyle(newPasswordAnimValue), styles.label]}>
+                  New Password
+                </Animated.Text>
+                <RNTextInput
+                  ref={newPasswordRef}
+                  style={[styles.input, { color: colors.text }]}
+                  value={value}
+                  onChangeText={onChange}
+                  onFocus={() => setNewPasswordFocused(true)}
+                  onBlur={() => {
+                    setNewPasswordFocused(false);
+                    onBlur();
+                  }}
+                  secureTextEntry={!showNewPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  placeholder=""
+                  placeholderTextColor="transparent"
+                  returnKeyType="next"
+                  onSubmitEditing={() => confirmPasswordRef.current?.focus()}
+                />
+                <TouchableOpacity onPress={() => setShowNewPassword(!showNewPassword)}>
+                  <Ionicons
+                    name={showNewPassword ? 'eye' : 'eye-off'}
+                    size={22}
+                    color={newPasswordFocused ? COLORS.primary : isDark ? '#6B7280' : '#9CA3AF'}
+                  />
+                </TouchableOpacity>
+              </View>
+              <View
+                style={[
+                  styles.inputLine,
+                  { backgroundColor: isDark ? '#374151' : '#E5E7EB' },
+                  newPasswordFocused && styles.inputLineFocused,
+                  passwordForm.formState.errors.newPassword && styles.inputLineError,
+                ]}
+              />
+              {passwordForm.formState.errors.newPassword && (
+                <Text style={styles.errorText}>{passwordForm.formState.errors.newPassword.message}</Text>
+              )}
+            </>
           )}
         />
+      </View>
 
+      <View style={styles.inputContainer}>
         <Controller
           control={passwordForm.control}
           name="confirmPassword"
           render={({ field: { onChange, onBlur, value } }) => (
-            <FloatingInput
-              label="Confirm Password"
-              value={value}
-              onChangeText={onChange}
-              onBlur={onBlur}
-              icon="lock-check-outline"
-              secureTextEntry
-              error={passwordForm.formState.errors.confirmPassword?.message}
-              isDark={isDark}
-              colors={colors}
-            />
+            <>
+              <View style={styles.inputWrapper}>
+                <Animated.Text style={[createLabelStyle(confirmPasswordAnimValue), styles.label]}>
+                  Confirm Password
+                </Animated.Text>
+                <RNTextInput
+                  ref={confirmPasswordRef}
+                  style={[styles.input, { color: colors.text }]}
+                  value={value}
+                  onChangeText={onChange}
+                  onFocus={() => setConfirmPasswordFocused(true)}
+                  onBlur={() => {
+                    setConfirmPasswordFocused(false);
+                    onBlur();
+                  }}
+                  secureTextEntry={!showConfirmPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  placeholder=""
+                  placeholderTextColor="transparent"
+                  returnKeyType="done"
+                  onSubmitEditing={passwordForm.handleSubmit(onSubmitPassword)}
+                />
+                <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+                  <Ionicons
+                    name={showConfirmPassword ? 'eye' : 'eye-off'}
+                    size={22}
+                    color={confirmPasswordFocused ? COLORS.primary : isDark ? '#6B7280' : '#9CA3AF'}
+                  />
+                </TouchableOpacity>
+              </View>
+              <View
+                style={[
+                  styles.inputLine,
+                  { backgroundColor: isDark ? '#374151' : '#E5E7EB' },
+                  confirmPasswordFocused && styles.inputLineFocused,
+                  passwordForm.formState.errors.confirmPassword && styles.inputLineError,
+                ]}
+              />
+              {passwordForm.formState.errors.confirmPassword && (
+                <Text style={styles.errorText}>{passwordForm.formState.errors.confirmPassword.message}</Text>
+              )}
+            </>
           )}
         />
       </View>
 
       <TouchableOpacity
-        style={[styles.submitButton, isLoading && styles.submitButtonDisabled]}
+        style={[
+          styles.continueButton,
+          { backgroundColor: COLORS.primary },
+          isLoading && styles.continueButtonDisabled,
+        ]}
         onPress={passwordForm.handleSubmit(onSubmitPassword)}
-        activeOpacity={0.8}
         disabled={isLoading}
       >
-        <Text style={styles.submitButtonText}>
+        <Text style={styles.continueButtonText}>
           {isLoading ? 'Resetting...' : 'Reset Password'}
         </Text>
+        {!isLoading && <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />}
       </TouchableOpacity>
     </>
   );
@@ -544,24 +564,21 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
   // Render Success
   const renderSuccess = () => (
     <View style={styles.successContent}>
-      <View style={styles.successIconContainer}>
-        <View style={[styles.successIconInner, { backgroundColor: isDark ? '#1A3D2B' : '#DCFCE7' }]}>
-          <Ionicons name="checkmark-circle" size={64} color="#16A34A" />
-        </View>
+      <View style={[styles.successIconContainer, { backgroundColor: isDark ? '#1E3A2F' : '#ECFDF5' }]}>
+        <Ionicons name="checkmark-circle" size={64} color={COLORS.primary} />
       </View>
 
-      <Text style={[styles.successTitle, { color: isDark ? '#F9FAFB' : '#1F2937' }]}>Password Reset!</Text>
+      <Text style={[styles.successTitle, { color: colors.text }]}>Password Reset!</Text>
       <Text style={[styles.successSubtitle, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
         Your password has been reset successfully. You can now log in with your new password.
       </Text>
 
       <TouchableOpacity
-        style={styles.primaryButton}
+        style={[styles.continueButton, { backgroundColor: COLORS.primary }]}
         onPress={() => navigation.navigate('Login')}
-        activeOpacity={0.8}
       >
-        <Ionicons name="log-in-outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-        <Text style={styles.primaryButtonText}>Back to Login</Text>
+        <Text style={styles.continueButtonText}>Back to Login</Text>
+        <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
       </TouchableOpacity>
     </View>
   );
@@ -581,40 +598,47 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
     <View style={[styles.container, { backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       
-      <TouchableOpacity
-        style={[styles.floatingBackButton, { top: insets.top + 10, backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
-        onPress={() => {
-          if (step === 'otp') {
-            setStep('email');
-            setOtp(['', '', '', '', '', '']);
-          } else if (step === 'password') {
-            setStep('otp');
-          } else {
-            navigation.goBack();
-          }
-        }}
-        activeOpacity={0.7}
-      >
-        <Ionicons name="chevron-back" size={28} color={isDark ? '#F9FAFB' : '#1F2937'} />
-      </TouchableOpacity>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => {
+            if (step === 'otp') {
+              setStep('email');
+              setOtp(['', '', '', '', '', '']);
+            } else if (step === 'password') {
+              setStep('otp');
+            } else {
+              navigation.goBack();
+            }
+          }}
+        >
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
+        </TouchableOpacity>
+        <Text style={[styles.stepIndicator, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+          Step {getStepNumber()} of 3
+        </Text>
+      </View>
 
-      {/* Step indicator */}
-      <View style={[styles.stepIndicator, { top: insets.top + 16 }]}>
-        <View style={[styles.stepDot, { backgroundColor: isDark ? '#374151' : '#E5E7EB' }, step !== 'email' && styles.stepDotCompleted]} />
-        <View style={[styles.stepLine, { backgroundColor: isDark ? '#374151' : '#E5E7EB' }, step !== 'email' && styles.stepLineActive]} />
-        <View style={[styles.stepDot, { backgroundColor: isDark ? '#374151' : '#E5E7EB' }, step === 'password' && styles.stepDotCompleted]} />
-        <View style={[styles.stepLine, { backgroundColor: isDark ? '#374151' : '#E5E7EB' }, step === 'password' && styles.stepLineActive]} />
-        <View style={[styles.stepDot, { backgroundColor: isDark ? '#374151' : '#E5E7EB' }]} />
+      {/* Progress Bar */}
+      <View style={[styles.progressContainer, { backgroundColor: isDark ? '#374151' : '#E5E7EB' }]}>
+        <Animated.View
+          style={[
+            styles.progressBar,
+            { width: progressWidth, backgroundColor: COLORS.primary },
+          ]}
+        />
       </View>
 
       <KeyboardAvoidingView
+        style={styles.content}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
       >
         <ScrollView
-          contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 80, paddingBottom: insets.bottom + 40 }]}
-          keyboardShouldPersistTaps="handled"
+          style={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
         >
           {step === 'email' && renderEmailStep()}
           {step === 'otp' && renderOtpStep()}
@@ -629,159 +653,154 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  floatingBackButton: {
-    position: 'absolute',
-    left: 16,
-    zIndex: 10,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  stepIndicator: {
-    position: 'absolute',
-    right: 24,
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    zIndex: 10,
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.lg,
+    paddingBottom: SPACING.md,
   },
-  stepDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#E5E7EB',
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  stepDotCompleted: {
-    backgroundColor: '#16A34A',
+  stepIndicator: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: FONTS.medium,
   },
-  stepLine: {
-    width: 20,
-    height: 2,
-    backgroundColor: '#E5E7EB',
-    marginHorizontal: 4,
+  progressContainer: {
+    height: 3,
+    marginHorizontal: SPACING.lg,
+    borderRadius: 1.5,
+    overflow: 'hidden',
   },
-  stepLineActive: {
-    backgroundColor: '#16A34A',
+  progressBar: {
+    height: '100%',
+    borderRadius: 1.5,
   },
-  keyboardView: {
+  content: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 24,
+    flex: 1,
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.xl * 2,
   },
-  iconSection: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  iconContainer: {
-    width: 88,
-    height: 88,
-    borderRadius: 24,
-    backgroundColor: '#DCFCE7',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
+  titleContainer: {
+    marginBottom: SPACING.xl * 2,
   },
   title: {
     fontSize: 28,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: 12,
-    fontFamily: Platform.OS === 'ios' ? 'Avenir-Heavy' : 'sans-serif-medium',
+    fontFamily: FONTS.bold,
+    marginBottom: SPACING.sm,
   },
   subtitle: {
-    fontSize: 15,
-    textAlign: 'center',
+    fontSize: FONT_SIZES.md,
+    fontFamily: FONTS.regular,
     lineHeight: 22,
-    color: '#6B7280',
-    paddingHorizontal: 16,
-    fontFamily: Platform.OS === 'ios' ? 'Avenir-Medium' : 'sans-serif',
   },
   emailHighlight: {
-    color: '#16A34A',
-    fontWeight: '600',
+    color: COLORS.primary,
+    fontFamily: FONTS.semiBold,
   },
-  formSection: {
-    marginBottom: 32,
+  inputContainer: {
+    marginBottom: SPACING.xl,
   },
-  submitButton: {
-    backgroundColor: '#16A34A',
-    borderRadius: 14,
-    paddingVertical: 16,
+  inputWrapper: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
-    shadowColor: '#16A34A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    paddingTop: 24,
+    paddingBottom: 12,
   },
-  submitButtonDisabled: {
-    opacity: 0.6,
+  label: {
+    fontFamily: FONTS.medium,
   },
-  submitButtonText: {
-    fontSize: 17,
-    fontWeight: '600',
+  input: {
+    flex: 1,
+    fontSize: 18,
+    fontFamily: FONTS.medium,
+    paddingVertical: 8,
+  },
+  inputLine: {
+    height: 1,
+  },
+  inputLineFocused: {
+    height: 2,
+    backgroundColor: COLORS.primary,
+  },
+  inputLineError: {
+    height: 2,
+    backgroundColor: '#EF4444',
+  },
+  errorText: {
+    fontSize: FONT_SIZES.sm,
+    color: '#EF4444',
+    marginTop: SPACING.xs,
+    fontFamily: FONTS.medium,
+  },
+  continueButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 12,
+    gap: 8,
+    marginBottom: SPACING.xl,
+  },
+  continueButtonDisabled: {
+    opacity: 0.5,
+  },
+  continueButtonText: {
+    fontSize: FONT_SIZES.md,
+    fontFamily: FONTS.semiBold,
     color: '#FFFFFF',
-    fontFamily: Platform.OS === 'ios' ? 'Avenir-Heavy' : 'sans-serif-medium',
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: SPACING.md,
   },
   footerText: {
-    fontSize: 15,
-    color: '#6B7280',
+    fontSize: FONT_SIZES.md,
     fontFamily: FONTS.regular,
   },
   footerLink: {
-    fontSize: 15,
-    color: '#16A34A',
-    fontFamily: FONTS.semiBold,
+    fontSize: FONT_SIZES.md,
+    color: COLORS.primary,
+    fontFamily: FONTS.bold,
   },
   // OTP styles
   otpContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 12,
-    marginBottom: 32,
+    marginBottom: SPACING.xl,
   },
   otpInput: {
     width: 48,
     height: 56,
     borderRadius: 12,
-    backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
-    borderColor: '#E5E7EB',
     fontSize: 24,
-    fontWeight: '600',
+    fontFamily: FONTS.bold,
     textAlign: 'center',
-    color: '#1F2937',
-  },
-  otpInputFilled: {
-    borderColor: '#16A34A',
-    backgroundColor: '#F0FDF4',
   },
   resendContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: SPACING.md,
   },
   resendText: {
-    fontSize: 14,
-    color: '#6B7280',
+    fontSize: FONT_SIZES.sm,
     fontFamily: FONTS.regular,
   },
   resendLink: {
-    fontSize: 14,
-    color: '#16A34A',
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.primary,
     fontFamily: FONTS.semiBold,
   },
   resendLinkDisabled: {
@@ -795,14 +814,13 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   changeEmailText: {
-    fontSize: 14,
-    color: '#6B7280',
+    fontSize: FONT_SIZES.sm,
     fontFamily: FONTS.regular,
   },
   // Success styles
   successWrapper: {
     flex: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: SPACING.lg,
   },
   successContent: {
     flex: 1,
@@ -810,48 +828,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   successIconContainer: {
-    marginBottom: 24,
-  },
-  successIconInner: {
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: '#DCFCE7',
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: SPACING.xl,
   },
   successTitle: {
     fontSize: 28,
-    color: '#1F2937',
-    marginBottom: 12,
     fontFamily: FONTS.bold,
+    marginBottom: SPACING.sm,
   },
   successSubtitle: {
-    fontSize: 15,
+    fontSize: FONT_SIZES.md,
     textAlign: 'center',
-    marginBottom: 40,
-    color: '#6B7280',
+    marginBottom: SPACING.xl * 2,
     lineHeight: 22,
-    paddingHorizontal: 24,
+    paddingHorizontal: SPACING.lg,
     fontFamily: FONTS.regular,
-  },
-  primaryButton: {
-    backgroundColor: '#16A34A',
-    borderRadius: 14,
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#16A34A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  primaryButtonText: {
-    fontSize: 17,
-    color: '#FFFFFF',
-    fontFamily: FONTS.semiBold,
   },
 });

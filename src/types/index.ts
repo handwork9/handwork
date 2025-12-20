@@ -469,6 +469,23 @@ export type AuthStackParamList = {
   OTPVerification: { phone: string; mode?: 'verify' | 'login' };
   ForgotPassword: undefined;
   TwoFactorVerification: { tempToken: string };
+  // Multi-step signup screens
+  SignupRole: undefined;
+  SignupEmail: { role: UserRole };
+  SignupPhone: { role: UserRole; email: string };
+  SignupPassword: { role: UserRole; email: string; phone: string };
+  SignupPersonalInfo: { role: UserRole; email: string; phone: string; password: string };
+  SignupNationality: { role: UserRole; email: string; phone: string; password: string; firstName: string; lastName: string };
+  SignupAddress: { role: UserRole; email: string; phone: string; password: string; firstName: string; lastName: string; nationality: string; nationalityCode: string };
+  SignupAgreement: { role: UserRole; email: string; phone: string; password: string; firstName: string; lastName: string; nationality: string; nationalityCode: string; state: string; city: string; address: string };
+  // Rider-specific screens
+  SignupBikeDetails: { role: UserRole; email: string; phone: string; password: string; firstName: string; lastName: string; nationality: string; nationalityCode: string; state: string; city: string; address: string };
+  SignupGuarantors: { role: UserRole; email: string; phone: string; password: string; firstName: string; lastName: string; nationality: string; nationalityCode: string; state: string; city: string; address: string; bikeModel: string; plateNumber: string; bikeColor: string; driversLicense: string | null };
+  // Farmer-specific screens
+  SignupFarmDetails: { role: UserRole; email: string; phone: string; password: string; firstName: string; lastName: string; nationality: string; nationalityCode: string; state: string; city: string; address: string };
+  SignupFarmVerification: { role: UserRole; email: string; phone: string; password: string; firstName: string; lastName: string; nationality: string; nationalityCode: string; state: string; city: string; address: string; farmName: string; farmType: string; farmSize: string; productCategories: string[]; bankName: string; accountNumber: string; accountName: string };
+  // Buyer-specific screens (optional)
+  SignupPayment: { role: UserRole; email: string; phone: string; password: string; firstName: string; lastName: string; nationality: string; nationalityCode: string; state: string; city: string; address: string };
 };
 
 export type BuyerTabParamList = {

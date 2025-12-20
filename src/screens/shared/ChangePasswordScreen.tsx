@@ -4,19 +4,20 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  TextInput as RNTextInput,
+  TextInput,
   Alert,
   KeyboardAvoidingView,
   Platform,
   Animated,
   StatusBar,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
-import { FONTS } from '../../constants/theme';
+import { COLORS, SPACING, FONT_SIZES, FONTS } from '../../constants/theme';
 import { authService } from '../../services/authService';
 
 interface PasswordRequirement {
@@ -33,140 +34,6 @@ const PASSWORD_REQUIREMENTS: PasswordRequirement[] = [
   { id: '5', label: 'One special character (!@#$%^&*)', validator: (p) => /[!@#$%^&*(),.?":{}|<>]/.test(p) },
 ];
 
-// FloatingInput Component
-interface FloatingInputProps {
-  label: string;
-  value: string;
-  onChangeText: (text: string) => void;
-  onBlur?: () => void;
-  secureTextEntry?: boolean;
-  showPassword?: boolean;
-  onTogglePassword?: () => void;
-  error?: string;
-}
-
-const FloatingInput = ({
-  label,
-  value,
-  onChangeText,
-  onBlur,
-  secureTextEntry = false,
-  showPassword = false,
-  onTogglePassword,
-  error,
-}: FloatingInputProps) => {
-  const [isFocused, setIsFocused] = useState(false);
-  const animatedValue = useRef(new Animated.Value(value ? 1 : 0)).current;
-  const { colors, isDark } = useTheme();
-
-  useEffect(() => {
-    Animated.timing(animatedValue, {
-      toValue: isFocused || value ? 1 : 0,
-      duration: 200,
-      useNativeDriver: false,
-    }).start();
-  }, [isFocused, value]);
-
-  const labelStyle = {
-    position: 'absolute' as const,
-    left: 0,
-    top: animatedValue.interpolate({
-      inputRange: [0, 1],
-      outputRange: [16, -8],
-    }),
-    fontSize: animatedValue.interpolate({
-      inputRange: [0, 1],
-      outputRange: [16, 12],
-    }),
-    color: animatedValue.interpolate({
-      inputRange: [0, 1],
-      outputRange: [isDark ? '#9CA3AF' : '#6B7280', error ? '#EF4444' : '#16A34A'],
-    }),
-    backgroundColor: isDark ? colors.background : '#F2F2F7',
-    paddingHorizontal: 4,
-    zIndex: 1,
-  };
-
-  return (
-    <View style={floatingStyles.container}>
-      <View style={floatingStyles.inputRow}>
-        <View style={floatingStyles.inputContent}>
-          <Animated.Text style={[labelStyle, { fontFamily: FONTS.regular }]}>
-            {label}
-          </Animated.Text>
-          <RNTextInput
-            style={[floatingStyles.input, { color: colors.text }]}
-            value={value}
-            onChangeText={onChangeText}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => {
-              setIsFocused(false);
-              onBlur?.();
-            }}
-            secureTextEntry={secureTextEntry && !showPassword}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-        </View>
-        {onTogglePassword && (
-          <TouchableOpacity onPress={onTogglePassword} style={floatingStyles.iconContainer}>
-            <Ionicons
-              name={showPassword ? 'eye-off' : 'eye'}
-              size={22}
-              color={isFocused ? '#16A34A' : isDark ? '#6B7280' : '#9CA3AF'}
-            />
-          </TouchableOpacity>
-        )}
-      </View>
-      <View style={[floatingStyles.underline, isFocused && floatingStyles.underlineFocused, error && floatingStyles.underlineError]} />
-      {error && <Text style={floatingStyles.errorText}>{error}</Text>}
-    </View>
-  );
-};
-
-const floatingStyles = StyleSheet.create({
-  container: {
-    marginBottom: 28,
-  },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingTop: 20,
-    paddingBottom: 12,
-  },
-  inputContent: {
-    flex: 1,
-    position: 'relative',
-  },
-  input: {
-    fontSize: 16,
-    paddingVertical: 8,
-    fontFamily: FONTS.regular,
-  },
-  iconContainer: {
-    marginLeft: 12,
-    padding: 4,
-  },
-  underline: {
-    height: 1,
-    backgroundColor: 'rgba(60, 60, 67, 0.12)',
-  },
-  underlineFocused: {
-    height: 2,
-    backgroundColor: '#16A34A',
-  },
-  underlineError: {
-    backgroundColor: '#EF4444',
-    height: 2,
-  },
-  errorText: {
-    color: '#EF4444',
-    fontSize: 12,
-    marginTop: 6,
-    fontFamily: FONTS.regular,
-  },
-});
-
 export default function ChangePasswordScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
@@ -179,8 +46,40 @@ export default function ChangePasswordScreen() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Focus states for inputs
+  const [currentFocused, setCurrentFocused] = useState(false);
+  const [newFocused, setNewFocused] = useState(false);
+  const [confirmFocused, setConfirmFocused] = useState(false);
+  
+  // Animated values for floating labels
+  const currentLabelAnim = useRef(new Animated.Value(currentPassword ? 1 : 0)).current;
+  const newLabelAnim = useRef(new Animated.Value(newPassword ? 1 : 0)).current;
+  const confirmLabelAnim = useRef(new Animated.Value(confirmPassword ? 1 : 0)).current;
 
-  const scrollY = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(currentLabelAnim, {
+      toValue: currentFocused || currentPassword ? 1 : 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  }, [currentFocused, currentPassword]);
+
+  useEffect(() => {
+    Animated.timing(newLabelAnim, {
+      toValue: newFocused || newPassword ? 1 : 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  }, [newFocused, newPassword]);
+
+  useEffect(() => {
+    Animated.timing(confirmLabelAnim, {
+      toValue: confirmFocused || confirmPassword ? 1 : 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  }, [confirmFocused, confirmPassword]);
 
   const passwordStrength = PASSWORD_REQUIREMENTS.filter(req => req.validator(newPassword)).length;
   const strengthPercentage = (passwordStrength / PASSWORD_REQUIREMENTS.length) * 100;
@@ -202,6 +101,8 @@ export default function ChangePasswordScreen() {
   };
 
   const hasChanges = currentPassword.length > 0 || newPassword.length > 0 || confirmPassword.length > 0;
+  const passwordsMatch = newPassword === confirmPassword;
+  const showMismatchError = confirmPassword.length > 0 && !passwordsMatch;
 
   const handleSubmit = async () => {
     if (!currentPassword.trim()) {
@@ -251,127 +152,218 @@ export default function ChangePasswordScreen() {
     }
   };
 
+  const getLabelStyle = (animValue: Animated.Value, isFocused: boolean, hasError?: boolean) => ({
+    position: 'absolute' as const,
+    left: 0,
+    top: animValue.interpolate({
+      inputRange: [0, 1],
+      outputRange: [20, 0],
+    }),
+    fontSize: animValue.interpolate({
+      inputRange: [0, 1],
+      outputRange: [18, 14],
+    }),
+    color: animValue.interpolate({
+      inputRange: [0, 1],
+      outputRange: [isDark ? '#9CA3AF' : '#6B7280', hasError ? '#EF4444' : COLORS.primary],
+    }),
+    fontFamily: FONTS.medium,
+  });
+
   return (
     <View style={[styles.container, { backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       
-      {/* Floating Back Button */}
-      <TouchableOpacity
-        style={[styles.floatingBackButton, { top: insets.top + 10, backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
-        onPress={() => navigation.goBack()}
-        activeOpacity={0.7}
-      >
-        <Ionicons name="chevron-back" size={28} color={colors.text} />
-      </TouchableOpacity>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + SPACING.sm }]}>
+        <TouchableOpacity
+          style={[styles.backButton, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="chevron-back" size={24} color={colors.text} />
+        </TouchableOpacity>
+        <View style={{ width: 40 }} />
+      </View>
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
+        style={styles.content}
       >
-        <Animated.ScrollView
+        <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 70 }]}
+          contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
-          onScroll={Animated.event(
-            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-            { useNativeDriver: true }
-          )}
-          scrollEventThrottle={16}
         >
-          {/* Page Title */}
-          <View style={styles.pageTitleSection}>
-            <Text style={[styles.pageTitle, { color: colors.text }]}>Change Password</Text>
-            <Text style={styles.pageSubtitle}>Update your account password</Text>
+          {/* Title */}
+          <View style={styles.titleContainer}>
+            <Text style={[styles.title, { color: colors.text }]}>Change Password</Text>
+            <Text style={[styles.subtitle, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+              Update your account password for better security
+            </Text>
           </View>
 
-          {/* Current Password Section */}
-          <View style={styles.section}>
-            <FloatingInput
-              label="Current password"
-              value={currentPassword}
-              onChangeText={setCurrentPassword}
-              secureTextEntry
-              showPassword={showCurrentPassword}
-              onTogglePassword={() => setShowCurrentPassword(!showCurrentPassword)}
-            />
-
-            <TouchableOpacity style={styles.forgotLink}>
-              <Text style={styles.forgotLinkText}>Forgot your current password?</Text>
-            </TouchableOpacity>
+          {/* Current Password Input */}
+          <View style={styles.inputContainer}>
+            <View style={styles.inputWrapper}>
+              <Animated.Text style={getLabelStyle(currentLabelAnim, currentFocused)}>
+                Current Password
+              </Animated.Text>
+              <TextInput
+                style={[styles.input, { color: colors.text }]}
+                value={currentPassword}
+                onChangeText={setCurrentPassword}
+                onFocus={() => setCurrentFocused(true)}
+                onBlur={() => setCurrentFocused(false)}
+                secureTextEntry={!showCurrentPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <TouchableOpacity
+                onPress={() => setShowCurrentPassword(!showCurrentPassword)}
+                style={styles.eyeButton}
+              >
+                <Ionicons
+                  name={showCurrentPassword ? 'eye-off' : 'eye'}
+                  size={22}
+                  color={currentFocused ? COLORS.primary : isDark ? '#6B7280' : '#9CA3AF'}
+                />
+              </TouchableOpacity>
+            </View>
+            <View style={[
+              styles.inputLine,
+              currentFocused && styles.inputLineFocused,
+              { backgroundColor: currentFocused ? COLORS.primary : isDark ? '#3C3C3E' : '#E5E7EB' },
+            ]} />
           </View>
 
-          {/* New Password Section */}
-          <View style={styles.section}>
-            <FloatingInput
-              label="New password"
-              value={newPassword}
-              onChangeText={setNewPassword}
-              secureTextEntry
-              showPassword={showNewPassword}
-              onTogglePassword={() => setShowNewPassword(!showNewPassword)}
-            />
+          <TouchableOpacity style={styles.forgotLink}>
+            <Text style={styles.forgotLinkText}>Forgot your current password?</Text>
+          </TouchableOpacity>
 
-            {/* Strength Indicator */}
-            {newPassword.length > 0 && (
-              <View style={styles.strengthSection}>
-                <View style={styles.strengthHeader}>
-                  <Text style={[styles.strengthLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>Password Strength</Text>
-                  <Text style={[styles.strengthValue, { color: getStrengthColor() }]}>{getStrengthLabel()}</Text>
-                </View>
-                <View style={[styles.strengthBarBg, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB' }]}>
-                  <View style={[styles.strengthBarFill, { width: `${strengthPercentage}%`, backgroundColor: getStrengthColor() }]} />
-                </View>
+          {/* New Password Input */}
+          <View style={styles.inputContainer}>
+            <View style={styles.inputWrapper}>
+              <Animated.Text style={getLabelStyle(newLabelAnim, newFocused)}>
+                New Password
+              </Animated.Text>
+              <TextInput
+                style={[styles.input, { color: colors.text }]}
+                value={newPassword}
+                onChangeText={setNewPassword}
+                onFocus={() => setNewFocused(true)}
+                onBlur={() => setNewFocused(false)}
+                secureTextEntry={!showNewPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <TouchableOpacity
+                onPress={() => setShowNewPassword(!showNewPassword)}
+                style={styles.eyeButton}
+              >
+                <Ionicons
+                  name={showNewPassword ? 'eye-off' : 'eye'}
+                  size={22}
+                  color={newFocused ? COLORS.primary : isDark ? '#6B7280' : '#9CA3AF'}
+                />
+              </TouchableOpacity>
+            </View>
+            <View style={[
+              styles.inputLine,
+              newFocused && styles.inputLineFocused,
+              { backgroundColor: newFocused ? COLORS.primary : isDark ? '#3C3C3E' : '#E5E7EB' },
+            ]} />
+          </View>
+
+          {/* Strength Indicator */}
+          {newPassword.length > 0 && (
+            <View style={styles.strengthSection}>
+              <View style={styles.strengthHeader}>
+                <Text style={[styles.strengthLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                  Password Strength
+                </Text>
+                <Text style={[styles.strengthValue, { color: getStrengthColor() }]}>
+                  {getStrengthLabel()}
+                </Text>
               </View>
-            )}
-
-            {/* Requirements */}
-            {newPassword.length > 0 && (
-              <View style={styles.requirementsList}>
-                {PASSWORD_REQUIREMENTS.map((req) => {
-                  const isMet = req.validator(newPassword);
-                  return (
-                    <View key={req.id} style={styles.requirementItem}>
-                      <Ionicons
-                        name={isMet ? 'checkmark-circle' : 'ellipse-outline'}
-                        size={18}
-                        color={isMet ? '#16A34A' : isDark ? '#6B7280' : '#9CA3AF'}
-                      />
-                      <Text style={[styles.requirementText, { color: isMet ? '#16A34A' : (isDark ? '#9CA3AF' : '#6B7280') }]}>
-                        {req.label}
-                      </Text>
-                    </View>
-                  );
-                })}
+              <View style={[styles.strengthBarBg, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB' }]}>
+                <View style={[styles.strengthBarFill, { width: `${strengthPercentage}%`, backgroundColor: getStrengthColor() }]} />
               </View>
+            </View>
+          )}
+
+          {/* Requirements */}
+          {newPassword.length > 0 && (
+            <View style={styles.requirementsList}>
+              {PASSWORD_REQUIREMENTS.map((req) => {
+                const isMet = req.validator(newPassword);
+                return (
+                  <View key={req.id} style={styles.requirementItem}>
+                    <Ionicons
+                      name={isMet ? 'checkmark-circle' : 'ellipse-outline'}
+                      size={18}
+                      color={isMet ? COLORS.primary : isDark ? '#6B7280' : '#9CA3AF'}
+                    />
+                    <Text style={[styles.requirementText, { color: isMet ? COLORS.primary : (isDark ? '#9CA3AF' : '#6B7280') }]}>
+                      {req.label}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          )}
+
+          {/* Confirm Password Input */}
+          <View style={[styles.inputContainer, { marginTop: SPACING.lg }]}>
+            <View style={styles.inputWrapper}>
+              <Animated.Text style={getLabelStyle(confirmLabelAnim, confirmFocused, showMismatchError)}>
+                Confirm New Password
+              </Animated.Text>
+              <TextInput
+                style={[styles.input, { color: colors.text }]}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                onFocus={() => setConfirmFocused(true)}
+                onBlur={() => setConfirmFocused(false)}
+                secureTextEntry={!showConfirmPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <TouchableOpacity
+                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                style={styles.eyeButton}
+              >
+                <Ionicons
+                  name={showConfirmPassword ? 'eye-off' : 'eye'}
+                  size={22}
+                  color={confirmFocused ? COLORS.primary : isDark ? '#6B7280' : '#9CA3AF'}
+                />
+              </TouchableOpacity>
+            </View>
+            <View style={[
+              styles.inputLine,
+              confirmFocused && styles.inputLineFocused,
+              showMismatchError && styles.inputLineError,
+              { backgroundColor: showMismatchError ? '#EF4444' : confirmFocused ? COLORS.primary : isDark ? '#3C3C3E' : '#E5E7EB' },
+            ]} />
+            {showMismatchError && (
+              <Text style={styles.errorText}>Passwords do not match</Text>
             )}
           </View>
 
-          {/* Confirm Password Section */}
-          <View style={styles.section}>
-            <FloatingInput
-              label="Confirm new password"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry
-              showPassword={showConfirmPassword}
-              onTogglePassword={() => setShowConfirmPassword(!showConfirmPassword)}
-              error={confirmPassword.length > 0 && newPassword !== confirmPassword ? 'Passwords do not match' : undefined}
-            />
+          {/* Match Indicator */}
+          {confirmPassword.length > 0 && newPassword.length > 0 && passwordsMatch && (
+            <View style={styles.matchIndicator}>
+              <Ionicons name="checkmark-circle" size={18} color={COLORS.primary} />
+              <Text style={styles.matchText}>Passwords match</Text>
+            </View>
+          )}
 
-            {/* Match Indicator */}
-            {confirmPassword.length > 0 && newPassword.length > 0 && newPassword === confirmPassword && (
-              <View style={styles.matchIndicator}>
-                <Ionicons name="checkmark-circle" size={18} color="#16A34A" />
-                <Text style={styles.matchText}>Passwords match</Text>
-              </View>
-            )}
-          </View>
-
-          <View style={{ height: 100 }} />
-        </Animated.ScrollView>
+          <View style={{ height: 120 }} />
+        </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* Fixed Footer Save Button */}
+      {/* Save Button */}
       <View style={[styles.footerContainer, { paddingBottom: insets.bottom + 16 }]}>
         <TouchableOpacity
           style={[
@@ -385,7 +377,10 @@ export default function ChangePasswordScreen() {
           {isSubmitting ? (
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
-            <Text style={styles.saveButtonText}>Save Changes</Text>
+            <>
+              <Text style={styles.saveButtonText}>Save Changes</Text>
+              <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+            </>
           )}
         </TouchableOpacity>
       </View>
@@ -397,85 +392,84 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  floatingBackButton: {
-    position: 'absolute',
-    left: 16,
-    zIndex: 10,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
+  header: {
+    flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.lg,
+    paddingBottom: SPACING.md,
   },
-  saveButton: {
-    backgroundColor: '#16A34A',
-    paddingVertical: 16,
-    borderRadius: 28,
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  saveButtonDisabled: {
-    backgroundColor: '#9CA3AF',
-  },
-  saveButtonText: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontFamily: FONTS.semiBold,
-  },
-  footerContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    backgroundColor: 'transparent',
+  content: {
+    flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 24,
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.xl,
   },
-  pageTitleSection: {
-    marginBottom: 32,
+  titleContainer: {
+    marginBottom: SPACING.xl * 2,
   },
-  pageTitle: {
+  title: {
     fontSize: 28,
-    marginBottom: 8,
     fontFamily: FONTS.bold,
+    marginBottom: SPACING.sm,
   },
-  pageSubtitle: {
-    fontSize: 16,
-    color: '#6B7280',
+  subtitle: {
+    fontSize: FONT_SIZES.md,
     fontFamily: FONTS.regular,
+    lineHeight: 22,
   },
-  section: {
-    marginBottom: 32,
+  inputContainer: {
+    marginBottom: SPACING.lg,
   },
-  sectionTitle: {
-    fontSize: 13,
-    color: '#6B7280',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 16,
-    fontFamily: FONTS.semiBold,
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: 24,
+    paddingBottom: 12,
+  },
+  input: {
+    flex: 1,
+    fontSize: 18,
+    fontFamily: FONTS.medium,
+    paddingVertical: 8,
+  },
+  eyeButton: {
+    padding: 4,
+  },
+  inputLine: {
+    height: 1,
+  },
+  inputLineFocused: {
+    height: 2,
+  },
+  inputLineError: {
+    height: 2,
+    backgroundColor: '#EF4444',
+  },
+  errorText: {
+    fontSize: FONT_SIZES.sm,
+    color: '#EF4444',
+    marginTop: SPACING.xs,
+    fontFamily: FONTS.medium,
   },
   forgotLink: {
-    marginTop: -16,
-    marginBottom: 8,
+    marginBottom: SPACING.xl,
   },
   forgotLinkText: {
-    fontSize: 14,
-    color: '#16A34A',
-    fontFamily: FONTS.regular,
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.primary,
+    fontFamily: FONTS.medium,
   },
   strengthSection: {
-    marginTop: -16,
-    marginBottom: 16,
+    marginBottom: SPACING.md,
   },
   strengthHeader: {
     flexDirection: 'row',
@@ -484,11 +478,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   strengthLabel: {
-    fontSize: 13,
+    fontSize: FONT_SIZES.sm,
     fontFamily: FONTS.regular,
   },
   strengthValue: {
-    fontSize: 13,
+    fontSize: FONT_SIZES.sm,
     fontFamily: FONTS.semiBold,
   },
   strengthBarBg: {
@@ -501,7 +495,7 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   requirementsList: {
-    marginTop: 8,
+    marginBottom: SPACING.md,
     gap: 8,
   },
   requirementItem: {
@@ -510,18 +504,42 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   requirementText: {
-    fontSize: 14,
+    fontSize: FONT_SIZES.sm,
     fontFamily: FONTS.regular,
   },
   matchIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: -16,
   },
   matchText: {
-    fontSize: 14,
-    color: '#16A34A',
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.primary,
     fontFamily: FONTS.regular,
+  },
+  footerContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: SPACING.lg,
+    paddingTop: 16,
+  },
+  saveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+    paddingVertical: 16,
+    borderRadius: 12,
+    gap: 8,
+  },
+  saveButtonDisabled: {
+    opacity: 0.5,
+  },
+  saveButtonText: {
+    fontSize: FONT_SIZES.md,
+    fontFamily: FONTS.semiBold,
+    color: '#FFFFFF',
   },
 });
