@@ -460,6 +460,7 @@ export type RootStackParamList = {
 };
 
 export type AuthStackParamList = {
+  Onboarding: undefined;
   Welcome: undefined;
   Maintenance: undefined;
   WhatYouMissed: undefined;

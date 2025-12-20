@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthStackParamList } from '../types';
 import { COLORS } from '../constants/theme';
 
 // Auth Screens
+import OnboardingScreen from '../screens/auth/OnboardingScreen';
 import WelcomeScreen from '../screens/auth/WelcomeScreen';
 import MaintenanceScreen from '../screens/auth/MaintenanceScreen';
 import WhatYouMissedScreen from '../screens/auth/WhatYouMissedScreen';
@@ -32,16 +35,47 @@ import {
 } from '../screens/auth/signup';
 
 const Stack = createNativeStackNavigator<AuthStackParamList>();
+const ONBOARDING_KEY = '@handwork_onboarding_complete';
 
 export function AuthNavigator() {
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
+
+  useEffect(() => {
+    checkOnboardingStatus();
+  }, []);
+
+  const checkOnboardingStatus = async () => {
+    try {
+      const value = await AsyncStorage.getItem(ONBOARDING_KEY);
+      setHasCompletedOnboarding(value === 'true');
+    } catch (error) {
+      console.error('Error checking onboarding status:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
+
+  // First-time users go to Onboarding, returning users go to Welcome
+  const initialRoute = hasCompletedOnboarding ? 'Welcome' : 'Onboarding';
+
   return (
     <Stack.Navigator
-      initialRouteName="WhatYouMissed"
+      initialRouteName={initialRoute}
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: COLORS.background },
       }}
     >
+      <Stack.Screen name="Onboarding" component={OnboardingScreen} />
       <Stack.Screen name="Welcome" component={WelcomeScreen} />
       <Stack.Screen name="Maintenance" component={MaintenanceScreen} />
       <Stack.Screen name="WhatYouMissed" component={WhatYouMissedScreen} />
@@ -70,3 +104,12 @@ export function AuthNavigator() {
     </Stack.Navigator>
   );
 }
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+  },
+});
