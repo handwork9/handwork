@@ -5,11 +5,11 @@
     "scheme": "handwork",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/logo-dark.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/logo-green.png",
       "resizeMode": "contain",
       "backgroundColor": "#4CAF50"
     },
@@ -20,8 +20,8 @@
     "android": {
       "package": "com.handwork.app",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#4CAF50"
+        "foregroundImage": "./assets/logo-dark.png",
+        "backgroundColor": "#FFFFFF"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
