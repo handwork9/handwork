@@ -162,6 +162,7 @@ export const authService = {
    * Verify OTP
    */
   async verifyOTP(otpId: string, code: string): Promise<ApiResponse<{
+    verified?: boolean;
     user?: User;
     accessToken?: string;
     refreshToken?: string;
@@ -172,7 +173,7 @@ export const authService = {
       const isValid = code === '123456';
       return {
         success: isValid,
-        data: {},
+        data: { verified: isValid },
         message: isValid ? 'OTP verified' : 'Invalid OTP',
       };
     }

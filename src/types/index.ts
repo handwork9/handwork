@@ -484,7 +484,7 @@ export type AuthStackParamList = {
   SignupGuarantors: { role: UserRole; email: string; phone: string; password: string; firstName: string; lastName: string; nationality: string; nationalityCode: string; state: string; city: string; address: string; bikeModel: string; plateNumber: string; bikeColor: string; driversLicense: string | null };
   // Farmer-specific screens
   SignupFarmDetails: { role: UserRole; email: string; phone: string; password: string; firstName: string; lastName: string; nationality: string; nationalityCode: string; state: string; city: string; address: string };
-  SignupFarmVerification: { role: UserRole; email: string; phone: string; password: string; firstName: string; lastName: string; nationality: string; nationalityCode: string; state: string; city: string; address: string; farmName: string; farmType: string; farmSize: string; productCategories: string[]; bankName: string; accountNumber: string; accountName: string };
+  SignupFarmVerification: { role: UserRole; email: string; phone: string; password: string; firstName: string; lastName: string; nationality: string; nationalityCode: string; state: string; city: string; address: string; farmName: string; farmType: string; farmSize: string; productCategories: string[]; bankName: string; bankCode: string; accountNumber: string; accountName: string };
   // Buyer-specific screens (optional)
   SignupPayment: { role: UserRole; email: string; phone: string; password: string; firstName: string; lastName: string; nationality: string; nationalityCode: string; state: string; city: string; address: string };
 };

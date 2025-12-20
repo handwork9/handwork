@@ -147,6 +147,11 @@ export class SignupDto {
   @IsOptional()
   bankName?: string;
 
+  @ApiProperty({ example: '011', required: false, description: 'Bank code from Paystack' })
+  @IsString()
+  @IsOptional()
+  bankCode?: string;
+
   @ApiProperty({ example: '1234567890', required: false })
   @IsString()
   @IsOptional()

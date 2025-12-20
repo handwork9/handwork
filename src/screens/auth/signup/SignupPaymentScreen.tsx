@@ -10,6 +10,8 @@ import {
   TextInput as RNTextInput,
   ActivityIndicator,
   Alert,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -20,8 +22,12 @@ import { useTheme } from '../../../context/ThemeContext';
 import { useAppDispatch } from '../../../store';
 import { setAuth } from '../../../store/slices/authSlice';
 import { authService } from '../../../services/authService';
+import { paymentService, NIGERIAN_BANKS } from '../../../services/paymentService';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'SignupPayment'>;
+
+// Bank type
+type Bank = { code: string; name: string };
 
 // Floating Input Component
 const FloatingInput = ({
@@ -110,6 +116,191 @@ const FloatingInput = ({
   );
 };
 
+// Bank Picker Component with Paystack API
+const BankPicker = ({
+  value,
+  onSelect,
+  error,
+  isDark,
+  colors,
+}: {
+  value: string;
+  onSelect: (bank: Bank) => void;
+  error?: string;
+  isDark: boolean;
+  colors: any;
+}) => {
+  const [modalVisible, setModalVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [banks, setBanks] = useState<Bank[]>(NIGERIAN_BANKS);
+  const [isLoading, setIsLoading] = useState(false);
+  const insets = useSafeAreaInsets();
+
+  // Fetch banks from Paystack API
+  useEffect(() => {
+    const fetchBanks = async () => {
+      setIsLoading(true);
+      try {
+        const fetchedBanks = await paymentService.getBanks();
+        if (fetchedBanks && fetchedBanks.length > 0) {
+          setBanks(fetchedBanks);
+        }
+      } catch (error) {
+        console.log('Using fallback banks list');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchBanks();
+  }, []);
+
+  const filteredBanks = banks.filter(bank =>
+    bank.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleSelect = (bank: Bank) => {
+    onSelect(bank);
+    setModalVisible(false);
+    setSearchQuery('');
+  };
+
+  return (
+    <View style={styles.inputWrapper}>
+      <TouchableOpacity
+        style={[
+          styles.pickerButton,
+          {
+            backgroundColor: isDark ? colors.card : '#FFFFFF',
+            borderColor: error ? '#EF4444' : (isDark ? '#374151' : '#E5E7EB'),
+          },
+        ]}
+        onPress={() => setModalVisible(true)}
+      >
+        <MaterialCommunityIcons
+          name="bank"
+          size={22}
+          color={value ? COLORS.primary : (isDark ? '#9CA3AF' : '#6B7280')}
+          style={styles.inputIcon}
+        />
+        <Text
+          style={[
+            styles.pickerText,
+            { color: value ? colors.text : (isDark ? '#6B7280' : '#9CA3AF') },
+          ]}
+        >
+          {value || 'Select Bank'}
+        </Text>
+        {isLoading ? (
+          <ActivityIndicator size="small" color={COLORS.primary} />
+        ) : (
+          <MaterialCommunityIcons
+            name="chevron-down"
+            size={24}
+            color={isDark ? '#9CA3AF' : '#6B7280'}
+          />
+        )}
+      </TouchableOpacity>
+      {error && <Text style={styles.errorText}>{error}</Text>}
+
+      <Modal
+        visible={modalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View
+            style={[
+              styles.modalContent,
+              {
+                backgroundColor: isDark ? colors.card : '#FFFFFF',
+                paddingBottom: insets.bottom + 20,
+              },
+            ]}
+          >
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Select Bank</Text>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={() => {
+                  setModalVisible(false);
+                  setSearchQuery('');
+                }}
+              >
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Search Input */}
+            <View
+              style={[
+                styles.searchContainer,
+                { backgroundColor: isDark ? '#1F2937' : '#F3F4F6' },
+              ]}
+            >
+              <Ionicons name="search" size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
+              <RNTextInput
+                style={[styles.searchInput, { color: colors.text }]}
+                placeholder="Search banks..."
+                placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <Ionicons name="close-circle" size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Bank List */}
+            {isLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={COLORS.primary} />
+                <Text style={[styles.loadingText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                  Loading banks...
+                </Text>
+              </View>
+            ) : (
+              <FlatList
+                data={filteredBanks}
+                keyExtractor={(item, index) => `${item.code}-${index}`}
+                showsVerticalScrollIndicator={false}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={[
+                      styles.bankItem,
+                      value === item.name && { backgroundColor: isDark ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.08)' },
+                    ]}
+                    onPress={() => handleSelect(item)}
+                  >
+                    <View style={[styles.bankIconContainer, { backgroundColor: isDark ? '#374151' : '#F3F4F6' }]}>
+                      <MaterialCommunityIcons name="bank" size={20} color={COLORS.primary} />
+                    </View>
+                    <Text style={[styles.bankName, { color: colors.text }]}>{item.name}</Text>
+                    {value === item.name && (
+                      <Ionicons name="checkmark-circle" size={22} color={COLORS.primary} />
+                    )}
+                  </TouchableOpacity>
+                )}
+                ListEmptyComponent={
+                  <View style={styles.emptyContainer}>
+                    <MaterialCommunityIcons name="bank-off" size={48} color={isDark ? '#6B7280' : '#9CA3AF'} />
+                    <Text style={[styles.emptyText, { color: isDark ? '#6B7280' : '#9CA3AF' }]}>
+                      No banks found
+                    </Text>
+                  </View>
+                }
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+};
+
 export default function SignupPaymentScreen({ navigation, route }: Props) {
   const params = route.params;
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'bank' | 'skip'>('skip');
@@ -120,8 +311,11 @@ export default function SignupPaymentScreen({ navigation, route }: Props) {
   const [cvv, setCvv] = useState('');
   
   // Bank details
-  const [bankName, setBankName] = useState('');
+  const [selectedBank, setSelectedBank] = useState<Bank | null>(null);
   const [accountNumber, setAccountNumber] = useState('');
+  const [accountName, setAccountName] = useState('');
+  const [isVerifyingAccount, setIsVerifyingAccount] = useState(false);
+  const [accountVerified, setAccountVerified] = useState(false);
   
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
@@ -138,6 +332,39 @@ export default function SignupPaymentScreen({ navigation, route }: Props) {
       useNativeDriver: false,
     }).start();
   }, []);
+
+  // Auto-verify account when account number is complete and bank is selected
+  useEffect(() => {
+    const verifyAccount = async () => {
+      if (selectedBank && accountNumber.length === 10 && paymentMethod === 'bank') {
+        setIsVerifyingAccount(true);
+        setAccountVerified(false);
+        setAccountName('');
+        try {
+          const result = await paymentService.resolveBankAccount(accountNumber, selectedBank.code);
+          if (result && result.accountName) {
+            setAccountName(result.accountName);
+            setAccountVerified(true);
+            setErrors(prev => ({ ...prev, accountNumber: '' }));
+          }
+        } catch (error) {
+          console.log('Account verification failed:', error);
+          setErrors(prev => ({ ...prev, accountNumber: 'Could not verify account' }));
+        } finally {
+          setIsVerifyingAccount(false);
+        }
+      }
+    };
+
+    const debounceTimer = setTimeout(verifyAccount, 500);
+    return () => clearTimeout(debounceTimer);
+  }, [accountNumber, selectedBank, paymentMethod]);
+
+  const handleBankSelect = (bank: Bank) => {
+    setSelectedBank(bank);
+    setAccountName('');
+    setAccountVerified(false);
+  };
 
   const formatCardNumber = (text: string) => {
     const cleaned = text.replace(/\D/g, '');
@@ -169,9 +396,9 @@ export default function SignupPaymentScreen({ navigation, route }: Props) {
     }
 
     if (paymentMethod === 'bank') {
-      if (!bankName.trim()) newErrors.bankName = 'Bank name is required';
+      if (!selectedBank) newErrors.bankName = 'Please select a bank';
       if (!accountNumber.trim()) newErrors.accountNumber = 'Account number is required';
-      else if (accountNumber.length < 10) newErrors.accountNumber = 'Invalid account number';
+      else if (accountNumber.length < 10) newErrors.accountNumber = 'Account number must be 10 digits';
     }
 
     setErrors(newErrors);
@@ -204,8 +431,10 @@ export default function SignupPaymentScreen({ navigation, route }: Props) {
         signupData.cardExpiry = expiryDate;
       } else if (paymentMethod === 'bank') {
         signupData.paymentMethod = 'bank';
-        signupData.bankName = bankName.trim();
+        signupData.bankName = selectedBank?.name || '';
+        signupData.bankCode = selectedBank?.code || '';
         signupData.accountNumber = accountNumber.trim();
+        signupData.accountName = accountName.trim();
       }
 
       const response = await authService.signup(signupData);
@@ -413,27 +642,68 @@ export default function SignupPaymentScreen({ navigation, route }: Props) {
           <View style={[styles.formCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
             <Text style={[styles.formTitle, { color: colors.text }]}>Bank Details</Text>
             
-            <FloatingInput
-              label="Bank Name"
-              value={bankName}
-              onChangeText={setBankName}
-              icon="bank"
+            <BankPicker
+              value={selectedBank?.name || ''}
+              onSelect={handleBankSelect}
               error={errors.bankName}
               isDark={isDark}
               colors={colors}
             />
             
-            <FloatingInput
-              label="Account Number"
-              value={accountNumber}
-              onChangeText={(text) => setAccountNumber(text.replace(/\D/g, ''))}
-              icon="numeric"
-              error={errors.accountNumber}
-              keyboardType="number-pad"
-              isDark={isDark}
-              colors={colors}
-              maxLength={10}
-            />
+            {/* Account Number with verification */}
+            <View style={styles.inputWrapper}>
+              <View
+                style={[
+                  styles.inputContainer,
+                  {
+                    backgroundColor: isDark ? colors.card : '#FFFFFF',
+                    borderColor: errors.accountNumber ? '#EF4444' : accountVerified ? COLORS.primary : (isDark ? '#374151' : '#E5E7EB'),
+                  },
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name="numeric"
+                  size={22}
+                  color={accountVerified ? COLORS.primary : (isDark ? '#9CA3AF' : '#6B7280')}
+                  style={styles.inputIcon}
+                />
+                <RNTextInput
+                  style={[styles.input, { color: colors.text }]}
+                  value={accountNumber}
+                  onChangeText={(text) => setAccountNumber(text.replace(/\D/g, '').slice(0, 10))}
+                  keyboardType="number-pad"
+                  placeholder="Account Number (10 digits)"
+                  placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
+                  maxLength={10}
+                />
+                {isVerifyingAccount && (
+                  <ActivityIndicator size="small" color={COLORS.primary} />
+                )}
+                {accountVerified && !isVerifyingAccount && (
+                  <Ionicons name="checkmark-circle" size={22} color={COLORS.primary} />
+                )}
+              </View>
+              {errors.accountNumber && <Text style={styles.errorText}>{errors.accountNumber}</Text>}
+            </View>
+
+            {/* Verified Account Name Display */}
+            {accountVerified && accountName && (
+              <View style={[styles.verifiedAccountBox, { backgroundColor: isDark ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.08)' }]}>
+                <MaterialCommunityIcons name="account-check" size={20} color={COLORS.primary} />
+                <View style={styles.verifiedAccountInfo}>
+                  <Text style={[styles.verifiedAccountLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                    Account Name
+                  </Text>
+                  <Text style={[styles.verifiedAccountName, { color: colors.text }]}>
+                    {accountName}
+                  </Text>
+                </View>
+                <View style={styles.verifiedBadge}>
+                  <Ionicons name="shield-checkmark" size={12} color="#FFFFFF" />
+                  <Text style={styles.verifiedText}>Verified</Text>
+                </View>
+              </View>
+            )}
           </View>
         )}
 
@@ -595,6 +865,95 @@ const styles = StyleSheet.create({
     marginTop: 4,
     marginLeft: 4,
   },
+  // Bank Picker Styles
+  pickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderRadius: 12,
+    paddingHorizontal: SPACING.md,
+    height: 56,
+  },
+  pickerText: {
+    flex: 1,
+    fontSize: FONT_SIZES.md,
+    fontFamily: FONTS.regular,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: SPACING.md,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.lg,
+    paddingBottom: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+  },
+  modalTitle: {
+    fontSize: FONT_SIZES.lg,
+    fontFamily: FONTS.semiBold,
+  },
+  modalCloseButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: SPACING.lg,
+    marginVertical: SPACING.md,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 10,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: FONT_SIZES.md,
+    fontFamily: FONTS.regular,
+  },
+  bankItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: 14,
+    gap: 12,
+  },
+  bankIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bankName: {
+    flex: 1,
+    fontSize: FONT_SIZES.md,
+    fontFamily: FONTS.medium,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  emptyText: {
+    fontSize: FONT_SIZES.md,
+    fontFamily: FONTS.regular,
+    marginTop: SPACING.sm,
+  },
   securityBox: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -625,5 +984,54 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.md,
     fontFamily: FONTS.semiBold,
     color: '#FFFFFF',
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: FONTS.regular,
+    marginTop: SPACING.sm,
+  },
+  verifiedAccountBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SPACING.md,
+    borderRadius: 12,
+    gap: 12,
+    marginTop: SPACING.sm,
+  },
+  verifiedAccountInfo: {
+    flex: 1,
+  },
+  verifiedAccountLabel: {
+    fontSize: FONT_SIZES.xs,
+    fontFamily: FONTS.regular,
+    marginBottom: 2,
+  },
+  verifiedAccountName: {
+    fontSize: FONT_SIZES.md,
+    fontFamily: FONTS.semiBold,
+  },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 4,
+  },
+  verifiedText: {
+    fontSize: FONT_SIZES.xs,
+    fontFamily: FONTS.medium,
+    color: '#FFFFFF',
+  },
+  helperText: {
+    fontSize: FONT_SIZES.xs,
+    fontFamily: FONTS.regular,
+    marginTop: 4,
   },
 });

@@ -518,19 +518,36 @@ export class AuthService {
       throw new BadRequestException('OTP not found');
     }
 
-    // Find or create user
-    let user = await this.userRepository.findOne({ where: { phone } });
+    // Normalize phone and try multiple formats to find existing user
+    const normalizedPhone = this.normalizePhoneNumber(phone);
+    const phoneVariations = this.getPhoneVariations(normalizedPhone);
+    
+    this.logger.log(`OTP Login - Original phone: ${phone}, Normalized: ${normalizedPhone}`);
+    this.logger.log(`Phone variations to search: ${JSON.stringify(phoneVariations)}`);
+    
+    // Find user with any phone variation
+    let user = await this.userRepository.findOne({ 
+      where: phoneVariations.map(p => ({ phone: p }))
+    });
+    
+    this.logger.log(`User found: ${user ? `ID: ${user.id}, Name: ${user.name}, Phone: ${user.phone}` : 'NOT FOUND - will create new'}`);
     
     if (!user) {
       // Create new user with phone only
+      this.logger.warn(`Creating new user for phone: ${normalizedPhone}`);
       user = this.userRepository.create({
-        phone,
+        phone: normalizedPhone, // Use normalized format
         name: 'User',
         password: await bcrypt.hash(Math.random().toString(36), 10),
         isPhoneVerified: true,
       });
       await this.userRepository.save(user);
     } else {
+      // Update phone to normalized format if different
+      if (user.phone !== normalizedPhone) {
+        this.logger.log(`Updating phone format from ${user.phone} to ${normalizedPhone}`);
+        user.phone = normalizedPhone;
+      }
       // Mark phone as verified
       user.isPhoneVerified = true;
       await this.userRepository.save(user);
@@ -551,6 +568,42 @@ export class AuthService {
     await this.updateRefreshToken(user.id, tokens.refreshToken);
 
     return { user, tokens, requiresTwoFactor: false };
+  }
+
+  /**
+   * Normalize phone number to +234 format
+   */
+  private normalizePhoneNumber(phone: string): string {
+    let cleaned = phone.replace(/\D/g, '');
+    
+    // Handle different formats
+    if (cleaned.startsWith('0') && cleaned.length === 11) {
+      // 08012345678 -> +2348012345678
+      return '+234' + cleaned.slice(1);
+    } else if (cleaned.startsWith('234') && cleaned.length === 13) {
+      // 2348012345678 -> +2348012345678
+      return '+' + cleaned;
+    } else if (cleaned.length === 10) {
+      // 8012345678 -> +2348012345678
+      return '+234' + cleaned;
+    }
+    
+    // Already in correct format or unknown
+    return phone.startsWith('+') ? phone : '+' + cleaned;
+  }
+
+  /**
+   * Get all possible phone format variations
+   */
+  private getPhoneVariations(normalizedPhone: string): string[] {
+    const cleaned = normalizedPhone.replace(/\D/g, '');
+    const variations = [
+      normalizedPhone,                    // +2348012345678
+      cleaned,                            // 2348012345678
+      '0' + cleaned.slice(3),            // 08012345678
+      cleaned.slice(3),                   // 8012345678
+    ];
+    return [...new Set(variations)]; // Remove duplicates
   }
 
   async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
@@ -860,6 +913,7 @@ export class AuthService {
         farmAddress: dto.address,
         primaryProducts: dto.productCategories?.join(', '),
         bankName: dto.bankName,
+        bankCode: dto.bankCode,
         bankAccountNumber: dto.accountNumber,
         bankAccountName: dto.accountName,
         farmerId: dto.idDocument,

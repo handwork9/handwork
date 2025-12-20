@@ -325,6 +325,7 @@ export class PaymentsController {
   }
 
   @Post('bank/resolve')
+  @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Resolve bank account name' })
   @ApiBody({

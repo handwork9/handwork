@@ -54,6 +54,9 @@ export class FarmerProfile {
   bankName: string;
 
   @Column({ nullable: true })
+  bankCode: string;
+
+  @Column({ nullable: true })
   bankAccountNumber: string;
 
   @Column({ nullable: true })
