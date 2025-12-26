@@ -30,8 +30,8 @@ npm-debug.log*
 # Test coverage
 coverage/
 
-# Uploads (use S3 in production)
-uploads/
+# Uploads directory for files (not src/uploads module)
+/uploads/
 
 # Docker
 .docker/
