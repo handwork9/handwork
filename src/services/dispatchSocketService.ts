@@ -60,10 +60,13 @@ class DispatchSocketService {
     }
 
     // Connect to dispatch namespace on port 3002
+    // WS_URL is http://host:3001, we need to change to http://host:3002 for dispatch gateway
     const baseUrl = API_CONFIG.WS_URL
       .replace('ws://', 'http://')
       .replace('wss://', 'https://')
-      .replace(':3000', ':3002'); // Dispatch runs on port 3002
+      .replace(/:30\d{2}/, ':3002'); // Dispatch runs on port 3002
+
+    console.log('[DispatchSocket] Connecting to:', `${baseUrl}/dispatch`);
 
     this.socket = io(`${baseUrl}/dispatch`, {
       auth: {

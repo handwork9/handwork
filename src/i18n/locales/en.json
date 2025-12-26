@@ -105,12 +105,17 @@
   "cart": {
     "title": "Cart",
     "empty": "Your cart is empty",
+    "emptyDescription": "Add some fresh produce to get started!",
+    "browseProducts": "Browse Products",
     "subtotal": "Subtotal",
     "deliveryFee": "Delivery Fee",
     "total": "Total",
-    "checkout": "Checkout",
+    "checkout": "Proceed to Checkout",
     "removeItem": "Remove Item",
     "clearCart": "Clear Cart",
+    "clearCartConfirm": "Remove all items from cart?",
+    "orderSummary": "ORDER SUMMARY",
+    "calculatedAtCheckout": "Calculated at checkout",
     "itemAdded": "Item added to cart",
     "itemRemoved": "Item removed from cart"
   },
@@ -183,10 +188,16 @@
   },
   "wallet": {
     "title": "Wallet",
+    "myWallet": "My Wallet",
+    "manageBalance": "Manage your balance and transactions",
     "balance": "Balance",
+    "availableBalance": "Available Balance",
     "topUp": "Top Up",
     "withdraw": "Withdraw",
     "transactions": "Transactions",
+    "recentTransactions": "RECENT TRANSACTIONS",
+    "noTransactions": "No transactions yet",
+    "transactionHistoryAppear": "Your transaction history will appear here",
     "transfer": "Transfer",
     "history": "History",
     "paymentMethods": "Payment Methods"
@@ -223,12 +234,20 @@
   },
   "farmer": {
     "title": "Farmer",
+    "dashboard": "Your Farm Dashboard",
     "myProducts": "My Products",
     "addProduct": "Add Product",
     "editProduct": "Edit Product",
     "sales": "Sales",
     "earnings": "Earnings",
-    "analytics": "Analytics"
+    "analytics": "Analytics",
+    "pendingOrders": "Pending Orders",
+    "processingOrders": "Processing",
+    "totalProducts": "Total Products",
+    "lowStock": "Low Stock",
+    "recentOrders": "Recent Orders",
+    "topSellers": "Top Sellers",
+    "viewAll": "View All"
   },
   "rider": {
     "title": "Rider",

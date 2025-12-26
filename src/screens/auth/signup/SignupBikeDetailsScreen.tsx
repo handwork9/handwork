@@ -117,6 +117,8 @@ export default function SignupBikeDetailsScreen({ navigation, route }: Props) {
     state,
     city,
     address,
+    latitude,
+    longitude,
   } = route.params;
 
   const [bikeModel, setBikeModel] = useState('');
@@ -223,6 +225,8 @@ export default function SignupBikeDetailsScreen({ navigation, route }: Props) {
       state,
       city,
       address,
+      latitude,
+      longitude,
       bikeModel: bikeModel.trim(),
       plateNumber: plateNumber.trim().toUpperCase(),
       bikeColor: bikeColor.trim(),

@@ -15,6 +15,7 @@ import {
   ActionSheetIOS,
   ScrollView,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -24,6 +25,7 @@ import * as ImagePicker from 'expo-image-picker';
 import supportService, { SupportTicket, SupportMessage } from '../../services/supportService';
 import { FONTS } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
+import { useAppSelector } from '../../store';
 
 interface Message {
   id: string;
@@ -34,6 +36,13 @@ interface Message {
   agentName?: string;
   agentAvatar?: string;
   type?: 'text' | 'image' | 'file' | 'location' | 'system';
+  imageUrl?: string;
+  attachments?: {
+    url: string;
+    type: string;
+    name: string;
+    size?: number;
+  }[];
 }
 
 type LiveChatRouteParams = {
@@ -223,6 +232,10 @@ const LiveChatScreen: React.FC = () => {
   const typingAnim = useRef(new Animated.Value(0)).current;
   const { colors, isDark } = useTheme();
   
+  // Check if user is authenticated
+  const { accessToken, user } = useAppSelector(state => state.auth);
+  const isAuthenticated = !!accessToken && !!user;
+  
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -281,19 +294,35 @@ const LiveChatScreen: React.FC = () => {
   }), [colors, isDark]);
 
   // Transform SupportMessage to local Message format
-  const transformMessage = useCallback((msg: SupportMessage): Message => ({
-    id: msg.id,
-    text: msg.content,
-    sender: msg.senderType,
-    timestamp: new Date(msg.createdAt),
-    status: msg.isRead ? 'read' : 'delivered',
-    agentName: msg.sender?.name,
-    agentAvatar: msg.sender?.avatar,
-    type: msg.type,
-  }), []);
+  const transformMessage = useCallback((msg: SupportMessage): Message => {
+    // For image messages, get the URL from attachments or content (if content is a URL)
+    let imageUrl = msg.attachments?.[0]?.url;
+    if (msg.type === 'image' && !imageUrl && msg.content?.startsWith('http')) {
+      imageUrl = msg.content;
+    }
+    
+    return {
+      id: msg.id,
+      text: msg.type === 'image' ? '📷 Photo' : msg.content,
+      sender: msg.senderType,
+      timestamp: new Date(msg.createdAt),
+      status: msg.isRead ? 'read' : 'delivered',
+      agentName: msg.sender?.name,
+      agentAvatar: msg.sender?.avatar,
+      type: msg.type,
+      imageUrl,
+      attachments: msg.attachments,
+    };
+  }, []);
 
   // Initialize chat session
   useEffect(() => {
+    // Skip initialization if not authenticated - guest mode will show contact options
+    if (!isAuthenticated) {
+      setIsLoading(false);
+      return;
+    }
+    
     const initChat = async () => {
       setIsLoading(true);
       setError(null);
@@ -304,7 +333,14 @@ const LiveChatScreen: React.FC = () => {
         
         if (activeChat) {
           setTicket(activeChat.ticket);
-          setMessages(activeChat.messages.map(transformMessage));
+          // Deduplicate messages by ID
+          const uniqueMessages = activeChat.messages.reduce((acc: SupportMessage[], msg) => {
+            if (!acc.some(m => m.id === msg.id)) {
+              acc.push(msg);
+            }
+            return acc;
+          }, []);
+          setMessages(uniqueMessages.map(transformMessage));
         } else {
           // Start new chat
           const { subject, category, orderId, initialMessage } = route.params || {};
@@ -315,7 +351,14 @@ const LiveChatScreen: React.FC = () => {
             initialMessage,
           });
           setTicket(newChat.ticket);
-          setMessages(newChat.messages.map(transformMessage));
+          // Deduplicate messages by ID
+          const uniqueMessages = newChat.messages.reduce((acc: SupportMessage[], msg) => {
+            if (!acc.some(m => m.id === msg.id)) {
+              acc.push(msg);
+            }
+            return acc;
+          }, []);
+          setMessages(uniqueMessages.map(transformMessage));
         }
       } catch (err) {
         console.error('[LiveChat] Init error:', err);
@@ -335,7 +378,7 @@ const LiveChatScreen: React.FC = () => {
       }
       supportService.disconnect();
     };
-  }, []);
+  }, [isAuthenticated]);
 
   // Track message IDs that we've sent to avoid duplicates from socket broadcast
   const sentMessageIdsRef = useRef<Set<string>>(new Set());
@@ -358,7 +401,7 @@ const LiveChatScreen: React.FC = () => {
         // Check if we sent this message (it will come back via broadcast)
         if (sentMessageIdsRef.current.has(newMessage.id)) {
           console.log('[LiveChat] Skipping our own sent message:', newMessage.id);
-          sentMessageIdsRef.current.delete(newMessage.id);
+          // Don't delete - keep it to prevent future duplicates in case of retries
           return prev;
         }
         // Check if this is a response to a pending message we sent
@@ -427,9 +470,10 @@ const LiveChatScreen: React.FC = () => {
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ['images'],
         quality: 0.8,
+        base64: true,
       });
       if (!result.canceled && result.assets[0]) {
-        sendMessage(`📷 [Photo attached]`);
+        await sendImageMessage(result.assets[0]);
       }
     } else {
       Alert.alert('Permission Required', 'Camera permission is needed to take photos.');
@@ -442,9 +486,10 @@ const LiveChatScreen: React.FC = () => {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         quality: 0.8,
+        base64: true,
       });
       if (!result.canceled && result.assets[0]) {
-        sendMessage(`🖼️ [Image attached]`);
+        await sendImageMessage(result.assets[0]);
       }
     } else {
       Alert.alert('Permission Required', 'Gallery permission is needed to choose photos.');
@@ -568,14 +613,33 @@ const LiveChatScreen: React.FC = () => {
     }
   };
 
+  const submitReport = async (type: 'inappropriate_behavior' | 'technical_problem') => {
+    try {
+      await supportService.submitReport({
+        type,
+        ticketId: ticket?.id,
+        description: `Report from live chat session${ticket?.ticketNumber ? ` (${ticket.ticketNumber})` : ''}`,
+      });
+      Alert.alert(
+        'Report Submitted',
+        type === 'inappropriate_behavior'
+          ? 'Thank you for your report. We will review this conversation.'
+          : 'Thank you. Our technical team will look into this.'
+      );
+    } catch (error) {
+      console.error('[LiveChat] Submit report error:', error);
+      Alert.alert('Error', 'Failed to submit report. Please try again.');
+    }
+  };
+
   const handleReportIssue = () => {
     Alert.alert(
       'Report Issue',
       'What would you like to report?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Inappropriate Behavior', onPress: () => Alert.alert('Reported', 'Thank you for your report. We will review this conversation.') },
-        { text: 'Technical Problem', onPress: () => Alert.alert('Reported', 'Thank you. Our technical team will look into this.') }
+        { text: 'Inappropriate Behavior', onPress: () => submitReport('inappropriate_behavior') },
+        { text: 'Technical Problem', onPress: () => submitReport('technical_problem') }
       ]
     );
   };
@@ -670,6 +734,132 @@ const LiveChatScreen: React.FC = () => {
     }
   };
 
+  // Track temp IDs for image messages to prevent duplicates
+  const imageMessageTempIdsRef = useRef<Set<string>>(new Set());
+
+  // Send image message
+  const sendImageMessage = async (imageAsset: ImagePicker.ImagePickerAsset) => {
+    if (!ticket?.id || sendingMessage) return;
+
+    const tempId = `temp-${Date.now()}`;
+    
+    // Track this temp ID to prevent duplicates
+    imageMessageTempIdsRef.current.add(tempId);
+    
+    // Create optimistic image message with local URI
+    const newMessage: Message = {
+      id: tempId,
+      text: '📷 Photo',
+      sender: 'user',
+      timestamp: new Date(),
+      status: 'sending',
+      type: 'image',
+      imageUrl: imageAsset.uri,
+    };
+
+    setMessages((prev) => [...prev, newMessage]);
+    setSendingMessage(true);
+
+    let uploadedImageUrl: string | null = null;
+
+    try {
+      // Import upload service
+      const { uploadService } = await import('../../services/uploadService');
+      
+      // Convert image to base64 if not already
+      let base64Data = imageAsset.base64;
+      if (!base64Data) {
+        // Fetch and convert to base64
+        const response = await fetch(imageAsset.uri);
+        const blob = await response.blob();
+        base64Data = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result as string;
+            // Remove data URL prefix
+            const base64 = result.split(',')[1];
+            resolve(base64);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      }
+
+      // Upload image
+      console.log('[LiveChat] Uploading image to support folder...');
+      const uploadResult = await uploadService.uploadImage(
+        `data:image/jpeg;base64,${base64Data}`,
+        'support'
+      );
+
+      console.log('[LiveChat] Upload result:', uploadResult);
+
+      if (!uploadResult.success || !uploadResult.data) {
+        throw new Error(uploadResult.error || 'Failed to upload image');
+      }
+
+      uploadedImageUrl = uploadResult.data.url;
+      console.log('[LiveChat] Image uploaded, URL:', uploadedImageUrl);
+
+      // Track this URL in pendingTempIdsRef for socket deduplication
+      pendingTempIdsRef.current.set(uploadedImageUrl, tempId);
+
+      // Send message with image URL
+      const sentMessage = await supportService.sendMessage(
+        ticket.id,
+        uploadedImageUrl,
+        'image'
+      );
+
+      console.log('[LiveChat] Message sent:', sentMessage);
+      console.log('[LiveChat] sentMessage.attachments:', sentMessage.attachments);
+
+      // Track this message ID (don't delete on socket receive)
+      sentMessageIdsRef.current.add(sentMessage.id);
+      
+      // Remove from pending
+      if (uploadedImageUrl) {
+        pendingTempIdsRef.current.delete(uploadedImageUrl);
+      }
+      imageMessageTempIdsRef.current.delete(tempId);
+
+      // Update message with real data - also deduplicate
+      setMessages((prev) => {
+        // First check if socket already added this message
+        const alreadyExists = prev.some(m => m.id === sentMessage.id && m.id !== tempId);
+        if (alreadyExists) {
+          // Socket already added it, just remove the temp message
+          return prev.filter(m => m.id !== tempId);
+        }
+        // Update temp message with real data
+        return prev.map((msg) =>
+          msg.id === tempId
+            ? {
+                ...transformMessage(sentMessage),
+                imageUrl: uploadedImageUrl || sentMessage.attachments?.[0]?.url,
+              }
+            : msg
+        );
+      });
+    } catch (error) {
+      console.error('[LiveChat] Send image error:', error);
+      // Cleanup tracking
+      if (uploadedImageUrl) {
+        pendingTempIdsRef.current.delete(uploadedImageUrl);
+      }
+      imageMessageTempIdsRef.current.delete(tempId);
+      // Mark message as failed
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === tempId ? { ...msg, status: 'failed' } : msg
+        )
+      );
+      Alert.alert('Error', 'Failed to send image. Please try again.');
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
   // Handle user typing indicator
   const handleTextChange = (text: string) => {
     setInputText(text);
@@ -709,9 +899,25 @@ const LiveChatScreen: React.FC = () => {
     }
   };
 
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
   const renderMessage = ({ item, index }: { item: Message; index: number }) => {
     const isUser = item.sender === 'user';
     const showAvatar = !isUser && (index === 0 || messages[index - 1].sender === 'user');
+    const isImageMessage = item.type === 'image' && (item.imageUrl || item.attachments?.[0]?.url);
+    const imageUrl = item.imageUrl || item.attachments?.[0]?.url;
+
+    // Debug log for image messages
+    if (item.type === 'image') {
+      console.log('[LiveChat] Rendering image message:', {
+        id: item.id,
+        type: item.type,
+        imageUrl: item.imageUrl,
+        attachments: item.attachments,
+        isImageMessage,
+        finalImageUrl: imageUrl,
+      });
+    }
 
     return (
       <Animated.View
@@ -741,13 +947,43 @@ const LiveChatScreen: React.FC = () => {
         )}
         {!isUser && !showAvatar && <View style={styles.avatarSpacer} />}
         
-        <View style={[styles.messageBubble, isUser ? styles.userBubble : [styles.agentBubble, dynamicStyles.messageBubble]]}>
+        <View style={[
+          styles.messageBubble, 
+          isUser ? styles.userBubble : [styles.agentBubble, dynamicStyles.messageBubble],
+          isImageMessage && styles.imageBubble,
+        ]}>
           {!isUser && showAvatar && (
             <Text style={[styles.agentName, { color: colors.textSecondary }]}>{item.agentName}</Text>
           )}
-          <Text style={[styles.messageText, isUser ? styles.userMessageText : dynamicStyles.messageText]}>
-            {item.text}
-          </Text>
+          
+          {/* Image content */}
+          {isImageMessage && imageUrl ? (
+            <TouchableOpacity 
+              onPress={() => {
+                console.log('[LiveChat] Image pressed, opening preview:', imageUrl);
+                setSelectedImage(imageUrl);
+              }}
+              activeOpacity={0.9}
+            >
+              <Image
+                source={{ uri: imageUrl }}
+                style={styles.messageImage}
+                resizeMode="cover"
+                onError={(e) => console.error('[LiveChat] Image load error:', imageUrl, e.nativeEvent.error)}
+                onLoad={() => console.log('[LiveChat] Image loaded successfully:', imageUrl)}
+              />
+              {item.status === 'sending' && (
+                <View style={styles.imageLoadingOverlay}>
+                  <ActivityIndicator size="small" color="#FFF" />
+                </View>
+              )}
+            </TouchableOpacity>
+          ) : (
+            <Text style={[styles.messageText, isUser ? styles.userMessageText : dynamicStyles.messageText]}>
+              {item.text}
+            </Text>
+          )}
+          
           <View style={styles.messageFooter}>
             <Text style={[styles.timestamp, isUser ? styles.userTimestamp : dynamicStyles.timestamp]}>
               {formatTime(item.timestamp)}
@@ -805,6 +1041,137 @@ const LiveChatScreen: React.FC = () => {
       </View>
     );
   };
+
+  // Guest Contact UI - for unauthenticated users
+  const handleContactEmail = () => {
+    Linking.openURL('mailto:support@handwork.ng?subject=Support%20Request');
+  };
+
+  const handleContactPhone = () => {
+    Linking.openURL('tel:+2348000000000');
+  };
+
+  const handleContactWhatsApp = () => {
+    Linking.openURL('https://wa.me/2348000000000?text=Hello,%20I%20need%20help%20with%20Handwork');
+  };
+
+  // Render Guest Contact Form for unauthenticated users
+  if (!isAuthenticated) {
+    return (
+      <View style={[styles.container, dynamicStyles.container]}>
+        {/* Header */}
+        <LinearGradient
+          colors={['#7C3AED', '#9333EA']}
+          style={[styles.header, { paddingTop: insets.top }]}
+        >
+          <View style={styles.headerContent}>
+            <TouchableOpacity 
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+            >
+              <Ionicons name="arrow-back" size={24} color="#FFF" />
+            </TouchableOpacity>
+            
+            <View style={styles.headerInfo}>
+              <View style={styles.headerAvatarContainer}>
+                <View style={[styles.headerAvatar, styles.headerAvatarPlaceholder]}>
+                  <Ionicons name="headset" size={24} color="#FFF" />
+                </View>
+              </View>
+              <View style={styles.headerText}>
+                <Text style={styles.headerTitle}>Handwork Support</Text>
+                <Text style={styles.headerSubtitle}>Contact Us</Text>
+              </View>
+            </View>
+            
+            <View style={{ width: 40 }} />
+          </View>
+        </LinearGradient>
+
+        {/* Guest Contact Options */}
+        <ScrollView 
+          style={{ flex: 1 }}
+          contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 20 }}
+        >
+          <View style={[styles.guestWelcomeCard, { backgroundColor: isDark ? colors.card : '#FFF' }]}>
+            <View style={styles.guestIconContainer}>
+              <Ionicons name="chatbubbles" size={48} color="#7C3AED" />
+            </View>
+            <Text style={[styles.guestTitle, { color: colors.text }]}>
+              Need Help?
+            </Text>
+            <Text style={[styles.guestSubtitle, { color: colors.textSecondary }]}>
+              You can reach our support team through any of the channels below. For faster assistance, please sign in to your account.
+            </Text>
+          </View>
+
+          <Text style={[styles.guestSectionTitle, { color: colors.text }]}>
+            Contact Options
+          </Text>
+
+          <TouchableOpacity 
+            style={[styles.guestContactOption, { backgroundColor: isDark ? colors.card : '#FFF' }]}
+            onPress={handleContactEmail}
+          >
+            <View style={[styles.guestContactIcon, { backgroundColor: '#EEF2FF' }]}>
+              <Ionicons name="mail" size={24} color="#7C3AED" />
+            </View>
+            <View style={styles.guestContactInfo}>
+              <Text style={[styles.guestContactTitle, { color: colors.text }]}>Email Us</Text>
+              <Text style={[styles.guestContactSubtitle, { color: colors.textSecondary }]}>
+                support@handwork.ng
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.guestContactOption, { backgroundColor: isDark ? colors.card : '#FFF' }]}
+            onPress={handleContactPhone}
+          >
+            <View style={[styles.guestContactIcon, { backgroundColor: '#ECFDF5' }]}>
+              <Ionicons name="call" size={24} color="#10B981" />
+            </View>
+            <View style={styles.guestContactInfo}>
+              <Text style={[styles.guestContactTitle, { color: colors.text }]}>Call Us</Text>
+              <Text style={[styles.guestContactSubtitle, { color: colors.textSecondary }]}>
+                +234 800 000 0000
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.guestContactOption, { backgroundColor: isDark ? colors.card : '#FFF' }]}
+            onPress={handleContactWhatsApp}
+          >
+            <View style={[styles.guestContactIcon, { backgroundColor: '#F0FDF4' }]}>
+              <Ionicons name="logo-whatsapp" size={24} color="#22C55E" />
+            </View>
+            <View style={styles.guestContactInfo}>
+              <Text style={[styles.guestContactTitle, { color: colors.text }]}>WhatsApp</Text>
+              <Text style={[styles.guestContactSubtitle, { color: colors.textSecondary }]}>
+                Chat with us instantly
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+
+          <View style={[styles.guestSignInCard, { backgroundColor: isDark ? 'rgba(124, 58, 237, 0.1)' : '#F5F3FF' }]}>
+            <Ionicons name="person-circle" size={32} color="#7C3AED" />
+            <View style={styles.guestSignInInfo}>
+              <Text style={[styles.guestSignInTitle, { color: colors.text }]}>
+                Already have an account?
+              </Text>
+              <Text style={[styles.guestSignInSubtitle, { color: colors.textSecondary }]}>
+                Sign in to access live chat support with faster response times.
+              </Text>
+            </View>
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, dynamicStyles.container]}>
@@ -882,7 +1249,14 @@ const LiveChatScreen: React.FC = () => {
               supportService.getActiveChat().then(activeChat => {
                 if (activeChat) {
                   setTicket(activeChat.ticket);
-                  setMessages(activeChat.messages.map(transformMessage));
+                  // Deduplicate messages by ID
+                  const uniqueMessages = activeChat.messages.reduce((acc: SupportMessage[], msg) => {
+                    if (!acc.some(m => m.id === msg.id)) {
+                      acc.push(msg);
+                    }
+                    return acc;
+                  }, []);
+                  setMessages(uniqueMessages.map(transformMessage));
                 }
               }).catch(() => {
                 setError('Failed to connect. Please try again.');
@@ -907,7 +1281,7 @@ const LiveChatScreen: React.FC = () => {
             ref={flatListRef}
             data={messages}
             renderItem={renderMessage}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item, index) => `${item.id}-${index}`}
             contentContainerStyle={styles.messagesList}
             showsVerticalScrollIndicator={false}
             onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
@@ -996,6 +1370,32 @@ const LiveChatScreen: React.FC = () => {
           </View>
         </KeyboardAvoidingView>
       )}
+
+      {/* Image Preview Modal */}
+      <Modal
+        visible={!!selectedImage}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedImage(null)}
+      >
+        <View style={styles.imagePreviewOverlay}>
+          <TouchableOpacity
+            style={styles.imagePreviewCloseButton}
+            onPress={() => setSelectedImage(null)}
+          >
+            <Ionicons name="close" size={30} color="#FFF" />
+          </TouchableOpacity>
+          {selectedImage && (
+            <Image
+              source={{ uri: selectedImage }}
+              style={styles.imagePreviewFull}
+              resizeMode="contain"
+              onError={(e) => console.error('[LiveChat] Preview image error:', selectedImage, e.nativeEvent.error)}
+              onLoad={() => console.log('[LiveChat] Preview image loaded:', selectedImage)}
+            />
+          )}
+        </View>
+      </Modal>
 
       {/* Emoji Picker Modal */}
       <Modal
@@ -1246,6 +1646,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1646,6 +2047,137 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     fontWeight: '500',
     fontFamily: FONTS.medium,
+  },
+  // Guest Contact Styles
+  guestWelcomeCard: {
+    padding: 24,
+    borderRadius: 16,
+    alignItems: 'center',
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  guestIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#F5F3FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  guestTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
+    marginBottom: 8,
+  },
+  guestSubtitle: {
+    fontSize: 15,
+    textAlign: 'center',
+    lineHeight: 22,
+    fontFamily: FONTS.regular,
+  },
+  guestSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+    marginBottom: 12,
+    marginLeft: 4,
+  },
+  guestContactOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  guestContactIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  guestContactInfo: {
+    flex: 1,
+  },
+  guestContactTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+    marginBottom: 2,
+  },
+  guestContactSubtitle: {
+    fontSize: 14,
+    fontFamily: FONTS.regular,
+  },
+  guestSignInCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 12,
+  },
+  guestSignInInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  guestSignInTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+    marginBottom: 2,
+  },
+  guestSignInSubtitle: {
+    fontSize: 13,
+    fontFamily: FONTS.regular,
+    lineHeight: 18,
+  },
+  // Image message styles
+  imageBubble: {
+    padding: 4,
+    maxWidth: '70%',
+  },
+  messageImage: {
+    width: 200,
+    height: 200,
+    borderRadius: 16,
+    backgroundColor: '#E5E7EB',
+  },
+  imageLoadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Image preview modal styles
+  imagePreviewOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imagePreviewCloseButton: {
+    position: 'absolute',
+    top: 60,
+    right: 20,
+    zIndex: 10,
+    padding: 10,
+  },
+  imagePreviewFull: {
+    width: '100%',
+    height: '80%',
   },
 });
 

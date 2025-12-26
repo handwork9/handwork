@@ -71,8 +71,11 @@ export const MessageBannerProvider: React.FC<MessageBannerProviderProps> = ({
 
   // Get the WebSocket URL for chat (port 3002 with /chat namespace)
   const getChatWsUrl = () => {
-    // Replace port 3001 or 3000 with 3002 for chat websocket
-    const baseUrl = API_CONFIG.WS_URL.replace(':3001', ':3002').replace(':3000', ':3002');
+    // Convert WS URL to HTTP for socket.io and change port to 3002
+    const baseUrl = API_CONFIG.WS_URL
+      .replace('ws://', 'http://')
+      .replace('wss://', 'https://')
+      .replace(/:300[01]/, ':3002');
     return `${baseUrl}/chat`;
   };
 

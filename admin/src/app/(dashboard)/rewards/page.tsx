@@ -42,7 +42,6 @@ import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
-const { TabPane } = Tabs;
 
 // Types
 interface Reward {
@@ -201,7 +200,6 @@ export default function RewardsPage() {
     onSuccess: () => {
       message.success('Reward created successfully');
       setRewardModalOpen(false);
-      rewardForm.resetFields();
       refetchRewards();
       queryClient.invalidateQueries({ queryKey: ['rewards-stats'] });
     },
@@ -217,7 +215,6 @@ export default function RewardsPage() {
       message.success('Reward updated successfully');
       setRewardModalOpen(false);
       setEditingReward(null);
-      rewardForm.resetFields();
       refetchRewards();
     },
     onError: (error: AxiosError<{ message: string }>) => {
@@ -244,7 +241,6 @@ export default function RewardsPage() {
       message.success('Points adjusted successfully');
       setAdjustPointsModalOpen(false);
       setSelectedUser(null);
-      adjustForm.resetFields();
       refetchAccounts();
       queryClient.invalidateQueries({ queryKey: ['rewards-stats'] });
     },
@@ -256,18 +252,11 @@ export default function RewardsPage() {
   // Handlers
   const handleCreateReward = () => {
     setEditingReward(null);
-    rewardForm.resetFields();
     setRewardModalOpen(true);
   };
 
   const handleEditReward = (reward: Reward) => {
     setEditingReward(reward);
-    rewardForm.setFieldsValue({
-      ...reward,
-      startsAt: reward.startsAt ? dayjs(reward.startsAt) : undefined,
-      expiresAt: reward.expiresAt ? dayjs(reward.expiresAt) : undefined,
-      terms: reward.terms?.join('\n') || '',
-    });
     setRewardModalOpen(true);
   };
 
@@ -293,7 +282,6 @@ export default function RewardsPage() {
 
   const handleAdjustPoints = (account: LoyaltyAccount) => {
     setSelectedUser(account);
-    adjustForm.resetFields();
     setAdjustPointsModalOpen(true);
   };
 
@@ -317,7 +305,7 @@ export default function RewardsPage() {
       title: 'Reward',
       key: 'name',
       render: (_, record) => (
-        <Space direction="vertical" size={0}>
+        <Space orientation="vertical" size={0}>
           <Text strong>{record.name}</Text>
           <Text type="secondary" style={{ fontSize: 12 }}>{record.description}</Text>
         </Space>
@@ -402,7 +390,7 @@ export default function RewardsPage() {
       title: 'Member',
       key: 'user',
       render: (_, record) => (
-        <Space direction="vertical" size={0}>
+        <Space orientation="vertical" size={0}>
           <Text strong>{record.user?.name || 'Unknown'}</Text>
           <Text type="secondary" style={{ fontSize: 12 }}>{record.user?.email}</Text>
         </Space>
@@ -472,7 +460,7 @@ export default function RewardsPage() {
       title: 'User',
       key: 'user',
       render: (_, record) => (
-        <Space direction="vertical" size={0}>
+        <Space orientation="vertical" size={0}>
           <Text strong>{record.user?.name || 'Unknown'}</Text>
           <Text type="secondary" style={{ fontSize: 12 }}>{record.user?.email}</Text>
         </Space>
@@ -616,103 +604,121 @@ export default function RewardsPage() {
 
       {/* Tabs */}
       <Card>
-        <Tabs activeKey={activeTab} onChange={setActiveTab}>
-          <TabPane tab="Rewards" key="rewards">
-            <Space style={{ marginBottom: 16 }}>
-              <Select
-                placeholder="Filter by type"
-                allowClear
-                style={{ width: 200 }}
-                value={typeFilter}
-                onChange={setTypeFilter}
-                options={[
-                  { label: 'Discount', value: 'discount' },
-                  { label: 'Free Delivery', value: 'free_delivery' },
-                  { label: 'Cashback', value: 'cashback' },
-                  { label: 'Product', value: 'product' },
-                  { label: 'Voucher', value: 'voucher' },
-                ]}
-              />
-            </Space>
-            <Table
-              columns={rewardColumns}
-              dataSource={rewardsData?.items || rewardsData || []}
-              rowKey="id"
-              loading={rewardsLoading}
-              pagination={{
-                current: page,
-                pageSize,
-                total: rewardsData?.total,
-                showSizeChanger: true,
-                onChange: (p, ps) => {
-                  setPage(p);
-                  setPageSize(ps);
-                },
-              }}
-            />
-          </TabPane>
-
-          <TabPane tab="Members" key="members">
-            <Space style={{ marginBottom: 16 }}>
-              <Input
-                placeholder="Search by name or email"
-                prefix={<SearchOutlined />}
-                style={{ width: 250 }}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                allowClear
-              />
-              <Select
-                placeholder="Filter by tier"
-                allowClear
-                style={{ width: 150 }}
-                value={tierFilter}
-                onChange={setTierFilter}
-                options={[
-                  { label: 'Bronze', value: 'Bronze' },
-                  { label: 'Silver', value: 'Silver' },
-                  { label: 'Gold', value: 'Gold' },
-                  { label: 'Platinum', value: 'Platinum' },
-                ]}
-              />
-            </Space>
-            <Table
-              columns={memberColumns}
-              dataSource={accountsData?.items || accountsData || []}
-              rowKey="id"
-              loading={accountsLoading}
-              pagination={{
-                current: page,
-                pageSize,
-                total: accountsData?.total,
-                showSizeChanger: true,
-                onChange: (p, ps) => {
-                  setPage(p);
-                  setPageSize(ps);
-                },
-              }}
-            />
-          </TabPane>
-
-          <TabPane tab="Redemptions" key="redemptions">
-            <Table
-              columns={redemptionColumns}
-              dataSource={redemptionsData?.items || redemptionsData || []}
-              rowKey="id"
-              loading={redemptionsLoading}
-              pagination={{
-                current: page,
-                pageSize,
-                total: redemptionsData?.total,
-                showSizeChanger: true,
-                onChange: (p, ps) => {
-                  setPage(p);
-                  setPageSize(ps);
-                },
-              }}
-            />
-          </TabPane>
-        </Tabs>
+        <Tabs 
+          activeKey={activeTab} 
+          onChange={setActiveTab}
+          items={[
+            {
+              key: 'rewards',
+              label: 'Rewards',
+              children: (
+                <>
+                  <Space style={{ marginBottom: 16 }}>
+                    <Select
+                      placeholder="Filter by type"
+                      allowClear
+                      style={{ width: 200 }}
+                      value={typeFilter}
+                      onChange={setTypeFilter}
+                      options={[
+                        { label: 'Discount', value: 'discount' },
+                        { label: 'Free Delivery', value: 'free_delivery' },
+                        { label: 'Cashback', value: 'cashback' },
+                        { label: 'Product', value: 'product' },
+                        { label: 'Voucher', value: 'voucher' },
+                      ]}
+                    />
+                  </Space>
+                  <Table
+                    columns={rewardColumns}
+                    dataSource={rewardsData?.items || rewardsData || []}
+                    rowKey="id"
+                    loading={rewardsLoading}
+                    pagination={{
+                      current: page,
+                      pageSize,
+                      total: rewardsData?.total,
+                      showSizeChanger: true,
+                      onChange: (p, ps) => {
+                        setPage(p);
+                        setPageSize(ps);
+                      },
+                    }}
+                  />
+                </>
+              ),
+            },
+            {
+              key: 'members',
+              label: 'Members',
+              children: (
+                <>
+                  <Space style={{ marginBottom: 16 }}>
+                    <Input
+                      placeholder="Search by name or email"
+                      prefix={<SearchOutlined />}
+                      style={{ width: 250 }}
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      allowClear
+                    />
+                    <Select
+                      placeholder="Filter by tier"
+                      allowClear
+                      style={{ width: 150 }}
+                      value={tierFilter}
+                      onChange={setTierFilter}
+                      options={[
+                        { label: 'Bronze', value: 'Bronze' },
+                        { label: 'Silver', value: 'Silver' },
+                        { label: 'Gold', value: 'Gold' },
+                        { label: 'Platinum', value: 'Platinum' },
+                      ]}
+                    />
+                  </Space>
+                  <Table
+                    columns={memberColumns}
+                    dataSource={accountsData?.items || accountsData || []}
+                    rowKey="id"
+                    loading={accountsLoading}
+                    pagination={{
+                      current: page,
+                      pageSize,
+                      total: accountsData?.total,
+                      showSizeChanger: true,
+                      onChange: (p, ps) => {
+                        setPage(p);
+                        setPageSize(ps);
+                      },
+                    }}
+                  />
+                </>
+              ),
+            },
+            {
+              key: 'redemptions',
+              label: 'Redemptions',
+              children: (
+                <Table
+                  columns={redemptionColumns}
+                  dataSource={redemptionsData?.items || redemptionsData || []}
+                  rowKey="id"
+                  loading={redemptionsLoading}
+                  pagination={{
+                    current: page,
+                    pageSize,
+                    total: redemptionsData?.total,
+                    showSizeChanger: true,
+                    onChange: (p, ps) => {
+                      setPage(p);
+                      setPageSize(ps);
+                    },
+                  }}
+                />
+              ),
+            },
+          ]}
+        />
       </Card>
 
       {/* Create/Edit Reward Modal */}
@@ -722,11 +728,22 @@ export default function RewardsPage() {
         onCancel={() => {
           setRewardModalOpen(false);
           setEditingReward(null);
-          rewardForm.resetFields();
+        }}
+        afterClose={() => rewardForm.resetFields()}
+        afterOpenChange={(open) => {
+          if (open && editingReward) {
+            rewardForm.setFieldsValue({
+              ...editingReward,
+              startsAt: editingReward.startsAt ? dayjs(editingReward.startsAt) : undefined,
+              expiresAt: editingReward.expiresAt ? dayjs(editingReward.expiresAt) : undefined,
+              terms: editingReward.terms?.join('\n') || '',
+            });
+          }
         }}
         onOk={handleRewardSubmit}
         confirmLoading={createRewardMutation.isPending || updateRewardMutation.isPending}
         width={600}
+        destroyOnHidden
       >
         <Form form={rewardForm} layout="vertical">
           <Form.Item
@@ -844,14 +861,15 @@ export default function RewardsPage() {
         onCancel={() => {
           setAdjustPointsModalOpen(false);
           setSelectedUser(null);
-          adjustForm.resetFields();
         }}
+        afterClose={() => adjustForm.resetFields()}
         onOk={handleAdjustSubmit}
         confirmLoading={adjustPointsMutation.isPending}
+        destroyOnHidden
       >
         {selectedUser && (
           <div style={{ marginBottom: 16, padding: 16, background: '#f5f5f5', borderRadius: 8 }}>
-            <Space direction="vertical" size={4}>
+            <Space orientation="vertical" size={4}>
               <Text>Current Balance: <Text strong>{selectedUser.currentPoints.toLocaleString()} points</Text></Text>
               <Text type="secondary">Tier: {selectedUser.tier}</Text>
             </Space>

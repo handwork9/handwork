@@ -20,6 +20,7 @@ import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/nativ
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTranslation } from 'react-i18next';
 import { SPACING, FONT_SIZES, FONTS } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
 import { twoFactorService } from '../../services/twoFactorService';
@@ -56,6 +57,7 @@ export default function SecurityScreen() {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
   const dispatch = useAppDispatch();
+  const { t } = useTranslation();
   const scrollY = useRef(new Animated.Value(0)).current;
   const [signingOutAll, setSigningOutAll] = useState(false);
   const [sessionCount, setSessionCount] = useState<number | null>(null);
@@ -539,7 +541,7 @@ export default function SecurityScreen() {
         >
           <Ionicons name="chevron-back" size={28} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Security</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>{t('settings.security')}</Text>
         <View style={styles.headerRightPlaceholder} />
       </View>
 

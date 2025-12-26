@@ -10,6 +10,7 @@ import {
   Platform,
   StatusBar,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +19,13 @@ import { useTranslation } from 'react-i18next';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, FONTS } from '../../constants/theme';
 import { useAppSelector, useAppDispatch } from '../../store';
 import { logout } from '../../store/slices/authSlice';
+import { clearPaymentMethods } from '../../store/slices/paymentSlice';
+import { clearCart } from '../../store/slices/cartSlice';
+import { clearAddresses } from '../../store/slices/addressSlice';
+import { resetFavorites } from '../../store/slices/favoritesSlice';
+import { clearFarmerState } from '../../store/slices/farmerSlice';
+import { clearRiderState } from '../../store/slices/riderSlice';
+import { clearBuyerState } from '../../store/slices/buyerSlice';
 import { authService } from '../../services/authService';
 import { useTheme } from '../../context/ThemeContext';
 import { triggerHaptic, triggerErrorHaptic } from '../../utils/haptics';
@@ -268,6 +276,14 @@ export default function ProfileScreen() {
             } catch (e) {
               // Continue with local logout even if API fails
             }
+            // Clear all user-specific state to prevent data leaking between users
+            dispatch(clearPaymentMethods());
+            dispatch(clearCart());
+            dispatch(clearAddresses());
+            dispatch(resetFavorites());
+            dispatch(clearFarmerState());
+            dispatch(clearRiderState());
+            dispatch(clearBuyerState());
             dispatch(logout());
           },
         },
@@ -409,8 +425,8 @@ export default function ProfileScreen() {
       });
     }
 
-    // Payment Methods - for buyers (to pay) and riders (to receive payments/withdrawals)
-    if (user?.role === 'buyer' || user?.role === 'rider') {
+    // Payment Methods - for all roles (buyers to pay, farmers and riders to receive payments/withdrawals)
+    if (user?.role === 'buyer' || user?.role === 'rider' || user?.role === 'farmer') {
       items.push({
         icon: 'card',
         label: t('wallet.paymentMethods'),
@@ -448,6 +464,17 @@ export default function ProfileScreen() {
         action: () => (navigation as any).navigate('FarmerSubscription'),
         iconColor: '#1DA1F2',
         iconBg: '#E3F2FD',
+      });
+    }
+
+    // Add Rider Premium option for riders
+    if (user?.role === 'rider') {
+      items.splice(0, 0, {
+        icon: 'rocket',
+        label: 'Boost Earnings',
+        action: () => (navigation as any).navigate('RiderSubscription'),
+        iconColor: '#FF6B00',
+        iconBg: '#FFF3E0',
       });
     }
 
@@ -535,11 +562,27 @@ export default function ProfileScreen() {
       title: t('support.title'),
       items: [
         {
+          icon: 'alert-circle',
+          label: 'My Disputes',
+          subtitle: 'View and track your disputes',
+          action: () => (navigation as any).navigate('MyDisputes'),
+          iconColor: '#EF4444',
+          iconBg: '#FEE2E2',
+        },
+        {
           icon: 'help-circle',
           label: t('support.helpCenter'),
           action: () => (navigation as any).navigate('HelpCenter'),
           iconColor: '#2196F3',
           iconBg: '#E3F2FD',
+        },
+        {
+          icon: 'headset',
+          label: 'Live Chat Support',
+          subtitle: '24/7 instant help',
+          action: () => (navigation as any).navigate('LiveChat'),
+          iconColor: '#3B82F6',
+          iconBg: '#DBEAFE',
         },
         {
           icon: 'chatbubble-ellipses',
@@ -625,9 +668,17 @@ export default function ProfileScreen() {
         {/* User Profile Card */}
         <View style={styles.profileCard}>
           <View style={[styles.avatarContainer, { backgroundColor: roleConfig.gradient[0] }]}>
-            <Text style={styles.avatarText}>
-              {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-            </Text>
+            {user?.avatar ? (
+              <Image
+                source={{ uri: user.avatar }}
+                style={styles.avatarImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <Text style={styles.avatarText}>
+                {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+              </Text>
+            )}
           </View>
           <View style={styles.profileInfo}>
             <Text style={[styles.profileName, { color: colors.text }]}>
@@ -763,6 +814,12 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
   },
   avatarText: {
     fontSize: 26,

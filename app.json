@@ -8,6 +8,12 @@
     "icon": "./assets/logo-dark.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "notification": {
+      "icon": "./assets/logo-dark.png",
+      "color": "#22C55E",
+      "androidMode": "default",
+      "androidCollapsedTitle": "Handwork"
+    },
     "splash": {
       "image": "./assets/logo-green.png",
       "resizeMode": "contain",
@@ -31,7 +37,17 @@
     },
     "plugins": [
       "expo-web-browser",
-      "@rnmapbox/maps"
+      [
+        "@rnmapbox/maps",
+        {}
+      ],
+      [
+        "@sentry/react-native/expo",
+        {
+          "organization": "your-sentry-org",
+          "project": "handwork-mobile"
+        }
+      ]
     ]
   }
 }

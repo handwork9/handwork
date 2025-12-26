@@ -80,15 +80,23 @@ class FarmerSubscriptionService {
    */
   async getCurrentSubscription(): Promise<CurrentSubscriptionResponse> {
     try {
-      return await apiClient.get<CurrentSubscriptionResponse>('/farmers/subscription/current');
+      const response = await apiClient.get<any>('/farmers/subscription/current');
+      console.log('[farmerSubscriptionService] getCurrentSubscription response:', JSON.stringify(response));
+      // Handle wrapped response { success: true, data: {...} }
+      const data = response?.data || response;
+      return data;
     } catch (error: any) {
+      console.error('[farmerSubscriptionService] getCurrentSubscription error:', error?.message, error?.response?.status);
       // If 404 or no subscription found, return default response
       if (error?.response?.status === 404) {
         return {
           hasActiveSubscription: false,
         };
       }
-      throw error;
+      // Return default on any error to prevent crash
+      return {
+        hasActiveSubscription: false,
+      };
     }
   }
 
@@ -100,11 +108,15 @@ class FarmerSubscriptionService {
     duration: SubscriptionDuration,
     paymentMethod: 'wallet' | 'card'
   ): Promise<SubscribeResponse> {
-    return apiClient.post<SubscribeResponse>('/farmers/subscription/subscribe', {
+    const response = await apiClient.post<any>('/farmers/subscription/subscribe', {
       tier,
       duration,
       paymentMethod,
     });
+    console.log('[farmerSubscriptionService] subscribe response:', JSON.stringify(response));
+    // Handle wrapped response { success: true, data: {...} }
+    const data = response?.data || response;
+    return data;
   }
 
   /**

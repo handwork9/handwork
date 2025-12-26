@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,9 @@ import {
   StatusBar,
   Animated,
   Dimensions,
+  ActivityIndicator,
+  Switch,
+  Easing,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -17,16 +20,121 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, FONTS } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
 import { LoadingState, Button } from '../../components/common';
 import { useLocation } from '../../hooks/useLocation';
 import { useDispatchSocket } from '../../hooks/useDispatchSocket';
 import { useAppSelector, useAppDispatch } from '../../store';
+import { updateRiderStatus, fetchRiderProfile } from '../../store/slices/riderSlice';
 import { formatCurrency } from '../../utils/formatters';
 import { RiderStackParamList, Order } from '../../types';
 import { riderService } from '../../services/orderService';
 import { calculateDeliveryPrice, DELIVERY_PRICING } from '../../services/deliveryPricingService';
+import LiveSupportBanner from '../../components/common/LiveSupportBanner';
+
+// Animated countdown timer component
+const CountdownTimer = ({ seconds, onExpire }: { seconds: number; onExpire?: () => void }) => {
+  const [timeLeft, setTimeLeft] = useState(seconds);
+  const progressAnim = useRef(new Animated.Value(1)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  
+  useEffect(() => {
+    // Start countdown animation
+    Animated.timing(progressAnim, {
+      toValue: 0,
+      duration: seconds * 1000,
+      useNativeDriver: false,
+      easing: Easing.linear,
+    }).start();
+    
+    const interval = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          onExpire?.();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [seconds]);
+  
+  // Pulse animation when time is low
+  useEffect(() => {
+    if (timeLeft <= 10 && timeLeft > 0) {
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.1, duration: 200, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+      ]).start();
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  }, [timeLeft]);
+  
+  const isUrgent = timeLeft <= 15;
+  const progressWidth = progressAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0%', '100%'],
+  });
+  
+  return (
+    <View style={countdownStyles.container}>
+      <View style={countdownStyles.progressBg}>
+        <Animated.View 
+          style={[
+            countdownStyles.progressFill, 
+            { 
+              width: progressWidth,
+              backgroundColor: isUrgent ? '#EF4444' : COLORS.primary,
+            }
+          ]} 
+        />
+      </View>
+      <Animated.View style={[countdownStyles.timerContainer, { transform: [{ scale: pulseAnim }] }]}>
+        <Ionicons 
+          name="timer-outline" 
+          size={14} 
+          color={isUrgent ? '#EF4444' : COLORS.primary} 
+        />
+        <Text style={[countdownStyles.timerText, isUrgent && { color: '#EF4444' }]}>
+          {timeLeft}s
+        </Text>
+      </Animated.View>
+    </View>
+  );
+};
+
+const countdownStyles = StyleSheet.create({
+  container: {
+    marginBottom: SPACING.sm,
+  },
+  progressBg: {
+    height: 4,
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  timerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: SPACING.xs,
+    gap: 4,
+  },
+  timerText: {
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+    color: COLORS.primary,
+  },
+});
 
 type NavigationProp = NativeStackNavigationProp<RiderStackParamList>;
 
@@ -64,6 +172,18 @@ export default function AvailableJobsScreen() {
   const { location, getDistanceFromLocation } = useLocation();
   const [refreshing, setRefreshing] = useState(false);
   const [sortBy, setSortBy] = useState<'distance' | 'earnings' | 'time'>('distance');
+  const [goingOnline, setGoingOnline] = useState(false);
+
+  // Get rider online status from Redux
+  const { isOnline, profile } = useAppSelector((state) => state.rider);
+
+  console.log('[AvailableJobsScreen] isOnline:', isOnline, 'profile?.isOnline:', profile?.isOnline);
+
+  // Fetch rider profile on mount to get current online status
+  useEffect(() => {
+    console.log('[AvailableJobsScreen] Fetching rider profile...');
+    dispatch(fetchRiderProfile());
+  }, [dispatch]);
 
   // Connect to dispatch socket for real-time offers
   const { isConnected, pendingOffers, acceptOffer, declineOffer, activeDelivery } = useDispatchSocket();
@@ -98,28 +218,38 @@ export default function AvailableJobsScreen() {
     enabled: !!location,
   });
 
-  // Combine REST API jobs with WebSocket offers
-  const combinedJobs: DeliveryJob[] = [
-    // First show pending offers from WebSocket (real-time)
-    ...pendingOffers.map(offer => ({
-      id: offer.orderId,
-      orderId: offer.orderId,
-      pickupAddress: offer.pickupAddress,
-      deliveryAddress: offer.deliveryAddress,
-      distance: parseFloat(offer.estimatedDistance) || 0,
-      estimatedTime: offer.estimatedEta,
-      earnings: offer.earnings || offer.totalAmount * 0.15, // Rider gets ~15% of total
-      items: offer.items || 1,
-      pickupLocation: offer.pickupLocation || { latitude: 0, longitude: 0 },
-      deliveryLocation: offer.deliveryLocation || { latitude: 0, longitude: 0 },
-      farmerName: offer.farmerName || 'Farmer',
-      buyerName: offer.buyerName || 'Buyer',
-      isRealTimeOffer: true,
-      timeoutSeconds: offer.timeoutSeconds,
-    })),
-    // Then show REST API jobs
-    ...(jobs || []).map(job => ({ ...job, isRealTimeOffer: false })),
-  ];
+  // Combine REST API jobs with WebSocket offers, de-duplicating by ID
+  const combinedJobs: DeliveryJob[] = useMemo(() => {
+    const allJobs = [
+      // First show pending offers from WebSocket (real-time)
+      ...pendingOffers.map(offer => ({
+        id: offer.orderId,
+        orderId: offer.orderId,
+        pickupAddress: offer.pickupAddress,
+        deliveryAddress: offer.deliveryAddress,
+        distance: parseFloat(offer.estimatedDistance) || 0,
+        estimatedTime: offer.estimatedEta,
+        earnings: offer.earnings || offer.totalAmount * 0.15, // Rider gets ~15% of total
+        items: offer.items || 1,
+        pickupLocation: offer.pickupLocation || { latitude: 0, longitude: 0 },
+        deliveryLocation: offer.deliveryLocation || { latitude: 0, longitude: 0 },
+        farmerName: offer.farmerName || 'Farmer',
+        buyerName: offer.buyerName || 'Buyer',
+        isRealTimeOffer: true,
+        timeoutSeconds: offer.timeoutSeconds,
+      })),
+      // Then show REST API jobs
+      ...(jobs || []).map(job => ({ ...job, isRealTimeOffer: false })),
+    ];
+    
+    // De-duplicate by id
+    const seen = new Set<string>();
+    return allJobs.filter(job => {
+      if (!job?.id || seen.has(job.id)) return false;
+      seen.add(job.id);
+      return true;
+    });
+  }, [pendingOffers, jobs]);
 
   const handleAcceptJob = (job: DeliveryJob & { isRealTimeOffer?: boolean }) => {
     Alert.alert(
@@ -170,17 +300,22 @@ export default function AvailableJobsScreen() {
     setRefreshing(false);
   }, [refetch]);
 
-  const sortedJobs = [...combinedJobs].sort((a, b) => {
-    switch (sortBy) {
-      case 'earnings':
-        return b.earnings - a.earnings;
-      case 'time':
-        return a.estimatedTime - b.estimatedTime;
-      case 'distance':
-      default:
-        return a.distance - b.distance;
-    }
-  });
+  // Sort jobs based on selected sort option
+  const sortedJobs = useMemo(() => {
+    const sorted = [...combinedJobs].sort((a, b) => {
+      switch (sortBy) {
+        case 'earnings':
+          return (b.earnings || 0) - (a.earnings || 0);
+        case 'time':
+          return (a.estimatedTime || 0) - (b.estimatedTime || 0);
+        case 'distance':
+        default:
+          return (a.distance || 0) - (b.distance || 0);
+      }
+    });
+    console.log('[AvailableJobsScreen] Sorted jobs by:', sortBy, 'count:', sorted.length);
+    return sorted;
+  }, [combinedJobs, sortBy]);
 
   const sortOptions: { key: 'distance' | 'earnings' | 'time'; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
     { key: 'distance', label: 'Nearest', icon: 'location-outline' },
@@ -188,19 +323,60 @@ export default function AvailableJobsScreen() {
     { key: 'time', label: 'Quickest', icon: 'time-outline' },
   ];
 
-  const renderJob = ({ item }: { item: DeliveryJob }) => {
+  const renderJob = ({ item, index }: { item: DeliveryJob; index: number }) => {
     // Calculate earnings breakdown for display
     const pricing = calculateDeliveryPrice({ distanceKm: item.distance });
     const baseEarnings = DELIVERY_PRICING.BASE_RIDER_EARNINGS;
     const distanceBonus = pricing.riderEarnings - baseEarnings;
     
+    // Calculate earnings per km ratio for badge
+    const earningsPerKm = item.distance > 0 ? item.earnings / item.distance : 0;
+    const isHighPaying = earningsPerKm > 150; // High-paying job threshold
+    const isUrgent = item.isRealTimeOffer && (item.timeoutSeconds || 0) <= 30;
+    
     return (
-      <View style={[styles.jobCard, { backgroundColor: isDark ? colors.card : COLORS.surface }]}>
-        <View style={styles.jobHeader}>
-          <View style={[styles.earningsBadge, { backgroundColor: isDark ? `${COLORS.success}30` : COLORS.successLight }]}>
-            <Text style={styles.earningsText}>{formatCurrency(item.earnings ?? 0)}</Text>
+      <View style={[
+        styles.jobCard, 
+        { backgroundColor: isDark ? colors.card : COLORS.surface },
+        item.isRealTimeOffer && styles.jobCardRealTime,
+        isUrgent && styles.jobCardUrgent,
+      ]}>
+        {/* Real-time offer indicator with countdown */}
+        {item.isRealTimeOffer && item.timeoutSeconds && (
+          <View style={styles.realTimeIndicator}>
+            <View style={styles.realTimeBadge}>
+              <View style={styles.liveDot} />
+              <Text style={styles.realTimeText}>LIVE OFFER</Text>
+            </View>
+            <CountdownTimer 
+              seconds={item.timeoutSeconds} 
+              onExpire={() => handleDeclineJob(item)}
+            />
           </View>
-          <Text style={[styles.itemsText, { color: colors.textSecondary }]}>{item.items} item{item.items > 1 ? 's' : ''}</Text>
+        )}
+        
+        {/* Header with earnings and badges */}
+        <View style={styles.jobHeader}>
+          <View style={styles.jobHeaderLeft}>
+            <View style={[styles.earningsBadge, { backgroundColor: isDark ? `${COLORS.success}30` : COLORS.successLight }]}>
+              <Text style={styles.earningsText}>{formatCurrency(item.earnings ?? 0)}</Text>
+            </View>
+            {isHighPaying && (
+              <View style={styles.highPayBadge}>
+                <Ionicons name="flame" size={12} color="#F97316" />
+                <Text style={styles.highPayText}>High Pay</Text>
+              </View>
+            )}
+          </View>
+          <View style={styles.jobHeaderRight}>
+            <Text style={[styles.itemsText, { color: colors.textSecondary }]}>{item.items} item{item.items > 1 ? 's' : ''}</Text>
+            {index === 0 && !item.isRealTimeOffer && (
+              <View style={styles.nearestBadge}>
+                <Ionicons name="location" size={10} color="#3B82F6" />
+                <Text style={styles.nearestText}>Nearest</Text>
+              </View>
+            )}
+          </View>
         </View>
 
         {/* Earnings Breakdown */}
@@ -245,18 +421,21 @@ export default function AvailableJobsScreen() {
           </View>
         </View>
 
+        {/* Enhanced stats row */}
         <View style={[styles.jobStats, { borderTopColor: isDark ? 'rgba(255,255,255,0.1)' : COLORS.border }]}>
           <View style={styles.statItem}>
-            <Text style={styles.statIcon}>📍</Text>
+            <Ionicons name="navigate-outline" size={16} color={COLORS.primary} />
             <Text style={[styles.statValue, { color: colors.text }]}>{item.distance.toFixed(1)} km</Text>
           </View>
+          <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statIcon}>⏱️</Text>
+            <Ionicons name="time-outline" size={16} color={COLORS.warning} />
             <Text style={[styles.statValue, { color: colors.text }]}>~{item.estimatedTime} min</Text>
           </View>
+          <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statIcon}>💰</Text>
-            <Text style={[styles.statValue, { color: colors.text }]}>₦{Math.round(item.earnings / item.distance)}/km</Text>
+            <Ionicons name="trending-up-outline" size={16} color={COLORS.success} />
+            <Text style={[styles.statValue, { color: colors.text }]}>₦{Math.round(earningsPerKm)}/km</Text>
           </View>
         </View>
 
@@ -331,6 +510,7 @@ export default function AvailableJobsScreen() {
         data={sortedJobs}
         keyExtractor={(item) => item.id}
         renderItem={renderJob}
+        extraData={sortBy}
         contentContainerStyle={styles.listContent}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
@@ -349,16 +529,49 @@ export default function AvailableJobsScreen() {
             {/* Hero Section */}
             <View style={styles.heroSection}>
               <LinearGradient
-                colors={isDark ? ['#1E40AF', '#3B82F6'] : [COLORS.primary, COLORS.primaryDark]}
+                colors={isOnline 
+                  ? (isDark ? ['#1E40AF', '#3B82F6'] : [COLORS.primary, COLORS.primaryDark])
+                  : (isDark ? ['#374151', '#4B5563'] : ['#6B7280', '#9CA3AF'])
+                }
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.heroGradient}
               >
+                {/* Online/Offline Toggle */}
+                <View style={styles.onlineToggleContainer}>
+                  <View style={styles.onlineStatusRow}>
+                    <View style={[
+                      styles.onlineIndicator,
+                      { backgroundColor: isOnline === true ? COLORS.success : '#9CA3AF' }
+                    ]} />
+                    <Text style={styles.onlineStatusText}>
+                      {isOnline === true ? 'Online' : 'Offline'}
+                    </Text>
+                  </View>
+                  <Switch
+                    value={isOnline === true}
+                    onValueChange={async (value) => {
+                      try {
+                        await dispatch(updateRiderStatus({ isOnline: value })).unwrap();
+                        await dispatch(fetchRiderProfile()).unwrap();
+                      } catch (error) {
+                        Alert.alert('Error', `Failed to go ${value ? 'online' : 'offline'}. Please try again.`);
+                      }
+                    }}
+                    trackColor={{ false: 'rgba(255,255,255,0.3)', true: COLORS.success }}
+                    thumbColor="#FFFFFF"
+                    ios_backgroundColor="rgba(255,255,255,0.3)"
+                    style={{ transform: [{ scaleX: 1.1 }, { scaleY: 1.1 }] }}
+                  />
+                </View>
+
                 <View style={styles.heroIconContainer}>
                   <Ionicons name="bicycle" size={32} color="#FFFFFF" />
                 </View>
-                <Text style={styles.heroTitle}>Find Deliveries</Text>
-                <Text style={styles.heroSubtitle}>Pick up jobs near you and start earning</Text>
+                <Text style={styles.heroTitle}>{isOnline ? 'Find Deliveries' : 'You\'re Offline'}</Text>
+                <Text style={styles.heroSubtitle}>
+                  {isOnline ? 'Pick up jobs near you and start earning' : 'Turn on to receive delivery requests'}
+                </Text>
                 <View style={styles.heroStatsRow}>
                   <View style={styles.heroStatItem}>
                     <Text style={styles.heroStatValue}>{sortedJobs.length}</Text>
@@ -388,8 +601,19 @@ export default function AvailableJobsScreen() {
                     { backgroundColor: isDark ? colors.card : COLORS.surface },
                     sortBy === option.key && styles.sortOptionActive,
                   ]}
-                  onPress={() => setSortBy(option.key)}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    console.log('[AvailableJobsScreen] Sort changed to:', option.key);
+                    setSortBy(option.key);
+                  }}
+                  activeOpacity={0.7}
                 >
+                  <Ionicons 
+                    name={option.icon} 
+                    size={16} 
+                    color={sortBy === option.key ? '#FFFFFF' : colors.textSecondary}
+                    style={{ marginRight: SPACING.xs }}
+                  />
                   <Text style={[
                     styles.sortOptionText,
                     { color: colors.textSecondary },
@@ -400,6 +624,57 @@ export default function AvailableJobsScreen() {
                 </TouchableOpacity>
               ))}
             </View>
+
+            {/* Offline Alert Card */}
+            {!isOnline && (
+              <View style={[styles.offlineAlertCard, { backgroundColor: isDark ? '#3D2E0A' : '#FEF3C7' }]}>
+                <View style={styles.offlineAlertContent}>
+                  <View style={[styles.offlineAlertIconContainer, { backgroundColor: isDark ? '#D97706' : '#F59E0B' }]}>
+                    <Ionicons name="wifi-outline" size={24} color="#FFFFFF" />
+                  </View>
+                  <View style={styles.offlineAlertTextContainer}>
+                    <Text style={[styles.offlineAlertTitle, { color: isDark ? '#FCD34D' : '#92400E' }]}>
+                      You're Currently Offline
+                    </Text>
+                    <Text style={[styles.offlineAlertMessage, { color: isDark ? '#FDE68A' : '#B45309' }]}>
+                      Go online to receive delivery requests and start earning
+                    </Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={[styles.goOnlineButton, { backgroundColor: COLORS.success }]}
+                  onPress={async () => {
+                    console.log('[AvailableJobsScreen] Go Online button pressed, current isOnline:', isOnline);
+                    setGoingOnline(true);
+                    try {
+                      const result = await dispatch(updateRiderStatus({ isOnline: true })).unwrap();
+                      console.log('[AvailableJobsScreen] updateRiderStatus result:', result);
+                      // Refetch profile to sync state
+                      await dispatch(fetchRiderProfile()).unwrap();
+                    } catch (error) {
+                      console.log('[AvailableJobsScreen] updateRiderStatus error:', error);
+                      Alert.alert('Error', 'Failed to go online. Please try again.');
+                    } finally {
+                      setGoingOnline(false);
+                    }
+                  }}
+                  activeOpacity={0.8}
+                  disabled={goingOnline}
+                >
+                  {goingOnline ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <Ionicons name="power" size={18} color="#FFFFFF" />
+                      <Text style={styles.goOnlineButtonText}>Go Online</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Live Support Banner */}
+            <LiveSupportBanner variant="minimal" style={{ marginHorizontal: 16, marginTop: 12, marginBottom: 8 }} />
           </>
         }
         ListEmptyComponent={
@@ -508,6 +783,32 @@ const styles = StyleSheet.create({
     borderRadius: BORDER_RADIUS.xl,
     padding: SPACING.lg,
     alignItems: 'center',
+  },
+  onlineToggleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: SPACING.md,
+    paddingBottom: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  onlineStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+  },
+  onlineIndicator: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  onlineStatusText: {
+    fontSize: FONT_SIZES.md,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+    color: '#FFFFFF',
   },
   heroIconContainer: {
     width: 64,
@@ -770,5 +1071,134 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     textAlign: 'center',
     paddingHorizontal: SPACING.xl,
+  },
+  
+  // Offline Alert Card
+  offlineAlertCard: {
+    marginHorizontal: SPACING.md,
+    marginTop: SPACING.md,
+    borderRadius: BORDER_RADIUS.xl,
+    padding: SPACING.lg,
+    ...SHADOWS.small,
+  },
+  offlineAlertContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
+  offlineAlertIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: SPACING.md,
+  },
+  offlineAlertTextContainer: {
+    flex: 1,
+  },
+  offlineAlertTitle: {
+    fontSize: FONT_SIZES.md,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
+    marginBottom: 4,
+  },
+  offlineAlertMessage: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: FONTS.regular,
+    lineHeight: 18,
+  },
+  goOnlineButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    gap: SPACING.xs,
+  },
+  goOnlineButtonText: {
+    fontSize: FONT_SIZES.md,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+    color: '#FFFFFF',
+  },
+  // Enhanced job card styles
+  jobCardRealTime: {
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+  },
+  jobCardUrgent: {
+    borderColor: '#EF4444',
+  },
+  realTimeIndicator: {
+    marginBottom: SPACING.md,
+  },
+  realTimeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 4,
+    borderRadius: BORDER_RADIUS.round,
+    marginBottom: SPACING.xs,
+    gap: 6,
+  },
+  liveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#EF4444',
+  },
+  realTimeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
+    color: COLORS.primary,
+    letterSpacing: 0.5,
+  },
+  jobHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+  },
+  jobHeaderRight: {
+    alignItems: 'flex-end',
+    gap: 4,
+  },
+  highPayBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(249, 115, 22, 0.1)',
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 4,
+    borderRadius: BORDER_RADIUS.round,
+    gap: 4,
+  },
+  highPayText: {
+    fontSize: 11,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+    color: '#F97316',
+  },
+  nearestBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    paddingHorizontal: SPACING.xs,
+    paddingVertical: 2,
+    borderRadius: BORDER_RADIUS.sm,
+    gap: 2,
+  },
+  nearestText: {
+    fontSize: 10,
+    fontWeight: '500',
+    fontFamily: FONTS.medium,
+    color: '#3B82F6',
+  },
+  statDivider: {
+    width: 1,
+    height: 16,
+    backgroundColor: COLORS.border,
   },
 });

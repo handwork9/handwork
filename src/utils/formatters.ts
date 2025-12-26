@@ -15,10 +15,19 @@ export const fixImageUrl = (url: string | null | undefined): string | null => {
     return null;
   }
   
+  // Clean up the URL string
+  const cleanUrl = url.trim();
+  
+  // Validate that it looks like a reasonable URL
+  // Reject URLs that are clearly malformed
+  if (cleanUrl.includes('undefined') || cleanUrl.includes('null') || cleanUrl.includes('[object')) {
+    return null;
+  }
+  
   // If it's already a valid http/https URL with /uploads/, rewrite the host
-  if (url.includes('/uploads/')) {
+  if (cleanUrl.includes('/uploads/')) {
     try {
-      const urlObj = new URL(url);
+      const urlObj = new URL(cleanUrl);
       // Extract the current API host from config
       const apiUrl = new URL(API_CONFIG.BASE_URL);
       // Replace the host with the current API host
@@ -29,22 +38,40 @@ export const fixImageUrl = (url: string | null | undefined): string | null => {
     } catch {
       // URL parsing failed, try simple string replacement
       // Match any IP:port or localhost:port pattern
-      const uploadPath = url.match(/\/uploads\/.+$/);
+      const uploadPath = cleanUrl.match(/\/uploads\/.+$/);
       if (uploadPath) {
-        const apiUrl = new URL(API_CONFIG.BASE_URL);
-        return `${apiUrl.protocol}//${apiUrl.host}${uploadPath[0]}`;
+        try {
+          const apiUrl = new URL(API_CONFIG.BASE_URL);
+          return `${apiUrl.protocol}//${apiUrl.host}${uploadPath[0]}`;
+        } catch {
+          return null;
+        }
       }
     }
   }
   
   // If it's a relative path starting with /uploads
-  if (url.startsWith('/uploads/')) {
-    const apiUrl = new URL(API_CONFIG.BASE_URL);
-    return `${apiUrl.protocol}//${apiUrl.host}${url}`;
+  if (cleanUrl.startsWith('/uploads/')) {
+    try {
+      const apiUrl = new URL(API_CONFIG.BASE_URL);
+      return `${apiUrl.protocol}//${apiUrl.host}${cleanUrl}`;
+    } catch {
+      return null;
+    }
   }
   
-  // Return as-is for other URLs (external CDN, etc.)
-  return url;
+  // Validate other URLs before returning
+  if (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')) {
+    try {
+      new URL(cleanUrl); // Validate it parses correctly
+      return cleanUrl;
+    } catch {
+      return null;
+    }
+  }
+  
+  // Invalid URL format
+  return null;
 };
 
 /**
@@ -58,9 +85,20 @@ export const getFirstValidImageUrl = (images: string[] | null | undefined): stri
   }
   
   for (const img of images) {
+    // Skip invalid entries
+    if (!img || typeof img !== 'string') {
+      continue;
+    }
+    
     const fixed = fixImageUrl(img);
     if (fixed) {
-      return fixed;
+      // Final validation - ensure it's a proper URL
+      try {
+        new URL(fixed);
+        return fixed;
+      } catch {
+        continue;
+      }
     }
   }
   

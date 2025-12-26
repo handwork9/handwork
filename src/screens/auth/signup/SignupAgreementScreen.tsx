@@ -69,6 +69,8 @@ export default function SignupAgreementScreen({ navigation, route }: Props) {
     state,
     city,
     address,
+    latitude,
+    longitude,
   } = route.params;
 
   const [agreements, setAgreements] = useState<Record<string, boolean>>({
@@ -133,6 +135,8 @@ export default function SignupAgreementScreen({ navigation, route }: Props) {
       state,
       city,
       address,
+      latitude,
+      longitude,
     };
 
     // Navigate to role-specific screens

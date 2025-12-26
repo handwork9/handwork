@@ -63,7 +63,7 @@ class SupportService {
     const baseUrl = API_CONFIG.WS_URL
       .replace('ws://', 'http://')
       .replace('wss://', 'https://')
-      .replace(':3000', ':3003');
+      .replace(/:30\d{2}/, ':3003');
     return `${baseUrl}/support`;
   }
 
@@ -272,15 +272,41 @@ class SupportService {
   /**
    * Send a message
    */
-  async sendMessage(ticketId: string, content: string, type: 'text' | 'image' | 'file' | 'location' = 'text'): Promise<SupportMessage> {
+  async sendMessage(
+    ticketId: string, 
+    content: string, 
+    type: 'text' | 'image' | 'file' | 'location' = 'text',
+    attachments?: { url: string; type: string; name: string; size?: number }[]
+  ): Promise<SupportMessage> {
     try {
+      const payload: {
+        content: string;
+        type: string;
+        attachments?: { url: string; type: string; name: string; size?: number }[];
+      } = {
+        content,
+        type,
+      };
+
+      // For image messages, add the URL as an attachment
+      if (type === 'image' && content.startsWith('http')) {
+        payload.attachments = [{
+          url: content,
+          type: 'image/jpeg',
+          name: 'image.jpg',
+        }];
+      } else if (attachments) {
+        payload.attachments = attachments;
+      }
+
+      console.log('[Support] Sending message payload:', JSON.stringify(payload, null, 2));
+
       const response = await apiClient.post<{
         success: boolean;
         data: { message: SupportMessage };
-      }>(`/support/chat/${ticketId}/messages`, {
-        content,
-        type,
-      });
+      }>(`/support/chat/${ticketId}/messages`, payload);
+
+      console.log('[Support] Message response:', JSON.stringify(response.data, null, 2));
 
       return response.data.message;
     } catch (error) {
@@ -404,6 +430,80 @@ class SupportService {
       this.statusHandlers.delete(ticketId);
     }
   }
+
+  /**
+   * Submit a report
+   */
+  async submitReport(data: {
+    type: 'inappropriate_behavior' | 'technical_problem' | 'spam' | 'other';
+    ticketId?: string;
+    description?: string;
+  }): Promise<{ report: any }> {
+    const response = await apiClient.post('/support/reports', data);
+    return response.data;
+  }
+
+  /**
+   * Get user's own submitted reports
+   */
+  async getMyReports(filters?: {
+    status?: 'pending' | 'reviewed' | 'resolved' | 'dismissed';
+    page?: number;
+    limit?: number;
+  }): Promise<{
+    reports: SupportReport[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
+    const params = new URLSearchParams();
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+
+    const response = await apiClient.get<{
+      success: boolean;
+      data: { reports: SupportReport[]; total: number; page: number; limit: number };
+    }>(`/support/reports/my?${params.toString()}`);
+
+    return response.data.data;
+  }
+
+  /**
+   * Get details of a specific report
+   */
+  async getMyReportById(reportId: string): Promise<SupportReport> {
+    const response = await apiClient.get<{
+      success: boolean;
+      data: { report: SupportReport };
+    }>(`/support/reports/my/${reportId}`);
+
+    return response.data.data.report;
+  }
+}
+
+// Add SupportReport interface for type safety
+export interface SupportReport {
+  id: string;
+  userId: string;
+  ticketId?: string;
+  ticket?: {
+    id: string;
+    ticketNumber: string;
+    subject: string;
+  };
+  type: 'inappropriate_behavior' | 'technical_problem' | 'spam' | 'other';
+  status: 'pending' | 'reviewed' | 'resolved' | 'dismissed';
+  description?: string;
+  adminNotes?: string;
+  reviewedBy?: string;
+  reviewer?: {
+    id: string;
+    name: string;
+  };
+  reviewedAt?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export const supportService = new SupportService();

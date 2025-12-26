@@ -10,13 +10,16 @@ import {
   Animated,
   Image,
   Alert,
+  Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 import { BuyerStackParamList, OrderStatus, SocketEvent } from '../../types';
 import { LoadingSpinner, ErrorState } from '../../components/common';
+import { ExpoMapView } from '../../components/common/ExpoMapView';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, FONTS } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
 import { orderService } from '../../services/orderService';
@@ -27,15 +30,8 @@ import CancelOrderModal from '../../components/buyer/CancelOrderModal';
 import OrderReceiptModal from '../../components/buyer/OrderReceiptModal';
 import { useAppDispatch } from '../../store';
 import { setCart } from '../../store/slices/cartSlice';
-
-// Lazy load MapView
-let MapView: any = null;
-let Marker: any = null;
-try {
-  const Maps = require('react-native-maps');
-  MapView = Maps.default;
-  Marker = Maps.Marker;
-} catch (e) {}
+import { MAP_CONFIG } from '../../constants/config';
+import { openMapsLocation } from '../../utils/maps';
 
 type Props = NativeStackScreenProps<BuyerStackParamList, 'OrderTracking'>;
 
@@ -145,7 +141,14 @@ export default function OrderTrackingScreen({ route, navigation }: Props) {
   }, [pulseAnim]);
 
   useOrderSubscription(orderId, useCallback((event: SocketEvent) => {
-    if (event.type === 'rider:location_update' && event.data.location) {
+    if (event.type === 'rider:location' && event.data) {
+      // Backend sends latitude/longitude, convert to lat/lng
+      setRiderLocation({
+        lat: event.data.latitude || event.data.lat,
+        lng: event.data.longitude || event.data.lng,
+      });
+    }
+    if (event.type === 'rider:location_update' && event.data?.location) {
       setRiderLocation(event.data.location);
     }
     if (event.type === 'eta:update' && event.data.eta) {
@@ -172,7 +175,8 @@ export default function OrderTrackingScreen({ route, navigation }: Props) {
   const handleChatRider = () => {
     const riderPhone = order?.assignedRider?.user?.phone || order?.assignedRiderPhone;
     const riderName = order?.assignedRider?.user?.name || order?.assignedRiderName;
-    const riderId = order?.assignedRider?.id || order?.assignedRiderId;
+    // Use the rider's userId (not rider.id) for chat - chat needs user IDs
+    const riderId = order?.assignedRider?.userId || order?.assignedRider?.user?.id || order?.assignedRiderId;
     const riderRating = order?.assignedRider?.rating;
     const vehicleType = order?.assignedRider?.vehicleType;
     const isOnline = order?.assignedRider?.isOnline;
@@ -186,6 +190,32 @@ export default function OrderTrackingScreen({ route, navigation }: Props) {
       isOnline,
       orderId,
     });
+  };
+
+  const handleChatFarmer = () => {
+    // Get farmer info from order - farmer info is typically in items or at order level
+    const farmerId = order?.farmerId || order?.items?.[0]?.farmerId;
+    const farmerName = order?.farmerName || order?.items?.[0]?.farmerName || 'Farmer';
+    const farmerAvatar = order?.farmerAvatar || order?.items?.[0]?.farmerAvatar;
+
+    if (!farmerId) {
+      Alert.alert('Unable to Chat', 'Farmer information not available for this order.');
+      return;
+    }
+
+    (navigation as any).navigate('FarmerChat', {
+      farmerId,
+      farmerName,
+      farmerAvatar,
+      orderId,
+    });
+  };
+
+  const handleCallFarmer = () => {
+    const phone = order?.farmerPhone || order?.items?.[0]?.farmerPhone;
+    if (phone) {
+      Linking.openURL(`tel:${phone}`);
+    }
   };
 
   const handleCancelOrder = async (reason: string) => {
@@ -275,7 +305,7 @@ export default function OrderTrackingScreen({ route, navigation }: Props) {
   };
 
   // Buyers can only cancel while payment is still processing (pending or created)
-  const canCancel = ['pending', 'created'].includes(order?.status || '');
+  const canCancel = ['pending', 'created', 'confirmed', 'assigned'].includes(order?.status || '');
 
   if (isLoading) {
     return <LoadingSpinner fullScreen message="Loading order..." />;
@@ -288,7 +318,6 @@ export default function OrderTrackingScreen({ route, navigation }: Props) {
   const currentStep = getCurrentStepIndex();
   const showMap = ['rider_assigned', 'picked_up', 'in_transit'].includes(order.status);
   const displayEta = eta ?? order.eta;
-  const mapsAvailable = MapView !== null;
   const isCompleted = order.status === 'delivered';
   const isCancelled = order.status === 'cancelled';
 
@@ -437,68 +466,44 @@ export default function OrderTrackingScreen({ route, navigation }: Props) {
         </View>
 
         {/* Map Section */}
-        {showMap && (
+        {showMap && order.deliveryAddress?.lat && (
           <View style={[styles.mapCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
             <View style={styles.mapHeader}>
               <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>LIVE TRACKING</Text>
             </View>
             <View style={styles.mapContainer}>
-              {mapsAvailable && order.deliveryAddress?.lat ? (
-                <MapView
-                  style={styles.map}
-                  initialRegion={{
-                    latitude: order.deliveryAddress.lat,
-                    longitude: order.deliveryAddress.lng,
-                    latitudeDelta: 0.02,
-                    longitudeDelta: 0.02,
+              <ExpoMapView
+                pickupLocation={{
+                  latitude: order.pickupPoint?.lat || order.pickupLocation?.lat || order.deliveryAddress.lat,
+                  longitude: order.pickupPoint?.lng || order.pickupLocation?.lng || order.deliveryAddress.lng,
+                }}
+                deliveryLocation={{
+                  latitude: order.deliveryAddress.lat,
+                  longitude: order.deliveryAddress.lng,
+                }}
+                riderLocation={riderLocation ? {
+                  latitude: riderLocation.lat,
+                  longitude: riderLocation.lng,
+                } : (order.assignedRider?.currentLat && order.assignedRider?.currentLng ? {
+                  latitude: order.assignedRider.currentLat,
+                  longitude: order.assignedRider.currentLng,
+                } : null)}
+                pickupAddress={order.pickupPoint?.address || order.farmerName || 'Farm Location'}
+                deliveryAddress={order.deliveryAddress?.address || 'Delivery Address'}
+                height={200}
+                showFullscreenButton={true}
+              />
+              {/* Track Rider Button */}
+              {riderLocation && (
+                <TouchableOpacity
+                  style={styles.trackRiderButton}
+                  onPress={() => {
+                    openMapsLocation(riderLocation.lat, riderLocation.lng, 'Rider Location');
                   }}
                 >
-                  <Marker
-                    coordinate={{
-                      latitude: order.deliveryAddress.lat,
-                      longitude: order.deliveryAddress.lng,
-                    }}
-                    title="Delivery"
-                  >
-                    <View style={styles.deliveryMarker}>
-                      <Ionicons name="home" size={16} color="#fff" />
-                    </View>
-                  </Marker>
-
-                  {order.pickupPoint?.lat && (
-                    <Marker
-                      coordinate={{
-                        latitude: order.pickupPoint.lat,
-                        longitude: order.pickupPoint.lng,
-                      }}
-                      title="Pickup"
-                    >
-                      <View style={styles.pickupMarker}>
-                        <Ionicons name="storefront" size={16} color="#fff" />
-                      </View>
-                    </Marker>
-                  )}
-
-                  {riderLocation && (
-                    <Marker
-                      coordinate={{
-                        latitude: riderLocation.lat,
-                        longitude: riderLocation.lng,
-                      }}
-                      title="Rider"
-                    >
-                      <Animated.View style={[styles.riderMarker, { transform: [{ scale: pulseAnim }] }]}>
-                        <Ionicons name="bicycle" size={16} color="#fff" />
-                      </Animated.View>
-                    </Marker>
-                  )}
-                </MapView>
-              ) : (
-                <View style={[styles.mapPlaceholder, { backgroundColor: isDark ? colors.surface : '#F8F9FA' }]}>
-                  <Ionicons name="map-outline" size={40} color={colors.textSecondary} />
-                  <Text style={[styles.mapPlaceholderText, { color: colors.text }]}>Live Tracking</Text>
-                  <Text style={[styles.mapPlaceholderSubtext, { color: colors.textSecondary }]}>Available in production build</Text>
-                </View>
+                  <Ionicons name="navigate" size={16} color="#FFFFFF" />
+                  <Text style={styles.trackRiderText}>See Rider on Map</Text>
+                </TouchableOpacity>
               )}
             </View>
           </View>
@@ -532,7 +537,7 @@ export default function OrderTrackingScreen({ route, navigation }: Props) {
                   <View style={styles.riderRating}>
                     <Ionicons name="star" size={14} color="#FFC107" />
                     <Text style={[styles.riderRatingText, { color: colors.text }]}>
-                      {order.assignedRider?.rating?.toFixed(1) || '4.8'}
+                      {order.assignedRider?.rating ? Number(order.assignedRider.rating).toFixed(1) : '4.8'}
                     </Text>
                     <Text style={[styles.riderTrips, { color: colors.textSecondary }]}>
                       • {order.assignedRider?.totalDeliveries || 0} deliveries
@@ -567,6 +572,47 @@ export default function OrderTrackingScreen({ route, navigation }: Props) {
                     <Ionicons name="chatbubble-ellipses" size={18} color="#FFFFFF" />
                   </View>
                   <Text style={[styles.riderActionText, { color: colors.primary }]}>Message</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Farmer Card - Show when order has farmer info and not cancelled */}
+        {(order?.farmerId || order?.farmerName || order?.items?.[0]?.farmerId) && !isCancelled && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>YOUR FARMER</Text>
+            <View style={[styles.insetCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+              <View style={styles.riderContent}>
+                <View style={[styles.riderAvatar, { backgroundColor: isDark ? 'rgba(76, 175, 80, 0.15)' : '#E8F5E9' }]}>
+                  <Ionicons name="leaf" size={24} color="#4CAF50" />
+                </View>
+                <View style={styles.riderInfo}>
+                  <View style={styles.riderNameRow}>
+                    <Text style={[styles.riderName, { color: colors.text }]}>
+                      {order.farmerName || order.items?.[0]?.farmerName || 'Farmer'}
+                    </Text>
+                  </View>
+                  <Text style={[styles.riderTrips, { color: colors.textSecondary }]}>
+                    Preparing your fresh produce
+                  </Text>
+                </View>
+              </View>
+              <View style={[styles.riderActionsDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60, 60, 67, 0.12)' }]} />
+              <View style={styles.riderActionsRow}>
+                {(order?.farmerPhone || order?.items?.[0]?.farmerPhone) && (
+                  <TouchableOpacity style={styles.riderActionButton} onPress={handleCallFarmer}>
+                    <View style={[styles.riderActionIcon, { backgroundColor: isDark ? 'rgba(76, 175, 80, 0.15)' : '#E8F5E9' }]}>
+                      <Ionicons name="call" size={18} color="#4CAF50" />
+                    </View>
+                    <Text style={[styles.riderActionText, { color: '#4CAF50' }]}>Call</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity style={styles.riderActionButton} onPress={handleChatFarmer}>
+                  <View style={[styles.riderActionIcon, { backgroundColor: '#4CAF50' }]}>
+                    <Ionicons name="chatbubble-ellipses" size={18} color="#FFFFFF" />
+                  </View>
+                  <Text style={[styles.riderActionText, { color: '#4CAF50' }]}>Message</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -763,6 +809,15 @@ export default function OrderTrackingScreen({ route, navigation }: Props) {
               <Text style={[styles.secondaryActionText, { color: colors.text }]}>View Receipt</Text>
             </TouchableOpacity>
 
+            {/* Report Issue Button */}
+            <TouchableOpacity 
+              style={[styles.secondaryActionButton, { backgroundColor: isDark ? colors.surface : '#FFF3E0', marginTop: 12 }]}
+              onPress={() => navigation.navigate('OrderDispute', { orderId })}
+            >
+              <Ionicons name="alert-circle-outline" size={20} color="#E65100" />
+              <Text style={[styles.secondaryActionText, { color: '#E65100' }]}>Report an Issue</Text>
+            </TouchableOpacity>
+
             {/* Cancel Button - only for pending/confirmed */}
             {canCancel && (
               <TouchableOpacity 
@@ -786,6 +841,15 @@ export default function OrderTrackingScreen({ route, navigation }: Props) {
             >
               <Ionicons name="receipt-outline" size={20} color={colors.primary} />
               <Text style={[styles.secondaryActionText, { color: colors.text }]}>View Receipt</Text>
+            </TouchableOpacity>
+
+            {/* Report Issue Button */}
+            <TouchableOpacity 
+              style={[styles.secondaryActionButton, { backgroundColor: isDark ? colors.surface : '#FFF3E0', marginBottom: 12 }]}
+              onPress={() => navigation.navigate('OrderDispute', { orderId })}
+            >
+              <Ionicons name="alert-circle-outline" size={20} color="#E65100" />
+              <Text style={[styles.secondaryActionText, { color: '#E65100' }]}>Report an Issue</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
@@ -1023,7 +1087,29 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   mapContainer: {
-    height: 180,
+    height: 220,
+    position: 'relative',
+  },
+  trackRiderButton: {
+    position: 'absolute',
+    bottom: 12,
+    left: 12,
+    right: 12,
+    backgroundColor: COLORS.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    gap: 8,
+    ...SHADOWS.medium,
+  },
+  trackRiderText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
   },
   map: {
     flex: 1,
@@ -1063,6 +1149,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: FONTS.regular,
     marginTop: 2,
+  },
+  staticMapOverlay: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  staticMapText: {
+    fontSize: 10,
+    color: '#fff',
   },
   riderContent: {
     flexDirection: 'row',
@@ -1435,5 +1537,208 @@ const styles = StyleSheet.create({
   cancelOrderText: {
     fontSize: 15,
     fontFamily: FONTS.semiBold,
+  },
+  // Map Modal Styles
+  mapModalContainer: {
+    flex: 1,
+  },
+  mapModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+  },
+  mapModalCloseButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mapModalTitle: {
+    fontSize: 18,
+    fontFamily: FONTS.semiBold,
+  },
+  mapModalContent: {
+    flex: 1,
+  },
+  fullscreenMap: {
+    flex: 1,
+    width: '100%',
+  },
+  mapLegend: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    borderRadius: 12,
+    padding: 12,
+    ...SHADOWS.small,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  legendDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 8,
+  },
+  legendText: {
+    fontSize: 12,
+    fontFamily: FONTS.medium,
+  },
+  mapAddressInfo: {
+    position: 'absolute',
+    bottom: 100,
+    left: 16,
+    right: 16,
+    borderRadius: 16,
+    padding: 16,
+    ...SHADOWS.medium,
+  },
+  mapAddressRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  mapAddressTextContainer: {
+    flex: 1,
+  },
+  mapAddressLabel: {
+    fontSize: 11,
+    fontFamily: FONTS.medium,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  mapAddressValue: {
+    fontSize: 14,
+    fontFamily: FONTS.regular,
+    lineHeight: 20,
+  },
+  mapAddressDivider: {
+    height: 1,
+    marginVertical: 12,
+  },
+  openExternalMapsButton: {
+    position: 'absolute',
+    bottom: 32,
+    left: 16,
+    right: 16,
+    backgroundColor: '#2196F3',
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    ...SHADOWS.medium,
+  },
+  openExternalMapsText: {
+    color: '#fff',
+    fontSize: 16,
+    fontFamily: FONTS.semiBold,
+  },
+  // Route card styles (fallback when map fails)
+  routeCard: {
+    flex: 1,
+    borderRadius: 12,
+    padding: 16,
+  },
+  routeCardContent: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  routeCardRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  routeCardDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 12,
+    marginTop: 4,
+  },
+  routeCardLine: {
+    position: 'absolute',
+    left: 5,
+    top: 16,
+    width: 2,
+    height: 24,
+    backgroundColor: '#ddd',
+  },
+  routeCardTextContainer: {
+    flex: 1,
+  },
+  routeCardLabel: {
+    fontSize: 10,
+    fontFamily: FONTS.semiBold,
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  routeCardAddress: {
+    fontSize: 13,
+    fontFamily: FONTS.regular,
+  },
+  // Visual route styles (when map image fails)
+  visualRouteContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  visualRouteCard: {
+    width: '100%',
+    maxWidth: 400,
+    borderRadius: 20,
+    padding: 24,
+    ...SHADOWS.large,
+  },
+  visualRoutePoint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  visualRouteCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...SHADOWS.small,
+  },
+  visualRouteTextContainer: {
+    flex: 1,
+    marginLeft: 16,
+  },
+  visualRouteLabel: {
+    fontSize: 11,
+    fontFamily: FONTS.semiBold,
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  visualRouteAddress: {
+    fontSize: 15,
+    fontFamily: FONTS.medium,
+    lineHeight: 22,
+  },
+  visualRouteLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingLeft: 23,
+    height: 40,
+  },
+  visualRouteLineInner: {
+    width: 2,
+    height: '100%',
+  },
+  visualRouteArrow: {
+    position: 'absolute',
+    left: 13,
   },
 });

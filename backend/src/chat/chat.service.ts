@@ -25,6 +25,7 @@ export class ChatService {
     const conversations = await this.conversationRepository
       .createQueryBuilder('conversation')
       .where(':userId = ANY(conversation.participantIds)', { userId })
+      .andWhere('NOT (:userId = ANY(COALESCE(conversation.deletedBy, ARRAY[]::uuid[])))', { userId })
       .orderBy('conversation.lastMessageAt', 'DESC', 'NULLS LAST')
       .getMany();
 
@@ -59,6 +60,7 @@ export class ChatService {
             createdAt: conv.lastMessageAt,
           } : null,
           unreadCount,
+          isMuted: (conv.mutedBy || []).includes(userId),
           createdAt: conv.createdAt,
           updatedAt: conv.updatedAt,
         };
@@ -226,12 +228,15 @@ export class ChatService {
           conversationId,
           message: {
             id: message.id,
+            conversationId: message.conversationId,
             senderId: message.senderId,
             senderName,
             senderAvatar,
             senderRole: message.senderRole,
             text: message.text,
             type: message.type,
+            status: message.status,
+            metadata: message.metadata,
             createdAt: message.createdAt,
           },
         });
@@ -318,5 +323,57 @@ export class ChatService {
       createdAt: conversation.createdAt,
       updatedAt: conversation.updatedAt,
     };
+  }
+
+  /**
+   * Delete a conversation (soft delete for user - removes from their list)
+   */
+  async deleteConversation(userId: string, conversationId: string): Promise<void> {
+    const conversation = await this.conversationRepository.findOne({
+      where: { id: conversationId },
+    });
+
+    if (!conversation) {
+      throw new NotFoundException('Conversation not found');
+    }
+
+    if (!conversation.participantIds.includes(userId)) {
+      throw new ForbiddenException('You are not a participant in this conversation');
+    }
+
+    // Track deleted conversations per user (soft delete)
+    const deletedBy = conversation.deletedBy || [];
+    if (!deletedBy.includes(userId)) {
+      deletedBy.push(userId);
+    }
+
+    await this.conversationRepository.update(conversationId, { deletedBy });
+  }
+
+  /**
+   * Mute/unmute a conversation for a user
+   */
+  async muteConversation(userId: string, conversationId: string, muted: boolean): Promise<void> {
+    const conversation = await this.conversationRepository.findOne({
+      where: { id: conversationId },
+    });
+
+    if (!conversation) {
+      throw new NotFoundException('Conversation not found');
+    }
+
+    if (!conversation.participantIds.includes(userId)) {
+      throw new ForbiddenException('You are not a participant in this conversation');
+    }
+
+    // Track muted conversations per user
+    let mutedBy = conversation.mutedBy || [];
+    if (muted && !mutedBy.includes(userId)) {
+      mutedBy.push(userId);
+    } else if (!muted) {
+      mutedBy = mutedBy.filter((id: string) => id !== userId);
+    }
+
+    await this.conversationRepository.update(conversationId, { mutedBy });
   }
 }

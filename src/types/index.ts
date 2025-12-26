@@ -470,6 +470,7 @@ export type AuthStackParamList = {
   OTPVerification: { phone: string; mode?: 'verify' | 'login' };
   ForgotPassword: undefined;
   TwoFactorVerification: { tempToken: string };
+  LiveChat: undefined;  // Live support chat available from auth screens
   // Multi-step signup screens
   SignupRole: undefined;
   SignupEmail: { role: UserRole };
@@ -478,15 +479,15 @@ export type AuthStackParamList = {
   SignupPersonalInfo: { role: UserRole; email: string; phone: string; password: string };
   SignupNationality: { role: UserRole; email: string; phone: string; password: string; firstName: string; lastName: string };
   SignupAddress: { role: UserRole; email: string; phone: string; password: string; firstName: string; lastName: string; nationality: string; nationalityCode: string };
-  SignupAgreement: { role: UserRole; email: string; phone: string; password: string; firstName: string; lastName: string; nationality: string; nationalityCode: string; state: string; city: string; address: string };
+  SignupAgreement: { role: UserRole; email: string; phone: string; password: string; firstName: string; lastName: string; nationality: string; nationalityCode: string; state: string; city: string; address: string; latitude?: number; longitude?: number };
   // Rider-specific screens
-  SignupBikeDetails: { role: UserRole; email: string; phone: string; password: string; firstName: string; lastName: string; nationality: string; nationalityCode: string; state: string; city: string; address: string };
-  SignupGuarantors: { role: UserRole; email: string; phone: string; password: string; firstName: string; lastName: string; nationality: string; nationalityCode: string; state: string; city: string; address: string; bikeModel: string; plateNumber: string; bikeColor: string; driversLicense: string | null };
+  SignupBikeDetails: { role: UserRole; email: string; phone: string; password: string; firstName: string; lastName: string; nationality: string; nationalityCode: string; state: string; city: string; address: string; latitude?: number; longitude?: number };
+  SignupGuarantors: { role: UserRole; email: string; phone: string; password: string; firstName: string; lastName: string; nationality: string; nationalityCode: string; state: string; city: string; address: string; latitude?: number; longitude?: number; bikeModel: string; plateNumber: string; bikeColor: string; driversLicense: string | null };
   // Farmer-specific screens
-  SignupFarmDetails: { role: UserRole; email: string; phone: string; password: string; firstName: string; lastName: string; nationality: string; nationalityCode: string; state: string; city: string; address: string };
-  SignupFarmVerification: { role: UserRole; email: string; phone: string; password: string; firstName: string; lastName: string; nationality: string; nationalityCode: string; state: string; city: string; address: string; farmName: string; farmType: string; farmSize: string; productCategories: string[]; bankName: string; bankCode: string; accountNumber: string; accountName: string };
+  SignupFarmDetails: { role: UserRole; email: string; phone: string; password: string; firstName: string; lastName: string; nationality: string; nationalityCode: string; state: string; city: string; address: string; latitude?: number; longitude?: number };
+  SignupFarmVerification: { role: UserRole; email: string; phone: string; password: string; firstName: string; lastName: string; nationality: string; nationalityCode: string; state: string; city: string; address: string; latitude?: number; longitude?: number; farmName: string; farmType: string; farmSize: string; productCategories: string[]; bankName: string; bankCode: string; accountNumber: string; accountName: string };
   // Buyer-specific screens (optional)
-  SignupPayment: { role: UserRole; email: string; phone: string; password: string; firstName: string; lastName: string; nationality: string; nationalityCode: string; state: string; city: string; address: string };
+  SignupPayment: { role: UserRole; email: string; phone: string; password: string; firstName: string; lastName: string; nationality: string; nationalityCode: string; state: string; city: string; address: string; latitude?: number; longitude?: number };
 };
 
 export type BuyerTabParamList = {
@@ -503,6 +504,9 @@ export type BuyerStackParamList = {
   Cart: undefined;
   Checkout: undefined;
   OrderTracking: { orderId: string };
+  OrderDispute: { orderId: string; disputeId?: string };
+  MyDisputes: undefined;
+  WriteReview: { orderId: string; type: 'farmer' | 'rider'; recipientName?: string; recipientAvatar?: string };
   OrderConfirmation: { orderId: string; orderNumber: string; total: number; itemCount: number; paymentMethod: 'wallet' | 'card' | 'payForMe'; estimatedDelivery?: string };
   OrderCompleted: { orderId: string; orderNumber: string; total: number; farmerName?: string };
   Notifications: undefined;
@@ -543,6 +547,7 @@ export type BuyerStackParamList = {
   RateApp: undefined;
   TermsPrivacy: undefined;
   LiveChat: undefined;
+  MyReports: undefined;
   PayBill: undefined;
   PaymentHistory: { payments: any[] };
   PaymentDetail: { payment: any };
@@ -570,9 +575,17 @@ export type BuyerStackParamList = {
   GoPremium: undefined;
   GoPremiumLearnMore: undefined;
   VerifiedSellersLearnMore: undefined;
+  NearbyFarmersMap: undefined;
   Categories: undefined;
   Search: { category?: string; subcategory?: string; verifiedOnly?: boolean } | undefined;
   DeleteAccount: undefined;
+  VideoCall: { 
+    userId?: string; 
+    userName?: string; 
+    userAvatar?: string;
+    callType?: 'video' | 'audio'; 
+    isIncoming?: boolean;
+  };
 };
 
 export type FarmerTabParamList = {
@@ -632,6 +645,7 @@ export type FarmerStackParamList = {
   Notifications: undefined;
   NotificationDetail: { notification: any };
   LiveChat: undefined;
+  MyReports: undefined;
   PayBill: undefined;
   PaymentHistory: { payments: any[] };
   PaymentDetail: { payment: any };
@@ -643,6 +657,13 @@ export type FarmerStackParamList = {
   NotificationSettings: undefined;
   Appearance: undefined;
   DeleteAccount: undefined;
+  VideoCall: { 
+    userId?: string; 
+    userName?: string; 
+    userAvatar?: string;
+    callType?: 'video' | 'audio'; 
+    isIncoming?: boolean;
+  };
 };
 
 export type RiderTabParamList = {
@@ -665,6 +686,7 @@ export type RiderStackParamList = {
   TopUp: undefined;
   Transfer: undefined;
   GoPremium: undefined;
+  RiderSubscription: undefined;
   Rewards: undefined;
   RewardHistory: undefined;
   RewardDetail: { reward: any };
@@ -694,6 +716,7 @@ export type RiderStackParamList = {
   Notifications: undefined;
   NotificationDetail: { notification: any };
   LiveChat: undefined;
+  MyReports: undefined;
   PayBill: undefined;
   PaymentHistory: { payments: any[] };
   PaymentDetail: { payment: any };
@@ -705,6 +728,13 @@ export type RiderStackParamList = {
   NotificationSettings: undefined;
   Appearance: undefined;
   DeleteAccount: undefined;
+  VideoCall: { 
+    userId?: string; 
+    userName?: string; 
+    userAvatar?: string;
+    callType?: 'video' | 'audio'; 
+    isIncoming?: boolean;
+  };
 };
 
 // Bank Account & Withdrawal Types

@@ -5,3 +5,5 @@ export { default as FarmerOrdersScreen } from './FarmerOrdersScreen';
 export { default as FarmerMessagesScreen } from './FarmerMessagesScreen';
 export { default as BuyerChatScreen } from './BuyerChatScreen';
 export { default as FarmerSubscriptionScreen } from './FarmerSubscriptionScreen';
+export { default as FarmerDisputesScreen } from './FarmerDisputesScreen';
+export { default as FarmerDisputeDetailScreen } from './FarmerDisputeDetailScreen';

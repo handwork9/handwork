@@ -12,6 +12,9 @@ import Stripe from 'stripe';
 import { Payment, Order, User } from '../database/entities';
 import { PaymentStatus, PaymentMethod, OrderStatus } from '../common/enums';
 import { EmailService } from '../email/email.service';
+import { WalletService } from '../wallet/wallet.service';
+import { NotificationsService, NotificationType } from '../notifications/notifications.service';
+import { WalletOwnerType, TransactionCategory } from '../database/entities/wallet-transaction.entity';
 
 export interface CreatePaymentIntentDto {
   orderId: string;
@@ -48,6 +51,10 @@ export class PaymentsService {
     private readonly userRepository: Repository<User>,
     private readonly configService: ConfigService,
     private readonly emailService: EmailService,
+    @Inject(forwardRef(() => WalletService))
+    private readonly walletService: WalletService,
+    @Inject(forwardRef(() => NotificationsService))
+    private readonly notificationsService: NotificationsService,
   ) {
     this.stripe = new Stripe(this.configService.get<string>('services.stripeSecretKey') || '', {
       apiVersion: '2023-10-16',
@@ -203,19 +210,31 @@ export class PaymentsService {
       throw new BadRequestException(`User ${userId} not found`);
     }
 
-    if (user.walletBalance < order.totalAmount) {
+    const paymentAmount = Number(order.totalAmount) || Number(order.total);
+
+    if (user.walletBalance < paymentAmount) {
       throw new BadRequestException('Insufficient wallet balance');
     }
 
-    // Deduct from wallet
-    user.walletBalance -= order.totalAmount;
-    await this.userRepository.save(user);
+    // Deduct from wallet using WalletService (creates proper transaction record)
+    await this.walletService.debitWallet({
+      ownerId: userId,
+      ownerType: WalletOwnerType.BUYER,
+      amount: paymentAmount,
+      category: TransactionCategory.ORDER_PAYMENT,
+      description: `Payment for order #${order.orderNumber}`,
+      metadata: {
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        paymentMethod: 'wallet',
+      },
+    });
 
     // Create payment record
     const payment = this.paymentRepository.create({
       userId,
       orderId,
-      amount: order.totalAmount,
+      amount: paymentAmount,
       currency: 'ngn',
       paymentMethod: PaymentMethod.WALLET,
       status: PaymentStatus.COMPLETED,
@@ -244,7 +263,7 @@ export class PaymentsService {
     return {
       paymentId: payment.id,
       status: PaymentStatus.COMPLETED,
-      amount: order.totalAmount,
+      amount: paymentAmount,
       currency: 'ngn',
     };
   }
@@ -416,6 +435,19 @@ export class PaymentsService {
         await this.orderRepository.save(order);
         this.logger.log(`Order ${order.id} confirmed after Paystack payment`);
 
+        // Send push notification for successful order payment
+        await this.notificationsService.sendPushNotification({
+          userId: user?.id || order.buyerId,
+          type: NotificationType.PAYMENT_RECEIVED,
+          title: 'Payment Successful! ✅',
+          body: `Your order #${order.orderNumber} has been confirmed.`,
+          data: {
+            type: 'order_payment',
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+          },
+        });
+
         if (user?.emailNotificationsEnabled !== false && user?.email) {
           this.emailService.sendPaymentConfirmation(payment, user, order).catch((err) => {
             this.logger.warn(`Failed to send payment email: ${err.message}`);
@@ -426,11 +458,47 @@ export class PaymentsService {
         }
       }
     } else if (payment.metadata?.type === 'wallet_topup') {
-      // Wallet top-up via card
+      // Wallet top-up via card - use WalletService for proper crediting
       if (user) {
-        user.walletBalance += payment.amount;
-        await this.userRepository.save(user);
-        this.logger.log(`Wallet topped up for user ${user.id}: +${payment.amount} NGN`);
+        // Determine owner type and ownerId based on user role
+        let ownerType = WalletOwnerType.BUYER;
+        let ownerId = user.id;
+        
+        if (user.role === 'farmer') {
+          ownerType = WalletOwnerType.FARMER;
+        } else if (user.role === 'rider') {
+          ownerType = WalletOwnerType.RIDER;
+          const riderId = await this.walletService.getRiderIdByUserId(user.id);
+          if (riderId) {
+            ownerId = riderId;
+          }
+        }
+        
+        await this.walletService.creditWallet({
+          ownerId,
+          ownerType,
+          amount: payment.amount,
+          category: TransactionCategory.WALLET_TOPUP,
+          description: `Wallet top-up via Paystack`,
+          metadata: {
+            paystackReference: reference,
+            paymentId: payment.id,
+          },
+        });
+        
+        this.logger.log(`Wallet topped up for ${ownerType} ${ownerId}: +${payment.amount} NGN`);
+
+        // Send push notification for wallet top-up
+        await this.notificationsService.sendPushNotification({
+          userId: user.id,
+          type: NotificationType.WALLET_TOPUP,
+          title: 'Wallet Funded! 💰',
+          body: `₦${payment.amount.toLocaleString()} has been added to your wallet.`,
+          data: {
+            type: 'wallet_topup',
+            amount: payment.amount,
+          },
+        });
 
         if (user.emailNotificationsEnabled !== false && user.email) {
           this.emailService.sendPaymentConfirmation(payment, user).catch((err) => {
@@ -438,6 +506,169 @@ export class PaymentsService {
           });
         }
       }
+    }
+  }
+
+  /**
+   * Process a verified Paystack payment (called from verify endpoint)
+   * This handles wallet top-ups and order payments after user returns from Paystack
+   */
+  async processPaystackPayment(transactionData: any, userId?: string): Promise<void> {
+    this.logger.log(`[processPaystackPayment] Called with transactionData: ${JSON.stringify(transactionData)}`);
+    this.logger.log(`[processPaystackPayment] userId param: ${userId}`);
+    
+    const { reference, amount, metadata } = transactionData;
+    
+    // Paystack sometimes nests custom_fields, extract what we need
+    const customMetadata = metadata?.custom_fields || metadata || {};
+    const paymentType = customMetadata.type || metadata?.type;
+    const metaUserId = customMetadata.userId || metadata?.userId;
+    const orderId = customMetadata.orderId || metadata?.orderId;
+    
+    this.logger.log(`[processPaystackPayment] reference: ${reference}, amount: ${amount}, paymentType: ${paymentType}`);
+    this.logger.log(`[processPaystackPayment] metadata: ${JSON.stringify(metadata)}`);
+    
+    // Check if already processed (avoid double credit)
+    const existingPayment = await this.paymentRepository.findOne({
+      where: { paystackReference: reference },
+    });
+    
+    if (existingPayment && existingPayment.status === PaymentStatus.COMPLETED) {
+      this.logger.log(`Payment ${reference} already processed, skipping`);
+      return;
+    }
+
+    // Get user from metadata or parameter
+    const paymentUserId = metaUserId || userId;
+    if (!paymentUserId) {
+      this.logger.warn(`No user ID found for payment ${reference}. metadata: ${JSON.stringify(metadata)}`);
+      return;
+    }
+
+    const user = await this.userRepository.findOne({
+      where: { id: paymentUserId },
+    });
+
+    if (!user) {
+      this.logger.warn(`User ${paymentUserId} not found for payment ${reference}`);
+      return;
+    }
+
+    const amountInNgn = amount / 100; // Convert from kobo
+
+    // Create or update payment record
+    let payment = existingPayment;
+    if (!payment) {
+      payment = this.paymentRepository.create({
+        userId: paymentUserId,
+        amount: amountInNgn,
+        currency: 'NGN',
+        status: PaymentStatus.COMPLETED,
+        paymentMethod: 'card',
+        paystackReference: reference,
+        metadata: metadata || {},
+        paidAt: new Date(),
+      });
+    } else {
+      payment.status = PaymentStatus.COMPLETED;
+      payment.paidAt = new Date();
+    }
+    
+    await this.paymentRepository.save(payment);
+
+    // Handle based on payment type
+    if (orderId) {
+      // Order payment
+      this.logger.log(`[processPaystackPayment] Processing as order payment for orderId: ${orderId}`);
+      const order = await this.orderRepository.findOne({
+        where: { id: orderId },
+        relations: ['buyer'],
+      });
+
+      if (order) {
+        order.paymentStatus = PaymentStatus.COMPLETED;
+        order.status = OrderStatus.CONFIRMED;
+        order.confirmedAt = new Date();
+        await this.orderRepository.save(order);
+        this.logger.log(`Order ${order.id} confirmed after Paystack verification`);
+      }
+    } else if (paymentType === 'wallet_topup') {
+      // Wallet top-up - use WalletService to credit wallet and create transaction record
+      this.logger.log(`[processPaystackPayment] Processing as wallet top-up for user: ${user.id}, role: ${user.role}`);
+      
+      // Determine owner type and ownerId based on user role
+      let ownerType = WalletOwnerType.BUYER;
+      let ownerId = user.id;
+      
+      if (user.role === 'farmer') {
+        ownerType = WalletOwnerType.FARMER;
+      } else if (user.role === 'rider') {
+        ownerType = WalletOwnerType.RIDER;
+        // For riders, we need to get the rider entity ID
+        const riderId = await this.walletService.getRiderIdByUserId(user.id);
+        if (riderId) {
+          ownerId = riderId;
+          this.logger.log(`[processPaystackPayment] Rider found with ID: ${riderId}`);
+        } else {
+          this.logger.warn(`[processPaystackPayment] No rider profile found for user ${user.id}`);
+        }
+      }
+      
+      const transaction = await this.walletService.creditWallet({
+        ownerId,
+        ownerType,
+        amount: amountInNgn,
+        category: TransactionCategory.WALLET_TOPUP,
+        description: `Wallet top-up via Paystack (${reference})`,
+        metadata: {
+          paystackReference: reference,
+          paymentId: payment.id,
+        },
+      });
+      
+      this.logger.log(`Wallet topped up for ${ownerType} ${ownerId}: +${amountInNgn} NGN. Transaction: ${transaction.id}`);
+
+      // Send confirmation notification
+      if (user.emailNotificationsEnabled !== false && user.email) {
+        this.emailService.sendPaymentConfirmation(payment, user).catch((err) => {
+          this.logger.warn(`Failed to send wallet topup email: ${err.message}`);
+        });
+      }
+    } else {
+      // Default to wallet top-up if no orderId and no specific type
+      this.logger.log(`[processPaystackPayment] No specific type, defaulting to wallet top-up for user: ${user.id}, role: ${user.role}`);
+      
+      // Determine owner type and ownerId based on user role
+      let ownerType = WalletOwnerType.BUYER;
+      let ownerId = user.id;
+      
+      if (user.role === 'farmer') {
+        ownerType = WalletOwnerType.FARMER;
+      } else if (user.role === 'rider') {
+        ownerType = WalletOwnerType.RIDER;
+        // For riders, we need to get the rider entity ID
+        const riderId = await this.walletService.getRiderIdByUserId(user.id);
+        if (riderId) {
+          ownerId = riderId;
+          this.logger.log(`[processPaystackPayment] Rider found with ID: ${riderId}`);
+        } else {
+          this.logger.warn(`[processPaystackPayment] No rider profile found for user ${user.id}`);
+        }
+      }
+      
+      const transaction = await this.walletService.creditWallet({
+        ownerId,
+        ownerType,
+        amount: amountInNgn,
+        category: TransactionCategory.WALLET_TOPUP,
+        description: `Wallet top-up via Paystack (${reference})`,
+        metadata: {
+          paystackReference: reference,
+          paymentId: payment.id,
+        },
+      });
+      
+      this.logger.log(`Wallet topped up for ${ownerType} ${ownerId}: +${amountInNgn} NGN. Transaction: ${transaction.id}`);
     }
   }
 
@@ -617,12 +848,36 @@ export class PaymentsService {
     });
     await this.paymentRepository.save(payment);
 
-    // Credit user wallet
-    user.walletBalance = (user.walletBalance || 0) + amountNGN;
-    await this.userRepository.save(user);
+    // Credit user wallet using WalletService for proper handling
+    // Determine owner type and ownerId based on user role
+    let ownerType = WalletOwnerType.BUYER;
+    let ownerId = user.id;
+    
+    if (user.role === 'farmer') {
+      ownerType = WalletOwnerType.FARMER;
+    } else if (user.role === 'rider') {
+      ownerType = WalletOwnerType.RIDER;
+      const riderId = await this.walletService.getRiderIdByUserId(user.id);
+      if (riderId) {
+        ownerId = riderId;
+      }
+    }
+    
+    await this.walletService.creditWallet({
+      ownerId,
+      ownerType,
+      amount: amountNGN,
+      category: TransactionCategory.WALLET_TOPUP,
+      description: `DVA transfer from ${authorization?.sender_name || 'Bank Transfer'}`,
+      metadata: {
+        paystackReference: reference,
+        paymentId: payment.id,
+        channel: 'dedicated_nuban',
+      },
+    });
 
     this.logger.log(
-      `DVA transfer received: ${amountNGN} NGN credited to user ${user.id} wallet (Reference: ${reference})`
+      `DVA transfer received: ${amountNGN} NGN credited to ${ownerType} ${ownerId} wallet (Reference: ${reference})`
     );
 
     // Send notification to user
@@ -681,14 +936,18 @@ export class PaymentsService {
 
       // Refund the user's wallet if this was a withdrawal
       if (payment.metadata?.type === 'withdrawal') {
-        const user = await this.userRepository.findOne({
-          where: { id: payment.userId },
-        });
-
-        if (user) {
-          user.walletBalance += payment.amount;
-          await this.userRepository.save(user);
-          this.logger.log(`Refunded ${payment.amount} to user ${user.id} wallet after failed transfer`);
+        try {
+          await this.walletService.creditWallet({
+            ownerId: payment.userId,
+            ownerType: WalletOwnerType.BUYER,
+            amount: payment.amount,
+            category: TransactionCategory.REFUND,
+            description: `Refund for failed withdrawal: ${reason}`,
+            metadata: { paymentId: payment.id, failureReason: reason },
+          });
+          this.logger.log(`Refunded ${payment.amount} to user ${payment.userId} wallet after failed transfer`);
+        } catch (refundError: any) {
+          this.logger.error(`Failed to refund wallet for payment ${payment.id}: ${refundError.message}`);
         }
       }
 

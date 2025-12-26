@@ -78,6 +78,9 @@ export class Product {
   @Column({ default: false })
   isOrganic: boolean;
 
+  @Column({ default: true })
+  isPerishable: boolean;
+
   @Column({ default: false })
   isFeatured: boolean;
 

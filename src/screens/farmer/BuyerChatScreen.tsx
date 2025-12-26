@@ -13,18 +13,23 @@ import {
   Alert,
   Linking,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, NavigationProp } from '@react-navigation/native';
+import * as Location from 'expo-location';
+import * as FileSystem from 'expo-file-system';
 import { COLORS, SPACING, FONT_SIZES, SHADOWS, FONTS } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
 import { useMessageBanner } from '../../context/MessageBannerContext';
 import { useAppSelector } from '../../store';
 import { chatService, ChatMessage } from '../../services/chatService';
+import { uploadService } from '../../services/uploadService';
 import { AttachmentMenu, EmojiPicker } from '../../components/common/ChatInputAccessories';
 import ProfileModal, { ProfileData } from '../../components/common/ProfileModal';
+import { FarmerStackParamList } from '../../types';
 
 interface Message {
   id: string;
@@ -32,7 +37,9 @@ interface Message {
   sender: 'buyer' | 'farmer';
   timestamp: Date;
   status?: 'sending' | 'sent' | 'delivered' | 'read';
-  type?: 'text' | 'image' | 'product';
+  type?: 'text' | 'image' | 'product' | 'location';
+  imageUrl?: string;
+  location?: { lat: number; lng: number };
   productData?: {
     name: string;
     price: number;
@@ -105,6 +112,7 @@ const BuyerChatScreen: React.FC = () => {
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Animations
@@ -129,7 +137,9 @@ const BuyerChatScreen: React.FC = () => {
         return;
       }
 
-      if (!buyer.id && !initialConversationId) {
+      // Validate we have required data
+      const hasBuyerId = buyer.id && buyer.id.length > 0;
+      if (!hasBuyerId && !initialConversationId) {
         setIsLoading(false);
         return;
       }
@@ -149,6 +159,9 @@ const BuyerChatScreen: React.FC = () => {
             sender: msg.senderId === currentUser.id ? 'farmer' : 'buyer',
             timestamp: new Date(msg.createdAt),
             status: msg.status as Message['status'],
+            type: msg.type as Message['type'],
+            imageUrl: msg.metadata?.imageUrl,
+            location: msg.metadata?.location,
           }));
           setMessages(formattedMessages);
 
@@ -184,6 +197,9 @@ const BuyerChatScreen: React.FC = () => {
           sender: msg.senderId === currentUser.id ? 'farmer' : 'buyer',
           timestamp: new Date(msg.createdAt),
           status: msg.status as Message['status'],
+          type: msg.type as Message['type'],
+          imageUrl: msg.metadata?.imageUrl,
+          location: msg.metadata?.location,
         }));
         setMessages(formattedMessages);
 
@@ -230,6 +246,9 @@ const BuyerChatScreen: React.FC = () => {
       sender: 'buyer',
       timestamp: new Date(chatMessage.createdAt),
       status: chatMessage.status as Message['status'],
+      type: chatMessage.type as Message['type'],
+      imageUrl: chatMessage.metadata?.imageUrl,
+      location: chatMessage.metadata?.location,
     };
 
     setMessages(prev => {
@@ -388,10 +407,10 @@ const BuyerChatScreen: React.FC = () => {
   };
 
   const handleCall = () => {
-    if (!buyer.phone) {
+    if (!buyer.phone && !buyer.id) {
       Alert.alert(
         'Contact Unavailable',
-        'Buyer phone number is not available. You can continue messaging here.',
+        'Buyer contact is not available. You can continue messaging here.',
         [{ text: 'OK' }]
       );
       return;
@@ -403,15 +422,46 @@ const BuyerChatScreen: React.FC = () => {
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Call',
+          text: 'Phone Call',
           onPress: () => {
-            Linking.openURL(`tel:${buyer.phone}`).catch(() => {
-              Alert.alert('Error', 'Unable to make phone call');
+            if (buyer.phone) {
+              Linking.openURL(`tel:${buyer.phone}`).catch(() => {
+                Alert.alert('Error', 'Unable to make phone call');
+              });
+            } else {
+              Alert.alert('Error', 'Phone number not available');
+            }
+          },
+        },
+        {
+          text: 'In-App Voice Call',
+          onPress: () => {
+            (navigation as NavigationProp<FarmerStackParamList>).navigate('VideoCall', {
+              userId: buyer.id,
+              userName: buyer.name,
+              userAvatar: buyer.avatar,
+              callType: 'audio',
+              isIncoming: false,
             });
           },
         },
       ]
     );
+  };
+
+  const handleVideoCall = () => {
+    if (!buyer.id) {
+      Alert.alert('Error', 'Cannot initiate video call. Buyer information not available.');
+      return;
+    }
+    
+    (navigation as NavigationProp<FarmerStackParamList>).navigate('VideoCall', {
+      userId: buyer.id,
+      userName: buyer.name,
+      userAvatar: buyer.avatar,
+      callType: 'video',
+      isIncoming: false,
+    });
   };
 
   const handleViewBuyerProfile = () => {
@@ -434,18 +484,123 @@ const BuyerChatScreen: React.FC = () => {
     bio: buyer.bio,
   };
 
-  const handleSelectImage = (uri: string) => {
-    Alert.alert('Image Selected', 'Image sending feature coming soon!');
-    console.log('Selected image:', uri);
+  const handleSelectImage = async (uri: string) => {
+    if (!conversationId) {
+      Alert.alert('Error', 'Cannot send image without an active conversation');
+      return;
+    }
+
+    try {
+      let base64: string;
+      
+      // Read image as base64 with fallback
+      if (FileSystem.EncodingType?.Base64) {
+        base64 = await FileSystem.readAsStringAsync(uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+      } else {
+        // Fallback using fetch and FileReader
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result as string;
+            resolve(result.split(',')[1] || result);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      }
+      
+      // Upload image
+      const result = await uploadService.uploadImage(base64, 'chat');
+      
+      if (result.success && result.data?.url) {
+        const imageMessage: Message = {
+          id: `msg_${Date.now()}`,
+          text: '',
+          type: 'image',
+          imageUrl: result.data.url,
+          sender: 'farmer',
+          timestamp: new Date(),
+          status: 'sending',
+        };
+        
+        setMessages(prev => [...prev, imageMessage]);
+        
+        // Send via chat service
+        chatService.sendMessage({
+          conversationId,
+          text: '',
+          type: 'image',
+          metadata: { imageUrl: result.data.url },
+        });
+        
+        // Update status
+        setTimeout(() => {
+          setMessages(prev => prev.map(m => 
+            m.id === imageMessage.id ? { ...m, status: 'sent' } : m
+          ));
+        }, 500);
+      } else {
+        Alert.alert('Error', 'Failed to upload image');
+      }
+    } catch (error) {
+      console.error('Error sending image:', error);
+      Alert.alert('Error', 'Failed to send image');
+    }
   };
 
-  const handleSelectCamera = (uri: string) => {
-    Alert.alert('Photo Taken', 'Photo sending feature coming soon!');
-    console.log('Camera photo:', uri);
+  const handleSelectCamera = async (uri: string) => {
+    await handleSelectImage(uri);
   };
 
-  const handleSelectLocation = () => {
-    Alert.alert('Share Location', 'Location sharing feature coming soon!');
+  const handleSelectLocation = async () => {
+    if (!conversationId) {
+      Alert.alert('Error', 'Cannot share location without an active conversation');
+      return;
+    }
+
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Location permission is required to share your location');
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({});
+      const { latitude, longitude } = location.coords;
+
+      const locationMessage: Message = {
+        id: `msg_${Date.now()}`,
+        text: 'Shared current location',
+        type: 'location',
+        location: { lat: latitude, lng: longitude },
+        sender: 'farmer',
+        timestamp: new Date(),
+        status: 'sending',
+      };
+
+      setMessages(prev => [...prev, locationMessage]);
+
+      // Send via chat service
+      chatService.sendMessage({
+        conversationId,
+        text: 'Shared current location',
+        type: 'location',
+        metadata: { location: { lat: latitude, lng: longitude } },
+      });
+
+      setTimeout(() => {
+        setMessages(prev => prev.map(m => 
+          m.id === locationMessage.id ? { ...m, status: 'sent' } : m
+        ));
+      }, 500);
+    } catch (error) {
+      console.error('Error sharing location:', error);
+      Alert.alert('Error', 'Failed to get current location');
+    }
   };
 
   const handleSelectEmoji = (emoji: string) => {
@@ -470,6 +625,10 @@ const BuyerChatScreen: React.FC = () => {
   const renderMessage = ({ item, index }: { item: Message; index: number }) => {
     const isFarmer = item.sender === 'farmer';
     const showAvatar = !isFarmer && (index === 0 || messages[index - 1]?.sender !== 'buyer');
+    const isImage = item.type === 'image';
+    const isLocation = item.type === 'location';
+    const imageUrl = item.imageUrl || item.productData?.image || (item as any).metadata?.imageUrl;
+    const locationData = item.location || (item as any).metadata?.location;
 
     return (
       <View style={[styles.messageRow, isFarmer && styles.messageRowFarmer]}>
@@ -494,9 +653,40 @@ const BuyerChatScreen: React.FC = () => {
           isFarmer ? styles.farmerBubble : styles.buyerBubble,
           !isFarmer && { backgroundColor: isDark ? colors.card : COLORS.white }
         ]}>
-          <Text style={[styles.messageText, isFarmer && styles.farmerMessageText, !isFarmer && { color: colors.text }]}>
-            {item.text}
-          </Text>
+          {(isImage || imageUrl) && imageUrl ? (
+            <TouchableOpacity 
+              onPress={() => setSelectedImage(imageUrl)}
+              style={styles.imageMessageContainer}
+            >
+              <Image 
+                source={{ uri: imageUrl }} 
+                style={styles.messageImage}
+                resizeMode="cover"
+              />
+            </TouchableOpacity>
+          ) : isLocation && locationData ? (
+            <TouchableOpacity 
+              onPress={() => {
+                const url = Platform.select({
+                  ios: `maps:0,0?q=${locationData.lat},${locationData.lng}`,
+                  android: `geo:${locationData.lat},${locationData.lng}?q=${locationData.lat},${locationData.lng}`,
+                }) || `https://www.google.com/maps/search/?api=1&query=${locationData.lat},${locationData.lng}`;
+                Linking.openURL(url).catch(() => {
+                  Alert.alert('Error', 'Unable to open maps');
+                });
+              }}
+              style={styles.locationMessage}
+            >
+              <Ionicons name="location" size={24} color={isFarmer ? '#FFFFFF' : COLORS.primary} />
+              <Text style={[styles.locationText, { color: isFarmer ? COLORS.white : colors.text }]}>
+                {item.text || 'Tap to view location'}
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <Text style={[styles.messageText, isFarmer && styles.farmerMessageText, !isFarmer && { color: colors.text }]}>
+              {item.text}
+            </Text>
+          )}
           <View style={styles.messageFooter}>
             <Text style={[styles.messageTime, isFarmer && styles.farmerMessageTime, !isFarmer && { color: colors.textSecondary }]}>
               {formatTime(item.timestamp)}
@@ -616,6 +806,9 @@ const BuyerChatScreen: React.FC = () => {
             <TouchableOpacity style={styles.headerActionBtn} onPress={handleCall}>
               <Ionicons name="call" size={22} color={COLORS.white} />
             </TouchableOpacity>
+            <TouchableOpacity style={styles.headerActionBtn} onPress={handleVideoCall}>
+              <Ionicons name="videocam" size={24} color={COLORS.white} />
+            </TouchableOpacity>
           </View>
         </LinearGradient>
       </Animated.View>
@@ -633,7 +826,7 @@ const BuyerChatScreen: React.FC = () => {
           ref={flatListRef}
           data={messages}
           renderItem={renderMessage}
-          keyExtractor={item => item.id}
+          keyExtractor={(item, index) => item?.id || `msg-${index}`}
           contentContainerStyle={styles.messagesList}
           showsVerticalScrollIndicator={false}
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
@@ -747,6 +940,30 @@ const BuyerChatScreen: React.FC = () => {
         onClose={() => setShowProfileModal(false)}
         profile={buyerProfileData}
       />
+
+      {/* Image Preview Modal */}
+      <Modal
+        visible={!!selectedImage}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedImage(null)}
+      >
+        <View style={styles.imagePreviewOverlay}>
+          <TouchableOpacity
+            style={styles.imagePreviewCloseButton}
+            onPress={() => setSelectedImage(null)}
+          >
+            <Ionicons name="close" size={30} color="#FFF" />
+          </TouchableOpacity>
+          {selectedImage && (
+            <Image
+              source={{ uri: selectedImage }}
+              style={styles.imagePreviewFull}
+              resizeMode="contain"
+            />
+          )}
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -876,6 +1093,26 @@ const styles = StyleSheet.create({
   farmerBubble: {
     backgroundColor: '#34C759',
     borderBottomRightRadius: 4,
+  },
+  imageMessageContainer: {
+    marginBottom: SPACING.xs,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  messageImage: {
+    width: 200,
+    height: 200,
+    borderRadius: 12,
+  },
+  locationMessage: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: SPACING.xs,
+  },
+  locationText: {
+    marginLeft: SPACING.xs,
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '500',
   },
   messageText: {
     fontSize: FONT_SIZES.sm,
@@ -1035,6 +1272,23 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.md,
     fontFamily: FONTS.regular,
     textAlign: 'center',
+  },
+  imagePreviewOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imagePreviewCloseButton: {
+    position: 'absolute',
+    top: 60,
+    right: 20,
+    zIndex: 10,
+    padding: 10,
+  },
+  imagePreviewFull: {
+    width: '100%',
+    height: '80%',
   },
 });
 

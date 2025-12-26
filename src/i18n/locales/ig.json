@@ -105,12 +105,17 @@
   "cart": {
     "title": "Ngwugwu",
     "empty": "Ngwugwu gị tọgbọrọ n'efu",
+    "emptyDescription": "Tinye ihe oriri ọhụrụ iji malite!",
+    "browseProducts": "Lelee Ngwaahịa",
     "subtotal": "Nchịkọta nta",
     "deliveryFee": "Ụgwọ nnyefe",
     "total": "Nchịkọta",
-    "checkout": "Kwụọ ụgwọ",
+    "checkout": "Gaa n'ihu kwụọ ụgwọ",
     "removeItem": "Wepụ ihe",
     "clearCart": "Kpochapụ ngwugwu",
+    "clearCartConfirm": "Wepụ ihe niile n'ime ngwugwu?",
+    "orderSummary": "NCHỊKỌTA IWU",
+    "calculatedAtCheckout": "A ga-agbakọ ya mgbe ị na-akwụ ụgwọ",
     "itemAdded": "Etinyere ihe na ngwugwu",
     "itemRemoved": "Ewepụrụ ihe na ngwugwu"
   },
@@ -181,10 +186,16 @@
   },
   "wallet": {
     "title": "Obere akpa",
+    "myWallet": "Obere akpa m",
+    "manageBalance": "Jikwaa ngụkọ gị na azụmahịa",
     "balance": "Ngụkọ",
+    "availableBalance": "Ngụkọ dị",
     "topUp": "Tinye ego",
     "withdraw": "Wepụ",
     "transactions": "Azụmahịa",
+    "recentTransactions": "AZỤMAHỊA N'ỌGBỤGBA",
+    "noTransactions": "Enweghị azụmahịa ọ bụla",
+    "transactionHistoryAppear": "Akụkọ azụmahịa gị ga-apụta ebe a",
     "transfer": "Bufee",
     "history": "Akụkọ",
     "paymentMethods": "Ụzọ ịkwụ ụgwọ"
@@ -221,12 +232,20 @@
   },
   "farmer": {
     "title": "Onye ọrụ ugbo",
+    "dashboard": "Dasbọọdụ Ugbo Gị",
     "myProducts": "Ngwaahịa m",
     "addProduct": "Tinye ngwaahịa",
     "editProduct": "Dezie ngwaahịa",
     "sales": "Ire ere",
     "earnings": "Ego enwetara",
-    "analytics": "Nchịkọta"
+    "analytics": "Nchịkọta",
+    "pendingOrders": "Iwu na-echere",
+    "processingOrders": "Na-arụ ọrụ",
+    "totalProducts": "Ngwaahịa niile",
+    "lowStock": "Ngwaahịa dị ala",
+    "recentOrders": "Iwu na-adịbeghị anya",
+    "topSellers": "Ndị kacha ere",
+    "viewAll": "Lee ihe niile"
   },
   "rider": {
     "title": "Onye nnyefe",

@@ -14,7 +14,9 @@ import { SupportTicket } from '../database/entities';
 @WebSocketGateway(3003, {
   namespace: '/support',
   cors: {
-    origin: '*',
+    origin: process.env.NODE_ENV === 'production' 
+      ? [process.env.FRONTEND_URL || 'https://handwork.com', process.env.ADMIN_URL || 'https://admin.handwork.com']
+      : true,
     credentials: true,
   },
 })

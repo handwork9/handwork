@@ -52,8 +52,8 @@ const paymentSlice = createSlice({
       state.error = null;
     },
     removePaymentMethod: (state, action: PayloadAction<string>) => {
-      const removedMethod = state.methods.find(m => m.id === action.payload);
-      state.methods = state.methods.filter(m => m.id !== action.payload);
+      const removedMethod = state.methods.find(m => m?.id === action.payload);
+      state.methods = state.methods.filter(m => m?.id !== action.payload);
       // If we removed the default, set first remaining as default
       if (removedMethod?.isDefault && state.methods.length > 0) {
         state.methods[0].isDefault = true;
@@ -62,11 +62,11 @@ const paymentSlice = createSlice({
     setDefaultPaymentMethod: (state, action: PayloadAction<string>) => {
       state.methods = state.methods.map(m => ({
         ...m,
-        isDefault: m.id === action.payload,
+        isDefault: m?.id === action.payload,
       }));
     },
     updatePaymentMethodLastUsed: (state, action: PayloadAction<string>) => {
-      const method = state.methods.find(m => m.id === action.payload);
+      const method = state.methods.find(m => m?.id === action.payload);
       if (method) {
         method.lastUsed = new Date().toISOString();
       }

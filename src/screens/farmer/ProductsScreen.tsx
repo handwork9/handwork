@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,12 @@ import {
   Modal,
   ScrollView,
   Share,
+  KeyboardAvoidingView,
+  Platform,
+  Dimensions,
+  Animated,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -152,11 +157,12 @@ export default function ProductsScreen() {
     );
   };
 
-  const products = data?.products || [];
+  const products = (data?.products || []).filter((p: any) => p != null && p.id != null);
   
   // Filtered and sorted products with search
   const filteredProducts = useMemo(() => {
     let result = products.filter((product: Product) => {
+      if (!product || !product.id) return false;
       // Status filter
       let statusMatch = true;
       switch (filter) {
@@ -403,22 +409,24 @@ export default function ProductsScreen() {
   const hasActiveFilters = searchQuery || filter !== 'all' || sortBy !== 'newest';
 
   const renderProduct = ({ item, index }: { item: Product; index: number }) => {
+    if (!item || !item.id) return null;
+    
     const stockBadge = getStockBadge(item.stock);
     const isFirst = index === 0;
     const isLast = index === filteredProducts.length - 1;
     const isSelected = selectedProducts.includes(item.id);
     
-    // Use helper to fix image URL for current host
+    // Get all valid image URLs for the carousel
+    const allImages = item.images?.filter((img: string) => img && typeof img === 'string') || [];
     const imageUri = getFirstValidImageUrl(item.images);
+    const hasMultipleImages = allImages.length > 1;
     
     return (
       <TouchableOpacity 
         style={[
-          styles.productCard,
+          styles.productMediaCard,
           { backgroundColor: isDark ? colors.card : '#FFFFFF' },
-          isFirst && styles.productCardFirst,
-          isLast && styles.productCardLast,
-          isSelected && styles.productCardSelected,
+          isSelected && styles.productMediaCardSelected,
         ]}
         onPress={() => {
           if (selectionMode) {
@@ -433,83 +441,138 @@ export default function ProductsScreen() {
             setSelectedProducts([item.id]);
           }
         }}
-        activeOpacity={0.6}
+        activeOpacity={0.7}
       >
-        {/* Selection checkbox */}
-        {selectionMode && (
-          <TouchableOpacity
-            style={styles.selectionCheckbox}
-            onPress={() => toggleProductSelection(item.id)}
-          >
-            <View style={[
-              styles.checkboxCircle,
-              isSelected && styles.checkboxCircleSelected,
-            ]}>
-              {isSelected && (
-                <Ionicons name="checkmark" size={14} color="#FFFFFF" />
-              )}
-            </View>
-          </TouchableOpacity>
-        )}
-        
-        {imageUri ? (
-          <Image 
-            source={{ uri: imageUri }} 
-            style={styles.productImage}
+        {/* Image Section with Gradient Overlay */}
+        <View style={styles.productMediaImageSection}>
+          {imageUri ? (
+            <Image 
+              source={{ uri: imageUri }} 
+              style={styles.productMediaImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <LinearGradient
+              colors={['#E8F5E9', '#C8E6C9']}
+              style={styles.productMediaImage}
+            >
+              <View style={styles.productMediaPlaceholder}>
+                <Ionicons name="leaf" size={40} color="#34C759" />
+              </View>
+            </LinearGradient>
+          )}
+          
+          {/* Gradient overlay for text readability */}
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.6)']}
+            style={styles.productMediaGradientOverlay}
           />
-        ) : (
-          <View style={[styles.productImage, styles.productImagePlaceholder]}>
-            <Ionicons name="image-outline" size={24} color="#8E8E93" />
+          
+          {/* Selection checkbox overlay */}
+          {selectionMode && (
+            <TouchableOpacity
+              style={styles.mediaSelectionCheckbox}
+              onPress={() => toggleProductSelection(item.id)}
+            >
+              <View style={[
+                styles.mediaCheckboxCircle,
+                isSelected && styles.mediaCheckboxCircleSelected,
+              ]}>
+                {isSelected && (
+                  <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                )}
+              </View>
+            </TouchableOpacity>
+          )}
+          
+          {/* Featured badge */}
+          {item.featured && (
+            <View style={styles.mediaFeaturedBadge}>
+              <LinearGradient
+                colors={['#FFD700', '#FFA000']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.mediaFeaturedGradient}
+              >
+                <Ionicons name="star" size={12} color="#FFFFFF" />
+                <Text style={styles.mediaFeaturedText}>Featured</Text>
+              </LinearGradient>
+            </View>
+          )}
+          
+          {/* Stock status badge on image */}
+          <View style={[styles.mediaStockBadge, { backgroundColor: stockBadge.bgColor }]}>
+            <View style={[styles.mediaStockDot, { backgroundColor: stockBadge.color }]} />
+            <Text style={[styles.mediaStockText, { color: stockBadge.color }]}>
+              {item.stock} {item.unit}
+            </Text>
           </View>
-        )}
-        <View style={[
-          styles.productContent,
-          !isLast && styles.productBorder,
-        ]}>
-          <View style={styles.productInfo}>
-            <Text style={[styles.productName, { color: colors.text }]} numberOfLines={1}>
+          
+          {/* Image count indicator */}
+          {hasMultipleImages && (
+            <View style={styles.mediaImageCountBadge}>
+              <Ionicons name="images" size={12} color="#FFFFFF" />
+              <Text style={styles.mediaImageCountText}>{allImages.length}</Text>
+            </View>
+          )}
+          
+          {/* Price overlay on image */}
+          <View style={styles.mediaPriceOverlay}>
+            <Text style={styles.mediaPriceText}>
+              {formatCurrency(Number(item.price))}
+            </Text>
+            <Text style={styles.mediaPriceUnit}>/{item.unit}</Text>
+          </View>
+        </View>
+        
+        {/* Content Section */}
+        <View style={styles.productMediaContent}>
+          <View style={styles.productMediaHeader}>
+            <Text style={[styles.productMediaName, { color: colors.text }]} numberOfLines={2}>
               {item.title || item.name}
             </Text>
-            <Text style={[styles.productCategory, { color: colors.textSecondary }]}>
-              {item.category}
-            </Text>
-            <View style={styles.productMeta}>
-              <Text style={styles.productPrice}>
-                {formatCurrency(Number(item.price))}/{item.unit}
-              </Text>
-              <TouchableOpacity
-                style={[styles.stockBadge, { backgroundColor: stockBadge.bgColor }]}
-                onPress={() => handleQuickStockUpdate(item)}
-              >
-                <Text style={[styles.stockText, { color: stockBadge.color }]}>
-                  {stockBadge.label}
-                </Text>
-                <Ionicons name="pencil" size={10} color={stockBadge.color} style={{ marginLeft: 4 }} />
-              </TouchableOpacity>
+          </View>
+          
+          <View style={styles.productMediaMeta}>
+            <View style={[styles.mediaCategoryBadge, { backgroundColor: isDark ? 'rgba(52, 199, 89, 0.2)' : 'rgba(52, 199, 89, 0.1)' }]}>
+              <Ionicons name="pricetag" size={10} color="#34C759" />
+              <Text style={styles.mediaCategoryText}>{item.category}</Text>
             </View>
           </View>
-          <View style={styles.productActions}>
-            {/* Duplicate button */}
+          
+          {/* Quick Actions Row */}
+          <View style={styles.productMediaActions}>
             <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: isDark ? '#3A3A3C' : '#F2F2F7' }]}
-              onPress={() => handleDuplicateProduct(item)}
+              style={[styles.mediaActionButton, { backgroundColor: isDark ? 'rgba(0, 122, 255, 0.15)' : '#E3F2FD' }]}
+              onPress={() => handleQuickStockUpdate(item)}
             >
-              <Ionicons name="copy-outline" size={16} color="#007AFF" />
+              <Ionicons name="cube-outline" size={16} color="#007AFF" />
+              <Text style={[styles.mediaActionText, { color: '#007AFF' }]}>Stock</Text>
             </TouchableOpacity>
+            
             <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: isDark ? '#3A3A3C' : '#F2F2F7' }]}
+              style={[styles.mediaActionButton, { backgroundColor: isDark ? 'rgba(52, 199, 89, 0.15)' : '#E8F5E9' }]}
               onPress={() => navigation.navigate('EditProduct', { productId: item.id })}
             >
-              <Ionicons name="create-outline" size={16} color="#007AFF" />
+              <Ionicons name="create-outline" size={16} color="#34C759" />
+              <Text style={[styles.mediaActionText, { color: '#34C759' }]}>Edit</Text>
             </TouchableOpacity>
+            
             <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: '#FFEBEE' }]}
+              style={[styles.mediaActionButton, { backgroundColor: isDark ? 'rgba(255, 59, 48, 0.15)' : '#FFEBEE' }]}
               onPress={(e) => {
                 e.stopPropagation?.();
                 handleDelete(item.id, item.title || item.name || 'Product');
               }}
             >
-              <Ionicons name="trash" size={16} color="#FF3B30" />
+              <Ionicons name="trash-outline" size={16} color="#FF3B30" />
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[styles.mediaActionButton, styles.mediaActionButtonMore, { backgroundColor: isDark ? 'rgba(142, 142, 147, 0.15)' : '#F2F2F7' }]}
+              onPress={() => handleDuplicateProduct(item)}
+            >
+              <Ionicons name="copy-outline" size={16} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
         </View>
@@ -608,6 +671,15 @@ export default function ProductsScreen() {
       {/* Fixed Header */}
       <View style={[styles.fixedHeader, { paddingTop: insets.top, backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
         <View style={styles.headerContent}>
+          {navigation.canGoBack() && (
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="chevron-back" size={24} color="#007AFF" />
+            </TouchableOpacity>
+          )}
           <Text style={[styles.headerTitle, { color: colors.text }]}>
             My Products
           </Text>
@@ -686,11 +758,11 @@ export default function ProductsScreen() {
       {/* Products List */}
       <FlatList
         data={filteredProducts}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item, index) => item?.id || `product-${index}`}
         renderItem={renderProduct}
         ListHeaderComponent={ListHeader}
         contentContainerStyle={[
-          styles.listContent,
+          styles.productsGrid,
           { paddingBottom: insets.bottom + 100 },
         ]}
         showsVerticalScrollIndicator={false}
@@ -725,199 +797,293 @@ export default function ProductsScreen() {
         }
       />
 
-      {/* Sort Modal */}
+      {/* Sort Modal - Enhanced iOS Style */}
       <Modal
         visible={showSortModal}
         transparent
         animationType="slide"
         onRequestClose={() => setShowSortModal(false)}
       >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowSortModal(false)}
-        >
-          <View style={[styles.sortModalContent, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
-            <View style={styles.filterModalHandle} />
-            <View style={styles.sortModalHeader}>
-              <Text style={[styles.sortModalTitle, { color: colors.text }]}>Sort By</Text>
-              <TouchableOpacity onPress={() => setShowSortModal(false)}>
-                <Ionicons name="close" size={24} color={colors.textSecondary} />
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => setShowSortModal(false)}
+          />
+          <View style={[styles.modalSheet, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+            {/* Handle Bar */}
+            <View style={styles.modalHandleBar} />
+            
+            {/* Header */}
+            <View style={styles.modalHeader}>
+              <View style={styles.modalHeaderLeft} />
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Sort Products</Text>
+              <TouchableOpacity 
+                style={styles.modalCloseButton}
+                onPress={() => setShowSortModal(false)}
+              >
+                <View style={[styles.modalCloseCircle, { backgroundColor: isDark ? '#3A3A3C' : '#F2F2F7' }]}>
+                  <Ionicons name="close" size={18} color={colors.textSecondary} />
+                </View>
               </TouchableOpacity>
             </View>
-            {SORT_OPTIONS.map((option) => (
-              <TouchableOpacity
-                key={option.key}
-                style={[
-                  styles.sortOption,
-                  sortBy === option.key && styles.sortOptionActive,
-                ]}
-                onPress={() => {
-                  setSortBy(option.key);
-                  setShowSortModal(false);
-                }}
-              >
-                <Ionicons 
-                  name={option.icon} 
-                  size={20} 
-                  color={sortBy === option.key ? '#007AFF' : colors.textSecondary} 
-                />
-                <Text style={[
-                  styles.sortOptionText,
-                  { color: sortBy === option.key ? '#007AFF' : colors.text },
-                ]}>
-                  {option.label}
-                </Text>
-                {sortBy === option.key && (
-                  <Ionicons name="checkmark" size={20} color="#007AFF" />
-                )}
-              </TouchableOpacity>
-            ))}
+            
+            {/* Options */}
+            <View style={styles.modalOptionsContainer}>
+              {SORT_OPTIONS.map((option, index) => (
+                <TouchableOpacity
+                  key={option.key}
+                  style={[
+                    styles.modalOption,
+                    sortBy === option.key && styles.modalOptionActive,
+                    { backgroundColor: sortBy === option.key ? (isDark ? 'rgba(0, 122, 255, 0.15)' : '#E3F2FD') : 'transparent' },
+                    index < SORT_OPTIONS.length - 1 && styles.modalOptionBorder,
+                  ]}
+                  onPress={() => {
+                    setSortBy(option.key);
+                    setShowSortModal(false);
+                  }}
+                >
+                  <View style={[
+                    styles.modalOptionIcon,
+                    { backgroundColor: sortBy === option.key ? '#007AFF' : (isDark ? '#3A3A3C' : '#F2F2F7') }
+                  ]}>
+                    <Ionicons 
+                      name={option.icon} 
+                      size={18} 
+                      color={sortBy === option.key ? '#FFFFFF' : colors.textSecondary} 
+                    />
+                  </View>
+                  <View style={styles.modalOptionContent}>
+                    <Text style={[
+                      styles.modalOptionText,
+                      { color: sortBy === option.key ? '#007AFF' : colors.text },
+                    ]}>
+                      {option.label}
+                    </Text>
+                  </View>
+                  {sortBy === option.key && (
+                    <View style={styles.modalCheckCircle}>
+                      <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
-        </TouchableOpacity>
+        </View>
       </Modal>
 
-      {/* Filter Modal - Bottom Sheet */}
+      {/* Filter Modal - Enhanced iOS Style */}
       <Modal
         visible={showFilterModal}
         transparent
         animationType="slide"
         onRequestClose={() => setShowFilterModal(false)}
       >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowFilterModal(false)}
-        >
-          <View style={[styles.sortModalContent, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
-            <View style={styles.filterModalHandle} />
-            <View style={styles.sortModalHeader}>
-              <Text style={[styles.sortModalTitle, { color: colors.text }]}>Filter Products</Text>
-              <TouchableOpacity onPress={() => setShowFilterModal(false)}>
-                <Ionicons name="close" size={24} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-            {filterTabs.map((option) => (
-              <TouchableOpacity
-                key={option.key}
-                style={[
-                  styles.sortOption,
-                  filter === option.key && styles.sortOptionActive,
-                ]}
-                onPress={() => {
-                  setFilter(option.key);
-                  setShowFilterModal(false);
-                }}
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => setShowFilterModal(false)}
+          />
+          <View style={[styles.modalSheet, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+            {/* Handle Bar */}
+            <View style={styles.modalHandleBar} />
+            
+            {/* Header */}
+            <View style={styles.modalHeader}>
+              <View style={styles.modalHeaderLeft} />
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Filter Products</Text>
+              <TouchableOpacity 
+                style={styles.modalCloseButton}
+                onPress={() => setShowFilterModal(false)}
               >
-                <View style={[
-                  styles.filterOptionIcon,
-                  { backgroundColor: filter === option.key ? '#34C75920' : isDark ? '#3A3A3C' : '#F2F2F7' }
-                ]}>
-                  <Ionicons 
-                    name={option.icon} 
-                    size={20} 
-                    color={filter === option.key ? '#34C759' : colors.textSecondary} 
-                  />
+                <View style={[styles.modalCloseCircle, { backgroundColor: isDark ? '#3A3A3C' : '#F2F2F7' }]}>
+                  <Ionicons name="close" size={18} color={colors.textSecondary} />
                 </View>
-                <Text style={[
-                  styles.sortOptionText,
-                  { color: filter === option.key ? '#34C759' : colors.text },
-                ]}>
-                  {option.label}
-                </Text>
-                {filter === option.key && (
-                  <Ionicons name="checkmark-circle" size={22} color="#34C759" />
-                )}
-              </TouchableOpacity>
-            ))}
-          </View>
-        </TouchableOpacity>
-      </Modal>
-
-      {/* Quick Stock Update Modal */}
-      <Modal
-        visible={stockModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setStockModalVisible(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setStockModalVisible(false)}
-        >
-          <View 
-            style={[styles.stockModalContent, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}
-            onStartShouldSetResponder={() => true}
-          >
-            <Text style={[styles.stockModalTitle, { color: colors.text }]}>
-              Update Stock
-            </Text>
-            <Text style={[styles.stockModalSubtitle, { color: colors.textSecondary }]}>
-              {selectedProductForStock?.title || selectedProductForStock?.name}
-            </Text>
-            
-            <View style={styles.stockInputContainer}>
-              <TouchableOpacity
-                style={[styles.stockAdjustButton, { backgroundColor: isDark ? '#3A3A3C' : '#F2F2F7' }]}
-                onPress={() => {
-                  const current = parseInt(newStockValue, 10) || 0;
-                  if (current > 0) setNewStockValue((current - 1).toString());
-                }}
-              >
-                <Ionicons name="remove" size={24} color={colors.text} />
-              </TouchableOpacity>
-              
-              <TextInput
-                style={[styles.stockInput, { color: colors.text, borderColor: isDark ? '#3A3A3C' : '#E5E5EA' }]}
-                value={newStockValue}
-                onChangeText={setNewStockValue}
-                keyboardType="numeric"
-                textAlign="center"
-              />
-              
-              <TouchableOpacity
-                style={[styles.stockAdjustButton, { backgroundColor: isDark ? '#3A3A3C' : '#F2F2F7' }]}
-                onPress={() => {
-                  const current = parseInt(newStockValue, 10) || 0;
-                  setNewStockValue((current + 1).toString());
-                }}
-              >
-                <Ionicons name="add" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
             
-            <View style={styles.quickStockButtons}>
-              {[10, 25, 50, 100].map((value) => (
+            {/* Options */}
+            <View style={styles.modalOptionsContainer}>
+              {filterTabs.map((option, index) => (
                 <TouchableOpacity
-                  key={value}
-                  style={[styles.quickStockButton, { backgroundColor: isDark ? '#3A3A3C' : '#F2F2F7' }]}
-                  onPress={() => setNewStockValue(value.toString())}
+                  key={option.key}
+                  style={[
+                    styles.modalOption,
+                    filter === option.key && styles.modalOptionActive,
+                    { backgroundColor: filter === option.key ? (isDark ? 'rgba(52, 199, 89, 0.15)' : '#E8F5E9') : 'transparent' },
+                    index < filterTabs.length - 1 && styles.modalOptionBorder,
+                  ]}
+                  onPress={() => {
+                    setFilter(option.key);
+                    setShowFilterModal(false);
+                  }}
                 >
-                  <Text style={[styles.quickStockButtonText, { color: colors.text }]}>{value}</Text>
+                  <View style={[
+                    styles.modalOptionIcon,
+                    { backgroundColor: filter === option.key ? '#34C759' : (isDark ? '#3A3A3C' : '#F2F2F7') }
+                  ]}>
+                    <Ionicons 
+                      name={option.icon} 
+                      size={18} 
+                      color={filter === option.key ? '#FFFFFF' : colors.textSecondary} 
+                    />
+                  </View>
+                  <View style={styles.modalOptionContent}>
+                    <Text style={[
+                      styles.modalOptionText,
+                      { color: filter === option.key ? '#34C759' : colors.text },
+                    ]}>
+                      {option.label}
+                    </Text>
+                  </View>
+                  {filter === option.key && (
+                    <View style={[styles.modalCheckCircle, { backgroundColor: '#34C759' }]}>
+                      <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                    </View>
+                  )}
                 </TouchableOpacity>
               ))}
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Quick Stock Update Modal - Bottom Sheet Style */}
+      <Modal
+        visible={stockModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setStockModalVisible(false)}
+      >
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.stockModalOverlay}
+        >
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => setStockModalVisible(false)}
+          />
+          <View 
+            style={[styles.stockModalSheet, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}
+          >
+            {/* Handle Bar */}
+            <View style={styles.stockModalHandleBar} />
             
-            <View style={styles.stockModalActions}>
-              <TouchableOpacity
-                style={[styles.stockModalButton, styles.stockModalCancelButton]}
+            {/* Header */}
+            <View style={styles.stockModalHeader}>
+              <View style={styles.stockModalHeaderLeft} />
+              <View style={styles.stockModalHeaderCenter}>
+                <View style={styles.stockModalIconCircle}>
+                  <Ionicons name="cube" size={24} color="#FFFFFF" />
+                </View>
+                <Text style={[styles.stockModalTitle, { color: colors.text }]}>
+                  Update Stock
+                </Text>
+              </View>
+              <TouchableOpacity 
+                style={styles.stockModalCloseButton}
                 onPress={() => setStockModalVisible(false)}
               >
-                <Text style={styles.stockModalCancelText}>Cancel</Text>
+                <View style={[styles.stockModalCloseCircle, { backgroundColor: isDark ? '#3A3A3C' : '#F2F2F7' }]}>
+                  <Ionicons name="close" size={18} color={colors.textSecondary} />
+                </View>
+              </TouchableOpacity>
+            </View>
+            
+            {/* Product Name */}
+            <View style={[styles.stockProductNameContainer, { backgroundColor: isDark ? 'rgba(52, 199, 89, 0.15)' : '#E8F5E9' }]}>
+              <Ionicons name="leaf" size={16} color="#34C759" />
+              <Text style={[styles.stockProductName, { color: colors.text }]} numberOfLines={1}>
+                {selectedProductForStock?.title || selectedProductForStock?.name}
+              </Text>
+            </View>
+            
+            {/* Stock Input Section */}
+            <View style={styles.stockInputSection}>
+              <View style={styles.stockInputContainer}>
+                <TouchableOpacity
+                  style={[styles.stockAdjustButton, { backgroundColor: isDark ? '#3A3A3C' : '#F2F2F7' }]}
+                  onPress={() => {
+                    const current = parseInt(newStockValue, 10) || 0;
+                    if (current > 0) setNewStockValue((current - 1).toString());
+                  }}
+                >
+                  <Ionicons name="remove" size={24} color="#FF3B30" />
+                </TouchableOpacity>
+                
+                <View style={[styles.stockInputWrapper, { borderColor: isDark ? '#3A3A3C' : '#E5E5EA' }]}>
+                  <TextInput
+                    style={[styles.stockInput, { color: colors.text }]}
+                    value={newStockValue}
+                    onChangeText={setNewStockValue}
+                    keyboardType="numeric"
+                    textAlign="center"
+                  />
+                  <Text style={[styles.stockInputUnit, { color: colors.textSecondary }]}>units</Text>
+                </View>
+                
+                <TouchableOpacity
+                  style={[styles.stockAdjustButton, { backgroundColor: isDark ? '#3A3A3C' : '#F2F2F7' }]}
+                  onPress={() => {
+                    const current = parseInt(newStockValue, 10) || 0;
+                    setNewStockValue((current + 1).toString());
+                  }}
+                >
+                  <Ionicons name="add" size={24} color="#34C759" />
+                </TouchableOpacity>
+              </View>
+              
+              {/* Quick Presets */}
+              <Text style={[styles.quickPresetsLabel, { color: colors.textSecondary }]}>Quick presets</Text>
+              <View style={styles.quickStockButtons}>
+                {[10, 25, 50, 100].map((value) => (
+                  <TouchableOpacity
+                    key={value}
+                    style={[
+                      styles.quickStockButton, 
+                      { backgroundColor: isDark ? '#3A3A3C' : '#F2F2F7' },
+                      newStockValue === value.toString() && styles.quickStockButtonActive
+                    ]}
+                    onPress={() => setNewStockValue(value.toString())}
+                  >
+                    <Text style={[
+                      styles.quickStockButtonText, 
+                      { color: newStockValue === value.toString() ? '#FFFFFF' : colors.text }
+                    ]}>{value}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+            
+            {/* Actions */}
+            <View style={styles.stockModalActions}>
+              <TouchableOpacity
+                style={[styles.stockModalButton, styles.stockModalCancelButton, { backgroundColor: isDark ? '#3A3A3C' : '#F2F2F7' }]}
+                onPress={() => setStockModalVisible(false)}
+              >
+                <Text style={[styles.stockModalCancelText, { color: colors.text }]}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.stockModalButton, styles.stockModalConfirmButton]}
                 onPress={confirmStockUpdate}
                 disabled={updateStockMutation.isPending}
               >
-                <Text style={styles.stockModalConfirmText}>
-                  {updateStockMutation.isPending ? 'Updating...' : 'Update'}
-                </Text>
+                {updateStockMutation.isPending ? (
+                  <Text style={styles.stockModalConfirmText}>Updating...</Text>
+                ) : (
+                  <>
+                    <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+                    <Text style={styles.stockModalConfirmText}>Update Stock</Text>
+                  </>
+                )}
               </TouchableOpacity>
             </View>
           </View>
-        </TouchableOpacity>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -936,6 +1102,17 @@ const styles = StyleSheet.create({
   },
   headerContent: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#E3F2FD',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 4,
   },
   headerTitle: {
     fontSize: 34,
@@ -968,6 +1145,14 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: SPACING.md,
+  },
+  // Products Grid Layout
+  productsGrid: {
+    paddingHorizontal: SPACING.sm,
+  },
+  productsRow: {
+    justifyContent: 'space-between',
+    marginBottom: SPACING.sm,
   },
   searchSortContainer: {
     flexDirection: 'row',
@@ -1057,68 +1242,328 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: FONTS.regular,
   },
+  // Products Grid Layout
+  productsGrid: {
+    paddingHorizontal: SPACING.sm,
+    paddingBottom: 100,
+  },
+  productsRow: {
+    justifyContent: 'space-between',
+    marginBottom: SPACING.sm,
+  },
+  // Enhanced Media Card Styles - Full Width List
+  productMediaCard: {
+    width: '100%',
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
+    marginBottom: SPACING.md,
+  },
+  productMediaCardSelected: {
+    borderWidth: 2,
+    borderColor: '#34C759',
+  },
+  productMediaImageSection: {
+    position: 'relative',
+    width: '100%',
+    height: 180,
+  },
+  productMediaImage: {
+    width: '100%',
+    height: '100%',
+  },
+  productMediaPlaceholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  productMediaGradientOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 60,
+  },
+  mediaSelectionCheckbox: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    zIndex: 10,
+  },
+  mediaCheckboxCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mediaCheckboxCircleSelected: {
+    backgroundColor: '#34C759',
+    borderColor: '#34C759',
+  },
+  mediaFeaturedBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  mediaFeaturedGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    gap: 4,
+  },
+  mediaFeaturedText: {
+    fontSize: 10,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
+    color: '#FFFFFF',
+  },
+  mediaStockBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+  },
+  mediaStockDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  mediaStockText: {
+    fontSize: 10,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+  },
+  mediaImageCountBadge: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  mediaImageCountText: {
+    fontSize: 11,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+    color: '#FFFFFF',
+  },
+  mediaPriceOverlay: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    backgroundColor: 'rgba(52, 199, 89, 0.95)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+  },
+  mediaPriceText: {
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
+    color: '#FFFFFF',
+  },
+  mediaPriceUnit: {
+    fontSize: 10,
+    fontWeight: '500',
+    fontFamily: FONTS.medium,
+    color: 'rgba(255,255,255,0.8)',
+  },
+  productMediaContent: {
+    padding: SPACING.sm,
+  },
+  productMediaHeader: {
+    marginBottom: 6,
+  },
+  productMediaName: {
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+    lineHeight: 18,
+  },
+  productMediaMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  mediaCategoryBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    gap: 4,
+  },
+  mediaCategoryText: {
+    fontSize: 10,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+    color: '#34C759',
+  },
+  productMediaActions: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  mediaActionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 4,
+  },
+  mediaActionButtonMore: {
+    flex: 0,
+    width: 36,
+  },
+  mediaActionText: {
+    fontSize: 11,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+  },
+  // Legacy styles for compatibility
   productCard: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingLeft: SPACING.md,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   productCardFirst: {
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
   },
   productCardLast: {
-    borderBottomLeftRadius: 12,
-    borderBottomRightRadius: 12,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
   },
   productCardSelected: {
-    backgroundColor: '#E3F2FD',
+    backgroundColor: '#E8F5E9',
+    borderLeftWidth: 3,
+    borderLeftColor: '#34C759',
   },
   selectionCheckbox: {
     paddingRight: 8,
   },
   checkboxCircle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     borderWidth: 2,
     borderColor: '#C7C7CC',
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'transparent',
   },
   checkboxCircleSelected: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
+    backgroundColor: '#34C759',
+    borderColor: '#34C759',
+  },
+  productImageContainer: {
+    position: 'relative',
   },
   productImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 10,
+    width: 68,
+    height: 68,
+    borderRadius: 14,
     backgroundColor: '#F2F2F7',
   },
   productImagePlaceholder: {
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#E8F5E9',
+  },
+  stockIndicatorDot: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
   productContent: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingRight: SPACING.md,
     marginLeft: SPACING.md,
   },
   productBorder: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(60, 60, 67, 0.12)',
+    borderBottomColor: 'rgba(60, 60, 67, 0.1)',
   },
   productInfo: {
     flex: 1,
+  },
+  productNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
   },
   productName: {
     fontSize: 16,
     fontWeight: '600',
     fontFamily: FONTS.semiBold,
-    marginBottom: 2,
+    flex: 1,
+  },
+  featuredBadge: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#FFF9E6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  productCategoryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
+  },
+  categoryBadge: {
+    backgroundColor: 'rgba(52, 199, 89, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  categoryBadgeText: {
+    fontSize: 11,
+    fontWeight: '500',
+    fontFamily: FONTS.medium,
+    color: '#34C759',
+  },
+  productUnit: {
+    fontSize: 12,
+    fontFamily: FONTS.regular,
   },
   productCategory: {
     fontSize: 13,
@@ -1128,10 +1573,10 @@ const styles = StyleSheet.create({
   productMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
   productPrice: {
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: '700',
     fontFamily: FONTS.bold,
     color: '#34C759',
@@ -1139,25 +1584,40 @@ const styles = StyleSheet.create({
   stockBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+  },
+  stockDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   stockText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
     fontFamily: FONTS.semiBold,
   },
   productActions: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
   },
   actionButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: 34,
+    height: 34,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  actionButtonDuplicate: {
+    backgroundColor: '#E3F2FD',
+  },
+  actionButtonEdit: {
+    backgroundColor: '#E8F5E9',
+  },
+  actionButtonDelete: {
+    backgroundColor: '#FFEBEE',
   },
   bulkActionsBar: {
     flexDirection: 'row',
@@ -1232,12 +1692,285 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.semiBold,
     color: '#FFFFFF',
   },
-  // Sort Modal Styles
+  // Enhanced Modal Styles
   modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'flex-end',
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  modalSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingBottom: 34,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 20,
+  },
+  modalHandleBar: {
+    width: 40,
+    height: 5,
+    backgroundColor: 'rgba(60, 60, 67, 0.3)',
+    borderRadius: 3,
+    alignSelf: 'center',
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(60, 60, 67, 0.12)',
+  },
+  modalHeaderLeft: {
+    width: 36,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+    textAlign: 'center',
+    flex: 1,
+  },
+  modalCloseButton: {
+    width: 36,
+    alignItems: 'flex-end',
+  },
+  modalCloseCircle: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalOptionsContainer: {
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.sm,
+  },
+  modalOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: SPACING.sm,
+    borderRadius: 12,
+    marginBottom: 4,
+  },
+  modalOptionActive: {
+    // Background set dynamically
+  },
+  modalOptionBorder: {
+    // No border needed with new design
+  },
+  modalOptionIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  modalOptionContent: {
+    flex: 1,
+  },
+  modalOptionText: {
+    fontSize: 16,
+    fontWeight: '500',
+    fontFamily: FONTS.medium,
+  },
+  modalCheckCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#007AFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Stock Modal Bottom Sheet Styles
+  stockModalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
+  stockModalSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingBottom: 34,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 20,
+  },
+  stockModalHandleBar: {
+    width: 36,
+    height: 4,
+    backgroundColor: 'rgba(60, 60, 67, 0.3)',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginTop: 10,
+    marginBottom: 8,
+  },
+  stockModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.md,
+    paddingBottom: SPACING.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(60, 60, 67, 0.12)',
+  },
+  stockModalHeaderLeft: {
+    width: 36,
+  },
+  stockModalHeaderCenter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  stockModalCloseButton: {
+    padding: 4,
+  },
+  stockModalCloseCircle: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stockProductNameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginHorizontal: SPACING.md,
+    marginTop: SPACING.md,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  stockProductName: {
+    fontSize: 15,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+    flex: 1,
+  },
+  stockModalIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#34C759',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stockModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+  },
+  stockInputSection: {
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.sm,
+  },
+  stockInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+    marginBottom: SPACING.md,
+  },
+  stockAdjustButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  stockInputWrapper: {
+    borderWidth: 2,
+    borderRadius: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    minWidth: 120,
+  },
+  stockInput: {
+    fontSize: 32,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
+    textAlign: 'center',
+    minWidth: 80,
+  },
+  stockInputUnit: {
+    fontSize: 12,
+    fontFamily: FONTS.regular,
+    marginTop: -4,
+  },
+  quickPresetsLabel: {
+    fontSize: 12,
+    fontFamily: FONTS.medium,
+    textAlign: 'center',
+    marginBottom: SPACING.sm,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  quickStockButtons: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  quickStockButton: {
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  quickStockButtonActive: {
+    backgroundColor: '#34C759',
+  },
+  quickStockButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+  },
+  stockModalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    padding: SPACING.lg,
+    paddingTop: SPACING.md,
+  },
+  stockModalButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 14,
+    gap: 6,
+  },
+  stockModalCancelButton: {
+    // Background set dynamically
+  },
+  stockModalConfirmButton: {
+    backgroundColor: '#34C759',
+  },
+  stockModalCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+  },
+  stockModalConfirmText: {
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+    color: '#FFFFFF',
+  },
+  // Legacy styles kept for compatibility
   sortModalContent: {
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
@@ -1285,91 +2018,5 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontFamily: FONTS.regular,
-  },
-  // Stock Modal Styles
-  stockModalContent: {
-    margin: SPACING.lg,
-    borderRadius: 16,
-    padding: SPACING.lg,
-  },
-  stockModalTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    fontFamily: FONTS.semiBold,
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  stockModalSubtitle: {
-    fontSize: 14,
-    fontFamily: FONTS.regular,
-    textAlign: 'center',
-    marginBottom: SPACING.lg,
-  },
-  stockInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    marginBottom: SPACING.md,
-  },
-  stockAdjustButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  stockInput: {
-    width: 100,
-    height: 50,
-    borderWidth: 1,
-    borderRadius: 10,
-    fontSize: 24,
-    fontWeight: '600',
-    fontFamily: FONTS.semiBold,
-  },
-  quickStockButtons: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-    marginBottom: SPACING.lg,
-  },
-  quickStockButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  quickStockButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: FONTS.semiBold,
-  },
-  stockModalActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  stockModalButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  stockModalCancelButton: {
-    backgroundColor: '#F2F2F7',
-  },
-  stockModalConfirmButton: {
-    backgroundColor: '#34C759',
-  },
-  stockModalCancelText: {
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: FONTS.semiBold,
-    color: '#8E8E93',
-  },
-  stockModalConfirmText: {
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: FONTS.semiBold,
-    color: '#FFFFFF',
   },
 });

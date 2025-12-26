@@ -20,6 +20,7 @@ import {
   TimePicker,
   Spin,
   Alert,
+  Tooltip,
 } from 'antd';
 import {
   SettingOutlined,
@@ -29,6 +30,8 @@ import {
   GlobalOutlined,
   SaveOutlined,
   ReloadOutlined,
+  ThunderboltOutlined,
+  ClockCircleOutlined,
 } from '@ant-design/icons';
 import { adminApi } from '@/lib/api';
 import dayjs from 'dayjs';
@@ -187,7 +190,14 @@ export default function SettingsPage() {
         </span>
       ),
       children: (
-        <Card>
+        <div style={{ padding: 24 }}>
+          <div style={{ marginBottom: 24 }}>
+            <Title level={4} style={{ margin: 0 }}>
+              <GlobalOutlined style={{ marginRight: 8, color: '#6366f1' }} />
+              General Settings
+            </Title>
+            <Text type="secondary">Basic application configuration</Text>
+          </div>
           <Form
             form={generalForm}
             layout="vertical"
@@ -266,7 +276,7 @@ export default function SettingsPage() {
               </Button>
             </Form.Item>
           </Form>
-        </Card>
+        </div>
       ),
     },
     {
@@ -278,26 +288,38 @@ export default function SettingsPage() {
         </span>
       ),
       children: (
-        <Card>
+        <div style={{ padding: 24 }}>
+          <div style={{ marginBottom: 24 }}>
+            <Title level={4} style={{ margin: 0 }}>
+              <DollarOutlined style={{ marginRight: 8, color: '#10b981' }} />
+              Business Settings
+            </Title>
+            <Text type="secondary">Configure commission rates and fees</Text>
+          </div>
           <Form
             form={businessForm}
             layout="vertical"
             initialValues={settings}
             onFinish={handleSaveBusiness}
           >
-            <Title level={5}>Commission & Fees</Title>
-            <Paragraph type="secondary">
-              Configure platform commission rates and fees. These rates determine how much the platform earns from each transaction.
-            </Paragraph>
-            
-            <Row gutter={24}>
-              <Col span={8}>
-                <Form.Item
-                  name="commissionRate"
-                  label="Farmer Commission Rate"
-                  tooltip="Percentage deducted from farmer sales"
-                  rules={[{ required: true }]}
-                >
+            <Card 
+              size="small" 
+              title={<Text strong>Commission & Fees</Text>}
+              style={{ marginBottom: 24, borderRadius: 12 }}
+              styles={{ body: { padding: 16 } }}
+            >
+              <Paragraph type="secondary" style={{ marginBottom: 16 }}>
+                Configure platform commission rates and fees. These rates determine how much the platform earns from each transaction.
+              </Paragraph>
+              
+              <Row gutter={24}>
+                <Col span={8}>
+                  <Form.Item
+                    name="commissionRate"
+                    label="Farmer Commission Rate"
+                    tooltip="Percentage deducted from farmer sales"
+                    rules={[{ required: true }]}
+                  >
                   <Space.Compact style={{ width: '100%' }}>
                     <InputNumber
                       min={0}
@@ -372,11 +394,15 @@ export default function SettingsPage() {
                 </Form.Item>
               </Col>
             </Row>
+            </Card>
             
-            <Divider />
-            
-            <Title level={5}>Order Limits</Title>
-            <Paragraph type="secondary">
+            <Card 
+              size="small" 
+              title={<Text strong>Order Limits</Text>}
+              style={{ marginBottom: 24, borderRadius: 12 }}
+              styles={{ body: { padding: 16 } }}
+            >
+            <Paragraph type="secondary" style={{ marginBottom: 16 }}>
               Set minimum and maximum order amounts
             </Paragraph>
             
@@ -408,8 +434,7 @@ export default function SettingsPage() {
                 </Form.Item>
               </Col>
             </Row>
-            
-            <Divider />
+            </Card>
             
             <Form.Item>
               <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={updateMutation.isPending}>
@@ -417,7 +442,7 @@ export default function SettingsPage() {
               </Button>
             </Form.Item>
           </Form>
-        </Card>
+        </div>
       ),
     },
     {
@@ -429,15 +454,27 @@ export default function SettingsPage() {
         </span>
       ),
       children: (
-        <Card>
+        <div style={{ padding: 24 }}>
+          <div style={{ marginBottom: 24 }}>
+            <Title level={4} style={{ margin: 0 }}>
+              <BellOutlined style={{ marginRight: 8, color: '#f59e0b' }} />
+              Notification Settings
+            </Title>
+            <Text type="secondary">Configure notification channels and preferences</Text>
+          </div>
           <Form
             form={notificationForm}
             layout="vertical"
             initialValues={settings}
             onFinish={handleSaveNotification}
           >
-            <Title level={5}>Notification Channels</Title>
-            <Paragraph type="secondary">
+            <Card 
+              size="small" 
+              title={<Text strong>Notification Channels</Text>}
+              style={{ marginBottom: 24, borderRadius: 12 }}
+              styles={{ body: { padding: 16 } }}
+            >
+            <Paragraph type="secondary" style={{ marginBottom: 16 }}>
               Enable or disable notification channels
             </Paragraph>
             
@@ -470,11 +507,15 @@ export default function SettingsPage() {
                 </Form.Item>
               </Col>
             </Row>
+            </Card>
             
-            <Divider />
-            
-            <Title level={5}>Admin Notifications</Title>
-            <Paragraph type="secondary">
+            <Card 
+              size="small" 
+              title={<Text strong>Admin Notifications</Text>}
+              style={{ marginBottom: 24, borderRadius: 12 }}
+              styles={{ body: { padding: 16 } }}
+            >
+            <Paragraph type="secondary" style={{ marginBottom: 16 }}>
               Configure where admin notifications are sent
             </Paragraph>
             
@@ -489,8 +530,7 @@ export default function SettingsPage() {
                 </Form.Item>
               </Col>
             </Row>
-            
-            <Divider />
+            </Card>
             
             <Form.Item>
               <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={updateMutation.isPending}>
@@ -498,7 +538,7 @@ export default function SettingsPage() {
               </Button>
             </Form.Item>
           </Form>
-        </Card>
+        </div>
       ),
     },
     {
@@ -510,15 +550,27 @@ export default function SettingsPage() {
         </span>
       ),
       children: (
-        <Card>
+        <div style={{ padding: 24 }}>
+          <div style={{ marginBottom: 24 }}>
+            <Title level={4} style={{ margin: 0 }}>
+              <SafetyOutlined style={{ marginRight: 8, color: '#ef4444' }} />
+              Security Settings
+            </Title>
+            <Text type="secondary">Configure authentication and security options</Text>
+          </div>
           <Form
             form={securityForm}
             layout="vertical"
             initialValues={settings}
             onFinish={handleSaveSecurity}
           >
-            <Title level={5}>Login Security</Title>
-            <Paragraph type="secondary">
+            <Card 
+              size="small" 
+              title={<Text strong>Login Security</Text>}
+              style={{ marginBottom: 24, borderRadius: 12 }}
+              styles={{ body: { padding: 16 } }}
+            >
+            <Paragraph type="secondary" style={{ marginBottom: 16 }}>
               Configure security settings for user authentication
             </Paragraph>
             
@@ -542,11 +594,15 @@ export default function SettingsPage() {
                 </Form.Item>
               </Col>
             </Row>
+            </Card>
             
-            <Divider />
-            
-            <Title level={5}>Verification & 2FA</Title>
-            <Paragraph type="secondary">
+            <Card 
+              size="small" 
+              title={<Text strong>Verification & 2FA</Text>}
+              style={{ marginBottom: 24, borderRadius: 12 }}
+              styles={{ body: { padding: 16 } }}
+            >
+            <Paragraph type="secondary" style={{ marginBottom: 16 }}>
               Additional security measures
             </Paragraph>
             
@@ -570,8 +626,7 @@ export default function SettingsPage() {
                 </Form.Item>
               </Col>
             </Row>
-            
-            <Divider />
+            </Card>
             
             <Form.Item>
               <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={updateMutation.isPending}>
@@ -579,19 +634,26 @@ export default function SettingsPage() {
               </Button>
             </Form.Item>
           </Form>
-        </Card>
+        </div>
       ),
     },
     {
       key: 'operational',
       label: (
         <span>
-          <SettingOutlined />
+          <ClockCircleOutlined />
           Operational
         </span>
       ),
       children: (
-        <Card>
+        <div style={{ padding: 24 }}>
+          <div style={{ marginBottom: 24 }}>
+            <Title level={4} style={{ margin: 0 }}>
+              <ClockCircleOutlined style={{ marginRight: 8, color: '#8b5cf6' }} />
+              Operational Settings
+            </Title>
+            <Text type="secondary">Configure operating hours and platform status</Text>
+          </div>
           <Form
             form={operationalForm}
             layout="vertical"
@@ -602,8 +664,13 @@ export default function SettingsPage() {
             }}
             onFinish={handleSaveOperational}
           >
-            <Title level={5}>Operating Hours</Title>
-            <Paragraph type="secondary">
+            <Card 
+              size="small" 
+              title={<Text strong>Operating Hours</Text>}
+              style={{ marginBottom: 24, borderRadius: 12 }}
+              styles={{ body: { padding: 16 } }}
+            >
+            <Paragraph type="secondary" style={{ marginBottom: 16 }}>
               Set the platform operating hours
             </Paragraph>
             
@@ -625,11 +692,15 @@ export default function SettingsPage() {
                 </Form.Item>
               </Col>
             </Row>
+            </Card>
             
-            <Divider />
-            
-            <Title level={5}>Platform Status</Title>
-            <Paragraph type="secondary">
+            <Card 
+              size="small" 
+              title={<Text strong>Platform Status</Text>}
+              style={{ marginBottom: 24, borderRadius: 12 }}
+              styles={{ body: { padding: 16 } }}
+            >
+            <Paragraph type="secondary" style={{ marginBottom: 16 }}>
               Control platform availability
             </Paragraph>
             
@@ -671,8 +742,7 @@ export default function SettingsPage() {
                 style={{ marginBottom: 16 }}
               />
             )}
-            
-            <Divider />
+            </Card>
             
             <Form.Item>
               <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={updateMutation.isPending}>
@@ -680,47 +750,71 @@ export default function SettingsPage() {
               </Button>
             </Form.Item>
           </Form>
-        </Card>
+        </div>
       ),
     },
   ];
 
   return (
-    <div style={{ padding: 24 }}>
-      <Space orientation="vertical" size="large" style={{ width: '100%' }}>
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <Title level={2} style={{ margin: 0 }}>
-              <SettingOutlined style={{ marginRight: 12 }} />
-              Settings
-            </Title>
-            <Text type="secondary">Configure application settings and preferences</Text>
+    <div style={{ margin: -24 }}>
+      {/* Gradient Header */}
+      <div style={{ 
+        background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+        padding: '24px 24px 80px 24px',
+        marginBottom: -56,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ 
+              width: 48, 
+              height: 48, 
+              borderRadius: 12, 
+              background: 'rgba(255,255,255,0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <SettingOutlined style={{ fontSize: 24, color: '#fff' }} />
+            </div>
+            <div>
+              <Title level={3} style={{ color: '#fff', margin: 0 }}>Settings</Title>
+              <Text style={{ color: 'rgba(255,255,255,0.8)' }}>Configure application settings and preferences</Text>
+            </div>
           </div>
-          <Button 
-            icon={<ReloadOutlined />} 
-            onClick={() => {
-              generalForm.resetFields();
-              businessForm.resetFields();
-              notificationForm.resetFields();
-              securityForm.resetFields();
-              operationalForm.resetFields();
-            }}
-          >
-            Reset All
-          </Button>
+          <Tooltip title="Reset all forms">
+            <Button 
+              icon={<ReloadOutlined />} 
+              style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff' }}
+              onClick={() => {
+                generalForm.resetFields();
+                businessForm.resetFields();
+                notificationForm.resetFields();
+                securityForm.resetFields();
+                operationalForm.resetFields();
+              }}
+            >
+              Reset All
+            </Button>
+          </Tooltip>
         </div>
+      </div>
 
-        {/* Settings Tabs */}
-        <Tabs
-          activeKey={activeTab}
-          onChange={setActiveTab}
-          items={tabItems}
-          tabPlacement="start"
-          style={{ minHeight: 500 }}
-          destroyOnHidden={false}
-        />
-      </Space>
+      {/* Main Content */}
+      <div style={{ padding: '0 24px 24px' }}>
+        <Card 
+          style={{ borderRadius: 16, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+          styles={{ body: { padding: 0 } }}
+        >
+          <Tabs
+            activeKey={activeTab}
+            onChange={setActiveTab}
+            items={tabItems}
+            tabPlacement="left"
+            style={{ minHeight: 600 }}
+            destroyOnHidden={false}
+          />
+        </Card>
+      </div>
     </div>
   );
 }

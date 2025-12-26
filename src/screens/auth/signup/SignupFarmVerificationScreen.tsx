@@ -197,6 +197,8 @@ export default function SignupFarmVerificationScreen({ navigation, route }: Prop
         state: params.state,
         city: params.city,
         address: params.address,
+        latitude: params.latitude,
+        longitude: params.longitude,
         nationality: params.nationality,
         nationalityCode: params.nationalityCode,
         // Farmer specific

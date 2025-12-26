@@ -153,14 +153,14 @@ export default function BecomeFarmerInfoScreen() {
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+      <View style={[styles.header, { paddingTop: insets.top, backgroundColor: isDark ? colors.background : '#F5F5F5' }]}>
         <TouchableOpacity
-          style={styles.backButton}
+          style={[styles.backButton, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
+          <Ionicons name="chevron-back" size={22} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Become a Farmer</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Become a Seller</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -262,18 +262,23 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingBottom: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(0,0,0,0.1)',
+    paddingTop: 8,
   },
   backButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   headerTitle: {
     fontSize: 18,
+    fontWeight: '600',
     fontFamily: FONTS.semiBold,
   },
   placeholder: {

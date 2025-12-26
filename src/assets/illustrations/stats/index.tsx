@@ -548,6 +548,251 @@ export const ReviewsIllustration: React.FC<IllustrationProps> = ({
 );
 
 // ========================================
+// FARMER DASHBOARD STAT ILLUSTRATIONS
+// ========================================
+
+// Pending Orders Illustration - Modern clipboard with notification
+export const PendingOrdersIllustration: React.FC<IllustrationProps> = ({
+  width = 64,
+  height = 64,
+}) => (
+  <Svg width={width} height={height} viewBox="0 0 64 64" fill="none">
+    <Defs>
+      <LinearGradient id="pendingClipGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <Stop offset="0%" stopColor="#FFE0B2" />
+        <Stop offset="100%" stopColor="#FFCC80" />
+      </LinearGradient>
+      <LinearGradient id="pendingPaperGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <Stop offset="0%" stopColor="#FFFFFF" />
+        <Stop offset="100%" stopColor="#F5F5F5" />
+      </LinearGradient>
+      <LinearGradient id="pendingBadgeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <Stop offset="0%" stopColor="#FF9800" />
+        <Stop offset="100%" stopColor="#F57C00" />
+      </LinearGradient>
+    </Defs>
+    {/* Shadow */}
+    <Ellipse cx="32" cy="58" rx="18" ry="4" fill="#000000" opacity="0.1" />
+    {/* Clipboard back */}
+    <Rect x="12" y="10" width="36" height="46" rx="4" fill="#8D6E63" />
+    {/* Clipboard clip */}
+    <Rect x="22" y="6" width="16" height="10" rx="2" fill="url(#pendingClipGrad)" />
+    <Rect x="26" y="4" width="8" height="4" rx="2" fill="#FFB74D" />
+    {/* Paper */}
+    <Rect x="14" y="14" width="32" height="40" rx="2" fill="url(#pendingPaperGrad)" />
+    {/* List items */}
+    <Rect x="18" y="20" width="12" height="3" rx="1.5" fill="#FFE0B2" />
+    <Rect x="18" y="27" width="24" height="2" rx="1" fill="#E0E0E0" />
+    <Rect x="18" y="32" width="20" height="2" rx="1" fill="#E0E0E0" />
+    <Rect x="18" y="39" width="12" height="3" rx="1.5" fill="#FFE0B2" />
+    <Rect x="18" y="46" width="22" height="2" rx="1" fill="#E0E0E0" />
+    {/* Checkboxes */}
+    <Rect x="32" y="19" width="5" height="5" rx="1" fill="#FF9800" opacity="0.2" />
+    <Rect x="32" y="38" width="5" height="5" rx="1" fill="#FF9800" opacity="0.2" />
+    {/* Notification badge */}
+    <Circle cx="48" cy="14" r="10" fill="url(#pendingBadgeGrad)" />
+    <Circle cx="48" cy="14" r="8" fill="#FF9800" />
+    <Path d="M48 9V14L51 16" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+// Processing Orders Illustration - Modern package box with gears
+export const ProcessingOrdersIllustration: React.FC<IllustrationProps> = ({
+  width = 64,
+  height = 64,
+}) => (
+  <Svg width={width} height={height} viewBox="0 0 64 64" fill="none">
+    <Defs>
+      <LinearGradient id="processBoxGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <Stop offset="0%" stopColor="#42A5F5" />
+        <Stop offset="100%" stopColor="#1E88E5" />
+      </LinearGradient>
+      <LinearGradient id="processBoxSide" x1="0%" y1="0%" x2="100%" y2="0%">
+        <Stop offset="0%" stopColor="#1976D2" />
+        <Stop offset="100%" stopColor="#1565C0" />
+      </LinearGradient>
+      <LinearGradient id="processBoxTop" x1="0%" y1="100%" x2="0%" y2="0%">
+        <Stop offset="0%" stopColor="#64B5F6" />
+        <Stop offset="100%" stopColor="#90CAF9" />
+      </LinearGradient>
+    </Defs>
+    {/* Shadow */}
+    <Ellipse cx="28" cy="58" rx="20" ry="4" fill="#000000" opacity="0.12" />
+    {/* Box - back face */}
+    <Path d="M8 24L28 14L48 24V48L28 58L8 48V24Z" fill="url(#processBoxGrad)" />
+    {/* Box - top face */}
+    <Path d="M8 24L28 14L48 24L28 34L8 24Z" fill="url(#processBoxTop)" />
+    {/* Box - right face (shadow) */}
+    <Path d="M28 34L48 24V48L28 58V34Z" fill="url(#processBoxSide)" />
+    {/* Box tape */}
+    <Path d="M28 14V34" stroke="#BBDEFB" strokeWidth="4" />
+    <Path d="M8 24L28 34L48 24" stroke="#BBDEFB" strokeWidth="4" fill="none" />
+    {/* Gear badge - larger */}
+    <Circle cx="52" cy="18" r="11" fill="#FFFFFF" />
+    <Circle cx="52" cy="18" r="9" fill="#1E88E5" />
+    {/* Gear teeth */}
+    <Path d="M52 10V12M52 24V26M44 18H46M58 18H60M46.3 12.3L47.7 13.7M56.3 22.3L57.7 23.7M46.3 23.7L47.7 22.3M56.3 13.7L57.7 12.3" stroke="#1E88E5" strokeWidth="2" strokeLinecap="round" />
+    {/* Inner gear */}
+    <Circle cx="52" cy="18" r="4" fill="#FFFFFF" />
+    <Circle cx="52" cy="18" r="2" fill="#1E88E5" />
+    {/* Motion lines */}
+    <Path d="M4 32H10" stroke="#64B5F6" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
+    <Path d="M2 38H8" stroke="#64B5F6" strokeWidth="2" strokeLinecap="round" opacity="0.4" />
+    <Path d="M6 44H12" stroke="#64B5F6" strokeWidth="2" strokeLinecap="round" opacity="0.3" />
+  </Svg>
+);
+
+// Products/Inventory Illustration - Stacked boxes with plant
+export const InventoryIllustration: React.FC<IllustrationProps> = ({
+  width = 64,
+  height = 64,
+}) => (
+  <Svg width={width} height={height} viewBox="0 0 64 64" fill="none">
+    <Defs>
+      <LinearGradient id="invBox1Grad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <Stop offset="0%" stopColor="#81C784" />
+        <Stop offset="100%" stopColor="#66BB6A" />
+      </LinearGradient>
+      <LinearGradient id="invBox1Side" x1="0%" y1="0%" x2="100%" y2="0%">
+        <Stop offset="0%" stopColor="#4CAF50" />
+        <Stop offset="100%" stopColor="#43A047" />
+      </LinearGradient>
+      <LinearGradient id="invBox2Grad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <Stop offset="0%" stopColor="#A5D6A7" />
+        <Stop offset="100%" stopColor="#81C784" />
+      </LinearGradient>
+      <LinearGradient id="invLeafGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <Stop offset="0%" stopColor="#4CAF50" />
+        <Stop offset="100%" stopColor="#2E7D32" />
+      </LinearGradient>
+    </Defs>
+    {/* Shadow */}
+    <Ellipse cx="30" cy="60" rx="22" ry="3" fill="#000000" opacity="0.1" />
+    {/* Back box */}
+    <Path d="M20 20L38 11L56 20V38L38 47L20 38V20Z" fill="url(#invBox2Grad)" opacity="0.7" />
+    <Path d="M20 20L38 11L56 20L38 29L20 20Z" fill="#C8E6C9" opacity="0.7" />
+    {/* Front box - main */}
+    <Path d="M6 30L26 20L46 30V52L26 62L6 52V30Z" fill="url(#invBox1Grad)" />
+    {/* Front box - top */}
+    <Path d="M6 30L26 20L46 30L26 40L6 30Z" fill="#A5D6A7" />
+    {/* Front box - right side */}
+    <Path d="M26 40L46 30V52L26 62V40Z" fill="url(#invBox1Side)" />
+    {/* Box details */}
+    <Path d="M26 20V40" stroke="#E8F5E9" strokeWidth="3" />
+    <Path d="M6 30L26 40L46 30" stroke="#E8F5E9" strokeWidth="3" fill="none" />
+    {/* Leaf/Plant badge */}
+    <Circle cx="52" cy="16" r="10" fill="#FFFFFF" />
+    {/* Leaf shape */}
+    <Path d="M52 8C52 8 45 13 45 20C45 25 48 27 52 27C56 27 59 25 59 20C59 13 52 8 52 8Z" fill="url(#invLeafGrad)" />
+    <Path d="M52 12C52 12 50 16 50 20C50 22 51 24 52 24" stroke="#81C784" strokeWidth="1.5" fill="none" />
+  </Svg>
+);
+
+// Low Stock Alert Illustration - Empty shelf with warning
+export const LowStockIllustration: React.FC<IllustrationProps> = ({
+  width = 64,
+  height = 64,
+}) => (
+  <Svg width={width} height={height} viewBox="0 0 64 64" fill="none">
+    <Defs>
+      <LinearGradient id="lowShelfGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <Stop offset="0%" stopColor="#FFCDD2" />
+        <Stop offset="100%" stopColor="#EF9A9A" />
+      </LinearGradient>
+      <LinearGradient id="lowBoxGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <Stop offset="0%" stopColor="#FFEBEE" />
+        <Stop offset="100%" stopColor="#FFCDD2" />
+      </LinearGradient>
+      <LinearGradient id="lowAlertGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <Stop offset="0%" stopColor="#FF5252" />
+        <Stop offset="100%" stopColor="#D32F2F" />
+      </LinearGradient>
+    </Defs>
+    {/* Shadow */}
+    <Ellipse cx="30" cy="60" rx="20" ry="3" fill="#000000" opacity="0.1" />
+    {/* Shelf back */}
+    <Rect x="8" y="16" width="44" height="40" rx="3" fill="#ECEFF1" />
+    {/* Shelf boards */}
+    <Rect x="8" y="16" width="44" height="6" rx="1" fill="#CFD8DC" />
+    <Rect x="8" y="32" width="44" height="4" rx="1" fill="url(#lowShelfGrad)" />
+    <Rect x="8" y="48" width="44" height="4" rx="1" fill="url(#lowShelfGrad)" />
+    {/* Empty box outlines (dashed) - top shelf */}
+    <Rect x="12" y="22" width="12" height="9" rx="1" stroke="#E57373" strokeWidth="1.5" strokeDasharray="3 2" fill="none" opacity="0.5" />
+    <Rect x="28" y="22" width="10" height="9" rx="1" stroke="#E57373" strokeWidth="1.5" strokeDasharray="3 2" fill="none" opacity="0.5" />
+    {/* Single small box on bottom - shows low stock */}
+    <Path d="M14 42L20 39L26 42V50L20 53L14 50V42Z" fill="url(#lowBoxGrad)" />
+    <Path d="M14 42L20 39L26 42L20 45L14 42Z" fill="#FFFFFF" opacity="0.5" />
+    <Path d="M20 45L26 42V50L20 53V45Z" fill="#EF9A9A" />
+    {/* Warning badge */}
+    <Circle cx="52" cy="14" r="11" fill="#FFFFFF" />
+    <Circle cx="52" cy="14" r="9" fill="url(#lowAlertGrad)" />
+    {/* Exclamation mark */}
+    <Path d="M52 9V14" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" />
+    <Circle cx="52" cy="18" r="1.5" fill="#FFFFFF" />
+  </Svg>
+);
+
+// Peak Selling Hours Illustration - Clock with chart bars
+export const PeakHoursIllustration: React.FC<IllustrationProps> = ({
+  width = 64,
+  height = 64,
+}) => (
+  <Svg width={width} height={height} viewBox="0 0 64 64" fill="none">
+    <Defs>
+      <LinearGradient id="peakClockGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <Stop offset="0%" stopColor="#E8F5E9" />
+        <Stop offset="100%" stopColor="#C8E6C9" />
+      </LinearGradient>
+      <LinearGradient id="peakClockRing" x1="0%" y1="0%" x2="100%" y2="100%">
+        <Stop offset="0%" stopColor="#4CAF50" />
+        <Stop offset="100%" stopColor="#2E7D32" />
+      </LinearGradient>
+      <LinearGradient id="peakBar1" x1="0%" y1="100%" x2="0%" y2="0%">
+        <Stop offset="0%" stopColor="#66BB6A" />
+        <Stop offset="100%" stopColor="#81C784" />
+      </LinearGradient>
+      <LinearGradient id="peakBar2" x1="0%" y1="100%" x2="0%" y2="0%">
+        <Stop offset="0%" stopColor="#4CAF50" />
+        <Stop offset="100%" stopColor="#66BB6A" />
+      </LinearGradient>
+      <LinearGradient id="peakBar3" x1="0%" y1="100%" x2="0%" y2="0%">
+        <Stop offset="0%" stopColor="#43A047" />
+        <Stop offset="100%" stopColor="#4CAF50" />
+      </LinearGradient>
+    </Defs>
+    {/* Shadow */}
+    <Ellipse cx="32" cy="60" rx="22" ry="3" fill="#000000" opacity="0.1" />
+    {/* Clock face */}
+    <Circle cx="28" cy="28" r="24" fill="url(#peakClockGrad)" />
+    <Circle cx="28" cy="28" r="22" stroke="url(#peakClockRing)" strokeWidth="3" fill="none" />
+    {/* Clock hour markers */}
+    <Circle cx="28" cy="10" r="2" fill="#4CAF50" />
+    <Circle cx="46" cy="28" r="2" fill="#4CAF50" />
+    <Circle cx="28" cy="46" r="2" fill="#4CAF50" />
+    <Circle cx="10" cy="28" r="2" fill="#4CAF50" />
+    {/* Small markers */}
+    <Circle cx="40" cy="14" r="1" fill="#81C784" />
+    <Circle cx="16" cy="14" r="1" fill="#81C784" />
+    <Circle cx="40" cy="42" r="1" fill="#81C784" />
+    <Circle cx="16" cy="42" r="1" fill="#81C784" />
+    {/* Clock hands */}
+    <Path d="M28 28V14" stroke="#2E7D32" strokeWidth="3" strokeLinecap="round" />
+    <Path d="M28 28L38 34" stroke="#4CAF50" strokeWidth="2.5" strokeLinecap="round" />
+    {/* Center dot */}
+    <Circle cx="28" cy="28" r="3" fill="#2E7D32" />
+    <Circle cx="28" cy="28" r="1.5" fill="#FFFFFF" />
+    {/* Bar chart overlay - bottom right */}
+    <Rect x="42" y="42" width="6" height="18" rx="2" fill="url(#peakBar1)" />
+    <Rect x="50" y="34" width="6" height="26" rx="2" fill="url(#peakBar2)" />
+    <Rect x="58" y="46" width="6" height="14" rx="2" fill="url(#peakBar3)" opacity="0.7" />
+    {/* Rising arrow badge */}
+    <Circle cx="54" cy="14" r="9" fill="#FFFFFF" />
+    <Circle cx="54" cy="14" r="7" fill="#4CAF50" />
+    <Path d="M50 16L54 10L58 16M54 10V18" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+// ========================================
 // WALLET HERO ILLUSTRATIONS
 // ========================================
 
@@ -583,6 +828,100 @@ export const WalletHeroIllustration: React.FC<IllustrationProps> = ({
       <Path d="M16 26H26" stroke={color} strokeWidth="2" strokeLinecap="round" />
       <Path d="M16 30H26" stroke={color} strokeWidth="2" strokeLinecap="round" />
     </G>
+  </Svg>
+);
+
+// Earnings Card Illustration - Growing chart with coins
+export const EarningsCardIllustration: React.FC<IllustrationProps> = ({
+  width = 80,
+  height = 80,
+  color = '#10B981'
+}) => (
+  <Svg width={width} height={height} viewBox="0 0 80 80" fill="none">
+    <Defs>
+      <LinearGradient id="chartGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <Stop offset="0%" stopColor={color} />
+        <Stop offset="100%" stopColor={color} stopOpacity="0.3" />
+      </LinearGradient>
+      <LinearGradient id="coinGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+        <Stop offset="0%" stopColor="#FFD700" />
+        <Stop offset="100%" stopColor="#FFA000" />
+      </LinearGradient>
+      <LinearGradient id="coinGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+        <Stop offset="0%" stopColor="#FFC107" />
+        <Stop offset="100%" stopColor="#FF8F00" />
+      </LinearGradient>
+    </Defs>
+    
+    {/* Background glow */}
+    <Circle cx="40" cy="40" r="35" fill={color} opacity="0.08" />
+    
+    {/* Chart area fill */}
+    <Path
+      d="M12 65 L12 50 Q18 48 24 42 Q30 36 36 38 Q42 40 48 30 Q54 20 60 22 Q66 24 68 18 L68 65 Z"
+      fill="url(#chartGrad)"
+      opacity="0.4"
+    />
+    
+    {/* Chart line */}
+    <Path
+      d="M12 50 Q18 48 24 42 Q30 36 36 38 Q42 40 48 30 Q54 20 60 22 Q66 24 68 18"
+      stroke={color}
+      strokeWidth="3"
+      strokeLinecap="round"
+      fill="none"
+    />
+    
+    {/* Data points */}
+    <Circle cx="12" cy="50" r="4" fill={color} />
+    <Circle cx="24" cy="42" r="4" fill={color} />
+    <Circle cx="36" cy="38" r="4" fill={color} />
+    <Circle cx="48" cy="30" r="4" fill={color} />
+    <Circle cx="60" cy="22" r="4" fill={color} />
+    <Circle cx="68" cy="18" r="5" fill="#FFFFFF" stroke={color} strokeWidth="2" />
+    
+    {/* Upward arrow at end */}
+    <Path
+      d="M68 12 L68 8 M64 12 L68 8 L72 12"
+      stroke={color}
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    
+    {/* Stack of coins on left */}
+    <G>
+      {/* Bottom coin */}
+      <Ellipse cx="18" cy="70" rx="10" ry="3" fill="#B8860B" />
+      <Path d="M8 67 L8 70 Q8 73 18 73 Q28 73 28 70 L28 67 Q28 64 18 64 Q8 64 8 67" fill="url(#coinGrad1)" />
+      <Ellipse cx="18" cy="67" rx="10" ry="3" fill="url(#coinGrad2)" />
+      <Path d="M13 67 L23 67" stroke="#FFE082" strokeWidth="1" />
+      
+      {/* Middle coin */}
+      <Path d="M8 62 L8 65 Q8 68 18 68 Q28 68 28 65 L28 62 Q28 59 18 59 Q8 59 8 62" fill="url(#coinGrad1)" />
+      <Ellipse cx="18" cy="62" rx="10" ry="3" fill="url(#coinGrad2)" />
+      <Path d="M13 62 L23 62" stroke="#FFE082" strokeWidth="1" />
+      
+      {/* Top coin */}
+      <Path d="M8 57 L8 60 Q8 63 18 63 Q28 63 28 60 L28 57 Q28 54 18 54 Q8 54 8 57" fill="url(#coinGrad1)" />
+      <Ellipse cx="18" cy="57" rx="10" ry="3" fill="url(#coinGrad2)" />
+      <Path d="M15 56 L15 58 M21 56 L21 58" stroke="#B8860B" strokeWidth="1.5" strokeLinecap="round" />
+      <Path d="M13 57 L23 57" stroke="#B8860B" strokeWidth="0.5" />
+    </G>
+    
+    {/* Floating coin with sparkle */}
+    <G>
+      <Circle cx="62" cy="55" r="8" fill="url(#coinGrad1)" />
+      <Circle cx="62" cy="55" r="6" fill="url(#coinGrad2)" />
+      <Path d="M59 55 L65 55 M62 52 L62 58" stroke="#B8860B" strokeWidth="1.5" strokeLinecap="round" />
+      {/* Sparkle */}
+      <Path d="M72 48 L74 50 L76 48 L74 46 Z" fill="#FFD700" />
+      <Path d="M74 44 L74 46 M76 48 L78 48" stroke="#FFD700" strokeWidth="1" strokeLinecap="round" />
+    </G>
+    
+    {/* Small coin */}
+    <Circle cx="50" cy="62" r="5" fill="url(#coinGrad1)" />
+    <Circle cx="50" cy="62" r="3.5" fill="url(#coinGrad2)" />
   </Svg>
 );
 
@@ -665,6 +1004,197 @@ export const WithdrawHeroIllustration: React.FC<IllustrationProps> = ({
   </Svg>
 );
 
+// Top Sellers Trophy Illustration
+export const TopSellersIllustration: React.FC<IllustrationProps> = ({
+  width = 80,
+  height = 80,
+  color = '#FFD700'
+}) => (
+  <Svg width={width} height={height} viewBox="0 0 80 80" fill="none">
+    <Defs>
+      <LinearGradient id="trophyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <Stop offset="0%" stopColor="#FFD700" />
+        <Stop offset="50%" stopColor="#FFA000" />
+        <Stop offset="100%" stopColor="#FF8F00" />
+      </LinearGradient>
+      <LinearGradient id="trophyShine" x1="0%" y1="0%" x2="100%" y2="0%">
+        <Stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.4" />
+        <Stop offset="50%" stopColor="#FFFFFF" stopOpacity="0" />
+        <Stop offset="100%" stopColor="#FFFFFF" stopOpacity="0.2" />
+      </LinearGradient>
+      <LinearGradient id="baseGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <Stop offset="0%" stopColor="#5D4037" />
+        <Stop offset="100%" stopColor="#3E2723" />
+      </LinearGradient>
+      <LinearGradient id="starGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <Stop offset="0%" stopColor="#FFFFFF" />
+        <Stop offset="100%" stopColor="#FFE082" />
+      </LinearGradient>
+    </Defs>
+    
+    {/* Decorative sparkles */}
+    <G opacity="0.6">
+      <Path d="M12 18L14 22L12 26L10 22L12 18Z" fill="#FFD700" />
+      <Path d="M68 20L70 24L68 28L66 24L68 20Z" fill="#FFD700" />
+      <Path d="M20 8L21 11L20 14L19 11L20 8Z" fill="#FFA000" />
+      <Path d="M60 10L61 13L60 16L59 13L60 10Z" fill="#FFA000" />
+    </G>
+    
+    {/* Trophy base/pedestal */}
+    <Rect x="25" y="68" width="30" height="6" rx="2" fill="url(#baseGrad)" />
+    <Rect x="30" y="62" width="20" height="8" rx="1" fill="url(#baseGrad)" />
+    
+    {/* Trophy stem */}
+    <Rect x="36" y="50" width="8" height="14" fill="url(#trophyGrad)" />
+    
+    {/* Trophy cup - main body */}
+    <Path
+      d="M20 16C20 12 23 10 28 10H52C57 10 60 12 60 16V26C60 40 52 50 40 50C28 50 20 40 20 26V16Z"
+      fill="url(#trophyGrad)"
+    />
+    
+    {/* Shine effect on cup */}
+    <Path
+      d="M24 16C24 14 26 12 30 12H36V38C28 36 24 30 24 24V16Z"
+      fill="url(#trophyShine)"
+    />
+    
+    {/* Trophy handles */}
+    <Path
+      d="M20 18H16C12 18 10 22 10 26C10 32 14 36 18 36H20"
+      stroke="url(#trophyGrad)"
+      strokeWidth="4"
+      strokeLinecap="round"
+      fill="none"
+    />
+    <Path
+      d="M60 18H64C68 18 70 22 70 26C70 32 66 36 62 36H60"
+      stroke="url(#trophyGrad)"
+      strokeWidth="4"
+      strokeLinecap="round"
+      fill="none"
+    />
+    
+    {/* Star on trophy */}
+    <Path
+      d="M40 20L43 28L51 28L45 33L47 41L40 36L33 41L35 33L29 28L37 28L40 20Z"
+      fill="url(#starGrad)"
+    />
+    
+    {/* Number 1 badge */}
+    <Circle cx="40" cy="30" r="8" fill="#FFA000" />
+    <Path d="M38 26V34" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" />
+    <Path d="M38 26L40 24" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" />
+    
+    {/* Small medals/ribbons */}
+    <G opacity="0.8">
+      <Circle cx="16" cy="50" r="6" fill="#C0C0C0" />
+      <Path d="M14 46V42" stroke="#C0C0C0" strokeWidth="2" />
+      <Path d="M18 46V42" stroke="#C0C0C0" strokeWidth="2" />
+      <Path d="M14 48V52" stroke="#FF5252" strokeWidth="2" />
+      <Path d="M18 48V52" stroke="#2196F3" strokeWidth="2" />
+    </G>
+    
+    <G opacity="0.8">
+      <Circle cx="64" cy="50" r="6" fill="#CD7F32" />
+      <Path d="M62 46V42" stroke="#CD7F32" strokeWidth="2" />
+      <Path d="M66 46V42" stroke="#CD7F32" strokeWidth="2" />
+      <Path d="M62 48V52" stroke="#4CAF50" strokeWidth="2" />
+      <Path d="M66 48V52" stroke="#FF9800" strokeWidth="2" />
+    </G>
+  </Svg>
+);
+
+// Recent Orders Illustration - Clipboard with orders
+export const RecentOrdersIllustration: React.FC<IllustrationProps> = ({
+  width = 80,
+  height = 80,
+  color = '#2196F3'
+}) => (
+  <Svg width={width} height={height} viewBox="0 0 80 80" fill="none">
+    <Defs>
+      <LinearGradient id="clipboardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <Stop offset="0%" stopColor="#42A5F5" />
+        <Stop offset="50%" stopColor="#1E88E5" />
+        <Stop offset="100%" stopColor="#1565C0" />
+      </LinearGradient>
+      <LinearGradient id="paperGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <Stop offset="0%" stopColor="#FFFFFF" />
+        <Stop offset="100%" stopColor="#F5F5F5" />
+      </LinearGradient>
+      <LinearGradient id="bellGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <Stop offset="0%" stopColor="#FF9800" />
+        <Stop offset="100%" stopColor="#F57C00" />
+      </LinearGradient>
+    </Defs>
+    
+    {/* Decorative sparkles */}
+    <G opacity="0.5">
+      <Circle cx="12" cy="20" r="2" fill="#42A5F5" />
+      <Circle cx="68" cy="25" r="2.5" fill="#1E88E5" />
+      <Circle cx="8" cy="55" r="1.5" fill="#64B5F6" />
+    </G>
+    
+    {/* Main clipboard */}
+    <Rect x="16" y="14" width="48" height="60" rx="6" fill="url(#clipboardGrad)" />
+    
+    {/* Clipboard clip */}
+    <Rect x="28" y="8" width="24" height="12" rx="4" fill="#1565C0" />
+    <Rect x="32" y="12" width="16" height="6" rx="2" fill="#90CAF9" />
+    
+    {/* Paper */}
+    <Rect x="20" y="22" width="40" height="48" rx="3" fill="url(#paperGrad)" />
+    
+    {/* Order lines */}
+    <G>
+      {/* Order 1 - Completed */}
+      <Rect x="26" y="28" width="28" height="12" rx="2" fill="#E3F2FD" />
+      <Circle cx="30" cy="34" r="3" fill="#4CAF50" />
+      <Path d="M28.5 34L29.5 35L31.5 33" stroke="#FFFFFF" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+      <Rect x="36" y="31" width="14" height="2" rx="1" fill="#90CAF9" />
+      <Rect x="36" y="35" width="10" height="2" rx="1" fill="#BBDEFB" />
+    </G>
+    
+    <G>
+      {/* Order 2 - In Progress */}
+      <Rect x="26" y="44" width="28" height="12" rx="2" fill="#FFF3E0" />
+      <Circle cx="30" cy="50" r="3" fill="#FF9800" />
+      <Path d="M30 48V50.5" stroke="#FFFFFF" strokeWidth="1.2" strokeLinecap="round" />
+      <Circle cx="30" cy="52" r="0.8" fill="#FFFFFF" />
+      <Rect x="36" y="47" width="14" height="2" rx="1" fill="#FFCC80" />
+      <Rect x="36" y="51" width="10" height="2" rx="1" fill="#FFE0B2" />
+    </G>
+    
+    <G>
+      {/* Order 3 - New */}
+      <Rect x="26" y="60" width="28" height="8" rx="2" fill="#E8F5E9" />
+      <Circle cx="30" cy="64" r="2.5" fill="#4CAF50" />
+      <Rect x="36" y="62" width="14" height="2" rx="1" fill="#A5D6A7" />
+    </G>
+    
+    {/* Notification bell */}
+    <G>
+      <Circle cx="62" cy="18" r="10" fill="url(#bellGrad)" />
+      <Path
+        d="M62 12C59 12 57 14 57 17V20L55 22V23H69V22L67 20V17C67 14 65 12 62 12Z"
+        fill="#FFFFFF"
+      />
+      <Circle cx="62" cy="25" r="2" fill="#FFFFFF" />
+      {/* Notification dot */}
+      <Circle cx="68" cy="12" r="5" fill="#F44336" />
+      <Circle cx="68" cy="12" r="2" fill="#FFFFFF" />
+    </G>
+    
+    {/* Decorative package icon */}
+    <G opacity="0.9">
+      <Rect x="4" y="38" width="12" height="12" rx="2" fill="#4CAF50" />
+      <Path d="M10 38V50" stroke="#FFFFFF" strokeWidth="1" opacity="0.6" />
+      <Path d="M4 44H16" stroke="#FFFFFF" strokeWidth="1" opacity="0.6" />
+      <Path d="M7 41L10 38L13 41" stroke="#FFFFFF" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+    </G>
+  </Svg>
+);
+
 export default {
   UsersIllustration,
   OrdersIllustration,
@@ -682,4 +1212,12 @@ export default {
   WalletHeroIllustration,
   TopUpHeroIllustration,
   WithdrawHeroIllustration,
+  PendingOrdersIllustration,
+  ProcessingOrdersIllustration,
+  InventoryIllustration,
+  LowStockIllustration,
+  PeakHoursIllustration,
+  EarningsCardIllustration,
+  TopSellersIllustration,
+  RecentOrdersIllustration,
 };

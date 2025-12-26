@@ -52,7 +52,7 @@ const VERIFICATION_BADGES = [
 
 const BENEFITS = [
   {
-    icon: 'checkmark-shield-outline' as const,
+    icon: 'shield-checkmark-outline' as const,
     title: 'Quality Guarantee',
     description: 'All products from verified sellers are backed by our quality guarantee. If you\'re not satisfied, we\'ll make it right.',
     gradient: ['#4CAF50', '#2E7D32'] as const,
@@ -285,27 +285,23 @@ export default function VerifiedSellersLearnMoreScreen() {
     <View style={[styles.container, { backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       
-      {/* Floating Back Button */}
-      <TouchableOpacity
-        style={[styles.floatingBackButton, { top: insets.top + 10 }]}
-        onPress={() => navigation.goBack()}
-      >
-        <Ionicons name="arrow-back" size={24} color={isDark ? '#FFF' : '#1F2937'} />
-      </TouchableOpacity>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + 10, backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
+        <TouchableOpacity
+          style={[styles.backButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#FFF' }]}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="chevron-back" size={24} color={isDark ? '#FFF' : '#1F2937'} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Verified Sellers</Text>
+        <View style={{ width: 40 }} />
+      </View>
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100, paddingTop: insets.top + 60 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Page Title */}
-        <View style={styles.pageTitleContainer}>
-          <Text style={[styles.pageTitle, { color: colors.text }]}>Verified Sellers</Text>
-          <Text style={[styles.pageSubtitle, { color: colors.textSecondary }]}>
-            Shop with confidence from trusted farmers
-          </Text>
-        </View>
-
         {/* Hero Section */}
         <View style={styles.heroSection}>
           <LinearGradient
@@ -427,40 +423,34 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  floatingBackButton: {
-    position: 'absolute',
-    left: 16,
-    zIndex: 10,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  backButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontFamily: FONTS.semiBold,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingTop: 24,
-  },
-  pageTitleContainer: {
-    paddingHorizontal: 16,
-    marginBottom: 20,
-  },
-  pageTitle: {
-    fontSize: 28,
-    fontFamily: FONTS.bold,
-    marginBottom: 4,
-  },
-  pageSubtitle: {
-    fontSize: 15,
-    fontFamily: FONTS.regular,
+    paddingTop: 16,
   },
   heroSection: {
     paddingHorizontal: 16,

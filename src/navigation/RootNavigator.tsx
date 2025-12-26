@@ -7,10 +7,13 @@ import { RootStackParamList } from '../types';
 import { useTheme } from '../context/ThemeContext';
 import { MessageBannerProvider, useMessageBanner } from '../context/MessageBannerContext';
 import MessageBanner, { MessageNotification } from '../components/common/MessageBanner';
+import IncomingCallOverlay from '../components/common/IncomingCallOverlay';
 import biometricService from '../services/biometricService';
 import BiometricLockScreen from '../screens/shared/BiometricLockScreen';
 import { notificationService } from '../services/notificationService';
 import { setNotificationSettings } from '../store/slices/notificationSettingsSlice';
+import { authService } from '../services/authService';
+import { updateUser } from '../store/slices/authSlice';
 
 import { AuthNavigator } from './AuthNavigator';
 import { BuyerNavigator } from './BuyerNavigator';
@@ -54,6 +57,60 @@ export function RootNavigator() {
   const [isLocked, setIsLocked] = useState(false);
   const [checkingBiometric, setCheckingBiometric] = useState(true);
   const [isUnlocking, setIsUnlocking] = useState(false);
+
+  // Refresh user profile from server on app startup to sync avatar and other data
+  useEffect(() => {
+    const refreshUserProfile = async () => {
+      if (!isAuthenticated) return;
+      
+      try {
+        console.log('[RootNavigator] Refreshing user profile from server...');
+        const response = await authService.getCurrentUser();
+        
+        if (response.success && response.data) {
+          console.log('[RootNavigator] User profile refreshed, avatar:', response.data.avatar);
+          // Update local Redux state with fresh data from server
+          dispatch(updateUser(response.data));
+        }
+      } catch (error) {
+        console.error('[RootNavigator] Failed to refresh user profile:', error);
+        // Don't logout on error - just use persisted data
+      }
+    };
+    
+    refreshUserProfile();
+  }, [isAuthenticated, dispatch]);
+
+  // Sync user profile address to local storage when authenticated
+  useEffect(() => {
+    const syncUserAddress = async () => {
+      if (isAuthenticated && user?.address) {
+        const { selectAddresses } = await import('../store/slices/addressSlice');
+        const state = await import('../store').then(m => m.store.getState());
+        const addresses = selectAddresses(state);
+        
+        // Only add if no addresses exist locally
+        if (addresses.length === 0) {
+          const { addAddress } = await import('../store/slices/addressSlice');
+          dispatch(addAddress({
+            id: `profile_addr_${user.id}`,
+            label: 'Home',
+            addressLine1: user.address,
+            city: user.city || '',
+            state: user.state || '',
+            postalCode: '',
+            country: 'Nigeria',
+            isDefault: true,
+            lat: user.latitude,
+            lng: user.longitude,
+          }));
+          console.log('[RootNavigator] Synced user profile address to local storage');
+        }
+      }
+    };
+    
+    syncUserAddress();
+  }, [isAuthenticated, user, dispatch]);
 
   // Load notification settings when authenticated
   useEffect(() => {
@@ -185,6 +242,7 @@ export function RootNavigator() {
             {getNavigator()}
           </Stack.Navigator>
           <MessageBannerOverlay navigationRef={navigationRef as any} userRole={user?.role} />
+          <IncomingCallOverlay />
         </NavigationContainer>
       </MessageBannerProvider>
     </View>

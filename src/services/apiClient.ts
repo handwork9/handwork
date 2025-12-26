@@ -8,6 +8,13 @@ import { API_CONFIG } from '../constants/config';
 // store/index.ts -> favoritesSlice.ts -> favoritesService.ts -> apiClient.ts -> store/index.ts
 let storeModule: typeof import('../store') | null = null;
 let authSliceModule: typeof import('../store/slices/authSlice') | null = null;
+let paymentSliceModule: typeof import('../store/slices/paymentSlice') | null = null;
+let cartSliceModule: typeof import('../store/slices/cartSlice') | null = null;
+let addressSliceModule: typeof import('../store/slices/addressSlice') | null = null;
+let favoritesSliceModule: typeof import('../store/slices/favoritesSlice') | null = null;
+let farmerSliceModule: typeof import('../store/slices/farmerSlice') | null = null;
+let riderSliceModule: typeof import('../store/slices/riderSlice') | null = null;
+let buyerSliceModule: typeof import('../store/slices/buyerSlice') | null = null;
 
 const getStore = () => {
   if (!storeModule) {
@@ -21,6 +28,43 @@ const getAuthActions = () => {
     authSliceModule = require('../store/slices/authSlice');
   }
   return authSliceModule!;
+};
+
+// Get offline cache service lazily
+let offlineCacheModule: typeof import('./offlineCacheService') | null = null;
+const getOfflineCacheService = () => {
+  if (!offlineCacheModule) {
+    offlineCacheModule = require('./offlineCacheService');
+  }
+  return offlineCacheModule!.offlineCacheService;
+};
+
+// Clear all user-specific state on logout to prevent data leaking between users
+const clearAllUserState = async () => {
+  const store = getStore();
+  
+  if (!paymentSliceModule) paymentSliceModule = require('../store/slices/paymentSlice');
+  if (!cartSliceModule) cartSliceModule = require('../store/slices/cartSlice');
+  if (!addressSliceModule) addressSliceModule = require('../store/slices/addressSlice');
+  if (!favoritesSliceModule) favoritesSliceModule = require('../store/slices/favoritesSlice');
+  if (!farmerSliceModule) farmerSliceModule = require('../store/slices/farmerSlice');
+  if (!riderSliceModule) riderSliceModule = require('../store/slices/riderSlice');
+  if (!buyerSliceModule) buyerSliceModule = require('../store/slices/buyerSlice');
+  
+  store.dispatch(paymentSliceModule.clearPaymentMethods());
+  store.dispatch(cartSliceModule.clearCart());
+  store.dispatch(addressSliceModule.clearAddresses());
+  store.dispatch(favoritesSliceModule.resetFavorites());
+  store.dispatch(farmerSliceModule.clearFarmerState());
+  store.dispatch(riderSliceModule.clearRiderState());
+  store.dispatch(buyerSliceModule.clearBuyerState());
+  
+  // Clear offline caches on logout
+  try {
+    await getOfflineCacheService().clearUserCaches();
+  } catch (error) {
+    console.error('Error clearing offline caches:', error);
+  }
 };
 
 // Build a user agent string with device info
@@ -101,9 +145,10 @@ class ApiClient {
             
             return this.client(originalRequest);
           } catch (refreshError) {
-            // If refresh fails, logout user
+            // If refresh fails, clear all user state and logout
             const store = getStore();
             const { logout } = getAuthActions();
+            clearAllUserState();
             store.dispatch(logout());
             return Promise.reject(refreshError);
           }

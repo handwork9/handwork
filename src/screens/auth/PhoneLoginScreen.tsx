@@ -142,6 +142,13 @@ export default function PhoneLoginScreen({ navigation }: Props) {
         >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.supportButton}
+          onPress={() => (navigation as any).navigate('LiveChat')}
+          accessibilityLabel="Live Support"
+        >
+          <Ionicons name="chatbubble-ellipses-outline" size={24} color={COLORS.primary} />
+        </TouchableOpacity>
       </View>
 
       <KeyboardAvoidingView
@@ -248,10 +255,18 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: SPACING.lg,
     paddingBottom: SPACING.md,
   },
   backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  supportButton: {
     width: 40,
     height: 40,
     borderRadius: 20,

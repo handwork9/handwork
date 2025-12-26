@@ -10,16 +10,18 @@ import {
   Animated,
   Platform,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { SPACING, FONT_SIZES, COLORS, BORDER_RADIUS, FONTS } from '../../constants/theme';
 import { WalletHeroIllustration } from '../../assets/illustrations/stats';
 import { walletService } from '../../services/walletService';
 import { useTheme } from '../../context/ThemeContext';
 import { triggerHaptic } from '../../utils/haptics';
-import { formatCurrency } from '../../utils/formatters';
+import { formatCurrency, formatCurrencyFull } from '../../utils/formatters';
 
 const { width } = Dimensions.get('window');
 
@@ -36,9 +38,11 @@ export default function WalletScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
+  const { t } = useTranslation();
   const [balance, setBalance] = useState(0);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoadingBalance, setIsLoadingBalance] = useState(true);
   const scrollY = useRef(new Animated.Value(0)).current;
 
   // Dynamic styles based on theme
@@ -51,6 +55,8 @@ export default function WalletScreen() {
 
   const loadWalletData = async () => {
     try {
+      setIsLoadingBalance(true);
+      console.log('[WalletScreen] Loading wallet data (focus triggered)...');
       const walletBalance = await walletService.getBalance();
       console.log('[WalletScreen] Raw balance response:', JSON.stringify(walletBalance));
       
@@ -84,6 +90,8 @@ export default function WalletScreen() {
       // Set defaults on error
       setBalance(0);
       setTransactions([]);
+    } finally {
+      setIsLoadingBalance(false);
     }
   };
 
@@ -141,8 +149,8 @@ export default function WalletScreen() {
       >
         {/* Page Title Section */}
         <View style={styles.pageTitleSection}>
-          <Text style={[styles.pageTitle, { color: colors.text }]}>My Wallet</Text>
-          <Text style={[styles.pageSubtitle, { color: colors.textSecondary }]}>Manage your balance and transactions</Text>
+          <Text style={[styles.pageTitle, { color: colors.text }]}>{t('wallet.myWallet')}</Text>
+          <Text style={[styles.pageSubtitle, { color: colors.textSecondary }]}>{t('wallet.manageBalance')}</Text>
         </View>
 
         {/* Balance Card */}
@@ -151,9 +159,25 @@ export default function WalletScreen() {
             <WalletHeroIllustration width={32} height={32} color="#FFFFFF" />
           </View>
           <View style={styles.balanceInfo}>
-            <Text style={[styles.balanceLabel, dynamicStyles.textSecondary]}>Available Balance</Text>
-            <Text style={[styles.balanceAmount, dynamicStyles.text]}>{formatCurrency(balance ?? 0)}</Text>
+            <Text style={[styles.balanceLabel, dynamicStyles.textSecondary]}>{t('wallet.availableBalance')}</Text>
+            {isLoadingBalance && !isRefreshing ? (
+              <ActivityIndicator size="small" color="#16A34A" style={{ marginTop: 8 }} />
+            ) : (
+              <Text style={[styles.balanceAmount, dynamicStyles.text]}>{formatCurrencyFull(balance ?? 0)}</Text>
+            )}
           </View>
+          {/* Transfer Button on Hero Card */}
+          <TouchableOpacity
+            style={styles.heroTransferButton}
+            onPress={() => {
+              triggerHaptic();
+              (navigation as any).navigate('Transfer', { balance });
+            }}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons name="bank-transfer" size={20} color="#FFFFFF" />
+            <Text style={styles.heroTransferButtonText}>{t('wallet.transfer')}</Text>
+          </TouchableOpacity>
           <View style={styles.balanceDecoration}>
             <View style={[styles.decorationCircle, styles.decorationCircle1]} />
             <View style={[styles.decorationCircle, styles.decorationCircle2]} />
@@ -168,8 +192,8 @@ export default function WalletScreen() {
               style={styles.actionButton}
               onPress={() => {
                 triggerHaptic();
-                // Pass balance to TopUp and Withdraw screens
-                if (action.screen === 'Withdraw' || action.screen === 'TopUp') {
+                // Pass balance to TopUp, Withdraw, and Transfer screens
+                if (action.screen === 'Withdraw' || action.screen === 'TopUp' || action.screen === 'Transfer') {
                   (navigation as any).navigate(action.screen, { balance });
                 } else {
                   (navigation as any).navigate(action.screen);
@@ -189,12 +213,12 @@ export default function WalletScreen() {
 
         {/* Recent Transactions Section */}
         <View style={styles.transactionSectionHeader}>
-          <Text style={[styles.transactionSectionTitle, dynamicStyles.textSecondary]}>RECENT TRANSACTIONS</Text>
+          <Text style={[styles.transactionSectionTitle, dynamicStyles.textSecondary]}>{t('wallet.recentTransactions')}</Text>
           <TouchableOpacity onPress={() => {
             triggerHaptic();
             (navigation as any).navigate('TransactionHistory');
           }}>
-            <Text style={styles.seeAllText}>See All</Text>
+            <Text style={styles.seeAllText}>{t('common.seeAll')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -204,8 +228,8 @@ export default function WalletScreen() {
               <View style={[styles.emptyIconContainer, { backgroundColor: isDark ? colors.background : '#F3F4F6' }]}>
                 <MaterialCommunityIcons name="receipt-text-outline" size={32} color={colors.textSecondary} />
               </View>
-              <Text style={[styles.emptyText, dynamicStyles.textSecondary]}>No transactions yet</Text>
-              <Text style={[styles.emptySubtext, dynamicStyles.textSecondary]}>Your transaction history will appear here</Text>
+              <Text style={[styles.emptyText, dynamicStyles.textSecondary]}>{t('wallet.noTransactions')}</Text>
+              <Text style={[styles.emptySubtext, dynamicStyles.textSecondary]}>{t('wallet.transactionHistoryAppear')}</Text>
             </View>
           ) : (
             transactions.map((tx, index) => (
@@ -347,6 +371,24 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: '700',
     fontFamily: FONTS.bold,
+  },
+  heroTransferButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#16A34A',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    marginTop: SPACING.lg,
+    gap: 8,
+    zIndex: 1,
+  },
+  heroTransferButtonText: {
+    color: '#FFFFFF',
+    fontSize: FONT_SIZES.md,
+    fontFamily: FONTS.semiBold,
+    fontWeight: '600',
   },
   balanceDecoration: {
     position: 'absolute',

@@ -117,7 +117,7 @@ export default function PaymentDetailScreen() {
   };
 
   const getCategoryIcon = (category: string): keyof typeof Ionicons.glyphMap => {
-    switch (category.toLowerCase()) {
+    switch ((category || '').toLowerCase()) {
       case 'electricity': return 'flash';
       case 'airtime': return 'phone-portrait';
       case 'data': return 'wifi';
@@ -129,7 +129,7 @@ export default function PaymentDetailScreen() {
   };
 
   const getCategoryColor = (category: string) => {
-    switch (category.toLowerCase()) {
+    switch ((category || '').toLowerCase()) {
       case 'electricity': return '#F59E0B';
       case 'airtime': return '#10B981';
       case 'data': return '#3B82F6';

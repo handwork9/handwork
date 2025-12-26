@@ -12,7 +12,10 @@ import {
   ScrollView,
   Share,
   Modal,
+  Dimensions,
+  Image,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -74,7 +77,11 @@ export default function FarmerOrdersScreen() {
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['farmer-orders'],
-    queryFn: () => orderService.getOrders({ page: 1, limit: 50 }),
+    queryFn: async () => {
+      const result = await orderService.getOrders({ page: 1, limit: 50 });
+      console.log('[FarmerOrdersScreen] API Response:', JSON.stringify(result, null, 2));
+      return result;
+    },
   });
 
   const updateStatusMutation = useMutation({
@@ -126,11 +133,21 @@ export default function FarmerOrdersScreen() {
     );
   };
 
-  const orders = data?.orders || [];
+  // De-duplicate orders by id to prevent key conflicts
+  const rawOrders = (data?.orders || []).filter((o: any) => o != null && o.id != null);
+  const orders = useMemo(() => {
+    const seen = new Set<string>();
+    return rawOrders.filter((order: any) => {
+      if (seen.has(order.id)) return false;
+      seen.add(order.id);
+      return true;
+    });
+  }, [rawOrders]);
 
   // Filter orders with search, date, and status
   const filteredOrders = useMemo(() => {
     return orders.filter((order: Order) => {
+      if (!order || !order.id) return false;
       // Status filter
       let statusMatch = true;
       switch (activeTab) {
@@ -286,7 +303,7 @@ export default function FarmerOrdersScreen() {
     );
   };
 
-  // Generate packing slip HTML
+  // Generate packing slip HTML - Enhanced Professional Design
   const generatePackingSlipHTML = (order: Order) => {
     const orderDate = new Date(order.createdAt);
     const formattedDate = orderDate.toLocaleDateString('en-US', {
@@ -298,13 +315,32 @@ export default function FarmerOrdersScreen() {
       hour: '2-digit',
       minute: '2-digit',
     });
+    const printDate = new Date().toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
 
-    const itemsHTML = (order.items || []).map(item => `
-      <tr>
-        <td style="padding: 10px; border-bottom: 1px solid #eee;">${item.title || item.productName || 'Item'}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity} ${item.unit || 'pcs'}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: center;">
-          <input type="checkbox" style="width: 20px; height: 20px;">
+    // Calculate totals
+    const subtotal = (order.items || []).reduce((sum, item) => sum + (Number(item.price) * Number(item.quantity)), 0);
+    const totalItems = (order.items || []).reduce((sum, item) => sum + Number(item.quantity), 0);
+
+    const itemsHTML = (order.items || []).map((item, index) => `
+      <tr style="background: ${index % 2 === 0 ? '#ffffff' : '#fafafa'};">
+        <td style="padding: 14px 12px; border-bottom: 1px solid #e8e8e8; font-size: 14px;">
+          <div style="font-weight: 600; color: #1a1a1a; margin-bottom: 2px;">${item.title || item.productName || 'Item'}</div>
+          <div style="font-size: 12px; color: #666;">${item.category || 'General'}</div>
+        </td>
+        <td style="padding: 14px 12px; border-bottom: 1px solid #e8e8e8; text-align: center; font-weight: 600; font-size: 15px; color: #1a1a1a;">
+          ${item.quantity} <span style="font-weight: 400; color: #666; font-size: 12px;">${item.unit || 'pcs'}</span>
+        </td>
+        <td style="padding: 14px 12px; border-bottom: 1px solid #e8e8e8; text-align: right; font-weight: 600; font-size: 14px; color: #1a1a1a;">
+          ₦${(Number(item.price) * Number(item.quantity)).toLocaleString()}
+        </td>
+        <td style="padding: 14px 12px; border-bottom: 1px solid #e8e8e8; text-align: center;">
+          <div style="width: 24px; height: 24px; border: 2px solid #34C759; border-radius: 6px; margin: 0 auto;"></div>
         </td>
       </tr>
     `).join('');
@@ -314,65 +350,228 @@ export default function FarmerOrdersScreen() {
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Packing Slip</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Packing Slip - Order #${order.orderNumber || order.id?.slice(-8)}</title>
+  <style>
+    @media print {
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .no-print { display: none !important; }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+  </style>
 </head>
-<body style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px; margin: 0 auto;">
-    <tr>
-      <td style="padding: 20px; border-bottom: 2px solid #4CAF50;">
-        <h1 style="margin: 0; font-size: 24px; color: #4CAF50;">PACKING SLIP</h1>
-        <p style="margin: 5px 0 0 0; color: #666;">Handwork - Fresh Farm Produce</p>
-      </td>
-    </tr>
-    <tr>
-      <td style="padding: 20px;">
+<body style="padding: 0; color: #1a1a1a; background: #f5f5f5;">
+  <div style="max-width: 800px; margin: 0 auto; background: #ffffff; box-shadow: 0 2px 20px rgba(0,0,0,0.1);">
+    
+    <!-- Header with Gradient -->
+    <div style="background: linear-gradient(135deg, #34C759 0%, #28a745 50%, #20803c 100%); padding: 30px; position: relative; overflow: hidden;">
+      <!-- Decorative circles -->
+      <div style="position: absolute; top: -30px; right: -30px; width: 120px; height: 120px; background: rgba(255,255,255,0.1); border-radius: 60px;"></div>
+      <div style="position: absolute; bottom: -40px; left: 100px; width: 80px; height: 80px; background: rgba(255,255,255,0.08); border-radius: 40px;"></div>
+      
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td>
+            <div style="display: flex; align-items: center; margin-bottom: 12px;">
+              <!-- App Logo -->
+              <div style="width: 56px; height: 56px; border-radius: 14px; display: flex; align-items: center; justify-content: center; margin-right: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); overflow: hidden;">
+                <svg width="56" height="56" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" style="stop-color:#34D399"/>
+                      <stop offset="100%" style="stop-color:#059669"/>
+                    </linearGradient>
+                  </defs>
+                  <rect width="512" height="512" rx="96" fill="url(#grad1)"/>
+                  <path d="M152,140 L152,372" stroke="#FFFFFF" stroke-width="48" stroke-linecap="round" fill="none"/>
+                  <path d="M360,140 L360,372" stroke="#FFFFFF" stroke-width="48" stroke-linecap="round" fill="none"/>
+                  <path d="M152,256 C180,220 220,200 256,180 C292,200 332,220 360,256 C332,280 292,300 256,320 C220,300 180,280 152,256 Z" fill="#FFFFFF"/>
+                  <path d="M152,256 L360,256" stroke="#059669" stroke-width="5" fill="none" stroke-linecap="round"/>
+                  <path d="M200,256 Q220,230 256,200" stroke="#059669" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.7"/>
+                  <path d="M200,256 Q220,280 256,310" stroke="#059669" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.7"/>
+                  <path d="M310,256 Q290,230 256,200" stroke="#059669" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.7"/>
+                  <path d="M310,256 Q290,280 256,310" stroke="#059669" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.7"/>
+                </svg>
+              </div>
+              <div>
+                <div style="display: inline-block; background: rgba(255,255,255,0.2); padding: 6px 12px; border-radius: 6px; margin-bottom: 6px;">
+                  <span style="font-size: 10px; font-weight: 700; color: #ffffff; letter-spacing: 1px;">PACKING SLIP</span>
+                </div>
+                <h1 style="font-size: 26px; font-weight: 700; color: #ffffff; margin: 0 0 2px 0;">Handwork</h1>
+                <p style="font-size: 13px; color: rgba(255,255,255,0.9); margin: 0;">Fresh Farm Produce • Direct to You</p>
+              </div>
+            </div>
+          </td>
+          <td style="text-align: right; vertical-align: top;">
+            <div style="background: rgba(255,255,255,0.95); padding: 16px 20px; border-radius: 12px; display: inline-block; text-align: left;">
+              <p style="font-size: 11px; color: #666; margin: 0 0 4px 0; text-transform: uppercase; letter-spacing: 0.5px;">Order Number</p>
+              <p style="font-size: 20px; font-weight: 700; color: #34C759; margin: 0;">#${order.orderNumber || order.id?.slice(-8)}</p>
+            </div>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Order Info Bar -->
+    <div style="background: #f8f9fa; padding: 16px 30px; border-bottom: 1px solid #e8e8e8;">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td style="font-size: 13px;">
+            <span style="color: #666;">Order Date:</span>
+            <span style="font-weight: 600; color: #1a1a1a; margin-left: 6px;">${formattedDate} at ${formattedTime}</span>
+          </td>
+          <td style="text-align: center; font-size: 13px;">
+            <span style="color: #666;">Status:</span>
+            <span style="font-weight: 600; color: #34C759; margin-left: 6px; text-transform: uppercase;">${order.status?.replace(/_/g, ' ') || 'Processing'}</span>
+          </td>
+          <td style="text-align: right; font-size: 13px;">
+            <span style="color: #666;">Total Items:</span>
+            <span style="font-weight: 600; color: #1a1a1a; margin-left: 6px;">${totalItems}</span>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Customer & Delivery Info -->
+    <div style="padding: 24px 30px;">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td width="50%" style="vertical-align: top; padding-right: 20px;">
+            <div style="background: #f8f9fa; border-radius: 12px; padding: 20px; border-left: 4px solid #34C759;">
+              <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                <div style="width: 36px; height: 36px; background: #34C759; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; margin-right: 12px;">
+                  <span style="font-size: 16px;">👤</span>
+                </div>
+                <span style="font-size: 12px; font-weight: 600; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">Customer Details</span>
+              </div>
+              <p style="font-size: 16px; font-weight: 600; color: #1a1a1a; margin: 0 0 8px 0;">${order.buyerName || 'Customer'}</p>
+              <p style="font-size: 14px; color: #666; margin: 0 0 4px 0;">📱 ${order.buyerPhone || 'N/A'}</p>
+              ${order.buyerEmail ? `<p style="font-size: 14px; color: #666; margin: 0;">✉️ ${order.buyerEmail}</p>` : ''}
+            </div>
+          </td>
+          <td width="50%" style="vertical-align: top; padding-left: 20px;">
+            <div style="background: #f8f9fa; border-radius: 12px; padding: 20px; border-left: 4px solid #007AFF;">
+              <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                <div style="width: 36px; height: 36px; background: #007AFF; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; margin-right: 12px;">
+                  <span style="font-size: 16px;">📍</span>
+                </div>
+                <span style="font-size: 12px; font-weight: 600; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">Delivery Address</span>
+              </div>
+              <p style="font-size: 14px; color: #1a1a1a; margin: 0 0 4px 0; line-height: 1.5;">${order.deliveryAddress?.address || 'N/A'}</p>
+              <p style="font-size: 14px; color: #666; margin: 0;">${order.deliveryAddress?.city || ''}${order.deliveryAddress?.city && order.deliveryAddress?.state ? ', ' : ''}${order.deliveryAddress?.state || ''}</p>
+              ${order.deliveryAddress?.landmark ? `<p style="font-size: 13px; color: #888; margin: 8px 0 0 0; font-style: italic;">📌 Landmark: ${order.deliveryAddress.landmark}</p>` : ''}
+            </div>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Items Table -->
+    <div style="padding: 0 30px 24px 30px;">
+      <div style="background: #f8f9fa; border-radius: 12px; overflow: hidden; border: 1px solid #e8e8e8;">
+        <div style="background: linear-gradient(135deg, #1a1a1a 0%, #333 100%); padding: 16px 20px;">
+          <span style="font-size: 13px; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 1px;">📦 Items to Pack</span>
+        </div>
         <table width="100%" cellpadding="0" cellspacing="0" border="0">
-          <tr>
-            <td width="50%" style="vertical-align: top;">
-              <h3 style="margin: 0 0 10px 0; font-size: 14px; color: #666;">ORDER DETAILS</h3>
-              <p style="margin: 0;"><b>Order #:</b> ${order.orderNumber || order.id?.slice(-8)}</p>
-              <p style="margin: 5px 0;"><b>Date:</b> ${formattedDate}</p>
-              <p style="margin: 5px 0;"><b>Time:</b> ${formattedTime}</p>
-            </td>
-            <td width="50%" style="vertical-align: top;">
-              <h3 style="margin: 0 0 10px 0; font-size: 14px; color: #666;">DELIVER TO</h3>
-              <p style="margin: 0;"><b>${order.buyerName || 'Customer'}</b></p>
-              <p style="margin: 5px 0;">${order.deliveryAddress?.address || 'N/A'}</p>
-              <p style="margin: 5px 0;">${order.deliveryAddress?.city || ''}${order.deliveryAddress?.city && order.deliveryAddress?.state ? ', ' : ''}${order.deliveryAddress?.state || ''}</p>
-              <p style="margin: 5px 0;">${order.buyerPhone || ''}</p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-    <tr>
-      <td style="padding: 0 20px 20px 20px;">
-        <h3 style="margin: 0 0 15px 0; font-size: 14px; color: #666;">ITEMS TO PACK</h3>
-        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border: 1px solid #eee;">
-          <tr style="background: #f5f5f5;">
-            <th style="padding: 10px; text-align: left; font-size: 12px;">ITEM</th>
-            <th style="padding: 10px; text-align: center; font-size: 12px;">QTY</th>
-            <th style="padding: 10px; text-align: center; font-size: 12px;">PACKED</th>
+          <tr style="background: #f0f0f0;">
+            <th style="padding: 12px; text-align: left; font-size: 11px; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #e8e8e8;">Product</th>
+            <th style="padding: 12px; text-align: center; font-size: 11px; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #e8e8e8;">Qty</th>
+            <th style="padding: 12px; text-align: right; font-size: 11px; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #e8e8e8;">Price</th>
+            <th style="padding: 12px; text-align: center; font-size: 11px; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #e8e8e8; width: 60px;">✓</th>
           </tr>
           ${itemsHTML}
         </table>
-      </td>
-    </tr>
-    <tr>
-      <td style="padding: 20px; border-top: 1px dashed #ddd;">
+        
+        <!-- Totals -->
+        <div style="background: #f8f9fa; padding: 16px 20px; border-top: 2px solid #e8e8e8;">
+          <table width="100%" cellpadding="0" cellspacing="0" border="0">
+            <tr>
+              <td style="text-align: right; padding: 4px 0;">
+                <span style="font-size: 14px; color: #666;">Subtotal:</span>
+                <span style="font-size: 14px; font-weight: 600; color: #1a1a1a; margin-left: 20px; min-width: 100px; display: inline-block;">₦${subtotal.toLocaleString()}</span>
+              </td>
+            </tr>
+            ${order.deliveryFee ? `
+            <tr>
+              <td style="text-align: right; padding: 4px 0;">
+                <span style="font-size: 14px; color: #666;">Delivery Fee:</span>
+                <span style="font-size: 14px; font-weight: 600; color: #1a1a1a; margin-left: 20px; min-width: 100px; display: inline-block;">₦${Number(order.deliveryFee).toLocaleString()}</span>
+              </td>
+            </tr>
+            ` : ''}
+            <tr>
+              <td style="text-align: right; padding: 8px 0 0 0; border-top: 1px dashed #ccc; margin-top: 8px;">
+                <span style="font-size: 16px; font-weight: 700; color: #1a1a1a;">Total:</span>
+                <span style="font-size: 20px; font-weight: 700; color: #34C759; margin-left: 20px; min-width: 100px; display: inline-block;">₦${Number(order.total || subtotal).toLocaleString()}</span>
+              </td>
+            </tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Special Instructions -->
+    ${order.notes ? `
+    <div style="padding: 0 30px 24px 30px;">
+      <div style="background: #FFF9E6; border-radius: 12px; padding: 16px 20px; border-left: 4px solid #FF9500;">
+        <p style="font-size: 12px; font-weight: 600; color: #996600; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 8px 0;">📝 Special Instructions</p>
+        <p style="font-size: 14px; color: #664400; margin: 0; line-height: 1.5;">${order.notes}</p>
+      </div>
+    </div>
+    ` : ''}
+
+    <!-- Signature Section -->
+    <div style="padding: 0 30px 30px 30px;">
+      <div style="background: #f8f9fa; border-radius: 12px; padding: 20px; border: 1px dashed #ccc;">
         <table width="100%" cellpadding="0" cellspacing="0" border="0">
           <tr>
-            <td width="50%">
-              <p style="margin: 0; font-size: 12px; color: #666;">Packed by: _________________</p>
+            <td width="50%" style="padding-right: 20px;">
+              <p style="font-size: 12px; color: #666; margin: 0 0 8px 0; font-weight: 600;">Packed by:</p>
+              <div style="border-bottom: 1px solid #999; height: 30px; margin-bottom: 4px;"></div>
+              <p style="font-size: 11px; color: #999; margin: 0;">Name & Signature</p>
             </td>
-            <td width="50%">
-              <p style="margin: 0; font-size: 12px; color: #666; text-align: right;">Date: _________________</p>
+            <td width="25%" style="padding: 0 10px;">
+              <p style="font-size: 12px; color: #666; margin: 0 0 8px 0; font-weight: 600;">Date:</p>
+              <div style="border-bottom: 1px solid #999; height: 30px; margin-bottom: 4px;"></div>
+              <p style="font-size: 11px; color: #999; margin: 0;">DD/MM/YYYY</p>
+            </td>
+            <td width="25%" style="padding-left: 10px;">
+              <p style="font-size: 12px; color: #666; margin: 0 0 8px 0; font-weight: 600;">Time:</p>
+              <div style="border-bottom: 1px solid #999; height: 30px; margin-bottom: 4px;"></div>
+              <p style="font-size: 11px; color: #999; margin: 0;">HH:MM</p>
             </td>
           </tr>
         </table>
-      </td>
-    </tr>
-  </table>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div style="background: #1a1a1a; padding: 24px 30px; text-align: center;">
+      <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 12px;">
+        <div style="width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-right: 10px; overflow: hidden;">
+          <svg width="36" height="36" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#34D399"/>
+                <stop offset="100%" style="stop-color:#059669"/>
+              </linearGradient>
+            </defs>
+            <rect width="512" height="512" rx="96" fill="url(#grad2)"/>
+            <path d="M152,140 L152,372" stroke="#FFFFFF" stroke-width="48" stroke-linecap="round" fill="none"/>
+            <path d="M360,140 L360,372" stroke="#FFFFFF" stroke-width="48" stroke-linecap="round" fill="none"/>
+            <path d="M152,256 C180,220 220,200 256,180 C292,200 332,220 360,256 C332,280 292,300 256,320 C220,300 180,280 152,256 Z" fill="#FFFFFF"/>
+            <path d="M152,256 L360,256" stroke="#059669" stroke-width="5" fill="none" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <span style="font-size: 16px; font-weight: 700; color: #ffffff;">Handwork</span>
+      </div>
+      <p style="font-size: 12px; color: #888; margin: 0 0 4px 0;">Thank you for choosing Handwork! 🌱</p>
+      <p style="font-size: 11px; color: #666; margin: 0;">Fresh Farm Produce • Direct to You</p>
+      <p style="font-size: 10px; color: #555; margin: 8px 0 0 0;">Printed on ${printDate}</p>
+    </div>
+
+  </div>
 </body>
 </html>
     `;
@@ -429,21 +628,48 @@ export default function FarmerOrdersScreen() {
     setDateFilter('all');
   };
 
+  // Get status gradient colors for media card
+  const getStatusGradient = (status: OrderStatus): [string, string, string] => {
+    switch (status) {
+      case 'pending': return ['#FF9500', '#F5A623', '#FF6B00'];
+      case 'confirmed':
+      case 'preparing': return ['#007AFF', '#5856D6', '#4A90D9'];
+      case 'ready_for_pickup': return ['#34C759', '#30D158', '#28A745'];
+      case 'delivered': return ['#34C759', '#30D158', '#28A745'];
+      case 'cancelled': return ['#FF3B30', '#FF453A', '#DC3545'];
+      default: return ['#8E8E93', '#636366', '#8E8E93'];
+    }
+  };
+
+  // Get status icon
+  const getStatusIcon = (status: OrderStatus): keyof typeof Ionicons.glyphMap => {
+    switch (status) {
+      case 'pending': return 'time';
+      case 'confirmed': return 'checkmark-circle';
+      case 'preparing': return 'restaurant';
+      case 'ready_for_pickup': return 'bag-check';
+      case 'delivered': return 'checkmark-done-circle';
+      case 'cancelled': return 'close-circle';
+      default: return 'ellipsis-horizontal';
+    }
+  };
+
   const renderOrder = ({ item, index }: { item: Order; index: number }) => {
+    if (!item || !item.id) return null;
+    
     const actions = getOrderActions(item);
     const statusStyle = getStatusColor(item.status);
-    const isFirst = index === 0;
-    const isLast = index === filteredOrders.length - 1;
+    const statusGradient = getStatusGradient(item.status);
+    const statusIcon = getStatusIcon(item.status);
     const isSelected = selectedOrders.includes(item.id);
+    const firstItemImage = item.items?.[0]?.image || item.items?.[0]?.productImage;
     
     return (
       <TouchableOpacity
         style={[
-          styles.orderCard,
+          styles.orderMediaCard,
           { backgroundColor: isDark ? colors.card : '#FFFFFF' },
-          isFirst && styles.orderCardFirst,
-          isLast && styles.orderCardLast,
-          isSelected && { borderColor: '#34C759', borderWidth: 2 },
+          isSelected && styles.orderMediaCardSelected,
         ]}
         onPress={() => {
           if (selectionMode) {
@@ -458,102 +684,151 @@ export default function FarmerOrdersScreen() {
             setSelectedOrders([item.id]);
           }
         }}
-        activeOpacity={0.6}
+        activeOpacity={0.7}
       >
-        {selectionMode && (
-          <View style={styles.selectionCheckbox}>
-            <Ionicons 
-              name={isSelected ? 'checkbox' : 'square-outline'} 
-              size={24} 
-              color={isSelected ? '#34C759' : colors.textSecondary} 
-            />
-          </View>
-        )}
-        
-        <View style={selectionMode ? styles.orderContentWithCheckbox : undefined}>
-          <View style={styles.orderHeader}>
-            <View style={styles.orderIdRow}>
-              <Text style={[styles.orderId, { color: colors.text }]}>
-                #{item.orderNumber || item.id.slice(-6)}
-              </Text>
-              <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
-                <Text style={[styles.statusText, { color: statusStyle.color }]}>
-                  {getStatusLabel(item.status)}
-                </Text>
+        {/* Status Header with Gradient */}
+        <LinearGradient
+          colors={statusGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.orderMediaHeader}
+        >
+          {/* Decorative circles */}
+          <View style={[styles.orderDecorCircle, { top: -15, right: -15, opacity: 0.15 }]} />
+          <View style={[styles.orderDecorCircle, { bottom: -20, left: 30, width: 50, height: 50, opacity: 0.1 }]} />
+          
+          {/* Selection checkbox overlay */}
+          {selectionMode && (
+            <TouchableOpacity
+              style={styles.mediaOrderCheckbox}
+              onPress={() => toggleOrderSelection(item.id)}
+            >
+              <View style={[
+                styles.mediaOrderCheckboxCircle,
+                isSelected && styles.mediaOrderCheckboxSelected,
+              ]}>
+                {isSelected && (
+                  <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                )}
+              </View>
+            </TouchableOpacity>
+          )}
+          
+          <View style={styles.orderMediaHeaderContent}>
+            <View style={styles.orderMediaHeaderLeft}>
+              <View style={styles.orderMediaBadge}>
+                <Ionicons name={statusIcon} size={12} color="#FFFFFF" />
+                <Text style={styles.orderMediaBadgeText}>{(getStatusLabel(item.status) || item.status || 'Unknown').toUpperCase()}</Text>
+              </View>
+              <View style={styles.orderMediaOrderInfo}>
+                <Text style={styles.orderMediaOrderNumber}>#{item.orderNumber || item.id.slice(-6)}</Text>
+                <Text style={styles.orderMediaDate}>{formatDate(item.createdAt)}</Text>
               </View>
             </View>
-            <View style={styles.orderHeaderRight}>
-              <Text style={[styles.orderDate, { color: colors.textSecondary }]}>
-                {formatDate(item.createdAt)}
+            {/* Print button in header */}
+            {!selectionMode && (
+              <TouchableOpacity 
+                style={styles.orderMediaHeaderPrintBtn}
+                onPress={() => handlePrintPackingSlip(item)}
+              >
+                <Ionicons name="print-outline" size={18} color="#FFFFFF" />
+              </TouchableOpacity>
+            )}
+            <View style={styles.orderMediaTotalContainer}>
+              <Text style={styles.orderMediaTotalLabel}>Total</Text>
+              <Text style={styles.orderMediaTotalValue}>{formatCurrency(Number(item.total || 0))}</Text>
+            </View>
+          </View>
+        </LinearGradient>
+        
+        {/* Content Section */}
+        <View style={styles.orderMediaContent}>
+          {/* Buyer Info Row */}
+          {item.buyerName && (
+            <View style={styles.orderMediaBuyerRow}>
+              <View style={[styles.orderMediaBuyerAvatar, { backgroundColor: isDark ? '#3A3A3C' : '#E8F5E9' }]}>
+                <Ionicons name="person" size={14} color="#34C759" />
+              </View>
+              <View style={styles.orderMediaBuyerInfo}>
+                <Text style={[styles.orderMediaBuyerName, { color: colors.text }]} numberOfLines={1}>
+                  {item.buyerName}
+                </Text>
+                {item.buyerPhone && (
+                  <Text style={[styles.orderMediaBuyerPhone, { color: colors.textSecondary }]}>
+                    {item.buyerPhone}
+                  </Text>
+                )}
+              </View>
+            </View>
+          )}
+          
+          {/* Items Preview */}
+          <View style={[styles.orderMediaItemsSection, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F8F9FA' }]}>
+            <View style={styles.orderMediaItemsHeader}>
+              <Ionicons name="cube-outline" size={16} color={statusStyle.color} />
+              <Text style={[styles.orderMediaItemsCount, { color: colors.text }]}>
+                {item.items.length} item{item.items.length > 1 ? 's' : ''}
               </Text>
-              {!selectionMode && (
-                <TouchableOpacity 
-                  style={styles.printButton}
-                  onPress={() => handlePrintPackingSlip(item)}
-                >
-                  <Ionicons name="print-outline" size={18} color={colors.textSecondary} />
-                </TouchableOpacity>
+            </View>
+            <View style={styles.orderMediaItemsList}>
+              {item.items.slice(0, 3).map((orderItem: any, idx: number) => (
+                <View key={idx} style={styles.orderMediaItemRow}>
+                  <View style={[styles.orderMediaItemDot, { backgroundColor: statusStyle.color }]} />
+                  <Text style={[styles.orderMediaItemText, { color: colors.textSecondary }]} numberOfLines={1}>
+                    {orderItem.quantity}× {orderItem.title || orderItem.productName || 'Item'}
+                  </Text>
+                </View>
+              ))}
+              {item.items.length > 3 && (
+                <Text style={[styles.orderMediaMoreItems, { color: colors.textSecondary }]}>
+                  +{item.items.length - 3} more items
+                </Text>
               )}
             </View>
           </View>
-
-          {item.buyerName && (
-            <Text style={[styles.buyerName, { color: colors.textSecondary }]} numberOfLines={1}>
-              {item.buyerName}
-            </Text>
-          )}
-
-          <View style={[styles.orderDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60,60,67,0.12)' }]} />
-
-          <View style={styles.orderBody}>
-            <View style={styles.orderItems}>
-              <Text style={[styles.itemsCount, { color: colors.text }]}>
-                {item.items.length} item{item.items.length > 1 ? 's' : ''}
-              </Text>
-              <Text style={[styles.itemsList, { color: colors.textSecondary }]} numberOfLines={1}>
-                {(item.items || []).map((i: any) => `${i.quantity}x ${i.title || i.productName || 'Item'}`).join(', ')}
-              </Text>
-            </View>
-            <Text style={[styles.orderTotal, { color: colors.text }]}>
-              {formatCurrency(Number(item.total || 0))}
-            </Text>
-          </View>
-
+          
+          {/* Action Buttons */}
           {actions.length > 0 && !selectionMode && (
-            <>
-              <View style={[styles.orderDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60,60,67,0.12)' }]} />
-              <View style={styles.actionsRow}>
-                {actions.map((action) => (
-                  <TouchableOpacity
-                    key={action.status}
-                    style={[
-                      styles.actionButton,
-                      action.variant === 'primary' 
-                        ? { backgroundColor: '#34C759' }
-                        : { backgroundColor: isDark ? '#3A3A3C' : '#F2F2F7' },
-                    ]}
-                    onPress={() => handleUpdateStatus(item, action.status)}
-                    disabled={updateStatusMutation.isPending}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[
-                      styles.actionButtonText,
-                      action.variant === 'secondary' && { color: colors.textSecondary },
-                    ]}>
-                      {action.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </>
+            <View style={styles.orderMediaActions}>
+              {actions.map((action) => (
+                <TouchableOpacity
+                  key={action.status}
+                  style={[
+                    styles.orderMediaActionBtn,
+                    action.variant === 'primary' 
+                      ? { backgroundColor: '#34C759' }
+                      : { backgroundColor: isDark ? '#3A3A3C' : '#F2F2F7' },
+                  ]}
+                  onPress={() => handleUpdateStatus(item, action.status)}
+                  disabled={updateStatusMutation.isPending}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons 
+                    name={action.variant === 'primary' ? 'checkmark-circle' : 'close-circle'} 
+                    size={16} 
+                    color={action.variant === 'primary' ? '#FFFFFF' : '#FF3B30'} 
+                  />
+                  <Text style={[
+                    styles.orderMediaActionText,
+                    action.variant === 'primary' 
+                      ? { color: '#FFFFFF' }
+                      : { color: colors.text },
+                  ]}>
+                    {action.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+          
+          {/* View Details Arrow */}
+          {!selectionMode && (
+            <View style={styles.orderMediaViewDetails}>
+              <Text style={[styles.orderMediaViewDetailsText, { color: '#007AFF' }]}>View Details</Text>
+              <Ionicons name="chevron-forward" size={16} color="#007AFF" />
+            </View>
           )}
         </View>
-
-        {!selectionMode && (
-          <View style={styles.chevronContainer}>
-            <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
-          </View>
-        )}
       </TouchableOpacity>
     );
   };
@@ -793,11 +1068,11 @@ export default function FarmerOrdersScreen() {
       {/* Orders List */}
       <FlatList
         data={filteredOrders}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item, index) => item?.id || `order-${index}`}
         renderItem={renderOrder}
         ListHeaderComponent={ListHeader}
         contentContainerStyle={[
-          styles.listContent,
+          styles.ordersGrid,
           { paddingBottom: insets.bottom + (selectionMode ? 160 : 100) },
         ]}
         showsVerticalScrollIndicator={false}
@@ -939,6 +1214,240 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: SPACING.md,
+  },
+  // Orders Grid Layout
+  ordersGrid: {
+    paddingHorizontal: SPACING.md,
+  },
+  ordersRow: {
+    justifyContent: 'space-between',
+    marginBottom: SPACING.sm,
+  },
+  // Enhanced Media Card Styles for Orders
+  orderMediaCard: {
+    width: '100%',
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
+    marginBottom: SPACING.md,
+  },
+  orderMediaCardSelected: {
+    borderWidth: 2,
+    borderColor: '#34C759',
+  },
+  orderMediaHeader: {
+    padding: SPACING.sm,
+    paddingTop: SPACING.md,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  orderDecorCircle: {
+    position: 'absolute',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#FFFFFF',
+  },
+  mediaOrderCheckbox: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    zIndex: 10,
+  },
+  mediaOrderCheckboxCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mediaOrderCheckboxSelected: {
+    backgroundColor: '#34C759',
+    borderColor: '#34C759',
+  },
+  orderMediaHeaderContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  orderMediaHeaderLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+  },
+  orderMediaBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    gap: 4,
+    marginBottom: 6,
+  },
+  orderMediaBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  orderMediaOrderInfo: {
+    flex: 1,
+  },
+  orderMediaOrderNumber: {
+    fontSize: 18,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
+    color: '#FFFFFF',
+  },
+  orderMediaDate: {
+    fontSize: 12,
+    fontFamily: FONTS.regular,
+    color: 'rgba(255,255,255,0.8)',
+  },
+  orderMediaHeaderPrintBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  orderMediaTotalContainer: {
+    alignItems: 'flex-end',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  orderMediaTotalLabel: {
+    fontSize: 10,
+    fontFamily: FONTS.regular,
+    color: 'rgba(255,255,255,0.8)',
+  },
+  orderMediaTotalValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
+    color: '#FFFFFF',
+  },
+  orderMediaContent: {
+    padding: SPACING.sm,
+  },
+  orderMediaBuyerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  orderMediaBuyerAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  orderMediaBuyerInfo: {
+    flex: 1,
+  },
+  orderMediaBuyerName: {
+    fontSize: 13,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+  },
+  orderMediaBuyerPhone: {
+    fontSize: 11,
+    fontFamily: FONTS.regular,
+  },
+  orderMediaPrintBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  orderMediaItemsSection: {
+    borderRadius: 10,
+    padding: SPACING.sm,
+    marginBottom: SPACING.sm,
+  },
+  orderMediaItemsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  orderMediaItemsCount: {
+    fontSize: 13,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+  },
+  orderMediaItemsList: {
+    gap: 4,
+  },
+  orderMediaItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  orderMediaItemDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+  },
+  orderMediaItemText: {
+    fontSize: 12,
+    fontFamily: FONTS.regular,
+    flex: 1,
+  },
+  orderMediaMoreItems: {
+    fontSize: 11,
+    fontFamily: FONTS.medium,
+    fontStyle: 'italic',
+    marginTop: 2,
+  },
+  orderMediaActions: {
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: SPACING.sm,
+  },
+  orderMediaActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 4,
+  },
+  orderMediaActionText: {
+    fontSize: 11,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+  },
+  orderMediaViewDetails: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 6,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(60,60,67,0.1)',
+  },
+  orderMediaViewDetailsText: {
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
   },
   searchSortContainer: {
     flexDirection: 'row',
@@ -1151,43 +1660,118 @@ const styles = StyleSheet.create({
   selectionCheckbox: {
     marginRight: SPACING.sm,
   },
+  checkboxCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#C7C7CC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+  checkboxCircleSelected: {
+    backgroundColor: '#34C759',
+    borderColor: '#34C759',
+  },
   orderContentWithCheckbox: {
+    flex: 1,
+  },
+  orderContentFull: {
     flex: 1,
   },
   orderCard: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     padding: SPACING.md,
     marginBottom: StyleSheet.hairlineWidth,
     position: 'relative',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
   },
   orderCardFirst: {
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
   },
   orderCardLast: {
-    borderBottomLeftRadius: 12,
-    borderBottomRightRadius: 12,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
     marginBottom: SPACING.lg,
+  },
+  orderCardSelected: {
+    backgroundColor: '#E8F5E9',
+    borderLeftWidth: 3,
+    borderLeftColor: '#34C759',
   },
   orderHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: SPACING.sm,
+    marginBottom: SPACING.xs,
+  },
+  orderIdContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    flex: 1,
+    marginRight: SPACING.sm,
+  },
+  orderIdTextContainer: {
+    flex: 1,
+  },
+  orderIconBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: '#34C759',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   orderHeaderRight: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
+    flexShrink: 0,
+  },
+  printRow: {
+    marginBottom: SPACING.xs,
   },
   printButton: {
-    padding: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    gap: 6,
+  },
+  printButtonText: {
+    fontSize: 12,
+    fontWeight: '500',
+    fontFamily: FONTS.medium,
+    color: '#007AFF',
+  },
+  buyerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: SPACING.xs,
+  },
+  buyerAvatarPlaceholder: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   buyerName: {
     fontSize: 13,
     fontFamily: FONTS.regular,
-    marginBottom: SPACING.xs,
+    flex: 1,
   },
   orderIdRow: {
     flexDirection: 'row',
@@ -1196,17 +1780,25 @@ const styles = StyleSheet.create({
   },
   orderId: {
     fontSize: 17,
-    fontWeight: '600',
-    fontFamily: FONTS.semiBold,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
   },
   orderDate: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: FONTS.regular,
   },
   statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingVertical: 5,
+    borderRadius: 10,
+    gap: 5,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   statusText: {
     fontSize: 12,
@@ -1214,43 +1806,71 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.semiBold,
   },
   orderDivider: {
-    height: StyleSheet.hairlineWidth,
+    height: 1,
     marginVertical: SPACING.sm,
+    borderRadius: 0.5,
   },
   orderBody: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  orderItemsContainer: {
+    flex: 1,
+    marginRight: SPACING.md,
+  },
+  itemsHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
   },
   orderItems: {
     flex: 1,
     marginRight: SPACING.md,
   },
   itemsCount: {
-    fontSize: 15,
-    fontWeight: '500',
-    fontFamily: FONTS.medium,
-    marginBottom: 2,
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
   },
   itemsList: {
     fontSize: 13,
     fontFamily: FONTS.regular,
+    lineHeight: 18,
+  },
+  orderTotalContainer: {
+    alignItems: 'flex-end',
+  },
+  orderTotalLabel: {
+    fontSize: 11,
+    fontFamily: FONTS.regular,
+    marginBottom: 2,
   },
   orderTotal: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '700',
     fontFamily: FONTS.bold,
   },
   actionsRow: {
     flexDirection: 'row',
     gap: SPACING.sm,
-    paddingTop: SPACING.sm,
+    paddingTop: SPACING.xs,
   },
   actionButton: {
     flex: 1,
-    paddingVertical: 10,
-    borderRadius: 10,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 12,
+    gap: 6,
+  },
+  actionButtonPrimary: {
+    backgroundColor: '#34C759',
+  },
+  actionButtonSecondary: {
+    backgroundColor: '#F2F2F7',
   },
   actionButtonText: {
     fontSize: 14,
@@ -1262,7 +1882,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: SPACING.md,
     top: '50%',
-    marginTop: -8,
+    marginTop: -9,
   },
   emptyState: {
     alignItems: 'center',

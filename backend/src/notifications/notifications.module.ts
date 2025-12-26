@@ -13,6 +13,11 @@ import { UsersModule } from '../users/users.module';
     TypeOrmModule.forFeature([User, Notification]),
     BullModule.registerQueue({
       name: 'notifications',
+      redis: {
+        host: process.env.REDIS_HOST || 'localhost',
+        port: parseInt(process.env.REDIS_PORT || '6379', 10),
+        password: process.env.REDIS_PASSWORD || 'redis123',
+      },
       defaultJobOptions: {
         removeOnComplete: true,
         removeOnFail: false,

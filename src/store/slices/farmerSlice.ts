@@ -169,7 +169,7 @@ const farmerSlice = createSlice({
     
     // Order status updated via WebSocket
     updateOrderInList: (state, action: PayloadAction<{ orderId: string; status: string }>) => {
-      const order = state.orders.find(o => o.id === action.payload.orderId);
+      const order = state.orders.find(o => o?.id === action.payload.orderId);
       if (order) {
         order.status = action.payload.status as any;
       }
@@ -209,19 +209,22 @@ const farmerSlice = createSlice({
     
     // Remove product from list
     removeProduct: (state, action: PayloadAction<string>) => {
-      state.products = state.products.filter(p => p.id !== action.payload);
+      if (!action.payload) return;
+      state.products = state.products.filter(p => p?.id !== action.payload);
       state.productsTotal = Math.max(0, state.productsTotal - 1);
     },
     
     // Set products (from API)
     setProducts: (state, action: PayloadAction<{ products: Product[]; total: number }>) => {
-      state.products = action.payload.products;
+      const validProducts = (action.payload.products || []).filter(p => p != null && p.id != null);
+      state.products = validProducts;
       state.productsTotal = action.payload.total;
     },
     
     // Update product in list
     updateProductInList: (state, action: PayloadAction<Product>) => {
-      const index = state.products.findIndex(p => p.id === action.payload.id);
+      if (!action.payload?.id) return;
+      const index = state.products.findIndex(p => p?.id === action.payload.id);
       if (index !== -1) {
         state.products[index] = action.payload;
       }
@@ -238,8 +241,9 @@ const farmerSlice = createSlice({
       })
       .addCase(fetchFarmerProducts.fulfilled, (state, action) => {
         state.productsLoading = false;
-        state.products = action.payload.products;
-        state.productsTotal = action.payload.total;
+        const validProducts = (action.payload.products || []).filter((p: any) => p != null && p.id != null);
+        state.products = validProducts;
+        state.productsTotal = action.payload.total || validProducts.length;
       })
       .addCase(fetchFarmerProducts.rejected, (state, action) => {
         state.productsLoading = false;
@@ -252,10 +256,11 @@ const farmerSlice = createSlice({
       })
       .addCase(fetchFarmerOrders.fulfilled, (state, action) => {
         state.ordersLoading = false;
-        state.orders = action.payload.orders;
-        state.ordersTotal = action.payload.total;
+        const validOrders = (action.payload.orders || []).filter((o: any) => o != null && o.id != null);
+        state.orders = validOrders;
+        state.ordersTotal = action.payload.total || validOrders.length;
         // Count pending orders
-        state.pendingOrdersCount = action.payload.orders.filter(
+        state.pendingOrdersCount = validOrders.filter(
           o => o.status === 'pending'
         ).length;
       })
@@ -271,7 +276,7 @@ const farmerSlice = createSlice({
       
       // Update order status
       .addCase(updateOrderStatus.fulfilled, (state, action) => {
-        const order = state.orders.find(o => o.id === action.payload.orderId);
+        const order = state.orders.find(o => o?.id === action.payload.orderId);
         if (order) {
           const previousStatus = order.status;
           order.status = action.payload.status as any;
@@ -285,7 +290,7 @@ const farmerSlice = createSlice({
       
       // Delete product
       .addCase(deleteProduct.fulfilled, (state, action) => {
-        state.products = state.products.filter(p => p.id !== action.payload);
+        state.products = state.products.filter(p => p?.id !== action.payload);
         state.productsTotal = Math.max(0, state.productsTotal - 1);
       });
   },

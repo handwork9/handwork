@@ -44,7 +44,7 @@ import {
   SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
-import { adminApi } from '@/lib/api';
+import { adminApi, normalizeImageUrl } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 
 const { Text, Title, Paragraph } = Typography;
@@ -63,7 +63,12 @@ interface Product {
   isAdminProduct?: boolean;
   promotionExpiresAt?: string;
   recommendationScore?: number;
-  farmer: {
+  farmerId: string;
+  farmerName?: string;
+  farmerPhone?: string;
+  farmerAvatar?: string;
+  isVerifiedSeller?: boolean;
+  farmer?: {
     id: string;
     firstName: string;
     lastName: string;
@@ -127,7 +132,7 @@ function ProductCard({
       cover={
         <div style={{ position: 'relative', height: 160, overflow: 'hidden', background: '#f5f5f5' }}>
           <Image
-            src={product.images?.[0] || '/placeholder-product.png'}
+            src={normalizeImageUrl(product.images?.[0])}
             alt={product.title}
             style={{ width: '100%', height: 160, objectFit: 'cover' }}
             fallback="/placeholder-product.png"
@@ -261,9 +266,9 @@ function ProductCard({
           <Text type="secondary" style={{ fontSize: 12 }}>
             <InboxOutlined /> {product.stock} {product.unit}
           </Text>
-          <Tooltip title={product.farmer?.businessName || `${product.farmer?.firstName} ${product.farmer?.lastName}`}>
+          <Tooltip title={product.farmerName || product.farmer?.businessName || `${product.farmer?.firstName || ''} ${product.farmer?.lastName || ''}`}>
             <Text type="secondary" style={{ fontSize: 11, maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              <UserOutlined /> {product.farmer?.businessName || product.farmer?.firstName}
+              <UserOutlined /> {product.farmerName || product.farmer?.businessName || product.farmer?.firstName || 'Unknown'}
             </Text>
           </Tooltip>
         </div>
@@ -509,22 +514,13 @@ export default function ProductsPage() {
 
   const handleEdit = (product: Product) => {
     setSelectedProduct(product);
-    form.setFieldsValue({
-      title: product.title,
-      description: product.description,
-      price: product.price,
-      stock: product.stock,
-      unit: product.unit,
-      category: product.category,
-      isAvailable: product.isAvailable,
-    });
     // Set up existing images for edit form
     if (product.images && product.images.length > 0) {
       const existingFiles: UploadFile[] = product.images.map((url, index) => ({
         uid: `-${index}`,
         name: `image-${index + 1}`,
         status: 'done',
-        url: url,
+        url: normalizeImageUrl(url),
       }));
       setEditFileList(existingFiles);
     } else {
@@ -616,7 +612,7 @@ export default function ProductsPage() {
       width: 80,
       render: (images: string[]) => (
         <Image
-          src={images?.[0] || '/placeholder-product.png'}
+          src={normalizeImageUrl(images?.[0])}
           alt="Product"
           width={50}
           height={50}
@@ -642,10 +638,10 @@ export default function ProductsPage() {
     },
     {
       title: 'Farmer',
-      dataIndex: 'farmer',
+      dataIndex: 'farmerName',
       key: 'farmer',
-      render: (farmer: Product['farmer']) => (
-        <Text>{farmer?.businessName || `${farmer?.firstName} ${farmer?.lastName}`}</Text>
+      render: (farmerName: string, record: Product) => (
+        <Text>{farmerName || record.farmer?.businessName || `${record.farmer?.firstName || ''} ${record.farmer?.lastName || ''}`.trim() || 'N/A'}</Text>
       ),
     },
     {
@@ -686,7 +682,7 @@ export default function ProductsPage() {
       key: 'promotion',
       width: 150,
       render: (_, record: Product) => (
-        <Space direction="vertical" size="small">
+        <Space orientation="vertical" size="small">
           <Tooltip title={record.isPromoted ? 'Remove from Sponsored' : 'Add to Sponsored'}>
             <Switch
               size="small"
@@ -755,7 +751,7 @@ export default function ProductsPage() {
               title="Total Products" 
               value={totalProducts} 
               prefix={<ShoppingOutlined />}
-              valueStyle={{ color: '#1890ff' }}
+              styles={{ content: { color: '#1890ff' } }}
             />
           </Card>
         </Col>
@@ -765,7 +761,7 @@ export default function ProductsPage() {
               title="In Stock" 
               value={inStockProducts} 
               prefix={<InboxOutlined />}
-              valueStyle={{ color: '#52c41a' }}
+              styles={{ content: { color: '#52c41a' } }}
             />
           </Card>
         </Col>
@@ -775,7 +771,7 @@ export default function ProductsPage() {
               title="Low Stock" 
               value={lowStockProducts} 
               prefix={<ExclamationCircleOutlined />}
-              valueStyle={{ color: '#faad14' }}
+              styles={{ content: { color: '#faad14' } }}
             />
           </Card>
         </Col>
@@ -785,7 +781,7 @@ export default function ProductsPage() {
               title="Out of Stock" 
               value={outOfStockProducts} 
               prefix={<InboxOutlined />}
-              valueStyle={{ color: '#ff4d4f' }}
+              styles={{ content: { color: '#ff4d4f' } }}
             />
           </Card>
         </Col>
@@ -795,7 +791,7 @@ export default function ProductsPage() {
               title="Sponsored" 
               value={promotedProducts} 
               prefix={<RocketOutlined />}
-              valueStyle={{ color: '#9333ea' }}
+              styles={{ content: { color: '#9333ea' } }}
             />
           </Card>
         </Col>
@@ -805,7 +801,7 @@ export default function ProductsPage() {
               title="Official Store" 
               value={officialProducts} 
               prefix={<SafetyCertificateOutlined />}
-              valueStyle={{ color: '#0891b2' }}
+              styles={{ content: { color: '#0891b2' } }}
             />
           </Card>
         </Col>
@@ -914,6 +910,19 @@ export default function ProductsPage() {
           setEditFileList([]);
         }}
         afterClose={() => form.resetFields()}
+        afterOpenChange={(open) => {
+          if (open && selectedProduct) {
+            form.setFieldsValue({
+              title: selectedProduct.title,
+              description: selectedProduct.description,
+              price: selectedProduct.price,
+              stock: selectedProduct.stock,
+              unit: selectedProduct.unit,
+              category: selectedProduct.category,
+              isAvailable: selectedProduct.isAvailable,
+            });
+          }
+        }}
         confirmLoading={updateMutation.isPending}
         width={700}
         destroyOnHidden
@@ -1167,7 +1176,7 @@ export default function ProductsPage() {
                     selectedProduct.images.map((img, index) => (
                       <Image
                         key={index}
-                        src={img}
+                        src={normalizeImageUrl(img)}
                         alt={`${selectedProduct.title} ${index + 1}`}
                         width={150}
                         height={150}
@@ -1235,11 +1244,11 @@ export default function ProductsPage() {
                     color: 'white',
                     fontWeight: 'bold',
                   }}>
-                    {selectedProduct.farmer?.firstName?.[0] || 'F'}
+                    {selectedProduct.farmerName?.[0] || selectedProduct.farmer?.firstName?.[0] || 'F'}
                   </div>
                   <div>
                     <Text strong>
-                      {selectedProduct.farmer?.businessName || `${selectedProduct.farmer?.firstName} ${selectedProduct.farmer?.lastName}`}
+                      {selectedProduct.farmerName || selectedProduct.farmer?.businessName || `${selectedProduct.farmer?.firstName || ''} ${selectedProduct.farmer?.lastName || ''}`}
                     </Text>
                     <br />
                     <Text type="secondary" style={{ fontSize: 12 }}>

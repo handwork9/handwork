@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -16,7 +16,7 @@ import {
   Linking,
   Modal,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
@@ -24,7 +24,7 @@ import { SPACING, FONT_SIZES, COLORS, FONTS } from '../../constants/theme';
 import { TopUpHeroIllustration } from '../../assets/illustrations/stats';
 import { walletService, TOPUP_CONFIG, WalletBalance, validateTopUpAmount } from '../../services/walletService';
 import { useTheme } from '../../context/ThemeContext';
-import { formatCurrency } from '../../utils/formatters';
+import { formatCurrency, formatCurrencyFull } from '../../utils/formatters';
 
 const { width } = Dimensions.get('window');
 
@@ -43,12 +43,8 @@ export default function TopUpScreen({ route }: { route?: { params?: { balance?: 
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
   
-  // Get balance from route params if passed (e.g., from WalletScreen)
-  const initialBalance = route?.params?.balance ?? 0;
-  
-  const [balance, setBalance] = useState<WalletBalance | null>(
-    initialBalance > 0 ? { available: initialBalance, pending: 0, total: initialBalance, currency: 'NGN' } : null
-  );
+  // Always fetch fresh balance from API - don't use stale route params
+  const [balance, setBalance] = useState<WalletBalance | null>(null);
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -61,6 +57,7 @@ export default function TopUpScreen({ route }: { route?: { params?: { balance?: 
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentUrl, setPaymentUrl] = useState('');
   const [paymentReference, setPaymentReference] = useState('');
+  const paymentReferenceRef = useRef(''); // Ref for reliable access in callbacks
   const [isWebViewLoading, setIsWebViewLoading] = useState(true);
   
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -86,7 +83,6 @@ export default function TopUpScreen({ route }: { route?: { params?: { balance?: 
   }), [colors, isDark]);
 
   useEffect(() => {
-    fetchBalance();
     fetchDvaDetails();
     Animated.timing(fadeAnim, {
       toValue: 1,
@@ -95,26 +91,32 @@ export default function TopUpScreen({ route }: { route?: { params?: { balance?: 
     }).start();
   }, []);
 
+  // Refresh balance whenever screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchBalance();
+    }, [])
+  );
+
   const fetchBalance = async () => {
     try {
       setIsFetchingBalance(true);
       const walletBalance = await walletService.getBalance();
       console.log('[TopUpScreen] Raw balance response:', JSON.stringify(walletBalance));
       
-      // Handle decimal strings from PostgreSQL
-      const availableBalance = typeof walletBalance.available === 'string' 
-        ? parseFloat(walletBalance.available) 
-        : (walletBalance.available || 0);
+      // Handle both string and number types from PostgreSQL
+      let availableBalance = (walletBalance as any)?.available ?? (walletBalance as any)?.balance ?? 0;
+      if (typeof availableBalance === 'string') {
+        availableBalance = parseFloat(availableBalance) || 0;
+      }
       
       console.log('[TopUpScreen] Parsed balance:', availableBalance);
       
-      // Use API balance, but keep route param balance if API returns 0
-      if (availableBalance > 0 || !initialBalance) {
-        setBalance({
-          ...walletBalance,
-          available: availableBalance,
-        });
-      }
+      // Always use API balance
+      setBalance({
+        ...walletBalance,
+        available: availableBalance,
+      });
     } catch (error) {
       console.error('[TopUpScreen] Failed to fetch balance:', error);
       // Keep initialBalance from route params on error
@@ -160,40 +162,147 @@ export default function TopUpScreen({ route }: { route?: { params?: { balance?: 
     // Card payment via Paystack
     try {
       setIsLoading(true);
+      console.log('[TopUpScreen] Initializing top-up for amount:', amount);
       const result = await walletService.initializeTopUp(amount);
+      console.log('[TopUpScreen] initializeTopUp result:', JSON.stringify(result));
       
       if (result && result.authorizationUrl) {
         // Open Paystack checkout in in-app WebView
+        console.log('[TopUpScreen] Setting paymentReference to:', result.reference);
         setPaymentUrl(result.authorizationUrl);
         setPaymentReference(result.reference);
+        paymentReferenceRef.current = result.reference; // Also store in ref
         setShowPaymentModal(true);
       } else {
         Alert.alert('Error', 'Failed to initialize payment');
       }
     } catch (error: any) {
+      console.log('[TopUpScreen] initializeTopUp error:', error);
       Alert.alert('Error', error.message || 'Something went wrong. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Handle WebView navigation state changes
+  // Handle WebView navigation state changes (same pattern as CheckoutScreen)
   const handleWebViewNavigationChange = (navState: any) => {
-    const { url } = navState;
+    const { url, title, loading } = navState;
     
-    // Check for success/callback URL patterns
-    if (url.includes('callback') || url.includes('success') || url.includes('trxref=') || url.includes('reference=')) {
-      // Payment completed, close modal and verify
+    if (!url) return;
+    
+    console.log('[TopUpScreen] WebView Navigation - URL:', url);
+    console.log('[TopUpScreen] WebView Navigation - Title:', title);
+    console.log('[TopUpScreen] WebView Navigation - Loading:', loading);
+    console.log('[TopUpScreen] Current paymentReference:', paymentReference);
+    
+    // Check for success in page title (Paystack shows "Transaction Successful" or similar)
+    if (title && (
+      title.toLowerCase().includes('success') ||
+      title.toLowerCase().includes('approved') ||
+      title.toLowerCase().includes('completed')
+    )) {
+      console.log('[TopUpScreen] Success detected from title, verifying payment...');
+      const refToVerify = paymentReferenceRef.current || paymentReference;
+      console.log('[TopUpScreen] Reference to verify:', refToVerify);
       setShowPaymentModal(false);
       setPaymentUrl('');
-      verifyPayment(paymentReference);
+      verifyPayment(refToVerify);
+      return;
+    }
+    
+    // Check for success/callback URL patterns (Paystack redirects)
+    if (
+      url.includes('callback') || 
+      url.includes('trxref=') || 
+      url.includes('reference=')
+    ) {
+      const refToVerify = paymentReferenceRef.current || paymentReference;
+      console.log('[TopUpScreen] Callback URL pattern in nav change, verifying:', refToVerify);
+      setShowPaymentModal(false);
+      setPaymentUrl('');
+      verifyPayment(refToVerify);
+      return;
     }
     
     // Check for cancel/close patterns
-    if (url.includes('cancel') || url.includes('close')) {
+    if (url.includes('cancel') || url.includes('close') || url.includes('failed')) {
       setShowPaymentModal(false);
       setPaymentUrl('');
       Alert.alert('Payment Cancelled', 'You cancelled the payment.');
+      return;
+    }
+  };
+
+  // JavaScript to inject into WebView to detect Paystack success
+  const injectedJavaScript = `
+    (function() {
+      // Monitor for success messages in the page
+      const observer = new MutationObserver(function(mutations) {
+        const bodyText = document.body.innerText || '';
+        if (
+          bodyText.includes('Transaction Successful') ||
+          bodyText.includes('Payment Successful') ||
+          bodyText.includes('Your payment was successful') ||
+          bodyText.includes('Transaction successful')
+        ) {
+          window.ReactNativeWebView.postMessage(JSON.stringify({ status: 'success', event: 'payment_complete' }));
+        }
+      });
+      
+      observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+      
+      // Also check on load
+      setTimeout(function() {
+        const bodyText = document.body.innerText || '';
+        if (
+          bodyText.includes('Transaction Successful') ||
+          bodyText.includes('Payment Successful') ||
+          bodyText.includes('Your payment was successful')
+        ) {
+          window.ReactNativeWebView.postMessage(JSON.stringify({ status: 'success', event: 'payment_complete' }));
+        }
+      }, 1000);
+    })();
+    true;
+  `;
+
+  // Handle URL requests before loading (better for catching redirects)
+  const handleShouldStartLoad = (request: any) => {
+    const { url } = request;
+    const refToVerify = paymentReferenceRef.current || paymentReference;
+    console.log('[TopUpScreen] handleShouldStartLoad - URL:', url);
+    console.log('[TopUpScreen] handleShouldStartLoad - refToVerify:', refToVerify);
+    
+    // Check if this is a callback/redirect URL
+    if (url.includes('callback') || url.includes('trxref=') || url.includes('reference=')) {
+      console.log('[TopUpScreen] Callback URL detected, verifying payment...');
+      // Close modal and verify payment
+      setTimeout(() => {
+        setShowPaymentModal(false);
+        setPaymentUrl('');
+        verifyPayment(refToVerify);
+      }, 100);
+      return false; // Don't load this URL in WebView
+    }
+    
+    return true; // Allow other URLs
+  };
+
+  // Handle messages from WebView (injected JavaScript)
+  const handleWebViewMessage = (event: any) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      console.log('[TopUpScreen] WebView message:', data);
+      
+      if (data.status === 'success' && data.event === 'payment_complete') {
+        const refToVerify = paymentReferenceRef.current || paymentReference;
+        console.log('[TopUpScreen] WebView message success, verifying:', refToVerify);
+        setShowPaymentModal(false);
+        setPaymentUrl('');
+        verifyPayment(refToVerify);
+      }
+    } catch (error) {
+      console.log('[TopUpScreen] Failed to parse WebView message:', error);
     }
   };
 
@@ -216,23 +325,33 @@ export default function TopUpScreen({ route }: { route?: { params?: { balance?: 
   };
 
   const verifyPayment = async (reference: string) => {
+    console.log('[TopUpScreen] verifyPayment called with reference:', reference);
     try {
       setIsLoading(true);
+      console.log('[TopUpScreen] Calling walletService.verifyTopUp...');
       const result = await walletService.verifyTopUp(reference);
+      console.log('[TopUpScreen] verifyTopUp result:', JSON.stringify(result));
       
       if (result.status === 'success') {
+        // Refresh balance first before showing alert
+        await fetchBalance();
+        
         Alert.alert(
           'Success!',
           `Your wallet has been credited with ₦${result.amount.toLocaleString()}.\n\nReference: ${result.reference}`,
           [{ text: 'OK', onPress: () => {
-            fetchBalance(); // Refresh balance
-            navigation.goBack();
+            // Small delay to ensure wallet screen refreshes properly
+            setTimeout(() => {
+              navigation.goBack();
+            }, 100);
           }}]
         );
       } else {
+        console.log('[TopUpScreen] Payment status not success:', result.status);
         Alert.alert('Payment Pending', 'Payment is still being processed. Please check back later.');
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.log('[TopUpScreen] verifyPayment error:', error);
       Alert.alert('Error', 'Could not verify payment. Please check your transaction history.');
     } finally {
       setIsLoading(false);
@@ -347,7 +466,7 @@ export default function TopUpScreen({ route }: { route?: { params?: { balance?: 
                 <ActivityIndicator size="small" color={colors.primary} />
               ) : (
                 <Text style={[styles.balanceAmount, dynamicStyles.text]}>
-                  {formatCurrency(balance?.available || 0)}
+                  {formatCurrencyFull(balance?.available || 0)}
                 </Text>
               )}
             </View>
@@ -585,8 +704,10 @@ export default function TopUpScreen({ route }: { route?: { params?: { balance?: 
       <Modal
         visible={showPaymentModal}
         animationType="slide"
+        presentationStyle="fullScreen"
         onRequestClose={handleClosePaymentModal}
       >
+        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
         <View style={[styles.paymentModalContainer, { paddingTop: insets.top }]}>
           {/* Modal Header */}
           <View style={styles.paymentModalHeader}>
@@ -594,9 +715,9 @@ export default function TopUpScreen({ route }: { route?: { params?: { balance?: 
               onPress={handleClosePaymentModal}
               style={styles.paymentModalCloseButton}
             >
-              <Ionicons name="close" size={24} color={colors.text} />
+              <Ionicons name="close" size={24} color="#1F2937" />
             </TouchableOpacity>
-            <Text style={[styles.paymentModalTitle, { color: colors.text }]}>
+            <Text style={[styles.paymentModalTitle, { color: '#1F2937' }]}>
               Complete Payment
             </Text>
             <View style={{ width: 40 }} />
@@ -606,7 +727,7 @@ export default function TopUpScreen({ route }: { route?: { params?: { balance?: 
           {isWebViewLoading && (
             <View style={styles.webviewLoadingContainer}>
               <ActivityIndicator size="large" color="#16A34A" />
-              <Text style={[styles.webviewLoadingText, { color: colors.textSecondary }]}>
+              <Text style={[styles.webviewLoadingText, { color: '#6B7280' }]}>
                 Loading payment page...
               </Text>
             </View>
@@ -618,12 +739,23 @@ export default function TopUpScreen({ route }: { route?: { params?: { balance?: 
               source={{ uri: paymentUrl }}
               style={[styles.paymentWebView, isWebViewLoading && { opacity: 0 }]}
               onNavigationStateChange={handleWebViewNavigationChange}
+              onShouldStartLoadWithRequest={handleShouldStartLoad}
+              onMessage={handleWebViewMessage}
+              injectedJavaScript={injectedJavaScript}
               onLoadStart={() => setIsWebViewLoading(true)}
               onLoadEnd={() => setIsWebViewLoading(false)}
               javaScriptEnabled={true}
               domStorageEnabled={true}
               startInLoadingState={true}
               scalesPageToFit={true}
+              renderLoading={() => (
+                <View style={styles.webviewLoadingContainer}>
+                  <ActivityIndicator size="large" color="#16A34A" />
+                  <Text style={[styles.webviewLoadingText, { color: '#6B7280' }]}>
+                    Loading payment page...
+                  </Text>
+                </View>
+              )}
             />
           ) : null}
         </View>

@@ -1,0 +1,55 @@
+# Render.com deployment configuration
+# https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: handwork-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile.production
+    dockerContext: ./backend
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: DATABASE_HOST
+        fromDatabase:
+          name: handwork-db
+          property: host
+      - key: DATABASE_PORT
+        fromDatabase:
+          name: handwork-db
+          property: port
+      - key: DATABASE_USERNAME
+        fromDatabase:
+          name: handwork-db
+          property: user
+      - key: DATABASE_PASSWORD
+        fromDatabase:
+          name: handwork-db
+          property: password
+      - key: DATABASE_NAME
+        fromDatabase:
+          name: handwork-db
+          property: database
+      - key: REDIS_HOST
+        fromService:
+          name: handwork-redis
+          type: redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          name: handwork-redis
+          type: redis
+          property: port
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
+    plan: starter
+
+databases:
+  - name: handwork-db
+    databaseName: handwork_production
+    user: handwork_prod
+    plan: starter
+    postgresMajorVersion: "15"
+    ipAllowList: []

@@ -111,10 +111,11 @@ const favoritesSlice = createSlice({
     // Optimistic update for toggle
     optimisticToggle: (state, action: PayloadAction<string>) => {
       const productId = action.payload;
+      if (!productId) return;
       const index = state.favoriteIds.indexOf(productId);
       if (index > -1) {
         state.favoriteIds.splice(index, 1);
-        state.items = state.items.filter(item => item.id !== productId);
+        state.items = state.items.filter(item => item?.id !== productId);
         state.total = Math.max(0, state.total - 1);
       } else {
         state.favoriteIds.push(productId);
@@ -131,12 +132,22 @@ const favoritesSlice = createSlice({
       .addCase(fetchFavorites.fulfilled, (state, action) => {
         state.isLoading = false;
         const payload = action.payload || {};
-        state.items = payload.items || [];
-        state.total = payload.total || 0;
+        // Filter out any null/undefined items and deduplicate by id
+        const validItems = (payload.items || []).filter((item: any) => item != null && item.id != null);
+        // Deduplicate items by id
+        const uniqueItems = validItems.reduce((acc: Product[], item: Product) => {
+          if (!acc.find((existing: Product) => existing.id === item.id)) {
+            acc.push(item);
+          }
+          return acc;
+        }, []);
+        state.items = uniqueItems;
+        state.total = payload.total || uniqueItems.length;
         state.page = payload.page || 1;
         state.limit = payload.limit || 20;
         state.totalPages = payload.totalPages || 0;
-        state.favoriteIds = (payload.items || []).map((item: Product) => item.id);
+        // Deduplicate favoriteIds as well
+        state.favoriteIds = [...new Set(uniqueItems.map((item: Product) => item.id))];
         state.lastFetched = Date.now();
       })
       .addCase(fetchFavorites.rejected, (state, action) => {
@@ -177,7 +188,7 @@ const favoritesSlice = createSlice({
           if (index > -1) {
             state.favoriteIds.splice(index, 1);
           }
-          state.items = state.items.filter(item => item.id !== productId);
+          state.items = state.items.filter(item => item?.id !== productId);
           state.total = Math.max(0, state.total - 1);
         }
       })
@@ -193,13 +204,15 @@ const favoritesSlice = createSlice({
       })
       .addCase(removeFavorite.fulfilled, (state, action) => {
         const productId = action.payload;
-        state.isToggling[productId] = false;
-        const index = state.favoriteIds.indexOf(productId);
-        if (index > -1) {
-          state.favoriteIds.splice(index, 1);
+        if (productId) {
+          state.isToggling[productId] = false;
+          const index = state.favoriteIds.indexOf(productId);
+          if (index > -1) {
+            state.favoriteIds.splice(index, 1);
+          }
+          state.items = state.items.filter(item => item?.id !== productId);
+          state.total = Math.max(0, state.total - 1);
         }
-        state.items = state.items.filter(item => item.id !== productId);
-        state.total = Math.max(0, state.total - 1);
       })
       .addCase(removeFavorite.rejected, (state, action) => {
         state.isToggling[action.meta.arg] = false;

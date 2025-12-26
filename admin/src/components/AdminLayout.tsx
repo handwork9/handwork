@@ -24,11 +24,15 @@ import {
   MessageOutlined,
   CrownOutlined,
   DeleteOutlined,
+  WalletOutlined,
+  MailOutlined,
+  SafetyOutlined,
 } from '@ant-design/icons';
 import { useAuthStore, hasPermission, PERMISSIONS } from '@/store/auth';
 import { useSocketStore } from '@/lib/socket';
 import { useSupportSocketStore } from '@/lib/supportSocket';
 import { useNotificationStore, AdminNotification } from '@/lib/notificationStore';
+import { normalizeImageUrl } from '@/lib/api';
 import type { MenuProps } from 'antd';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
@@ -109,6 +113,16 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           icon: <CustomerServiceOutlined />,
           label: 'Support Chat',
         },
+        {
+          key: '/support/reports',
+          icon: <FileTextOutlined />,
+          label: 'User Reports',
+        },
+        {
+          key: '/disputes',
+          icon: <SafetyOutlined />,
+          label: 'Disputes',
+        },
       ],
     },
     {
@@ -175,6 +189,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           disabled: !hasPermission(user, PERMISSIONS.VIEW_FINANCE),
         },
         {
+          key: '/withdrawals',
+          icon: <WalletOutlined />,
+          label: 'Withdrawals',
+          disabled: !hasPermission(user, PERMISSIONS.VIEW_FINANCE),
+        },
+        {
           key: '/referrals',
           icon: <GiftOutlined />,
           label: 'Referrals',
@@ -182,7 +202,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         {
           key: '/subscriptions',
           icon: <CrownOutlined />,
-          label: 'Subscriptions',
+          label: 'Farmer/Rider Subs',
+        },
+        {
+          key: '/buyer-premium',
+          icon: <CrownOutlined />,
+          label: 'Buyer Premium',
         },
       ],
     },
@@ -193,7 +218,19 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       disabled: !hasPermission(user, PERMISSIONS.SEND_NOTIFICATIONS),
     },
     {
+      key: '/promotional-emails',
+      icon: <MailOutlined />,
+      label: 'Promotional Emails',
+      disabled: !hasPermission(user, PERMISSIONS.SEND_NOTIFICATIONS),
+    },
+    {
       type: 'divider',
+    },
+    {
+      key: '/team',
+      icon: <TeamOutlined />,
+      label: 'Team Management',
+      disabled: !hasPermission(user, PERMISSIONS.MANAGE_ADMINS),
     },
     {
       key: '/audit-logs',
@@ -413,28 +450,35 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       >
         {/* Logo Section */}
         <div style={{ 
-          height: 64, 
+          height: 88, 
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'center', 
-          borderBottom: '1px solid #f0f0f0',
-          background: 'linear-gradient(135deg, #16a34a 0%, #22c55e 100%)',
+          borderBottom: '1px solid rgba(255,255,255,0.1)',
+          background: 'linear-gradient(145deg, #0f7335 0%, #16a34a 50%, #22c55e 100%)',
+          padding: '16px 20px',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ 
-              width: 36, 
-              height: 36, 
-              borderRadius: 8, 
-              background: 'rgba(255,255,255,0.2)', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center',
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{
+              background: '#fff',
+              borderRadius: 14,
+              padding: 6,
+              boxShadow: '0 4px 14px rgba(0,0,0,0.2), 0 0 0 2px rgba(255,255,255,0.3)',
             }}>
-              <ShopOutlined style={{ fontSize: 20, color: '#fff' }} />
+              <img 
+                src="/logo.png" 
+                alt="Handwork Logo" 
+                style={{ 
+                  width: 48, 
+                  height: 48, 
+                  objectFit: 'contain',
+                  display: 'block',
+                }} 
+              />
             </div>
             <div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: '#fff', lineHeight: 1.2 }}>Handwork</div>
-              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.8)', letterSpacing: 1 }}>ADMIN PANEL</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', lineHeight: 1.1, textShadow: '0 1px 2px rgba(0,0,0,0.15)' }}>Handwork</div>
+              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.95)', letterSpacing: 2.5, fontWeight: 600, marginTop: 2 }}>ADMIN PANEL</div>
             </div>
           </div>
         </div>
@@ -545,7 +589,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             </Dropdown>
             <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
               <Avatar
-                src={user?.avatar}
+                src={normalizeImageUrl(user?.avatar)}
                 icon={!user?.avatar && <UserOutlined />}
                 style={{ cursor: 'pointer' }}
               />

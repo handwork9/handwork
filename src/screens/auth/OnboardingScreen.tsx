@@ -169,10 +169,10 @@ export default function OnboardingScreen({ navigation }: Props) {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      {/* Logo at top */}
+      {/* Header area with Logo, Pagination, and Skip */}
       <Animated.View
         style={[
-          styles.logoContainer,
+          styles.headerContainer,
           { paddingTop: insets.top + 20, opacity: fadeAnim },
         ]}
       >
@@ -181,15 +181,7 @@ export default function OnboardingScreen({ navigation }: Props) {
           style={styles.logoImage}
           resizeMode="contain"
         />
-      </Animated.View>
-
-      {/* Skip button */}
-      <Animated.View
-        style={[
-          styles.skipContainer,
-          { paddingTop: insets.top + 20, opacity: fadeAnim },
-        ]}
-      >
+        {renderPagination()}
         <TouchableOpacity onPress={skipOnboarding} style={styles.skipButton}>
           <Text style={styles.skipText}>Skip</Text>
         </TouchableOpacity>
@@ -222,8 +214,6 @@ export default function OnboardingScreen({ navigation }: Props) {
           { paddingBottom: insets.bottom + 30, opacity: fadeAnim },
         ]}
       >
-        {renderPagination()}
-
         <TouchableOpacity
           style={styles.nextButton}
           onPress={scrollToNext}
@@ -259,25 +249,21 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000',
   },
-  logoContainer: {
+  headerContainer: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.lg,
     zIndex: 10,
   },
   logoImage: {
     width: 50,
     height: 50,
     borderRadius: 10,
-  },
-  skipContainer: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    zIndex: 10,
-    paddingHorizontal: SPACING.lg,
   },
   skipButton: {
     paddingVertical: 8,
@@ -335,14 +321,12 @@ const styles = StyleSheet.create({
   },
   paginationContainer: {
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: SPACING.lg,
   },
   dot: {
     height: 8,
     borderRadius: 4,
-    marginHorizontal: 4,
+    marginHorizontal: 3,
     backgroundColor: '#FFFFFF',
   },
   nextButton: {

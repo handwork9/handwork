@@ -1,4 +1,4 @@
-import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsBoolean, IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { DeletionReason } from '../../database/entities/account-deletion-request.entity';
 
@@ -34,6 +34,7 @@ export class ReviewDeletionRequestDto {
     description: 'Whether to approve or reject the request',
     example: true,
   })
+  @IsBoolean()
   approve: boolean;
 
   @ApiPropertyOptional({

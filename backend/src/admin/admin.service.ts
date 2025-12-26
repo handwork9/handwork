@@ -284,6 +284,81 @@ export class AdminService {
   }
 
   /**
+   * Get comprehensive reports data
+   */
+  async getReports(type: string, startDate: Date, endDate: Date): Promise<any> {
+    // Get summary metrics
+    const [
+      orderMetrics,
+      revenueMetrics,
+      topFarmers,
+      topRiders,
+      dispatchAnalytics,
+    ] = await Promise.all([
+      this.getOrderMetrics(startDate, endDate),
+      this.getRevenueMetrics(startDate, endDate),
+      this.getTopFarmers(5),
+      this.getTopRiders(5),
+      this.getDispatchAnalytics(startDate, endDate),
+    ]);
+
+    // Calculate summary
+    const totalRevenue = revenueMetrics.reduce((sum, m) => sum + m.revenue, 0);
+    const totalOrders = orderMetrics.reduce((sum, m) => sum + m.totalOrders, 0);
+    const completedOrders = orderMetrics.reduce((sum, m) => sum + (m.completedOrders || 0), 0);
+    const totalDeliveries = dispatchAnalytics?.totalDeliveries || completedOrders;
+    const avgDeliveryTime = dispatchAnalytics?.averageDeliveryTime || 35;
+    const cancellationRate = totalOrders > 0 
+      ? (orderMetrics.reduce((sum, m) => sum + (m.cancelledOrders || 0), 0) / totalOrders) * 100 
+      : 0;
+
+    // Get orders by category
+    const ordersByCategory = await this.orderRepository
+      .createQueryBuilder('order')
+      .leftJoin('order.items', 'item')
+      .leftJoin('item.product', 'product')
+      .select('product.category', 'category')
+      .addSelect('COUNT(DISTINCT order.id)', 'orders')
+      .addSelect('SUM(item.subtotal)', 'revenue')
+      .where('order.createdAt BETWEEN :startDate AND :endDate', { startDate, endDate })
+      .andWhere('product.category IS NOT NULL')
+      .groupBy('product.category')
+      .orderBy('orders', 'DESC')
+      .getRawMany();
+
+    return {
+      summary: {
+        totalRevenue,
+        totalOrders,
+        avgOrderValue: totalOrders > 0 ? totalRevenue / totalOrders : 0,
+        totalDeliveries,
+        avgDeliveryTime,
+        cancellationRate: Math.round(cancellationRate * 10) / 10,
+      },
+      revenueByDay: revenueMetrics.map(m => ({
+        date: m.date,
+        revenue: m.revenue,
+        orders: m.paymentCount,
+      })),
+      ordersByCategory: ordersByCategory.map(c => ({
+        category: c.category || 'Other',
+        orders: parseInt(c.orders, 10),
+        revenue: parseFloat(c.revenue || '0'),
+      })),
+      topFarmers: topFarmers.map(f => ({
+        name: f.businessName || `${f.firstName} ${f.lastName}`,
+        orders: f.orderCount || 0,
+        revenue: f.totalRevenue || 0,
+      })),
+      topRiders: topRiders.map(r => ({
+        name: `${r.firstName} ${r.lastName}`,
+        deliveries: r.deliveryCount || 0,
+        earnings: r.totalEarnings || 0,
+      })),
+    };
+  }
+
+  /**
    * Get user growth over time
    */
   async getUserGrowth(startDate: Date, endDate: Date): Promise<UserGrowth[]> {
@@ -324,32 +399,44 @@ export class AdminService {
    * Get top performing farmers
    */
   async getTopFarmers(limit = 10): Promise<any[]> {
+    // Orders store items as JSONB with farmerId in each item
+    // Use raw query to aggregate by farmerId from the items array
+    const result = await this.orderRepository.query(`
+      SELECT 
+        item->>'farmerId' as "farmerId",
+        COUNT(DISTINCT o.id) as "totalOrders",
+        SUM((item->>'subtotal')::numeric) as "totalRevenue"
+      FROM orders o,
+           jsonb_array_elements(o.items) as item
+      WHERE o.status = $1
+      GROUP BY item->>'farmerId'
+      ORDER BY "totalRevenue" DESC NULLS LAST
+      LIMIT $2
+    `, [OrderStatus.DELIVERED, limit]);
+
+    // Get farmer details
+    const farmerIds = result.map((r: any) => r.farmerId).filter(Boolean);
+    if (farmerIds.length === 0) {
+      return [];
+    }
+
     const farmers = await this.userRepository
       .createQueryBuilder('user')
-      .leftJoin('user.products', 'product')
-      .leftJoin('product.orderItems', 'orderItem')
-      .leftJoin('orderItem.order', 'order')
-      .select('user.id', 'id')
-      .addSelect('user.fullName', 'name')
-      .addSelect('user.email', 'email')
-      .addSelect('COUNT(DISTINCT order.id)', 'totalOrders')
-      .addSelect('SUM(orderItem.subtotal)', 'totalRevenue')
-      .where('user.role = :role', { role: UserRole.FARMER })
-      .andWhere('order.status = :status', { status: OrderStatus.DELIVERED })
-      .groupBy('user.id')
-      .addGroupBy('user.fullName')
-      .addGroupBy('user.email')
-      .orderBy('totalRevenue', 'DESC')
-      .limit(limit)
-      .getRawMany();
+      .where('user.id IN (:...farmerIds)', { farmerIds })
+      .getMany();
 
-    return farmers.map((f) => ({
-      id: f.id,
-      name: f.name,
-      email: f.email,
-      totalOrders: parseInt(f.totalOrders, 10),
-      totalRevenue: parseFloat(f.totalRevenue || '0'),
-    }));
+    const farmerMap = new Map(farmers.map((f) => [f.id, f]));
+
+    return result.map((r: any) => {
+      const farmer = farmerMap.get(r.farmerId);
+      return {
+        id: r.farmerId,
+        name: farmer?.fullName || farmer?.name || 'Unknown Farmer',
+        email: farmer?.email || '',
+        totalOrders: parseInt(r.totalOrders, 10) || 0,
+        totalRevenue: parseFloat(r.totalRevenue || '0'),
+      };
+    }).filter((f: any) => f.id);
   }
 
   /**
@@ -500,6 +587,84 @@ export class AdminService {
   }
 
   /**
+   * Set manual priority boost for a rider
+   */
+  async setRiderManualBoost(
+    riderId: string,
+    boost: number,
+    expiresInHours: number | undefined,
+    reason: string,
+    adminId: string,
+  ): Promise<{ message: string; rider: Rider }> {
+    const rider = await this.riderRepository.findOne({
+      where: { id: riderId },
+      relations: ['user'],
+    });
+
+    if (!rider) {
+      throw new Error('Rider not found');
+    }
+
+    // Validate boost value
+    const boostValue = Math.min(Math.max(boost, 1.0), 5.0);
+    
+    // Calculate expiry
+    let expiresAt: Date | undefined = undefined;
+    if (expiresInHours && expiresInHours > 0) {
+      expiresAt = new Date(Date.now() + expiresInHours * 60 * 60 * 1000);
+    }
+
+    rider.manualBoost = boostValue;
+    rider.manualBoostExpiresAt = expiresAt as any;
+    rider.manualBoostReason = reason;
+    rider.manualBoostSetBy = adminId;
+    
+    await this.riderRepository.save(rider);
+
+    this.logger.log(
+      `Admin ${adminId} set manual boost ${boostValue}x for rider ${riderId}` +
+      (expiresAt ? ` (expires: ${expiresAt.toISOString()})` : ' (permanent)') +
+      `: ${reason}`
+    );
+
+    return {
+      message: `Priority boost of ${boostValue}x applied successfully`,
+      rider,
+    };
+  }
+
+  /**
+   * Remove manual priority boost from a rider
+   */
+  async removeRiderManualBoost(
+    riderId: string,
+    adminId: string,
+  ): Promise<{ message: string; rider: Rider }> {
+    const rider = await this.riderRepository.findOne({
+      where: { id: riderId },
+      relations: ['user'],
+    });
+
+    if (!rider) {
+      throw new Error('Rider not found');
+    }
+
+    rider.manualBoost = 1.0;
+    rider.manualBoostExpiresAt = undefined as any;
+    rider.manualBoostReason = undefined as any;
+    rider.manualBoostSetBy = undefined as any;
+    
+    await this.riderRepository.save(rider);
+
+    this.logger.log(`Admin ${adminId} removed manual boost for rider ${riderId}`);
+
+    return {
+      message: 'Priority boost removed successfully',
+      rider,
+    };
+  }
+
+  /**
    * Get all farmer applications with pagination
    */
   async getFarmerApplications(
@@ -567,6 +732,54 @@ export class AdminService {
       applicationId: profile.id,
       userId: profile.userId,
       farmName: profile.farmName,
+    };
+  }
+
+  /**
+   * Verify a farmer by user ID (approve their farmer application)
+   */
+  async verifyFarmerByUserId(userId: string, adminId: string) {
+    // Find the farmer profile by user ID
+    const profile = await this.farmerProfileRepository.findOne({
+      where: { userId },
+      relations: ['user'],
+    });
+
+    if (!profile) {
+      throw new Error('Farmer profile not found for this user');
+    }
+
+    if (profile.applicationStatus === FarmerApplicationStatus.APPROVED) {
+      return {
+        success: true,
+        message: 'Farmer is already verified',
+        applicationId: profile.id,
+        userId: profile.userId,
+        farmName: profile.farmName || profile.user?.name,
+      };
+    }
+
+    // Update farmer profile status
+    profile.applicationStatus = FarmerApplicationStatus.APPROVED;
+    profile.approvedAt = new Date();
+    profile.approvedBy = adminId;
+    await this.farmerProfileRepository.save(profile);
+
+    // Change user role to farmer and activate
+    await this.userRepository.update(profile.userId, {
+      role: UserRole.FARMER,
+      isActivated: true,
+      activatedAt: new Date(),
+    });
+
+    this.logger.log(`Farmer (user: ${userId}) verified by admin ${adminId}`);
+
+    return {
+      success: true,
+      message: 'Farmer verified successfully',
+      applicationId: profile.id,
+      userId: profile.userId,
+      farmName: profile.farmName || profile.user?.name,
     };
   }
 
@@ -704,11 +917,13 @@ export class AdminService {
 
   /**
    * Get available riders for order assignment
-   * Returns riders who are verified and available for deliveries
+   * Returns riders who are verified, online, and available for deliveries
+   * Filters by state to ensure riders can only be assigned to orders in their operating state
    */
   async getAvailableRiders(
     page = 1,
     limit = 100,
+    state?: string,
   ): Promise<{ items: any[]; total: number; pages: number }> {
     const pageNum = Number(page) || 1;
     const limitNum = Number(limit) || 100;
@@ -718,7 +933,15 @@ export class AdminService {
       .leftJoinAndSelect('rider.user', 'user')
       .where('rider.isVerified = :isVerified', { isVerified: true })
       .andWhere('rider.applicationStatus = :status', { status: RiderApplicationStatus.APPROVED })
-      .orderBy('rider.createdAt', 'DESC');
+      .andWhere('rider.isOnline = :isOnline', { isOnline: true });
+
+    // Filter by state if provided - only show riders operating in the same state
+    if (state) {
+      queryBuilder.andWhere('LOWER(rider.currentState) = LOWER(:state)', { state });
+    }
+
+    queryBuilder.orderBy('rider.rating', 'DESC')
+      .addOrderBy('rider.completedDeliveries', 'DESC');
 
     const [riders, total] = await queryBuilder
       .skip(skip)
@@ -739,6 +962,8 @@ export class AdminService {
       isAvailable: rider.status === RiderStatus.AVAILABLE,
       isOnline: rider.isOnline,
       rating: rider.rating,
+      currentState: rider.currentState,
+      completedDeliveries: rider.completedDeliveries,
     }));
 
     return {
@@ -1190,6 +1415,94 @@ export class AdminService {
   }
 
   // ==================== SETTINGS METHODS ====================
+
+  // Default dispatch configuration
+  private readonly DEFAULT_DISPATCH_CONFIG = {
+    // Pricing
+    baseFee: 500,
+    perKmRate: 100,
+    peakHoursMultiplier: 1.5,
+    minFee: 300,
+    maxFee: 5000,
+    
+    // Timing
+    maxDeliveryRadius: 25,
+    estimatedPrepTime: 30,
+    avgDeliverySpeed: 25,
+    bufferTime: 10,
+    
+    // Auto-dispatch
+    autoDispatchEnabled: true,
+    autoDispatchDelay: 30,
+    maxAutoDispatchAttempts: 5,
+    prioritizeVerifiedRiders: true,
+    maxActiveOrdersPerRider: 3,
+    minRiderRating: 3.5,
+    
+    // Features
+    enableLiveTracking: true,
+    enableRiderChat: true,
+    enableOrderScheduling: true,
+    enableExpressDelivery: true,
+    
+    // Express delivery
+    expressDeliveryMultiplier: 1.8,
+    expressDeliveryMaxDistance: 10,
+  };
+
+  /**
+   * Get dispatch configuration
+   */
+  async getDispatchConfig(): Promise<Record<string, any>> {
+    const setting = await this.appSettingsRepository.findOne({
+      where: { key: 'dispatch_config' },
+    });
+
+    if (setting?.value?.data) {
+      return { ...this.DEFAULT_DISPATCH_CONFIG, ...setting.value.data };
+    }
+
+    return this.DEFAULT_DISPATCH_CONFIG;
+  }
+
+  /**
+   * Update dispatch configuration
+   */
+  async updateDispatchConfig(
+    config: Record<string, any>,
+    adminId?: string,
+  ): Promise<Record<string, any>> {
+    let setting = await this.appSettingsRepository.findOne({
+      where: { key: 'dispatch_config' },
+    });
+
+    if (!setting) {
+      setting = this.appSettingsRepository.create({
+        key: 'dispatch_config',
+        category: 'dispatch',
+        description: 'Dispatch and delivery configuration',
+        value: { data: config },
+      });
+    } else {
+      const existingData = setting.value?.data || {};
+      setting.value = { data: { ...existingData, ...config } };
+    }
+
+    await this.appSettingsRepository.save(setting);
+
+    // Create audit log
+    if (adminId) {
+      await this.createAuditLog({
+        action: AuditAction.SETTINGS_UPDATE,
+        category: AuditCategory.SYSTEM,
+        adminId,
+        description: 'Updated dispatch configuration',
+        newValues: config,
+      });
+    }
+
+    return this.getDispatchConfig();
+  }
 
   /**
    * Get all settings as a unified object
@@ -2145,5 +2458,63 @@ export class AdminService {
 
     this.logger.log(`Updated images for product ${productId}`);
     return product;
+  }
+
+  /**
+   * Get users for promotional email based on target audience
+   */
+  async getUsersForPromotionalEmail(
+    targetAudience: 'all' | 'buyers' | 'farmers' | 'riders',
+  ): Promise<Array<{ email: string; firstName?: string }>> {
+    const queryBuilder = this.userRepository
+      .createQueryBuilder('user')
+      .select(['user.email', 'user.name'])
+      .where('user.email IS NOT NULL')
+      .andWhere('user.isActive = :isActive', { isActive: true });
+
+    switch (targetAudience) {
+      case 'buyers':
+        queryBuilder.andWhere('user.role = :role', { role: UserRole.BUYER });
+        break;
+      case 'farmers':
+        queryBuilder.andWhere('user.role = :role', { role: UserRole.FARMER });
+        break;
+      case 'riders':
+        queryBuilder.andWhere('user.role = :role', { role: UserRole.RIDER });
+        break;
+      case 'all':
+      default:
+        // Include all active users with emails
+        break;
+    }
+
+    const users = await queryBuilder.getMany();
+    this.logger.log(`Found ${users.length} users for promotional email (audience: ${targetAudience})`);
+    // Extract first name from full name (take first word)
+    return users.map(u => ({ 
+      email: u.email, 
+      firstName: u.name?.split(' ')[0] 
+    }));
+  }
+
+  /**
+   * Log an audit action (simplified version for promotional emails)
+   */
+  async logAuditAction(
+    adminId: string,
+    action: string,
+    category: string,
+    description: string,
+  ): Promise<void> {
+    try {
+      await this.createAuditLog({
+        action: action as AuditAction,
+        category: category as AuditCategory,
+        adminId,
+        description,
+      });
+    } catch (error) {
+      this.logger.warn(`Failed to log audit action: ${error.message}`);
+    }
   }
 }

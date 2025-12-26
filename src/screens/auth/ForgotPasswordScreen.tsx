@@ -615,9 +615,18 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
         >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.stepIndicator, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-          Step {getStepNumber()} of 3
-        </Text>
+        <View style={styles.headerRight}>
+          <Text style={[styles.stepIndicator, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+            Step {getStepNumber()} of 3
+          </Text>
+          <TouchableOpacity
+            style={styles.supportButton}
+            onPress={() => (navigation as any).navigate('LiveChat')}
+            accessibilityLabel="Live Support"
+          >
+            <Ionicons name="chatbubble-ellipses-outline" size={22} color={COLORS.primary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Progress Bar */}
@@ -664,6 +673,18 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  supportButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },

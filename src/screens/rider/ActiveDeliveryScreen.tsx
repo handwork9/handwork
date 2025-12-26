@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,9 @@ import {
   StatusBar,
   Animated,
   Dimensions,
+  Vibration,
+  Image,
+  Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -18,6 +21,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
+import * as ImagePicker from 'expo-image-picker';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, FONTS } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
 import { LoadingState, Button } from '../../components/common';
@@ -25,8 +30,10 @@ import { DeliveryMap } from '../../components/common/DeliveryMap';
 import { useDispatchSocket } from '../../hooks/useDispatchSocket';
 import { useLocation } from '../../hooks/useLocation';
 import { formatCurrency } from '../../utils/formatters';
+import { openMapsWithDirections } from '../../utils/maps';
 import { RiderStackParamList, OrderStatus } from '../../types';
 import { riderService } from '../../services/orderService';
+import uploadService from '../../services/uploadService';
 
 type NavigationProp = NativeStackNavigationProp<RiderStackParamList>;
 
@@ -47,10 +54,13 @@ interface ActiveDelivery {
     longitude: number;
   };
   farmer: {
+    id: string;
     name: string;
     phone: string;
+    address?: string;
   };
   buyer: {
+    id: string;
     name: string;
     phone: string;
   };
@@ -59,12 +69,21 @@ interface ActiveDelivery {
     quantity: number;
   }>;
   earnings: number;
+  eta?: number; // ETA in minutes
   estimatedDeliveryTime: string;
 }
 
 type DeliveryStep = 'accepted' | 'picked_up' | 'in_transit' | 'delivered';
 
 const DELIVERY_STEPS: DeliveryStep[] = ['accepted', 'picked_up', 'in_transit', 'delivered'];
+
+// Step descriptions for better UX
+const STEP_INFO: Record<DeliveryStep, { icon: keyof typeof Ionicons.glyphMap; label: string; action: string; color: string }> = {
+  accepted: { icon: 'checkmark-circle', label: 'Order Accepted', action: 'Head to pickup location', color: '#3B82F6' },
+  picked_up: { icon: 'cube', label: 'Picked Up', action: 'Confirm you have the items', color: '#8B5CF6' },
+  in_transit: { icon: 'bicycle', label: 'In Transit', action: 'Delivering to customer', color: '#F59E0B' },
+  delivered: { icon: 'checkmark-done-circle', label: 'Delivered', action: 'Order complete!', color: '#10B981' },
+};
 
 export default function ActiveDeliveryScreen() {
   const navigation = useNavigation<NavigationProp>();
@@ -74,6 +93,45 @@ export default function ActiveDeliveryScreen() {
   const { updateLocation, isConnected } = useDispatchSocket();
   const { location, startWatching, stopWatching } = useLocation();
   const [currentStep, setCurrentStep] = useState<DeliveryStep>('accepted');
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [startTime] = useState(Date.now());
+  const lastMapLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
+  
+  // Memoized location for map - only updates when moved significantly (50+ meters)
+  const stableMapLocation = useMemo(() => {
+    if (!location) return null;
+    
+    const current = { latitude: location.latitude, longitude: location.longitude };
+    const last = lastMapLocationRef.current;
+    
+    // If no previous location, use current
+    if (!last) {
+      lastMapLocationRef.current = current;
+      return current;
+    }
+    
+    // Calculate distance (rough approximation)
+    const latDiff = Math.abs(current.latitude - last.latitude);
+    const lngDiff = Math.abs(current.longitude - last.longitude);
+    const distanceApprox = Math.sqrt(latDiff * latDiff + lngDiff * lngDiff) * 111000; // meters
+    
+    // Only update if moved more than 50 meters
+    if (distanceApprox > 50) {
+      lastMapLocationRef.current = current;
+      return current;
+    }
+    
+    return last;
+  }, [location?.latitude, location?.longitude]);
+  
+  // Proof of delivery photo state
+  const [proofPhotoUri, setProofPhotoUri] = useState<string | null>(null);
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  
+  // Animations
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const slideAnim = useRef(new Animated.Value(0)).current;
 
   // Scroll animation
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -82,6 +140,33 @@ export default function ActiveDeliveryScreen() {
     outputRange: [0, 1],
     extrapolate: 'clamp',
   });
+  
+  // Elapsed time counter
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setElapsedTime(Math.floor((Date.now() - startTime) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [startTime]);
+  
+  // Pulse animation for current step
+  useEffect(() => {
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.2, duration: 800, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+      ])
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [currentStep]);
+  
+  // Format elapsed time
+  const formatElapsedTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   const { data: delivery, isLoading, refetch } = useQuery({
     queryKey: ['active-delivery'],
@@ -111,14 +196,19 @@ export default function ActiveDeliveryScreen() {
   }, [delivery, location, isConnected, updateLocation]);
 
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ deliveryId, status }: { deliveryId: string; status: string }) => {
-      const result = await riderService.updateDeliveryStatus(deliveryId, status);
+    mutationFn: async ({ deliveryId, status, proofOfDeliveryPhoto }: { 
+      deliveryId: string; 
+      status: string; 
+      proofOfDeliveryPhoto?: string;
+    }) => {
+      const result = await riderService.updateDeliveryStatus(deliveryId, status, proofOfDeliveryPhoto);
       return result;
     },
     onSuccess: (_data, variables) => {
       if (variables.status === 'delivered') {
         queryClient.invalidateQueries({ queryKey: ['active-delivery'] });
         queryClient.invalidateQueries({ queryKey: ['rider-earnings'] });
+        setProofPhotoUri(null);
         navigation.navigate('DeliveryConfirmation', { 
           deliveryId: variables.deliveryId,
           earnings: delivery?.earnings || 0,
@@ -132,22 +222,51 @@ export default function ActiveDeliveryScreen() {
     },
   });
 
-  const openMaps = useCallback((latitude: number, longitude: number, label: string) => {
-    const scheme = Platform.select({
-      ios: 'maps:',
-      android: 'geo:',
-    });
-    const url = Platform.select({
-      ios: `maps:?daddr=${latitude},${longitude}&q=${encodeURIComponent(label)}`,
-      android: `geo:${latitude},${longitude}?q=${latitude},${longitude}(${encodeURIComponent(label)})`,
+  // Take proof of delivery photo
+  const takeProofPhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'Camera permission is needed to take proof of delivery photos.');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.7,
+      base64: true,
     });
 
-    if (url) {
-      Linking.openURL(url).catch(() => {
-        Alert.alert('Error', 'Unable to open maps');
-      });
+    if (!result.canceled && result.assets[0]) {
+      setProofPhotoUri(result.assets[0].uri);
+      setShowPhotoModal(true);
     }
-  }, []);
+  };
+
+  // Upload and complete delivery with photo
+  const completeDeliveryWithPhoto = async () => {
+    if (!delivery || !proofPhotoUri) return;
+    
+    setUploadingPhoto(true);
+    try {
+      // Upload the photo first
+      const uploadResult = await uploadService.uploadImage(proofPhotoUri, 'delivery-proof');
+      const photoUrl = uploadResult?.url;
+      
+      // Complete the delivery with the photo URL
+      updateStatusMutation.mutate({
+        deliveryId: delivery.id,
+        status: 'delivered',
+        proofOfDeliveryPhoto: photoUrl,
+      });
+      setShowPhotoModal(false);
+    } catch (error: any) {
+      Alert.alert('Upload Failed', error.message || 'Failed to upload photo. Please try again.');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
 
   const callContact = useCallback((phone: string) => {
     Linking.openURL(`tel:${phone}`).catch(() => {
@@ -162,6 +281,26 @@ export default function ActiveDeliveryScreen() {
     const nextStep = DELIVERY_STEPS[currentIndex + 1];
 
     if (!nextStep) return;
+    
+    // Haptic feedback
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    // For delivery completion, require photo proof
+    if (nextStep === 'delivered') {
+      Alert.alert(
+        'Complete Delivery',
+        'Take a photo as proof of delivery before completing.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Take Photo',
+            style: 'default',
+            onPress: takeProofPhoto,
+          },
+        ]
+      );
+      return;
+    }
 
     const stepMessages: Record<DeliveryStep, string> = {
       accepted: '',
@@ -171,13 +310,15 @@ export default function ActiveDeliveryScreen() {
     };
 
     Alert.alert(
-      'Update Status',
+      `Update to: ${STEP_INFO[nextStep].label}`,
       stepMessages[nextStep],
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Confirm',
+          style: 'default',
           onPress: () => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             setCurrentStep(nextStep);
             updateStatusMutation.mutate({
               deliveryId: delivery.id,
@@ -297,6 +438,14 @@ export default function ActiveDeliveryScreen() {
             end={{ x: 1, y: 1 }}
             style={styles.heroGradient}
           >
+            {/* Current step indicator */}
+            <View style={styles.currentStepBadge}>
+              <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                <Ionicons name={STEP_INFO[currentStep].icon} size={20} color="#FFFFFF" />
+              </Animated.View>
+              <Text style={styles.currentStepText}>{STEP_INFO[currentStep].label}</Text>
+            </View>
+            
             <View style={styles.heroIconContainer}>
               <Ionicons name="navigate" size={32} color="#FFFFFF" />
             </View>
@@ -319,7 +468,14 @@ export default function ActiveDeliveryScreen() {
               </View>
               <View style={styles.heroStatDivider} />
               <View style={styles.heroStatItem}>
-                <Text style={styles.heroStatValue}>{delivery.estimatedDeliveryTime}</Text>
+                <Text style={styles.heroStatValue}>{formatElapsedTime(elapsedTime)}</Text>
+                <Text style={styles.heroStatLabel}>Time</Text>
+              </View>
+              <View style={styles.heroStatDivider} />
+              <View style={styles.heroStatItem}>
+                <Text style={styles.heroStatValue}>
+                  {delivery.eta ? `${delivery.eta} min` : '--'}
+                </Text>
                 <Text style={styles.heroStatLabel}>ETA</Text>
               </View>
             </View>
@@ -327,13 +483,37 @@ export default function ActiveDeliveryScreen() {
         </View>
 
         {/* In-App Map */}
-        <View style={styles.mapContainer}>
-          <DeliveryMap
-            pickupLocation={delivery.pickupLocation}
-            deliveryLocation={delivery.deliveryLocation}
-            riderLocation={location}
-            currentStep={currentStep}
-          />
+        <View style={styles.mapSection}>
+          <View style={styles.mapContainer}>
+            <DeliveryMap
+              pickupLocation={delivery.pickupLocation}
+              deliveryLocation={delivery.deliveryLocation}
+              riderLocation={stableMapLocation}
+              currentStep={currentStep}
+            />
+          </View>
+          {/* Get Directions Button - Below the map */}
+          <TouchableOpacity
+            style={styles.getDirectionsButton}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              // Before pickup confirmation (accepted), navigate to farmer
+              // After pickup (picked_up, in_transit), navigate to buyer
+              const goToFarmer = currentStep === 'accepted';
+              const dest = goToFarmer
+                ? delivery.pickupLocation 
+                : delivery.deliveryLocation;
+              const label = goToFarmer
+                ? `Pickup: ${delivery.farmer.name}`
+                : `Deliver to: ${delivery.buyer.name}`;
+              openMapsWithDirections(dest.latitude, dest.longitude, label);
+            }}
+          >
+            <Ionicons name="navigate" size={18} color="#FFFFFF" />
+            <Text style={styles.getDirectionsText}>
+              {currentStep === 'accepted' ? 'Directions to Farmer' : 'Directions to Buyer'}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* Progress Steps */}
@@ -441,7 +621,7 @@ export default function ActiveDeliveryScreen() {
               <TouchableOpacity
                 style={[styles.contactActionButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : COLORS.background }]}
                 onPress={() => (navigation as any).navigate('DeliveryChat', {
-                  contactId: 'farmer-1',
+                  contactId: delivery.farmer.id,
                   contactName: delivery.farmer.name,
                   contactPhone: delivery.farmer.phone,
                   contactRole: 'farmer',
@@ -471,7 +651,7 @@ export default function ActiveDeliveryScreen() {
               <TouchableOpacity
                 style={[styles.contactActionButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : COLORS.background }]}
                 onPress={() => (navigation as any).navigate('DeliveryChat', {
-                  contactId: 'buyer-1',
+                  contactId: delivery.buyer.id,
                   contactName: delivery.buyer.name,
                   contactPhone: delivery.buyer.phone,
                   contactRole: 'buyer',
@@ -502,6 +682,68 @@ export default function ActiveDeliveryScreen() {
           </View>
         )}
       </Animated.ScrollView>
+
+      {/* Proof of Delivery Photo Modal */}
+      <Modal
+        visible={showPhotoModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowPhotoModal(false)}
+      >
+        <View style={styles.photoModalOverlay}>
+          <View style={[styles.photoModalContent, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+            <View style={styles.photoModalHeader}>
+              <Text style={[styles.photoModalTitle, { color: colors.text }]}>Proof of Delivery</Text>
+              <TouchableOpacity 
+                onPress={() => setShowPhotoModal(false)}
+                style={styles.photoModalClose}
+              >
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+            
+            {proofPhotoUri && (
+              <Image 
+                source={{ uri: proofPhotoUri }} 
+                style={styles.proofPhoto}
+                resizeMode="cover"
+              />
+            )}
+            
+            <Text style={[styles.photoModalSubtitle, { color: isDark ? '#9CA3AF' : COLORS.textSecondary }]}>
+              This photo will be saved as proof of delivery
+            </Text>
+            
+            <View style={styles.photoModalButtons}>
+              <TouchableOpacity
+                style={[styles.photoModalBtn, styles.retakeBtn]}
+                onPress={() => {
+                  setShowPhotoModal(false);
+                  takeProofPhoto();
+                }}
+              >
+                <Ionicons name="camera" size={20} color={COLORS.primary} />
+                <Text style={styles.retakeBtnText}>Retake</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.photoModalBtn, styles.confirmBtn]}
+                onPress={completeDeliveryWithPhoto}
+                disabled={uploadingPhoto}
+              >
+                {uploadingPhoto ? (
+                  <Text style={styles.confirmBtnText}>Uploading...</Text>
+                ) : (
+                  <>
+                    <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
+                    <Text style={styles.confirmBtnText}>Confirm Delivery</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -598,6 +840,22 @@ const styles = StyleSheet.create({
     width: 1,
     height: 30,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  currentStepBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    borderRadius: BORDER_RADIUS.round,
+    marginBottom: SPACING.md,
+    gap: SPACING.xs,
+  },
+  currentStepText: {
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+    color: '#FFFFFF',
   },
   mapPlaceholder: {
     height: 200,
@@ -884,14 +1142,34 @@ const styles = StyleSheet.create({
   emptyButton: {
     minWidth: 150,
   },
-  mapContainer: {
+  mapSection: {
     marginHorizontal: SPACING.md,
     marginTop: SPACING.md,
     marginBottom: SPACING.md,
+  },
+  mapContainer: {
     borderRadius: BORDER_RADIUS.lg,
     overflow: 'hidden',
     backgroundColor: '#fff',
     ...SHADOWS.medium,
+  },
+  getDirectionsButton: {
+    marginTop: SPACING.sm,
+    backgroundColor: COLORS.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: BORDER_RADIUS.lg,
+    gap: 8,
+    ...SHADOWS.small,
+  },
+  getDirectionsText: {
+    color: '#FFFFFF',
+    fontSize: FONT_SIZES.md,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
   },
   openMapsButton: {
     position: 'absolute',
@@ -909,6 +1187,78 @@ const styles = StyleSheet.create({
   openMapsText: {
     color: '#fff',
     fontSize: 12,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+  },
+  // Proof of Delivery Photo Modal Styles
+  photoModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  photoModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: BORDER_RADIUS.xl,
+    borderTopRightRadius: BORDER_RADIUS.xl,
+    padding: SPACING.lg,
+    paddingBottom: 40,
+  },
+  photoModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
+  photoModalTitle: {
+    fontSize: FONT_SIZES.xl,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
+  },
+  photoModalClose: {
+    padding: SPACING.xs,
+  },
+  proofPhoto: {
+    width: '100%',
+    height: 250,
+    borderRadius: BORDER_RADIUS.lg,
+    marginBottom: SPACING.md,
+  },
+  photoModalSubtitle: {
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginBottom: SPACING.lg,
+  },
+  photoModalButtons: {
+    flexDirection: 'row',
+    gap: SPACING.md,
+  },
+  photoModalBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    gap: SPACING.xs,
+  },
+  retakeBtn: {
+    backgroundColor: 'rgba(34, 139, 34, 0.1)',
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+  },
+  retakeBtnText: {
+    color: COLORS.primary,
+    fontSize: FONT_SIZES.md,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+  },
+  confirmBtn: {
+    backgroundColor: COLORS.primary,
+  },
+  confirmBtnText: {
+    color: '#FFFFFF',
+    fontSize: FONT_SIZES.md,
     fontWeight: '600',
     fontFamily: FONTS.semiBold,
   },

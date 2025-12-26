@@ -9,22 +9,38 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RiderSubscriptionService, SubscribeToPremiumDto } from './rider-subscription.service';
-import { SubscriptionTier, SubscriptionDuration } from '../database/entities';
+import { SubscriptionTier, SubscriptionDuration, Rider, User } from '../database/entities';
 
 interface RequestWithUser {
-  user: {
-    userId: string;
-    riderProfile?: { id: string };
-    riderId?: string;
-  };
+  user: User;
 }
 
 @ApiTags('Rider Subscriptions')
 @Controller('riders/subscriptions')
 export class RiderSubscriptionController {
-  constructor(private readonly subscriptionService: RiderSubscriptionService) {}
+  constructor(
+    private readonly subscriptionService: RiderSubscriptionService,
+    @InjectRepository(Rider)
+    private readonly riderRepository: Repository<Rider>,
+  ) {}
+
+  /**
+   * Helper to get rider ID from user
+   */
+  private async getRiderIdFromUser(user: User): Promise<string> {
+    const rider = await this.riderRepository.findOne({
+      where: { userId: user.id },
+      select: ['id'],
+    });
+    if (!rider) {
+      throw new BadRequestException('User is not a rider');
+    }
+    return rider.id;
+  }
 
   @Get('pricing')
   @ApiOperation({ summary: 'Get subscription pricing for all tiers' })
@@ -55,11 +71,8 @@ export class RiderSubscriptionController {
       autoRenew?: boolean;
     },
   ) {
-    // Get rider ID from user's rider profile
-    const riderId = req.user.riderProfile?.id || req.user.riderId;
-    if (!riderId) {
-      throw new BadRequestException('User is not a rider');
-    }
+    // Get rider ID from user
+    const riderId = await this.getRiderIdFromUser(req.user);
 
     const dto: SubscribeToPremiumDto = {
       riderId,
@@ -81,11 +94,7 @@ export class RiderSubscriptionController {
     @Request() req: RequestWithUser,
     @Body() body: { reason?: string },
   ) {
-    const riderId = req.user.riderProfile?.id || req.user.riderId;
-    if (!riderId) {
-      throw new BadRequestException('User is not a rider');
-    }
-
+    const riderId = await this.getRiderIdFromUser(req.user);
     return this.subscriptionService.cancelSubscription(riderId, body.reason);
   }
 
@@ -95,11 +104,7 @@ export class RiderSubscriptionController {
   @ApiOperation({ summary: 'Get current active subscription' })
   @ApiResponse({ status: 200, description: 'Returns current subscription or null' })
   async getCurrentSubscription(@Request() req: RequestWithUser) {
-    const riderId = req.user.riderProfile?.id || req.user.riderId;
-    if (!riderId) {
-      throw new BadRequestException('User is not a rider');
-    }
-
+    const riderId = await this.getRiderIdFromUser(req.user);
     const subscription = await this.subscriptionService.getCurrentSubscription(riderId);
     return { subscription };
   }
@@ -116,11 +121,7 @@ export class RiderSubscriptionController {
     @Query('page') page = 1,
     @Query('limit') limit = 10,
   ) {
-    const riderId = req.user.riderProfile?.id || req.user.riderId;
-    if (!riderId) {
-      throw new BadRequestException('User is not a rider');
-    }
-
+    const riderId = await this.getRiderIdFromUser(req.user);
     return this.subscriptionService.getSubscriptionHistory(riderId, +page, +limit);
   }
 

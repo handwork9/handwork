@@ -75,6 +75,19 @@ export class RidersController {
     return this.ridersService.getEarnings(rider.id, period);
   }
 
+  @Patch('daily-goal')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.RIDER)
+  @ApiOperation({ summary: 'Update rider daily earning goal' })
+  async updateDailyGoal(
+    @CurrentUser() user: User,
+    @Body() body: { dailyGoal: number },
+  ) {
+    console.log('[DailyGoal] Received body:', body);
+    const rider = await this.ridersService.findByUserId(user.id);
+    return this.ridersService.updateDailyGoal(rider.id, body.dailyGoal);
+  }
+
   @Get('active-delivery')
   @UseGuards(RolesGuard)
   @Roles(UserRole.RIDER)
@@ -95,10 +108,10 @@ export class RidersController {
   async updateDeliveryStatus(
     @CurrentUser() user: User,
     @Param('deliveryId') deliveryId: string,
-    @Body() dto: { status: string },
+    @Body() dto: { status: string; proofOfDeliveryPhoto?: string },
   ) {
     const rider = await this.ridersService.findByUserId(user.id);
-    return this.ridersService.updateDeliveryStatus(rider.id, deliveryId, dto.status);
+    return this.ridersService.updateDeliveryStatus(rider.id, deliveryId, dto.status, dto.proofOfDeliveryPhoto);
   }
 
   @Get('available')

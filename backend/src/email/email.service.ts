@@ -406,6 +406,13 @@ export class EmailService {
   }
 
   /**
+   * Send a generic email (public method for other services)
+   */
+  async send(options: EmailOptions): Promise<boolean> {
+    return this.sendEmail(options);
+  }
+
+  /**
    * Send order confirmation email to buyer
    */
   async sendOrderConfirmation(order: Order, buyer: User): Promise<boolean> {
@@ -2050,5 +2057,167 @@ export class EmailService {
       html,
       text: `Your ${tierDisplay} ${userTypeDisplay} subscription expires on ${expiryDate} (${daysRemaining} day${daysRemaining > 1 ? 's' : ''} remaining). Renew now for ₦${renewalPrice.toLocaleString()} to keep your premium benefits!`,
     });
+  }
+
+  /**
+   * Send promotional email to a user
+   */
+  async sendPromotionalEmail(
+    user: { email: string; firstName?: string },
+    subject: string,
+    content: string,
+    template: 'announcement' | 'promotion' | 'newsletter' | 'update',
+    ctaButton?: { text: string; url: string },
+    imageUrl?: string,
+  ): Promise<boolean> {
+    if (!user.email) {
+      this.logger.warn('Cannot send promotional email - user has no email');
+      return false;
+    }
+
+    const greeting = user.firstName ? `Hello ${user.firstName}` : 'Hello';
+    
+    // Template-specific styling
+    const templateStyles = {
+      announcement: {
+        headerBg: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+        accentColor: '#3b82f6',
+        icon: '📢',
+        title: 'Announcement',
+      },
+      promotion: {
+        headerBg: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+        accentColor: '#f59e0b',
+        icon: '🎉',
+        title: 'Special Offer',
+      },
+      newsletter: {
+        headerBg: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+        accentColor: '#16a34a',
+        icon: '📰',
+        title: 'Newsletter',
+      },
+      update: {
+        headerBg: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+        accentColor: '#8b5cf6',
+        icon: '🚀',
+        title: 'Update',
+      },
+    };
+
+    const style = templateStyles[template];
+    
+    this.logger.log(`📧 Preparing promotional email with CTA: ${ctaButton ? `${ctaButton.text} -> ${ctaButton.url}` : 'none'}, Image: ${imageUrl || 'none'}`);
+    
+    const ctaHtml = ctaButton && ctaButton.text && ctaButton.url ? `
+      <div style="text-align: center; margin: 32px 0;">
+        <a href="${ctaButton.url}" style="display: inline-block; padding: 14px 32px; background-color: ${style.accentColor}; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px;">
+          ${ctaButton.text}
+        </a>
+      </div>
+    ` : '';
+
+    const imageHtml = imageUrl ? `
+      <tr>
+        <td style="padding: 0;">
+          <img src="${imageUrl}" alt="Promotional Banner" style="width: 100%; max-height: 300px; object-fit: cover; display: block;" />
+        </td>
+      </tr>
+    ` : '';
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${subject}</title>
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #f8f9fa; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8f9fa; padding: 40px 20px;">
+          <tr>
+            <td align="center">
+              <table width="600" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
+                
+                <!-- Header -->
+                <tr>
+                  <td style="background: ${style.headerBg}; padding: 40px 24px; text-align: center;">
+                    <div style="font-size: 48px; margin-bottom: 12px;">${style.icon}</div>
+                    <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">${style.title}</h1>
+                    <p style="margin: 8px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">Handwork Marketplace</p>
+                  </td>
+                </tr>
+
+                <!-- Banner Image -->
+                ${imageHtml}
+
+                <!-- Body -->
+                <tr>
+                  <td style="padding: 40px 32px;">
+                    <p style="margin: 0 0 16px; color: #6b7280; font-size: 15px;">${greeting},</p>
+                    
+                    <div style="color: #374151; font-size: 15px; line-height: 1.7;">
+                      ${content.split('\n').map(p => `<p style="margin: 0 0 16px;">${p}</p>`).join('')}
+                    </div>
+
+                    ${ctaHtml}
+                  </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                  <td style="background-color: #f9fafb; padding: 24px 32px; text-align: center; border-top: 1px solid #e5e7eb;">
+                    <p style="margin: 0 0 8px; font-size: 14px; color: #6b7280;">
+                      You received this email because you are a valued member of Handwork.
+                    </p>
+                    <p style="margin: 0; font-size: 12px; color: #9ca3af;">
+                      © ${new Date().getFullYear()} Handwork. All rights reserved.
+                    </p>
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `;
+
+    return this.sendEmail({
+      to: user.email,
+      subject,
+      html,
+      text: `${greeting},\n\n${content}${ctaButton ? `\n\n${ctaButton.text}: ${ctaButton.url}` : ''}`,
+    });
+  }
+
+  /**
+   * Send bulk promotional emails to multiple users
+   */
+  async sendBulkPromotionalEmails(
+    users: Array<{ email: string; firstName?: string }>,
+    subject: string,
+    content: string,
+    template: 'announcement' | 'promotion' | 'newsletter' | 'update',
+    ctaButton?: { text: string; url: string },
+    imageUrl?: string,
+  ): Promise<{ sent: number; failed: number }> {
+    let sent = 0;
+    let failed = 0;
+
+    for (const user of users) {
+      const result = await this.sendPromotionalEmail(user, subject, content, template, ctaButton, imageUrl);
+      if (result) {
+        sent++;
+      } else {
+        failed++;
+      }
+      // Small delay to avoid overwhelming the email server
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    this.logger.log(`📧 Bulk promotional email completed: ${sent} sent, ${failed} failed`);
+    return { sent, failed };
   }
 }

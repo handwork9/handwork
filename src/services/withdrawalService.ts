@@ -238,8 +238,54 @@ export const withdrawalService = {
    * Get all saved bank accounts
    */
   async getBankAccounts(): Promise<BankAccount[]> {
-    const response = await apiClient.get<{ accounts: BankAccount[] }>('/bank-accounts');
-    return response.accounts || [];
+    console.log('[withdrawalService] ========== FETCHING BANK ACCOUNTS ==========');
+    try {
+      const response = await apiClient.get<any>('/bank-accounts');
+      
+      // Detailed logging of response structure
+      console.log('[withdrawalService] Response received!');
+      console.log('[withdrawalService] Response type:', typeof response);
+      console.log('[withdrawalService] Response keys:', response ? Object.keys(response) : 'null/undefined');
+      console.log('[withdrawalService] Full response:', JSON.stringify(response, null, 2));
+      
+      // Try different parsing strategies
+      let accounts: BankAccount[] = [];
+      
+      // Strategy 1: { success: true, data: { accounts: [...] } }
+      if (response?.data?.accounts && Array.isArray(response.data.accounts)) {
+        console.log('[withdrawalService] Parsed using Strategy 1: response.data.accounts');
+        accounts = response.data.accounts;
+      }
+      // Strategy 2: { accounts: [...] }
+      else if (response?.accounts && Array.isArray(response.accounts)) {
+        console.log('[withdrawalService] Parsed using Strategy 2: response.accounts');
+        accounts = response.accounts;
+      }
+      // Strategy 3: Direct array
+      else if (Array.isArray(response)) {
+        console.log('[withdrawalService] Parsed using Strategy 3: direct array');
+        accounts = response;
+      }
+      // Strategy 4: { data: [...] } direct array in data
+      else if (response?.data && Array.isArray(response.data)) {
+        console.log('[withdrawalService] Parsed using Strategy 4: response.data array');
+        accounts = response.data;
+      }
+      else {
+        console.log('[withdrawalService] No matching parse strategy, returning empty array');
+      }
+      
+      console.log('[withdrawalService] Final accounts count:', accounts.length);
+      console.log('[withdrawalService] Final accounts:', JSON.stringify(accounts, null, 2));
+      console.log('[withdrawalService] ========== END FETCHING BANK ACCOUNTS ==========');
+      return accounts;
+    } catch (error: any) {
+      console.error('[withdrawalService] ERROR fetching bank accounts:');
+      console.error('[withdrawalService] Error message:', error?.message);
+      console.error('[withdrawalService] Error response:', error?.response?.data);
+      console.error('[withdrawalService] Error status:', error?.response?.status);
+      throw error;
+    }
   },
 
   /**
@@ -257,8 +303,23 @@ export const withdrawalService = {
    * Add a new bank account
    */
   async addBankAccount(data: AddBankAccountRequest): Promise<BankAccount> {
-    const response = await apiClient.post<BankAccount>('/bank-accounts', data);
-    return response;
+    console.log('[withdrawalService] ========== ADDING BANK ACCOUNT ==========');
+    console.log('[withdrawalService] Request data:', JSON.stringify(data, null, 2));
+    
+    const response = await apiClient.post<any>('/bank-accounts', data);
+    
+    console.log('[withdrawalService] Response received!');
+    console.log('[withdrawalService] Response type:', typeof response);
+    console.log('[withdrawalService] Response keys:', response ? Object.keys(response) : 'null/undefined');
+    console.log('[withdrawalService] Full response:', JSON.stringify(response, null, 2));
+    
+    // Handle wrapped response { success: true, data: {...} }
+    const account = response?.data || response;
+    console.log('[withdrawalService] Parsed account:', JSON.stringify(account, null, 2));
+    console.log('[withdrawalService] Account ID:', account?.id);
+    console.log('[withdrawalService] ========== END ADDING BANK ACCOUNT ==========');
+    
+    return account;
   },
 
   /**
@@ -287,25 +348,21 @@ export const withdrawalService = {
    * Get earnings summary (for farmers/riders)
    */
   async getEarningsSummary(): Promise<EarningsSummary> {
-    const response = await apiClient.get<{
-      totalEarnings: number;
-      totalWithdrawals: number;
-      currentBalance: number;
-      transactionCount: number;
-      todayEarnings: number;
-      thisWeekEarnings: number;
-      thisMonthEarnings: number;
-    }>('/wallet/summary');
+    const response = await apiClient.get<any>('/wallet/summary');
+    console.log('[withdrawalService] Earnings summary raw response:', JSON.stringify(response));
+    
+    // Handle wrapped response { success: true, data: { ... } }
+    const data = response?.data || response;
     
     // Map backend response to frontend interface
     return {
-      totalEarnings: response.totalEarnings || 0,
-      availableBalance: response.currentBalance || 0,
+      totalEarnings: data.totalEarnings || 0,
+      availableBalance: data.currentBalance || 0,
       pendingBalance: 0, // Backend doesn't track this separately yet
-      processingWithdrawals: response.totalWithdrawals || 0,
-      todayEarnings: response.todayEarnings || 0,
-      thisWeekEarnings: response.thisWeekEarnings || 0,
-      thisMonthEarnings: response.thisMonthEarnings || 0,
+      processingWithdrawals: data.totalWithdrawals || 0,
+      todayEarnings: data.todayEarnings || 0,
+      thisWeekEarnings: data.thisWeekEarnings || 0,
+      thisMonthEarnings: data.thisMonthEarnings || 0,
     };
   },
 
@@ -317,11 +374,16 @@ export const withdrawalService = {
     page?: number; 
     limit?: number;
   }): Promise<{ withdrawals: Withdrawal[]; total: number }> {
-    const response = await apiClient.get<{ withdrawals: Withdrawal[]; total: number }>(
+    const response = await apiClient.get<{ data: { withdrawals: Withdrawal[]; total: number } }>(
       '/withdrawals',
       { params }
     );
-    return response;
+    // Handle wrapped response from backend { success: true, data: { withdrawals, total } }
+    const data = (response as any)?.data || response;
+    return {
+      withdrawals: data?.withdrawals || [],
+      total: data?.total || 0,
+    };
   },
 
   /**

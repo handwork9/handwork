@@ -49,14 +49,33 @@ export default function InviteScreen() {
         referralService.getReferralCode(),
         referralService.getHistory(),
       ]);
-      setCode(codeData?.code || '');
+      
+      // If no code returned, try to generate one
+      if (!codeData?.code) {
+        try {
+          const generatedCode = await referralService.generateReferralCode();
+          setCode(generatedCode?.code || '');
+        } catch (genError) {
+          console.error('Failed to generate referral code:', genError);
+          setCode('');
+        }
+      } else {
+        setCode(codeData.code);
+      }
+      
       setTotalEarned(codeData?.totalEarned ?? 0);
       // Ensure history is always an array
       setReferrals(Array.isArray(history) ? history : []);
     } catch (error) {
       console.error('Failed to load referral data:', error);
-      // Set defaults on error
-      setCode('');
+      // Try to generate code on error
+      try {
+        const generatedCode = await referralService.generateReferralCode();
+        setCode(generatedCode?.code || '');
+      } catch (genError) {
+        console.error('Failed to generate referral code:', genError);
+        setCode('');
+      }
       setTotalEarned(0);
       setReferrals([]);
     } finally {
@@ -103,27 +122,26 @@ export default function InviteScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
-      {/* Floating Back Button */}
-      <TouchableOpacity
-        style={[styles.floatingBackButton, { top: insets.top + 10, backgroundColor: isDark ? 'rgba(44, 44, 46, 0.9)' : 'rgba(255, 255, 255, 0.9)' }]}
-        onPress={() => navigation.goBack()}
-        activeOpacity={0.7}
-      >
-        <Ionicons name="arrow-back" size={24} color={colors.text} />
-      </TouchableOpacity>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: bg }]}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="chevron-back" size={28} color={colors.text} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Invite Friends</Text>
+        <View style={styles.headerSpacer} />
+      </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 60, paddingBottom: insets.bottom + 40 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: 16, paddingBottom: insets.bottom + 40 }]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#16A34A" />
         }
       >
-        {/* Section Header */}
-        <View style={[styles.sectionHeader, { borderBottomColor: isDark ? 'rgba(60, 60, 67, 0.12)' : '#E5E7EB' }]}>
-          <Text style={[styles.sectionHeaderTitle, { color: colors.text }]}>Invite & Earn</Text>
-        </View>
-
         {/* Balance Card - Wallet Style */}
         <View style={[styles.balanceCard, { backgroundColor: cardBg }]}>
           <View style={styles.balanceIconContainer}>
@@ -272,21 +290,28 @@ export default function InviteScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   centered: { justifyContent: 'center', alignItems: 'center' },
-  floatingBackButton: {
-    position: 'absolute',
-    left: 16,
-    zIndex: 10,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  backButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    marginLeft: -8,
+  },
+  headerTitle: {
+    flex: 1,
+    fontSize: 17,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+    textAlign: 'center',
+  },
+  headerSpacer: {
+    width: 40,
   },
   scrollContent: { flexGrow: 1, paddingHorizontal: 24 },
   sectionHeader: {

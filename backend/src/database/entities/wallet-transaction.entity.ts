@@ -13,6 +13,7 @@ export enum TransactionType {
 
 export enum TransactionCategory {
   ORDER_EARNINGS = 'order_earnings',
+  ORDER_PAYMENT = 'order_payment',
   DELIVERY_EARNINGS = 'delivery_earnings',
   COMMISSION_DEDUCTION = 'commission_deduction',
   WITHDRAWAL = 'withdrawal',

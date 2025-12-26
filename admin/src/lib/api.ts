@@ -1,7 +1,37 @@
 import axios, { AxiosError } from 'axios';
 import Cookies from 'js-cookie';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+
+/**
+ * Normalize image URLs to use the correct backend host
+ * Handles URLs stored with various IPs/hosts and rewrites them to use the configured backend
+ */
+export function normalizeImageUrl(url: string | null | undefined): string {
+  if (!url) return '/placeholder-product.png';
+  
+  // If it's a relative path starting with /uploads/, prefix with backend URL
+  if (url.startsWith('/uploads/')) {
+    return `${BACKEND_URL}${url}`;
+  }
+  
+  // If it's already a relative path or placeholder, return as-is
+  if (url.startsWith('/') && !url.startsWith('//')) {
+    return url;
+  }
+  
+  // If it contains /uploads/, extract and rewrite to correct host
+  if (url.includes('/uploads/')) {
+    const uploadsPath = url.match(/\/uploads\/.+$/);
+    if (uploadsPath) {
+      return `${BACKEND_URL}${uploadsPath[0]}`;
+    }
+  }
+  
+  // Return original URL for external images
+  return url;
+}
 
 // Create axios instance
 const api = axios.create({
@@ -49,11 +79,41 @@ export const authApi = {
     api.post('/auth/refresh', { refreshToken }),
 };
 
+// Two-Factor Authentication API
+export const twoFactorApi = {
+  // Generate 2FA secret and QR code
+  generate: () => api.post('/auth/2fa/generate'),
+  // Enable 2FA after verifying setup code
+  enable: (code: string) => api.post('/auth/2fa/enable', { code }),
+  // Disable 2FA with verification code
+  disable: (code: string) => api.post('/auth/2fa/disable', { code }),
+  // Get current 2FA status
+  getStatus: () => api.get('/auth/2fa/status'),
+};
+
 // Admin API
 export const adminApi = {
   // Dashboard
   getDashboard: (params?: { period?: string; startDate?: string; endDate?: string }) =>
     api.get('/admin/dashboard', { params }),
+  
+  // Dashboard additional data
+  getTopFarmers: (limit?: number) => api.get('/admin/top-farmers', { params: { limit } }),
+  getTopRiders: (limit?: number) => api.get('/admin/top-riders', { params: { limit } }),
+  getRevenueMetrics: (startDate: string, endDate: string) => 
+    api.get('/admin/metrics/revenue', { params: { startDate, endDate } }),
+  getOrderMetrics: (startDate: string, endDate: string) =>
+    api.get('/admin/metrics/orders', { params: { startDate, endDate } }),
+
+  // Notification image upload
+  uploadNotificationImage: (formData: FormData) =>
+    api.post('/uploads/notifications', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+
+  // General image upload (base64)
+  uploadImage: (base64: string, folder: string = 'support') =>
+    api.post('/uploads/image', { base64, folder }),
   
   // Users (includes farmers)
   getUsers: (params?: {
@@ -94,9 +154,13 @@ export const adminApi = {
   getAvailableRiders: (params?: {
     page?: number;
     limit?: number;
+    state?: string; // Filter riders by state for state-by-state delivery
   }) => api.get('/admin/available-riders', { params }),
   getRider: (id: string) => api.get(`/riders/${id}`),
   updateRider: (id: string, data: Record<string, unknown>) => api.patch(`/admin/riders/${id}`, data),
+  setRiderBoost: (id: string, data: { boost: number; expiresInHours?: number; reason: string }) => 
+    api.patch(`/admin/riders/${id}/boost`, data),
+  removeRiderBoost: (id: string) => api.delete(`/admin/riders/${id}/boost`),
   
   // Rider Applications
   getRiderApplications: (params?: {
@@ -170,7 +234,25 @@ export const adminApi = {
     message: string;
     type: string;
     targetAudience: string;
+    imageUrl?: string;
   }) => api.post('/admin/notifications/broadcast', data),
+  sendIndividualNotification: (data: {
+    userId: string;
+    title: string;
+    body: string;
+    type?: string;
+    imageUrl?: string;
+  }) => api.post('/notifications/send', data),
+  
+  // Promotional Emails
+  sendPromotionalEmail: (data: {
+    subject: string;
+    content: string;
+    template: 'announcement' | 'promotion' | 'newsletter' | 'update';
+    targetAudience: 'all' | 'buyers' | 'farmers' | 'riders';
+    ctaButton?: { text: string; url: string };
+    imageUrl?: string;
+  }) => api.post('/admin/emails/promotional', data),
   
   // Reports
   getReport: (params: {
@@ -198,14 +280,27 @@ export const adminApi = {
   getSupportTicket: (id: string) => api.get(`/support/admin/tickets/${id}`),
   getSupportMessages: (ticketId: string, params?: { page?: number; limit?: number }) => 
     api.get(`/support/admin/tickets/${ticketId}/messages`, { params }),
-  sendSupportMessage: (ticketId: string, content: string, type?: string) =>
-    api.post(`/support/admin/tickets/${ticketId}/messages`, { content, type }),
+  sendSupportMessage: (ticketId: string, content: string, type?: string, attachments?: { url: string; type: string; name: string; size?: number }[]) =>
+    api.post(`/support/admin/tickets/${ticketId}/messages`, { content, type, attachments }),
   assignSupportTicket: (ticketId: string, adminId?: string) =>
     api.post(`/support/admin/tickets/${ticketId}/assign`, { adminId }),
   updateSupportTicketStatus: (ticketId: string, status: string) =>
     api.patch(`/support/admin/tickets/${ticketId}/status`, { status }),
   getSupportStatistics: (params?: { startDate?: string; endDate?: string }) =>
     api.get('/support/admin/statistics', { params }),
+  getSupportTeam: () => api.get('/support/admin/team'),
+
+  // Support Reports
+  getSupportReports: (params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    type?: string;
+  }) => api.get('/support/admin/reports', { params }),
+  getSupportReport: (id: string) => api.get(`/support/admin/reports/${id}`),
+  updateSupportReport: (id: string, data: { status?: string; adminNotes?: string }) =>
+    api.patch(`/support/admin/reports/${id}`, data),
+  getSupportReportStats: () => api.get('/support/admin/reports/stats/overview'),
   
   // Audit Logs
   getAuditLogs: (params?: {
@@ -328,7 +423,99 @@ export const adminApi = {
   reviewDeletionRequest: (requestId: string, data: {
     action: 'approve' | 'reject';
     adminNotes?: string;
-  }) => api.post(`/admin/deletion-requests/${requestId}/review`, data),
+    rejectionReason?: string;
+  }) => api.post(`/admin/deletion-requests/${requestId}/review`, {
+    approve: data.action === 'approve',
+    adminNotes: data.adminNotes,
+    rejectionReason: data.action === 'reject' ? (data.rejectionReason || data.adminNotes) : undefined,
+  }),
+
+  // Withdrawals Management
+  getWithdrawals: (params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    ownerType?: string;
+    search?: string;
+    startDate?: string;
+    endDate?: string;
+  }) => api.get('/admin/withdrawals', { params }),
+  getWithdrawalStats: (params?: { startDate?: string; endDate?: string }) =>
+    api.get('/admin/withdrawals/stats', { params }),
+  getWithdrawal: (id: string) => api.get(`/admin/withdrawals/${id}`),
+  retryWithdrawal: (id: string) => api.post(`/admin/withdrawals/${id}/retry`),
+  updateWithdrawalStatus: (id: string, data: { status: string; reason?: string }) =>
+    api.patch(`/admin/withdrawals/${id}/status`, data),
+  refundWithdrawal: (id: string, reason?: string) =>
+    api.post(`/admin/withdrawals/${id}/refund`, { reason }),
+
+  // Buyer Premium Management
+  getBuyerPremiumStats: () => api.get('/admin/buyer-premium/stats'),
+  getBuyerPremiumSubscribers: (params?: {
+    page?: number;
+    limit?: number;
+    tier?: string;
+    status?: string;
+    search?: string;
+  }) => api.get('/admin/buyer-premium/subscribers', { params }),
+  getBuyerPremiumTransactions: (params?: {
+    page?: number;
+    limit?: number;
+    tier?: string;
+    startDate?: string;
+    endDate?: string;
+  }) => api.get('/admin/buyer-premium/transactions', { params }),
+  getBuyerPremiumSubscriber: (id: string) => api.get(`/admin/buyer-premium/subscribers/${id}`),
+  extendBuyerPremium: (id: string, days: number, reason?: string) =>
+    api.post(`/admin/buyer-premium/subscribers/${id}/extend`, { days, reason }),
+  cancelBuyerPremium: (id: string, reason?: string) =>
+    api.post(`/admin/buyer-premium/subscribers/${id}/cancel`, { reason }),
+  changeBuyerPremiumTier: (id: string, tier: string, reason?: string) =>
+    api.patch(`/admin/buyer-premium/subscribers/${id}/tier`, { tier, reason }),
+
+  // Disputes Management
+  getDisputes: (params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    priority?: string;
+    assignedToId?: string;
+  }) => api.get('/disputes/admin/all', { params }),
+  getDisputeStats: () => api.get('/disputes/admin/stats'),
+  updateDispute: (id: string, data: { status?: string; priority?: string; adminNotes?: string }) =>
+    api.patch(`/disputes/admin/${id}`, data),
+  assignDispute: (id: string, assignedToId: string) =>
+    api.patch(`/disputes/admin/${id}/assign`, { assignedToId }),
+  resolveDispute: (id: string, data: { resolution: string; refundedAmount?: number; resolutionNotes: string }) =>
+    api.patch(`/disputes/admin/${id}/resolve`, data),
+  sendDisputeMessage: (id: string, content: string) =>
+    api.post(`/disputes/${id}/messages`, { content }),
+
+  // Team Management
+  getTeamMembers: () => api.get('/admin/team'),
+  getPendingInvites: () => api.get('/admin/team/invites'),
+  inviteTeamMember: (data: { email: string; role: string }) =>
+    api.post('/admin/team/invite', data),
+  verifyInviteToken: (token: string) =>
+    api.get('/admin/team/invite/verify', { params: { token } }),
+  acceptInvite: (data: { token: string; name: string; password: string; phone?: string }) =>
+    api.post('/admin/team/invite/accept', data),
+  resendInvite: (inviteId: string) =>
+    api.post(`/admin/team/invite/${inviteId}/resend`),
+  cancelInvite: (inviteId: string) =>
+    api.delete(`/admin/team/invite/${inviteId}`),
+  updateTeamMember: (memberId: string, data: { role?: string; isActive?: boolean }) =>
+    api.patch(`/admin/team/${memberId}`, data),
+  removeTeamMember: (memberId: string) =>
+    api.delete(`/admin/team/${memberId}`),
+};
+
+// Sessions API
+export const sessionsApi = {
+  getSessions: () => api.get('/sessions'),
+  getLoginHistory: () => api.get('/sessions/login-history'),
+  endSession: (sessionId: string) => api.delete(`/sessions/${sessionId}`),
+  endAllSessions: () => api.post('/sessions/end-all-others'),
 };
 
 export default api;

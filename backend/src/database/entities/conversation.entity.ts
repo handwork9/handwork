@@ -47,6 +47,12 @@ export class Conversation {
   @Column({ nullable: true })
   lastMessageAt: Date;
 
+  @Column('uuid', { array: true, default: [] })
+  deletedBy: string[];
+
+  @Column('uuid', { array: true, default: [] })
+  mutedBy: string[];
+
   @CreateDateColumn()
   createdAt: Date;
 

@@ -105,12 +105,17 @@
   "cart": {
     "title": "Àpò",
     "empty": "Àpò rẹ ṣòfo",
+    "emptyDescription": "Fi àwọn ọjà tútù kun láti bẹ̀rẹ̀!",
+    "browseProducts": "Wo Àwọn Ọjà",
     "subtotal": "Àpapọ̀ kékeré",
     "deliveryFee": "Owó Fífúnní",
     "total": "Àpapọ̀",
-    "checkout": "Sanwó",
+    "checkout": "Tẹ̀síwájú sí Ìsanwó",
     "removeItem": "Mú Nǹkan Kúrò",
     "clearCart": "Fọ́ Àpò",
+    "clearCartConfirm": "Mú gbogbo ohun kúrò nínú àpò?",
+    "orderSummary": "ÀKÓPỌ̀ ÀṢẸ",
+    "calculatedAtCheckout": "A ó ṣe àkọsílẹ̀ nípa sanwó",
     "itemAdded": "A ti fi nǹkan sí àpò",
     "itemRemoved": "A ti mú nǹkan kúrò nínú àpò"
   },
@@ -183,10 +188,16 @@
   },
   "wallet": {
     "title": "Àpamọ́wọ́",
+    "myWallet": "Àpamọ́wọ́ Mi",
+    "manageBalance": "Ṣàkóso ìyókù àti àwọn ìṣòwò rẹ",
     "balance": "Ìyókù",
+    "availableBalance": "Ìyókù tó wà",
     "topUp": "Ṣàfikún",
     "withdraw": "Yọ",
     "transactions": "Àwọn Ìṣòwò",
+    "recentTransactions": "ÀWỌN ÌṢÒWÒ LÁÌPẸ́",
+    "noTransactions": "Kò sí ìṣòwò sibẹ̀",
+    "transactionHistoryAppear": "Ìtàn ìṣòwò rẹ yóò hàn níbí",
     "transfer": "Gbé",
     "history": "Ìtàn",
     "paymentMethods": "Àwọn Ọ̀nà Ìsanwó"
@@ -223,12 +234,20 @@
   },
   "farmer": {
     "title": "Àgbẹ̀",
+    "dashboard": "Pánẹ́lì Oko Rẹ",
     "myProducts": "Ọjà Mi",
     "addProduct": "Fi Ọjà kùn",
     "editProduct": "Ṣàtúnṣe Ọjà",
     "sales": "Títà",
     "earnings": "Owó Tí A Jẹ̀",
-    "analytics": "Ìṣirò"
+    "analytics": "Ìṣirò",
+    "pendingOrders": "Àṣẹ tí ń dúró",
+    "processingOrders": "Ń ṣiṣẹ́",
+    "totalProducts": "Àpapọ̀ Ọjà",
+    "lowStock": "Ọjà Kéré",
+    "recentOrders": "Àṣẹ Láìpẹ́",
+    "topSellers": "Àwọn tó dára jùlọ",
+    "viewAll": "Wo gbogbo"
   },
   "rider": {
     "title": "Olùfúnní",

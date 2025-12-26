@@ -5,7 +5,7 @@ import { RidersController } from './riders.controller';
 import { RidersGateway } from './riders.gateway';
 import { RiderSubscriptionService } from './rider-subscription.service';
 import { RiderSubscriptionController } from './rider-subscription.controller';
-import { Rider, RiderSubscription, PlatformRevenue, Order } from '../database/entities';
+import { Rider, RiderSubscription, PlatformRevenue, Order, FarmerProfile } from '../database/entities';
 import { User } from '../database/entities/user.entity';
 import { DispatchModule } from '../dispatch/dispatch.module';
 import { WalletModule } from '../wallet/wallet.module';
@@ -14,7 +14,7 @@ import { EmailModule } from '../email/email.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Rider, User, RiderSubscription, PlatformRevenue, Order]),
+    TypeOrmModule.forFeature([Rider, User, RiderSubscription, PlatformRevenue, Order, FarmerProfile]),
     forwardRef(() => DispatchModule),
     forwardRef(() => WalletModule),
     NotificationsModule,

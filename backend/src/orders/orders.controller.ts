@@ -35,7 +35,7 @@ export class OrdersController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get user orders (buyer or rider based on role)' })
+  @ApiOperation({ summary: 'Get user orders (buyer, rider, or farmer based on role)' })
   async getMyOrders(
     @CurrentUser() user: User,
     @Query('page') page?: number,
@@ -44,6 +44,10 @@ export class OrdersController {
     if (user.role === UserRole.RIDER) {
       // Get rider profile id - this would need rider service
       return this.ordersService.findByRider(user.id, page || 1, limit || 20);
+    }
+    if (user.role === UserRole.FARMER) {
+      // Get orders where farmer's products are included
+      return this.ordersService.findByFarmer(user.id, page || 1, limit || 20);
     }
     return this.ordersService.findByBuyer(user.id, page || 1, limit || 20);
   }
@@ -66,7 +70,19 @@ export class OrdersController {
       }
     }
 
-    return order;
+    // Calculate ETA in minutes from estimatedDeliveryTime
+    let eta: number | null = null;
+    if (order.estimatedDeliveryTime) {
+      const now = new Date();
+      const estimatedTime = new Date(order.estimatedDeliveryTime);
+      const diffMs = estimatedTime.getTime() - now.getTime();
+      eta = Math.max(0, Math.ceil(diffMs / (1000 * 60))); // Convert to minutes, minimum 0
+    }
+
+    return {
+      ...order,
+      eta,
+    };
   }
 
   @Patch(':id/status')
@@ -118,5 +134,13 @@ export class OrdersController {
     // Get rider profile from user
     const rider = await this.ridersService.findByUserId(user.id);
     return this.ordersService.assignRider(orderId, rider.id);
+  }
+
+  @Post('admin/fix-earnings')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Fix missing earnings for delivered orders (Admin only)' })
+  async fixMissingEarnings() {
+    return this.ordersService.fixMissingEarnings();
   }
 }

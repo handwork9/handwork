@@ -88,6 +88,11 @@ export class CreateProductDto {
   @IsOptional()
   isOrganic?: boolean = false;
 
+  @ApiProperty({ default: true, description: 'Whether the product is perishable. Perishable products cannot be shipped interstate.' })
+  @IsBoolean()
+  @IsOptional()
+  isPerishable?: boolean = true;
+
   @ApiProperty({ required: false, description: 'Harvest date in ISO 8601 format' })
   @IsOptional()
   @Type(() => Date)
@@ -182,6 +187,11 @@ export class UpdateProductDto {
   @IsBoolean()
   @IsOptional()
   isOrganic?: boolean;
+
+  @ApiProperty({ required: false, description: 'Whether the product is perishable' })
+  @IsBoolean()
+  @IsOptional()
+  isPerishable?: boolean;
 
   @ApiProperty({ type: [String], required: false, description: 'Product certifications' })
   @IsArray()

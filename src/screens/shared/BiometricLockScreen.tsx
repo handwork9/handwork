@@ -19,6 +19,13 @@ import { SPACING, FONT_SIZES, FONTS } from '../../constants/theme';
 import biometricService from '../../services/biometricService';
 import { useAppDispatch } from '../../store';
 import { logout } from '../../store/slices/authSlice';
+import { clearPaymentMethods } from '../../store/slices/paymentSlice';
+import { clearCart } from '../../store/slices/cartSlice';
+import { clearAddresses } from '../../store/slices/addressSlice';
+import { resetFavorites } from '../../store/slices/favoritesSlice';
+import { clearFarmerState } from '../../store/slices/farmerSlice';
+import { clearRiderState } from '../../store/slices/riderSlice';
+import { clearBuyerState } from '../../store/slices/buyerSlice';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -138,6 +145,14 @@ export default function BiometricLockScreen({ onUnlock, userName, userAvatar }: 
 
   const handleLogout = () => {
     biometricService.resetLastAuth();
+    // Clear all user-specific state to prevent data leaking between users
+    dispatch(clearPaymentMethods());
+    dispatch(clearCart());
+    dispatch(clearAddresses());
+    dispatch(resetFavorites());
+    dispatch(clearFarmerState());
+    dispatch(clearRiderState());
+    dispatch(clearBuyerState());
     dispatch(logout());
   };
 

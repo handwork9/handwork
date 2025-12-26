@@ -16,7 +16,9 @@ import { Conversation } from '../database/entities';
 @WebSocketGateway(3002, {
   namespace: '/chat',
   cors: {
-    origin: '*',
+    origin: process.env.NODE_ENV === 'production' 
+      ? [process.env.FRONTEND_URL || 'https://handwork.com', process.env.ADMIN_URL || 'https://admin.handwork.com']
+      : true,
     credentials: true,
   },
 })

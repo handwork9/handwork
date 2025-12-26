@@ -7,6 +7,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { IsString, IsOptional, IsBoolean, IsIn } from 'class-validator';
 import { FarmerSubscriptionService, FarmerSubscribeDto } from './farmer-subscription.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -15,9 +16,21 @@ import { UserRole } from '../common/enums';
 import { User } from '../database/entities/user.entity';
 
 class SubscribeDto {
+  @IsString()
+  @IsIn(['basic', 'verified', 'premium'])
   tier: string;
+
+  @IsString()
+  @IsIn(['monthly', 'quarterly', 'yearly'])
   duration: string;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['wallet', 'card'])
   paymentMethod?: 'wallet' | 'card';
+
+  @IsOptional()
+  @IsBoolean()
   autoRenew?: boolean;
 }
 

@@ -29,16 +29,20 @@ import { UserRole, OrderStatus } from '../common/enums';
 import { User, Order, Rider, Product, DeletionRequestStatus } from '../database/entities';
 import { UsersService } from '../users/users.service';
 import { ReviewDeletionRequestDto } from '../users/dto';
+import { NotificationsService } from '../notifications/notifications.service';
+import { EmailService } from '../email/email.service';
 
 @ApiTags('Admin')
 @ApiBearerAuth()
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN)
+@Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
 export class AdminController {
   constructor(
     private readonly adminService: AdminService,
     private readonly usersService: UsersService,
+    private readonly notificationsService: NotificationsService,
+    private readonly emailService: EmailService,
   ) {}
 
   @Get('dashboard')
@@ -118,6 +122,27 @@ export class AdminController {
     @Query('endDate') endDate: string,
   ): Promise<any> {
     return this.adminService.getDispatchAnalytics(
+      new Date(startDate),
+      new Date(endDate),
+    );
+  }
+
+  @Get('reports')
+  @ApiOperation({ summary: 'Get comprehensive reports data' })
+  @ApiQuery({ name: 'type', required: false, type: String, example: 'overview' })
+  @ApiQuery({ name: 'startDate', required: true, type: String, example: '2024-01-01' })
+  @ApiQuery({ name: 'endDate', required: true, type: String, example: '2024-01-31' })
+  @ApiResponse({
+    status: 200,
+    description: 'Reports data',
+  })
+  async getReports(
+    @Query('type') type: string = 'overview',
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+  ): Promise<any> {
+    return this.adminService.getReports(
+      type,
       new Date(startDate),
       new Date(endDate),
     );
@@ -211,6 +236,21 @@ export class AdminController {
     return this.adminService.toggleUserSuspension(userId, false);
   }
 
+  @Patch('users/:userId/verify')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify a farmer by user ID' })
+  @ApiParam({ name: 'userId', description: 'User ID of the farmer' })
+  @ApiResponse({
+    status: 200,
+    description: 'Farmer verified successfully',
+  })
+  async verifyFarmer(
+    @Param('userId') userId: string,
+    @CurrentUser() admin: User,
+  ) {
+    return this.adminService.verifyFarmerByUserId(userId, admin.id);
+  }
+
   @Patch('riders/:riderId/verify')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verify a rider' })
@@ -221,6 +261,48 @@ export class AdminController {
   })
   async verifyRider(@Param('riderId') riderId: string): Promise<Rider> {
     return this.adminService.verifyRider(riderId);
+  }
+
+  @Patch('riders/:riderId/boost')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Set manual priority boost for a rider' })
+  @ApiParam({ name: 'riderId', description: 'Rider ID' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        boost: { type: 'number', description: 'Boost multiplier (1.0 to 5.0)', minimum: 1, maximum: 5 },
+        expiresInHours: { type: 'number', description: 'Hours until boost expires (null for permanent)', nullable: true },
+        reason: { type: 'string', description: 'Reason for the boost' },
+      },
+      required: ['boost', 'reason'],
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Boost applied successfully',
+  })
+  async setRiderBoost(
+    @Param('riderId') riderId: string,
+    @CurrentUser() admin: User,
+    @Body() dto: { boost: number; expiresInHours?: number; reason: string },
+  ) {
+    return this.adminService.setRiderManualBoost(riderId, dto.boost, dto.expiresInHours, dto.reason, admin.id);
+  }
+
+  @Delete('riders/:riderId/boost')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Remove manual priority boost from a rider' })
+  @ApiParam({ name: 'riderId', description: 'Rider ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Boost removed successfully',
+  })
+  async removeRiderBoost(
+    @Param('riderId') riderId: string,
+    @CurrentUser() admin: User,
+  ) {
+    return this.adminService.removeRiderManualBoost(riderId, admin.id);
   }
 
   @Get('farmer-applications')
@@ -305,6 +387,7 @@ export class AdminController {
   @ApiOperation({ summary: 'Get available riders for order assignment' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 100 })
+  @ApiQuery({ name: 'state', required: false, type: String, description: 'Filter riders by state (e.g., Lagos, Abuja)' })
   @ApiResponse({
     status: 200,
     description: 'List of available riders for assignment',
@@ -312,8 +395,9 @@ export class AdminController {
   async getAvailableRiders(
     @Query('page') page?: number,
     @Query('limit') limit?: number,
+    @Query('state') state?: string,
   ) {
-    return this.adminService.getAvailableRiders(page, limit);
+    return this.adminService.getAvailableRiders(page, limit, state);
   }
 
   @Get('rider-applications/:applicationId')
@@ -569,6 +653,32 @@ export class AdminController {
   async initializeSettings(): Promise<{ message: string }> {
     await this.adminService.initializeSettings();
     return { message: 'Settings initialized successfully' };
+  }
+
+  // ==================== DISPATCH CONFIG ====================
+
+  @Get('dispatch/config')
+  @ApiOperation({ summary: 'Get dispatch configuration' })
+  @ApiResponse({
+    status: 200,
+    description: 'Dispatch configuration',
+  })
+  async getDispatchConfig() {
+    return this.adminService.getDispatchConfig();
+  }
+
+  @Patch('dispatch/config')
+  @ApiOperation({ summary: 'Update dispatch configuration' })
+  @ApiBody({ description: 'Dispatch configuration to update' })
+  @ApiResponse({
+    status: 200,
+    description: 'Updated dispatch configuration',
+  })
+  async updateDispatchConfig(
+    @Body() config: Record<string, any>,
+    @CurrentUser() user: User,
+  ) {
+    return this.adminService.updateDispatchConfig(config, user.id);
   }
 
   // ==================== PRODUCT PROMOTION MANAGEMENT ====================
@@ -916,5 +1026,131 @@ export class AdminController {
     @CurrentUser('id') adminId: string,
   ) {
     return this.usersService.completeAccountDeletion(requestId, adminId);
+  }
+
+  @Post('notifications/broadcast')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Send broadcast notification to users' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['title', 'message', 'type', 'targetAudience'],
+      properties: {
+        title: { type: 'string', example: 'Important Update' },
+        message: { type: 'string', example: 'Check out our new features!' },
+        type: { type: 'string', enum: ['info', 'warning', 'success', 'promo'], example: 'info' },
+        targetAudience: { type: 'string', enum: ['all', 'buyers', 'farmers', 'riders'], example: 'all' },
+        imageUrl: { type: 'string', example: '/uploads/notifications/promo.jpg', nullable: true },
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Notification sent successfully' })
+  async sendBroadcastNotification(
+    @CurrentUser('id') adminId: string,
+    @Body() body: { title: string; message: string; type: string; targetAudience: string; imageUrl?: string },
+  ) {
+    return this.notificationsService.sendBroadcastNotification(
+      body.title,
+      body.message,
+      body.type,
+      body.targetAudience,
+      adminId,
+      body.imageUrl,
+    );
+  }
+
+  @Post('emails/promotional')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Send promotional email to users' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['subject', 'content', 'template', 'targetAudience'],
+      properties: {
+        subject: { type: 'string', example: 'Special Offer Just for You!' },
+        content: { type: 'string', example: 'We have exciting news to share with you...' },
+        template: { 
+          type: 'string', 
+          enum: ['announcement', 'promotion', 'newsletter', 'update'], 
+          example: 'promotion' 
+        },
+        targetAudience: { 
+          type: 'string', 
+          enum: ['all', 'buyers', 'farmers', 'riders'], 
+          example: 'all' 
+        },
+        ctaButton: {
+          type: 'object',
+          properties: {
+            text: { type: 'string', example: 'Shop Now' },
+            url: { type: 'string', example: 'https://handwork.com/shop' },
+          },
+          nullable: true,
+        },
+        imageUrl: { 
+          type: 'string', 
+          example: 'https://example.com/promo-banner.jpg',
+          nullable: true,
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Promotional emails sent successfully' })
+  async sendPromotionalEmails(
+    @CurrentUser('id') adminId: string,
+    @Body() body: { 
+      subject: string; 
+      content: string; 
+      template: 'announcement' | 'promotion' | 'newsletter' | 'update';
+      targetAudience: 'all' | 'buyers' | 'farmers' | 'riders';
+      ctaButton?: { text: string; url: string };
+      imageUrl?: string;
+    },
+  ) {
+    // Get users based on target audience
+    const users = await this.adminService.getUsersForPromotionalEmail(body.targetAudience);
+    
+    // Log the CTA button for debugging
+    console.log('📧 Promotional email request:', {
+      subject: body.subject,
+      template: body.template,
+      targetAudience: body.targetAudience,
+      ctaButton: body.ctaButton,
+      imageUrl: body.imageUrl,
+    });
+    
+    if (users.length === 0) {
+      return { 
+        success: false, 
+        message: 'No users found for the selected audience',
+        sent: 0,
+        failed: 0,
+      };
+    }
+
+    const result = await this.emailService.sendBulkPromotionalEmails(
+      users.map(u => ({ email: u.email, firstName: u.firstName })),
+      body.subject,
+      body.content,
+      body.template,
+      body.ctaButton,
+      body.imageUrl,
+    );
+
+    // Log the action
+    await this.adminService.logAuditAction(
+      adminId,
+      'SEND_PROMOTIONAL_EMAIL',
+      'EMAIL',
+      `Sent ${body.template} email to ${body.targetAudience}: "${body.subject}" - ${result.sent} sent, ${result.failed} failed`,
+    );
+
+    return {
+      success: true,
+      message: `Promotional email sent to ${result.sent} users`,
+      ...result,
+      targetAudience: body.targetAudience,
+      totalTargeted: users.length,
+    };
   }
 }

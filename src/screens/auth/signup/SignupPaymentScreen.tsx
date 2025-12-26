@@ -21,8 +21,10 @@ import { COLORS, SPACING, FONT_SIZES, FONTS } from '../../../constants/theme';
 import { useTheme } from '../../../context/ThemeContext';
 import { useAppDispatch } from '../../../store';
 import { setAuth } from '../../../store/slices/authSlice';
+import { addAddress } from '../../../store/slices/addressSlice';
+import { addPaymentMethod } from '../../../store/slices/paymentSlice';
 import { authService } from '../../../services/authService';
-import { paymentService, NIGERIAN_BANKS } from '../../../services/paymentService';
+import { paymentService, NIGERIAN_BANKS, detectCardBrand, getCardBrandColor } from '../../../services/paymentService';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'SignupPayment'>;
 
@@ -420,6 +422,8 @@ export default function SignupPaymentScreen({ navigation, route }: Props) {
         state: params.state,
         city: params.city,
         address: params.address,
+        latitude: params.latitude,
+        longitude: params.longitude,
         nationality: params.nationality,
         nationalityCode: params.nationalityCode,
       };
@@ -440,6 +444,53 @@ export default function SignupPaymentScreen({ navigation, route }: Props) {
       const response = await authService.signup(signupData);
 
       if (response?.success && response?.data?.user) {
+        // Save the signup address to local storage
+        dispatch(addAddress({
+          id: `addr_${Date.now()}`,
+          label: 'Home',
+          addressLine1: params.address,
+          city: params.city,
+          state: params.state,
+          postalCode: '',
+          country: 'Nigeria',
+          isDefault: true,
+          lat: params.latitude,
+          lng: params.longitude,
+        }));
+
+        // Save payment method if provided
+        if (paymentMethod === 'card' && cardNumber) {
+          const brand = detectCardBrand(cardNumber);
+          const brandColors = getCardBrandColor(brand);
+          dispatch(addPaymentMethod({
+            id: `pm_${Date.now()}`,
+            type: 'card',
+            label: `${brand.charAt(0).toUpperCase() + brand.slice(1)} •••• ${cardNumber.slice(-4)}`,
+            details: `Expires ${expiryDate}`,
+            icon: 'card-outline',
+            iconColor: brandColors.color,
+            iconBg: brandColors.bg,
+            isDefault: true,
+            cardNumber: cardNumber.replace(/\s/g, ''),
+            cardExpiry: expiryDate,
+            cardBrand: brand,
+          }));
+        } else if (paymentMethod === 'bank' && selectedBank) {
+          dispatch(addPaymentMethod({
+            id: `pm_${Date.now()}`,
+            type: 'bank',
+            label: selectedBank.name,
+            details: `•••• ${accountNumber.slice(-4)}`,
+            icon: 'business-outline',
+            iconColor: '#059669',
+            iconBg: '#D1FAE5',
+            isDefault: true,
+            bankName: selectedBank.name,
+            accountNumber: accountNumber,
+            accountName: accountName,
+          }));
+        }
+
         dispatch(setAuth({
           user: response.data.user,
           accessToken: response.data.accessToken,

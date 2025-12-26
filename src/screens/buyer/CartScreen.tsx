@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { BuyerStackParamList } from '../../types';
 import { Button, EmptyState } from '../../components/common';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, FONTS } from '../../constants/theme';
@@ -30,6 +31,7 @@ export default function CartScreen() {
   const insets = useSafeAreaInsets();
   const { items, total, itemCount } = useAppSelector((state) => state.cart);
   const { colors, isDark } = useTheme();
+  const { t } = useTranslation();
 
   const handleUpdateQuantity = async (productId: string, newQuantity: number) => {
     triggerSelectionHaptic();
@@ -44,12 +46,12 @@ export default function CartScreen() {
   const handleRemoveItem = (productId: string, productName: string) => {
     triggerErrorHaptic();
     Alert.alert(
-      'Remove item',
-      `Remove ${productName} from cart?`,
+      t('cart.removeItem'),
+      `${t('cart.removeItem')} ${productName}?`,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Remove',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -67,12 +69,12 @@ export default function CartScreen() {
   const handleClearCart = () => {
     triggerErrorHaptic();
     Alert.alert(
-      'Clear cart',
-      'Remove all items from cart?',
+      t('cart.clearCart'),
+      t('cart.clearCartConfirm'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Clear',
+          text: t('common.confirm'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -97,16 +99,16 @@ export default function CartScreen() {
           }} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={[styles.fixedHeaderTitle, { color: colors.text }]}>Cart</Text>
+          <Text style={[styles.fixedHeaderTitle, { color: colors.text }]}>{t('cart.title')}</Text>
           <View style={styles.placeholder} />
         </View>
         <EmptyState
           icon={<Ionicons name="cart-outline" size={64} color={colors.textSecondary} />}
-          title="Your cart is empty"
-          description="Add some fresh produce to get started!"
+          title={t('cart.empty')}
+          description={t('cart.emptyDescription')}
           action={
             <Button
-              title="Browse Products"
+              title={t('cart.browseProducts')}
               onPress={() => navigation.goBack()}
             />
           }
@@ -125,14 +127,14 @@ export default function CartScreen() {
         }} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.fixedHeaderTitle, { color: colors.text }]}>Cart</Text>
+        <Text style={[styles.fixedHeaderTitle, { color: colors.text }]}>{t('cart.title')}</Text>
         <TouchableOpacity 
           style={[styles.clearButtonContainer, { backgroundColor: isDark ? 'rgba(239,83,80,0.15)' : '#FFF0F0' }]}
           onPress={handleClearCart}
           activeOpacity={0.7}
         >
           <Ionicons name="trash-outline" size={16} color={COLORS.error} />
-          <Text style={styles.clearButton}>Clear</Text>
+          <Text style={styles.clearButton}>{t('common.delete')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -262,15 +264,15 @@ export default function CartScreen() {
         </View>
 
         {/* Order Summary */}
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>ORDER SUMMARY</Text>
+        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('cart.orderSummary')}</Text>
         <View style={[styles.insetCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
           <View style={[styles.summaryRow, styles.summaryRowBorder, { borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60, 60, 67, 0.12)' }]}>
-            <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Subtotal</Text>
+            <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>{t('cart.subtotal')}</Text>
             <Text style={[styles.summaryValue, { color: colors.text }]}>₦{Number(total || 0).toLocaleString()}</Text>
           </View>
           <View style={styles.summaryRow}>
-            <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Delivery fee</Text>
-            <Text style={[styles.summaryValue, { color: colors.textSecondary }]}>Calculated at checkout</Text>
+            <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>{t('cart.deliveryFee')}</Text>
+            <Text style={[styles.summaryValue, { color: colors.textSecondary }]}>{t('cart.calculatedAtCheckout')}</Text>
           </View>
         </View>
 
@@ -280,11 +282,11 @@ export default function CartScreen() {
       {/* Fixed Bottom Bar */}
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12, backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
         <View style={styles.totalContainer}>
-          <Text style={[styles.totalLabel, { color: colors.textSecondary }]}>Total</Text>
+          <Text style={[styles.totalLabel, { color: colors.textSecondary }]}>{t('cart.total')}</Text>
           <Text style={[styles.totalAmount, { color: colors.primary }]}>₦{Number(total || 0).toLocaleString()}</Text>
         </View>
         <Button
-          title="Proceed to Checkout"
+          title={t('cart.checkout')}
           onPress={() => navigation.navigate('Checkout')}
           style={styles.checkoutButton}
         />

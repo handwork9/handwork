@@ -369,48 +369,81 @@ export default function AddEditProductScreen() {
     }
 
     // Map form fields to backend expected format
-    // Note: isAvailable is only for updates, not creates (backend sets default)
-    const productData: Record<string, any> = {
-      title: data.name, // Backend expects 'title' not 'name'
-      description: data.description,
-      price: Number(data.price), // Ensure numbers
-      stock: Number(data.stock),
-      unit: data.unit,
-      category: data.category,
-      // Add default location from user profile or defaults
-      pickupLat: user?.latitude || 6.5244, // Default to Lagos
-      pickupLng: user?.longitude || 3.3792,
-      pickupState: user?.state || 'Lagos',
-      pickupCity: user?.city || '',
-      pickupAddress: user?.address || '',
-      // New fields - ensure numbers are properly converted
-      minOrderQuantity: data.minOrderQuantity ? Number(data.minOrderQuantity) : 1,
-      certifications: selectedCertifications.length > 0 ? selectedCertifications : undefined,
-      harvestDate: harvestDate ? harvestDate.toISOString() : undefined,
-    };
-
-    // Add bulk discount if both quantity and percent are set
-    if (data.bulkDiscountQuantity && data.bulkDiscountPercent) {
-      productData.bulkDiscountQuantity = Number(data.bulkDiscountQuantity);
-      productData.bulkDiscountPercent = Number(data.bulkDiscountPercent);
-    }
-
-    // Add uploaded image URLs
-    if (imageUrls.length > 0) {
-      productData.images = imageUrls;
-    }
-
-    // Only include isAvailable for updates, not creates
-    if (isEditing) {
-      productData.isAvailable = isAvailable;
-    }
-
-    console.log('Creating product with data:', JSON.stringify(productData, null, 2));
-
+    // For updates, only include fields allowed in UpdateProductDto
+    // For creates, include all fields including location
+    
     if (isEditing && productId) {
-      updateMutation.mutate({ id: productId, data: productData });
+      // Update - only send fields allowed in UpdateProductDto
+      const updateData: Record<string, any> = {
+        title: data.name,
+        description: data.description,
+        price: Number(data.price),
+        stock: Number(data.stock),
+        unit: data.unit,
+        category: data.category,
+        isAvailable: isAvailable,
+        minOrderQuantity: data.minOrderQuantity ? Number(data.minOrderQuantity) : 1,
+      };
+
+      // Only add certifications if there are any
+      if (selectedCertifications.length > 0) {
+        updateData.certifications = selectedCertifications;
+      }
+
+      // Add bulk discount if both quantity and percent are set
+      if (data.bulkDiscountQuantity && data.bulkDiscountPercent) {
+        updateData.bulkDiscountQuantity = Number(data.bulkDiscountQuantity);
+        updateData.bulkDiscountPercent = Number(data.bulkDiscountPercent);
+      }
+
+      // Add uploaded image URLs if any
+      if (imageUrls.length > 0) {
+        updateData.images = imageUrls;
+      }
+
+      console.log('Updating product with data:', JSON.stringify(updateData, null, 2));
+      updateMutation.mutate({ id: productId, data: updateData });
     } else {
-      createMutation.mutate(productData);
+      // Create - include all fields
+      const createData: Record<string, any> = {
+        title: data.name,
+        description: data.description,
+        price: Number(data.price),
+        stock: Number(data.stock),
+        unit: data.unit,
+        category: data.category,
+        // Add default location from user profile or defaults
+        pickupLat: user?.latitude || 6.5244,
+        pickupLng: user?.longitude || 3.3792,
+        pickupState: user?.state || 'Lagos',
+        pickupCity: user?.city || '',
+        pickupAddress: user?.address || '',
+        minOrderQuantity: data.minOrderQuantity ? Number(data.minOrderQuantity) : 1,
+      };
+
+      // Only add certifications if there are any
+      if (selectedCertifications.length > 0) {
+        createData.certifications = selectedCertifications;
+      }
+
+      // Add harvest date if set
+      if (harvestDate) {
+        createData.harvestDate = harvestDate.toISOString();
+      }
+
+      // Add bulk discount if both quantity and percent are set
+      if (data.bulkDiscountQuantity && data.bulkDiscountPercent) {
+        createData.bulkDiscountQuantity = Number(data.bulkDiscountQuantity);
+        createData.bulkDiscountPercent = Number(data.bulkDiscountPercent);
+      }
+
+      // Add uploaded image URLs if any
+      if (imageUrls.length > 0) {
+        createData.images = imageUrls;
+      }
+
+      console.log('Creating product with data:', JSON.stringify(createData, null, 2));
+      createMutation.mutate(createData);
     }
   };
 

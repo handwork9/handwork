@@ -228,9 +228,11 @@ export default function GoPremiumScreen() {
         setIsProcessingPayment(true);
         
         // Process wallet payment for premium subscription
+        console.log('[GoPremiumScreen] Calling payForPremium with tier:', selectedPlanData.id, 'price:', price);
         const paymentResult = await walletService.payForPremium(selectedPlanData.id, price);
+        console.log('[GoPremiumScreen] Payment result:', JSON.stringify(paymentResult));
 
-        if (paymentResult.status === 'completed') {
+        if (paymentResult.success) {
           setShowPaymentModal(false);
           Alert.alert(
             'Welcome to Premium! 🎉',
@@ -238,10 +240,13 @@ export default function GoPremiumScreen() {
             [{ text: 'OK', onPress: () => navigation.goBack() }]
           );
         } else {
-          Alert.alert('Payment Failed', 'Failed to process payment');
+          Alert.alert('Payment Failed', paymentResult.message || 'Failed to process payment');
         }
-      } catch (error) {
-        Alert.alert('Error', 'Something went wrong. Please try again.');
+      } catch (error: any) {
+        console.error('[GoPremiumScreen] Error:', error);
+        // Extract error message from axios error response
+        const errorMessage = error?.response?.data?.message || error?.message || 'Something went wrong. Please try again.';
+        Alert.alert('Subscription Failed', errorMessage);
       } finally {
         setIsProcessingPayment(false);
       }
@@ -331,17 +336,19 @@ export default function GoPremiumScreen() {
     <View style={[styles.container, { backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       
-      {/* Floating Back Button */}
-      <TouchableOpacity
-        style={[styles.floatingBackButton, { top: insets.top + 10, backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
-        onPress={() => navigation.goBack()}
-      >
-        <Ionicons name="arrow-back" size={24} color={colors.text} />
-      </TouchableOpacity>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
+        <TouchableOpacity
+          style={[styles.backButton, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={20} color={colors.text} />
+        </TouchableOpacity>
+      </View>
 
       <Animated.ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 140, paddingTop: insets.top + 70 }}
+        contentContainerStyle={{ paddingBottom: 140 }}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
           { useNativeDriver: true }
@@ -700,21 +707,23 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  floatingBackButton: {
-    position: 'absolute',
-    left: 16,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF',
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowRadius: 4,
+    elevation: 2,
   },
   pageTitleContainer: {
     paddingHorizontal: 20,

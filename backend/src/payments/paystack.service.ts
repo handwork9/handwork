@@ -306,9 +306,19 @@ export class PaystackService {
     channels?: string[];
   }): Promise<InitializeTransactionResponse> {
     try {
+      // Validate inputs
+      if (!params.email) {
+        throw new BadRequestException('Email is required for Paystack payment');
+      }
+      if (!params.amount || params.amount < 100) {
+        throw new BadRequestException('Amount must be at least 100 kobo (₦1)');
+      }
+
+      this.logger.log(`Initializing Paystack transaction: email=${params.email}, amount=${params.amount} kobo`);
+
       const response = await this.apiClient.post('/transaction/initialize', {
         email: params.email,
-        amount: params.amount,
+        amount: Math.round(params.amount), // Ensure it's an integer
         reference: params.reference || this.generateReference(),
         callback_url: params.callbackUrl,
         metadata: params.metadata,
@@ -319,8 +329,17 @@ export class PaystackService {
         throw new BadRequestException(response.data.message || 'Failed to initialize transaction');
       }
 
+      this.logger.log(`Paystack transaction initialized: ${response.data.data.reference}`);
       return response.data.data;
     } catch (error) {
+      if (axios.isAxiosError(error) && error.response) {
+        this.logger.error(`Paystack API error: ${JSON.stringify(error.response.data)}`);
+        throw new BadRequestException(
+          error.response.data?.message || 
+          error.response.data?.data?.message || 
+          `Paystack error: ${error.response.status}`
+        );
+      }
       this.logger.error(`Failed to initialize transaction: ${error.message}`);
       throw error;
     }
@@ -381,22 +400,33 @@ export class PaystackService {
     accountNumber: string;
     bankCode: string;
   }): Promise<{ recipient_code: string }> {
+    const payload = {
+      type: 'nuban',
+      name: params.name,
+      account_number: params.accountNumber,
+      bank_code: params.bankCode,
+      currency: 'NGN',
+    };
+
+    this.logger.log(`[createTransferRecipient] Request payload: ${JSON.stringify(payload)}`);
+
     try {
-      const response = await this.apiClient.post('/transferrecipient', {
-        type: 'nuban',
-        name: params.name,
-        account_number: params.accountNumber,
-        bank_code: params.bankCode,
-        currency: 'NGN',
-      });
+      const response = await this.apiClient.post('/transferrecipient', payload);
 
       if (!response.data.status) {
+        this.logger.error(`[createTransferRecipient] Paystack error: ${response.data.message}`);
         throw new BadRequestException(response.data.message || 'Failed to create transfer recipient');
       }
 
+      this.logger.log(`[createTransferRecipient] Success: recipient_code=${response.data.data.recipient_code}`);
       return response.data.data;
     } catch (error) {
-      this.logger.error(`Failed to create transfer recipient: ${error.message}`);
+      const errorDetails = error.response?.data || error.message;
+      this.logger.error(`[createTransferRecipient] Failed: ${JSON.stringify(errorDetails)}`);
+      
+      if (error.response?.data?.message) {
+        throw new BadRequestException(error.response.data.message);
+      }
       throw error;
     }
   }
@@ -474,6 +504,66 @@ export class PaystackService {
         throw new BadRequestException(error.response.data.message);
       }
       throw new BadRequestException('Could not verify account. Please check the account number and bank.');
+    }
+  }
+
+  /**
+   * Generate a "Pay for Me" payment link using Paystack's transaction API
+   * Creates a shareable authorization URL that someone else can use to pay
+   */
+  async generatePayForMeLink(params: {
+    amount: number; // Amount in Naira
+    recipientEmail: string;
+    recipientName: string;
+    recipientPhone?: string;
+    orderId?: string;
+    userId: string;
+    description?: string;
+    expiresInHours?: number;
+  }): Promise<{
+    paymentLink: string;
+    reference: string;
+    expiresAt: string;
+  }> {
+    try {
+      const reference = this.generateReference('PFM');
+      const expiresInHours = params.expiresInHours || 24;
+      const expiresAt = new Date(Date.now() + expiresInHours * 60 * 60 * 1000);
+
+      // Initialize transaction with the payer's email (the person who will pay)
+      const response = await this.apiClient.post('/transaction/initialize', {
+        email: params.recipientEmail,
+        amount: Math.round(params.amount * 100), // Convert to kobo
+        reference,
+        metadata: {
+          type: 'pay_for_me',
+          requestedBy: params.userId,
+          orderId: params.orderId,
+          recipientName: params.recipientName,
+          recipientPhone: params.recipientPhone,
+          description: params.description,
+          expiresAt: expiresAt.toISOString(),
+        },
+        channels: ['card', 'bank', 'ussd', 'bank_transfer'],
+      });
+
+      if (!response.data.status) {
+        throw new BadRequestException(response.data.message || 'Failed to create payment link');
+      }
+
+      this.logger.log(`Pay for Me link generated: ${reference}`);
+      
+      return {
+        paymentLink: response.data.data.authorization_url,
+        reference: response.data.data.reference,
+        expiresAt: expiresAt.toISOString(),
+      };
+    } catch (error) {
+      this.logger.error(`Failed to generate Pay for Me link: ${error.message}`);
+      if (axios.isAxiosError(error) && error.response) {
+        throw new BadRequestException(error.response.data?.message || 'Paystack API error');
+      }
+      throw error;
     }
   }
 

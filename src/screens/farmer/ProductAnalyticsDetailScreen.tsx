@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   Alert,
   StatusBar,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -23,6 +24,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { FarmerStackParamList } from '../../types';
 import { getProductIllustration } from '../../assets/illustrations/products';
 import { farmerAnalyticsService } from '../../services/farmerAnalyticsService';
+import { API_CONFIG } from '../../constants/config';
 
 const { width } = Dimensions.get('window');
 
@@ -34,27 +36,77 @@ interface SalesDataPoint {
   value: number;
 }
 
+interface ProductPerformance {
+  id: string;
+  name: string;
+  title?: string;
+  sales: number;
+  revenue: number;
+  growth: number;
+  image?: string;
+  images?: string[];
+  category?: string;
+  stock?: number;
+  views?: number;
+  conversionRate?: number;
+}
+
 const ProductAnalyticsDetailScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteType>();
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
-  const { product } = route.params;
+  const params = route.params || {} as any;
+  
+  // Support both product object and productId
+  const productFromParams = params.product;
+  const productIdFromParams = params.productId;
 
-  // Fetch product sales history
-  const { data: salesHistoryResponse, isLoading: isSalesLoading } = useQuery({
-    queryKey: ['product-sales-history', product.id],
-    queryFn: () => farmerAnalyticsService.getProductSalesHistory(product.id, 'week'),
+  // If we only have productId, fetch the product data
+  const { data: fetchedProductData, isLoading: isProductLoading } = useQuery({
+    queryKey: ['product-analytics', productIdFromParams],
+    queryFn: () => farmerAnalyticsService.getTopProducts(50),
+    enabled: !productFromParams && !!productIdFromParams,
     staleTime: 5 * 60 * 1000,
+  });
+
+  // Find the product from fetched data if needed
+  const product: ProductPerformance | undefined = productFromParams || 
+    (fetchedProductData as any[])?.find((p: any) => p?.id === productIdFromParams) ||
+    (fetchedProductData as any)?.find?.((p: any) => p?.id === productIdFromParams);
+
+  // Fetch product sales history - always call the hook but conditionally enable
+  const productId = product?.id || productIdFromParams || '';
+  const { data: salesHistoryResponse, isLoading: isSalesLoading } = useQuery({
+    queryKey: ['product-sales-history', productId],
+    queryFn: () => farmerAnalyticsService.getProductSalesHistory(productId, 'week'),
+    staleTime: 5 * 60 * 1000,
+    enabled: !!productId,
   });
 
   const salesHistory: SalesDataPoint[] = (salesHistoryResponse as any)?.data || salesHistoryResponse || [];
 
-  // Animations
+  // Animations - all hooks must be called before any conditional returns
   const headerAnim = useRef(new Animated.Value(0)).current;
   const statsAnim = useRef(new Animated.Value(0)).current;
   const chartAnim = useRef(new Animated.Value(0)).current;
   const scrollY = useRef(new Animated.Value(0)).current;
+
+  // Get product image URL - support both image and images array
+  const getImageUrl = (imageUrl?: string): string | null => {
+    if (!imageUrl) return null;
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      return imageUrl;
+    }
+    return `${API_CONFIG.BASE_URL.replace('/api/v1', '')}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+  };
+
+  // Get the first image from either 'image' or 'images' array
+  const rawImage = product?.image || product?.images?.[0];
+  const productImageUrl = getImageUrl(rawImage);
+  
+  // Get product name - support both 'name' and 'title'
+  const productName = product?.name || product?.title || 'Product';
 
   // Header scroll animation
   const headerOpacity = scrollY.interpolate({
@@ -64,6 +116,8 @@ const ProductAnalyticsDetailScreen: React.FC = () => {
   });
 
   useEffect(() => {
+    if (!product?.id) return;
+    
     Animated.stagger(100, [
       Animated.spring(headerAnim, {
         toValue: 1,
@@ -84,7 +138,33 @@ const ProductAnalyticsDetailScreen: React.FC = () => {
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+  }, [product?.id]);
+
+  // Loading state while fetching product
+  if (!productFromParams && isProductLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={{ marginTop: 10, color: colors.textSecondary }}>Loading product...</Text>
+      </View>
+    );
+  }
+
+  // Early return if product is invalid
+  if (!product || !product.id) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+        <Ionicons name="cube-outline" size={64} color={colors.textSecondary} />
+        <Text style={{ marginTop: 10, color: colors.text, fontSize: 18 }}>Product not found</Text>
+        <TouchableOpacity 
+          style={{ marginTop: 20, padding: 12, backgroundColor: COLORS.primary, borderRadius: 8 }}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={{ color: 'white' }}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   const formatCurrency = (value: number): string => {
     if (value === undefined || value === null) return '₦0';
@@ -99,14 +179,14 @@ const ProductAnalyticsDetailScreen: React.FC = () => {
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `📊 Product Analytics: ${product.name}\n\n` +
+        message: `📊 Product Analytics: ${productName}\n\n` +
           `💰 Revenue: ${formatCurrency(product.revenue)}\n` +
           `📦 Units Sold: ${product.sales}\n` +
           `📈 Growth: ${product.growth >= 0 ? '+' : ''}${product.growth}%\n` +
           `👁️ Views: ${product.views}\n` +
           `🎯 Conversion Rate: ${product.conversionRate}%\n\n` +
           `Generated on ${new Date().toLocaleDateString()}`,
-        title: `${product.name} Analytics`,
+        title: `${productName} Analytics`,
       });
     } catch (error) {
       Alert.alert('Error', 'Failed to share report');
@@ -201,9 +281,13 @@ const ProductAnalyticsDetailScreen: React.FC = () => {
         <View style={styles.headerTitleContainer}>
           <Animated.View style={[styles.headerTitleRow, { opacity: headerOpacity }]}>
             <View style={styles.headerImageContainer}>
-              {getProductIllustration(product.name, 24)}
+              {productImageUrl ? (
+                <Image source={{ uri: productImageUrl }} style={styles.headerImage} resizeMode="cover" />
+              ) : (
+                getProductIllustration(productName, 24)
+              )}
             </View>
-            <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>{product.name}</Text>
+            <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>{productName}</Text>
           </Animated.View>
         </View>
         <TouchableOpacity style={[styles.shareButton, { backgroundColor: isDark ? `${COLORS.primary}30` : COLORS.primaryLight }]} onPress={handleShare}>
@@ -241,9 +325,17 @@ const ProductAnalyticsDetailScreen: React.FC = () => {
             style={styles.heroGradient}
           >
             <View style={styles.heroImageContainer}>
-              {getProductIllustration(product.name, 72)}
+              {productImageUrl ? (
+                <Image 
+                  source={{ uri: productImageUrl }} 
+                  style={styles.heroImage}
+                  resizeMode="cover"
+                />
+              ) : (
+                getProductIllustration(productName, 72)
+              )}
             </View>
-            <Text style={styles.heroName}>{product.name}</Text>
+            <Text style={styles.heroName}>{productName}</Text>
             <View style={styles.heroBadgeRow}>
               <View style={[styles.heroBadge, { backgroundColor: product.stock > 50 ? 'rgba(16, 185, 129, 0.3)' : product.stock > 20 ? 'rgba(251, 191, 36, 0.3)' : 'rgba(239, 68, 68, 0.3)' }]}>
                 <Ionicons 
@@ -504,11 +596,20 @@ const styles = StyleSheet.create({
   heroImageContainer: {
     width: 90,
     height: 90,
-    borderRadius: 45,
+    borderRadius: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: SPACING.sm,
+    overflow: 'hidden',
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    ...SHADOWS.medium,
+  },
+  heroImage: {
+    width: 90,
+    height: 90,
+    borderRadius: 17,
   },
   headerImageContainer: {
     width: 28,
@@ -518,6 +619,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: SPACING.xs,
+    overflow: 'hidden',
+    ...SHADOWS.small,
+  },
+  headerImage: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
   },
   heroName: {
     fontSize: FONT_SIZES.xxl,

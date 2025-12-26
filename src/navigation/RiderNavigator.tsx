@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { createBottomTabNavigator, BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,6 +9,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { RiderTabParamList, RiderStackParamList } from '../types';
 import { COLORS, FONT_SIZES, FONTS } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
+import { useToast } from '../context/ToastContext';
 import { useNotificationSocket } from '../hooks/useNotificationSocket';
 
 // Rider Screens
@@ -18,6 +19,9 @@ import EarningsScreen from '../screens/rider/EarningsScreen';
 import DeliveryConfirmationScreen from '../screens/rider/DeliveryConfirmationScreen';
 import DeliveryChatScreen from '../screens/rider/DeliveryChatScreen';
 import DeliveryReceiptScreen from '../screens/rider/DeliveryReceiptScreen';
+import RiderSubscriptionScreen from '../screens/rider/RiderSubscriptionScreen';
+import RiderDisputesScreen from '../screens/rider/RiderDisputesScreen';
+import RiderDisputeDetailScreen from '../screens/rider/RiderDisputeDetailScreen';
 import ProfileScreen from '../screens/shared/ProfileScreen';
 import GoPremiumScreen from '../screens/buyer/GoPremiumScreen';
 
@@ -53,6 +57,7 @@ import TermsPrivacyScreen from '../screens/shared/TermsPrivacyScreen';
 import NotificationsScreen from '../screens/shared/NotificationsScreen';
 import NotificationDetailScreen from '../screens/shared/NotificationDetailScreen';
 import LiveChatScreen from '../screens/shared/LiveChatScreen';
+import MyReportsScreen from '../screens/shared/MyReportsScreen';
 import PayBillScreen from '../screens/shared/PayBillScreen';
 import PaymentHistoryScreen from '../screens/shared/PaymentHistoryScreen';
 import PaymentDetailScreen from '../screens/shared/PaymentDetailScreen';
@@ -61,8 +66,10 @@ import TransactionDetailScreen from '../screens/shared/TransactionDetailScreen';
 import BankAccountsScreen from '../screens/shared/BankAccountsScreen';
 import WithdrawScreen from '../screens/shared/WithdrawScreen';
 import WithdrawalHistoryScreen from '../screens/shared/WithdrawalHistoryScreen';
+import WithdrawalDetailScreen from '../screens/shared/WithdrawalDetailScreen';
 import NotificationSettingsScreen from '../screens/shared/NotificationSettingsScreen';
 import AppearanceScreen from '../screens/shared/AppearanceScreen';
+import VideoCallScreen from '../screens/shared/VideoCallScreen';
 
 const Tab = createBottomTabNavigator<RiderTabParamList>();
 const Stack = createNativeStackNavigator<RiderStackParamList>();
@@ -157,23 +164,36 @@ function RiderTabs() {
 
 export function RiderNavigator() {
   const queryClient = useQueryClient();
+  const { showToast } = useToast();
 
   // Connect to notification WebSocket for real-time updates
   const handleNotification = useCallback((notification: any) => {
     console.log('[RiderNavigator] Received notification:', notification);
     
-    // If it's an order assignment, invalidate query and show alert
+    // If it's an order assignment, invalidate query and show toast
     if (notification.type === 'order_assigned' && notification.data?.orderId) {
       // Invalidate the active-delivery query to refetch new order
       queryClient.invalidateQueries({ queryKey: ['active-delivery'] });
       
-      Alert.alert(
-        notification.title || 'New Order Assigned',
-        notification.body || 'You have been assigned a new order. Go to the Active tab to view it.',
-        [{ text: 'OK' }]
-      );
+      showToast({
+        title: notification.title || 'New Order Assigned',
+        message: notification.body || 'You have been assigned a new order. Go to the Active tab to view it.',
+        type: 'success',
+      });
+    } else if (notification.title && notification.body) {
+      // Show toast for other notifications
+      const toastType = notification.data?.broadcastType === 'promo' ? 'promo' 
+        : notification.data?.broadcastType === 'warning' ? 'warning'
+        : notification.data?.broadcastType === 'success' ? 'success'
+        : 'info';
+      
+      showToast({
+        title: notification.title,
+        message: notification.body,
+        type: toastType,
+      });
     }
-  }, [queryClient]);
+  }, [queryClient, showToast]);
 
   useNotificationSocket(handleNotification);
 
@@ -235,6 +255,11 @@ export function RiderNavigator() {
       <Stack.Screen
         name="GoPremium"
         component={GoPremiumScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="RiderSubscription"
+        component={RiderSubscriptionScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen
@@ -305,6 +330,11 @@ export function RiderNavigator() {
       <Stack.Screen
         name="LiveChat"
         component={LiveChatScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="MyReports"
+        component={MyReportsScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen
@@ -413,6 +443,11 @@ export function RiderNavigator() {
         options={{ headerShown: false }}
       />
       <Stack.Screen
+        name="WithdrawalDetail"
+        component={WithdrawalDetailScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
         name="NotificationSettings"
         component={NotificationSettingsScreen}
         options={{ headerShown: false }}
@@ -420,6 +455,25 @@ export function RiderNavigator() {
       <Stack.Screen
         name="Appearance"
         component={AppearanceScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="VideoCall"
+        component={VideoCallScreen}
+        options={{ 
+          headerShown: false,
+          presentation: 'fullScreenModal',
+          animation: 'fade',
+        }}
+      />
+      <Stack.Screen
+        name="MyDisputes"
+        component={RiderDisputesScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="RiderDisputeDetail"
+        component={RiderDisputeDetailScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

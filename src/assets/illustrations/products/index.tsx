@@ -222,7 +222,7 @@ export const GingerIllustration: React.FC<ProductIllustrationProps> = ({ size = 
 
 // Map product names to illustrations
 export const getProductIllustration = (productName: string, size?: number) => {
-  const name = productName.toLowerCase();
+  const name = (productName || '').toLowerCase();
   if (name.includes('tomato')) return <TomatoIllustration size={size} />;
   if (name.includes('pepper')) return <PepperIllustration size={size} />;
   if (name.includes('onion')) return <OnionIllustration size={size} />;

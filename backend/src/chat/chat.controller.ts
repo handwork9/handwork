@@ -3,12 +3,14 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Body,
   Param,
   Query,
   UseGuards,
 } from '@nestjs/common';
 import { ChatService } from './chat.service';
+import { ChatGateway } from './chat.gateway';
 import { CreateConversationDto, SendMessageDto, MarkAsReadDto, GetMessagesQueryDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators';
@@ -16,7 +18,10 @@ import { CurrentUser } from '../common/decorators';
 @Controller('chat')
 @UseGuards(JwtAuthGuard)
 export class ChatController {
-  constructor(private readonly chatService: ChatService) {}
+  constructor(
+    private readonly chatService: ChatService,
+    private readonly chatGateway: ChatGateway,
+  ) {}
 
   /**
    * Get all conversations for the current user
@@ -97,5 +102,45 @@ export class ChatController {
   ) {
     await this.chatService.markAsRead(user.id, conversationId, dto.messageIds);
     return { success: true };
+  }
+
+  /**
+   * Delete a conversation (soft delete for user)
+   */
+  @Delete('conversations/:conversationId')
+  async deleteConversation(
+    @CurrentUser() user: any,
+    @Param('conversationId') conversationId: string,
+  ) {
+    await this.chatService.deleteConversation(user.id, conversationId);
+    return { success: true, message: 'Conversation deleted' };
+  }
+
+  /**
+   * Mute/unmute a conversation
+   */
+  @Patch('conversations/:conversationId/mute')
+  async muteConversation(
+    @CurrentUser() user: any,
+    @Param('conversationId') conversationId: string,
+    @Body() dto: { muted: boolean },
+  ) {
+    await this.chatService.muteConversation(user.id, conversationId, dto.muted);
+    return { success: true, muted: dto.muted };
+  }
+
+  /**
+   * Get online status for a list of users
+   */
+  @Post('online-status')
+  async getOnlineStatus(
+    @Body() dto: { userIds: string[] },
+  ) {
+    const onlineUsers = this.chatGateway.getOnlineUsers(dto.userIds);
+    const statusMap: Record<string, boolean> = {};
+    dto.userIds.forEach(userId => {
+      statusMap[userId] = onlineUsers.includes(userId);
+    });
+    return { onlineStatus: statusMap };
   }
 }

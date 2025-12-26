@@ -40,7 +40,7 @@ interface SubscriptionPlan {
   monthlyPrice: number;
   quarterlyPrice: number;
   yearlyPrice: number;
-  gradient: readonly [string, string];
+  gradient: [string, string];
   icon: keyof typeof Ionicons.glyphMap;
   popular?: boolean;
   features: PlanFeature[];
@@ -107,7 +107,7 @@ const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
 
 const BENEFITS = [
   {
-    icon: 'checkmark-shield' as const,
+    icon: 'shield-checkmark' as const,
     title: 'Verified Badge',
     description: 'Build trust with buyers',
     color: '#1DA1F2',
@@ -135,36 +135,62 @@ const BENEFITS = [
 type DurationType = 'monthly' | 'quarterly' | 'yearly';
 
 export default function FarmerSubscriptionScreen() {
+  console.log('[FarmerSubscriptionScreen] Rendering...');
+  
+  // ALL HOOKS MUST BE AT THE TOP - before any conditional returns
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
+  const { colors, isDark } = useTheme();
   const queryClient = useQueryClient();
   const { user } = useAppSelector((state) => state.auth);
-  const { colors, isDark } = useTheme();
   
+  // State hooks
+  const [showFullScreen, setShowFullScreen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<FarmerSubscriptionTier>('verified');
   const [selectedDuration, setSelectedDuration] = useState<DurationType>('monthly');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'card'>('wallet');
   const [walletBalance, setWalletBalance] = useState<WalletBalance | null>(null);
   const [isLoadingWallet, setIsLoadingWallet] = useState(true);
 
   // Animation refs
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(50)).current;
-  const scaleAnim = useRef(new Animated.Value(0.9)).current;
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
   const badgeRotate = useRef(new Animated.Value(0)).current;
 
-  // Fetch current subscription
-  const { data: currentSubscription, isLoading: isLoadingSubscription } = useQuery({
+  // Query hook
+  const { data: currentSubscription, isLoading: isLoadingSubscription, error: subscriptionError } = useQuery({
     queryKey: ['farmer-subscription'],
-    queryFn: () => farmerSubscriptionService.getCurrentSubscription(),
+    queryFn: async () => {
+      console.log('[FarmerSubscriptionScreen] Fetching current subscription...');
+      try {
+        const result = await farmerSubscriptionService.getCurrentSubscription();
+        console.log('[FarmerSubscriptionScreen] Subscription result:', JSON.stringify(result));
+        return result;
+      } catch (error: any) {
+        console.error('[FarmerSubscriptionScreen] Error fetching subscription:', error?.message, error?.response?.status);
+        return { hasActiveSubscription: false };
+      }
+    },
+    retry: false,
+    enabled: showFullScreen, // Only fetch when full screen is shown
   });
 
-  // Subscribe mutation
+  // Mutation hook
   const subscribeMutation = useMutation({
-    mutationFn: (data: { tier: FarmerSubscriptionTier; duration: DurationType }) => 
-      farmerSubscriptionService.subscribe(data.tier, data.duration, paymentMethod),
+    mutationFn: async (data: { tier: FarmerSubscriptionTier; duration: DurationType }) => {
+      console.log('[FarmerSubscriptionScreen] Subscribing with:', data);
+      try {
+        const result = await farmerSubscriptionService.subscribe(data.tier, data.duration, 'wallet');
+        console.log('[FarmerSubscriptionScreen] Subscribe result:', JSON.stringify(result));
+        return result;
+      } catch (error: any) {
+        console.error('[FarmerSubscriptionScreen] Subscribe error:', error?.message, error?.response?.data);
+        throw error;
+      }
+    },
     onSuccess: (data) => {
+      console.log('[FarmerSubscriptionScreen] Subscribe success:', data);
       queryClient.invalidateQueries({ queryKey: ['farmer-subscription'] });
       setShowPaymentModal(false);
       Alert.alert(
@@ -174,17 +200,20 @@ export default function FarmerSubscriptionScreen() {
       );
     },
     onError: (error: any) => {
+      console.error('[FarmerSubscriptionScreen] Subscribe mutation error:', error);
       Alert.alert(
         'Subscription Failed',
-        error?.response?.data?.message || error.message || 'Failed to process subscription. Please try again.',
+        error?.response?.data?.message || error?.message || 'Failed to process subscription. Please try again.',
         [{ text: 'OK' }]
       );
     },
   });
 
-  // Fetch wallet balance on screen focus
+  // Effect hooks
   useFocusEffect(
     useCallback(() => {
+      if (!showFullScreen) return;
+      
       const fetchWalletBalance = async () => {
         try {
           setIsLoadingWallet(true);
@@ -197,11 +226,12 @@ export default function FarmerSubscriptionScreen() {
         }
       };
       fetchWalletBalance();
-    }, [])
+    }, [showFullScreen])
   );
 
-  // Initial animations
   useEffect(() => {
+    if (!showFullScreen) return;
+    
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -221,7 +251,6 @@ export default function FarmerSubscriptionScreen() {
       }),
     ]).start();
 
-    // Badge rotation animation
     Animated.loop(
       Animated.sequence([
         Animated.timing(badgeRotate, {
@@ -236,8 +265,57 @@ export default function FarmerSubscriptionScreen() {
         }),
       ])
     ).start();
-  }, []);
+  }, [showFullScreen]);
 
+  useEffect(() => {
+    if (subscriptionError) {
+      console.error('[FarmerSubscriptionScreen] Query error:', subscriptionError);
+    }
+  }, [subscriptionError]);
+
+  // NOW we can have conditional returns after all hooks
+  if (!showFullScreen) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <LinearGradient
+          colors={['#1DA1F2', '#0D8ECF']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{ paddingTop: insets.top + 10, paddingHorizontal: 16, paddingBottom: 16 }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <TouchableOpacity onPress={() => navigation.goBack()}>
+              <Ionicons name="arrow-back" size={24} color="#FFF" />
+            </TouchableOpacity>
+            <Text style={{ color: '#FFF', fontSize: 18, fontWeight: '600' }}>Verified Seller</Text>
+            <View style={{ width: 24 }} />
+          </View>
+        </LinearGradient>
+        <ScrollView contentContainerStyle={{ padding: 20, alignItems: 'center' }}>
+          <View style={{ backgroundColor: '#1DA1F2', width: 100, height: 100, borderRadius: 50, justifyContent: 'center', alignItems: 'center', marginBottom: 20 }}>
+            <Ionicons name="checkmark-circle" size={60} color="#FFF" />
+          </View>
+          <Text style={{ fontSize: 24, fontWeight: 'bold', color: colors.text, marginBottom: 10 }}>Become a Verified Seller</Text>
+          <Text style={{ fontSize: 16, color: colors.textSecondary, textAlign: 'center', marginBottom: 30 }}>
+            Build trust and boost your sales with the verified badge
+          </Text>
+          
+          <TouchableOpacity 
+            style={{ backgroundColor: '#1DA1F2', paddingHorizontal: 30, paddingVertical: 15, borderRadius: 10, marginBottom: 20 }}
+            onPress={() => setShowFullScreen(true)}
+          >
+            <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '600' }}>View Subscription Plans</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Text style={{ color: '#1DA1F2', fontSize: 14 }}>Go Back</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    );
+  }
+
+  // Helper functions for full screen
   const badgeRotateInterpolate = badgeRotate.interpolate({
     inputRange: [0, 1],
     outputRange: ['-5deg', '5deg'],
@@ -288,12 +366,20 @@ export default function FarmerSubscriptionScreen() {
   };
 
   const handleConfirmPayment = async () => {
+    console.log('[FarmerSubscriptionScreen] handleConfirmPayment called');
+    console.log('[FarmerSubscriptionScreen] selectedPlan:', selectedPlan, 'selectedDuration:', selectedDuration);
+    
     const plan = SUBSCRIPTION_PLANS.find(p => p.id === selectedPlan);
-    if (!plan) return;
+    if (!plan) {
+      console.log('[FarmerSubscriptionScreen] Plan not found');
+      return;
+    }
 
     const price = getPrice(plan);
+    console.log('[FarmerSubscriptionScreen] Price:', price, 'WalletBalance:', walletBalance?.available);
     
-    if (paymentMethod === 'wallet' && walletBalance && walletBalance.available < price) {
+    // Check wallet balance
+    if (walletBalance && walletBalance.available < price) {
       Alert.alert(
         'Insufficient Balance',
         `You need ₦${price?.toLocaleString() || '0'} but have ₦${walletBalance?.available?.toLocaleString() || '0'}. Please top up your wallet.`,
@@ -305,6 +391,7 @@ export default function FarmerSubscriptionScreen() {
       return;
     }
 
+    console.log('[FarmerSubscriptionScreen] Calling subscribeMutation.mutate');
     subscribeMutation.mutate({ tier: selectedPlan, duration: selectedDuration });
   };
 
@@ -313,6 +400,7 @@ export default function FarmerSubscriptionScreen() {
   const isCurrentlySubscribed = currentSubscription?.hasActiveSubscription;
   const currentTier = currentSubscription?.premiumTier;
 
+  // Full screen view
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle="light-content" />
@@ -625,12 +713,12 @@ export default function FarmerSubscriptionScreen() {
               {/* Payment Methods */}
               <Text style={[styles.paymentTitle, { color: colors.text }]}>Payment Method</Text>
               
-              <TouchableOpacity
+              {/* Wallet Payment */}
+              <View
                 style={[
                   styles.paymentOption,
-                  { backgroundColor: colors.background, borderColor: paymentMethod === 'wallet' ? '#1DA1F2' : colors.border },
+                  { backgroundColor: colors.background, borderColor: '#1DA1F2' },
                 ]}
-                onPress={() => setPaymentMethod('wallet')}
               >
                 <View style={styles.paymentOptionLeft}>
                   <Ionicons name="wallet" size={24} color="#1DA1F2" />
@@ -641,37 +729,10 @@ export default function FarmerSubscriptionScreen() {
                     </Text>
                   </View>
                 </View>
-                <View style={[
-                  styles.radioOuter,
-                  { borderColor: paymentMethod === 'wallet' ? '#1DA1F2' : colors.border }
-                ]}>
-                  {paymentMethod === 'wallet' && <View style={styles.radioInner} />}
+                <View style={[styles.radioOuter, { borderColor: '#1DA1F2' }]}>
+                  <View style={styles.radioInner} />
                 </View>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.paymentOption,
-                  { backgroundColor: colors.background, borderColor: paymentMethod === 'card' ? '#1DA1F2' : colors.border },
-                ]}
-                onPress={() => setPaymentMethod('card')}
-              >
-                <View style={styles.paymentOptionLeft}>
-                  <Ionicons name="card" size={24} color="#FF9500" />
-                  <View style={styles.paymentInfo}>
-                    <Text style={[styles.paymentName, { color: colors.text }]}>Card Payment</Text>
-                    <Text style={[styles.paymentBalance, { color: colors.textSecondary }]}>
-                      Visa, Mastercard, Verve
-                    </Text>
-                  </View>
-                </View>
-                <View style={[
-                  styles.radioOuter,
-                  { borderColor: paymentMethod === 'card' ? '#1DA1F2' : colors.border }
-                ]}>
-                  {paymentMethod === 'card' && <View style={styles.radioInner} />}
-                </View>
-              </TouchableOpacity>
+              </View>
             </View>
 
             <TouchableOpacity

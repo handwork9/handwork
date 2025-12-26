@@ -1,0 +1,8 @@
+{
+  "android": {
+    "package": "com.anonymous.admin"
+  },
+  "ios": {
+    "bundleIdentifier": "com.anonymous.admin"
+  }
+}

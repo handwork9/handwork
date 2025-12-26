@@ -1,4 +1,5 @@
 import { apiClient } from './apiClient';
+import { offlineCacheService } from './offlineCacheService';
 import {
   Product,
   ProductFilters,
@@ -23,6 +24,7 @@ const extractData = <T>(response: any): T => {
 export const productService = {
   /**
    * Get products with filters and pagination
+   * Uses offline cache when network is unavailable
    */
   async getProducts(
     filters: ProductQueryParams = {}
@@ -43,27 +45,68 @@ export const productService = {
     if (filters.filter) params.append('filter', filters.filter);
     if (filters.verifiedOnly) params.append('verifiedOnly', 'true');
 
-    const response = await apiClient.get<any>(`/products?${params.toString()}`);
-    const data = extractData<{ data: Product[]; total: number }>(response);
-    
-    // Map backend response to expected format
-    return {
-      products: data.data || [],
-      total: data.total || 0,
-    };
+    try {
+      const response = await apiClient.get<any>(`/products?${params.toString()}`);
+      const data = extractData<{ data: Product[]; total: number }>(response);
+      
+      // Map backend response to expected format - filter out invalid products
+      const validProducts = (data.data || []).filter((p: any) => p != null && p.id != null);
+      const result = {
+        products: validProducts,
+        total: data.total || validProducts.length,
+      };
+      
+      // Cache products for offline use (only cache first page without filters for simplicity)
+      if (!filters.page || filters.page === 1) {
+        await offlineCacheService.cacheProducts(validProducts);
+      }
+      
+      return result;
+    } catch (error) {
+      // Try to return cached products if available
+      const cachedProducts = await offlineCacheService.getCachedProducts();
+      if (cachedProducts && cachedProducts.length > 0) {
+        console.log('Using cached products due to network error');
+        return {
+          products: cachedProducts,
+          total: cachedProducts.length,
+        };
+      }
+      throw error;
+    }
   },
 
   /**
    * Get farmer's own products
    */
   async getMyProducts(): Promise<{ products: Product[]; total: number }> {
-    const response = await apiClient.get<any>('/products/farmer/my-products');
-    const data = extractData<{ data: Product[]; total: number }>(response);
-    
-    return {
-      products: data.data || [],
-      total: data.total || 0,
-    };
+    try {
+      const response = await apiClient.get<any>('/products/farmer/my-products');
+      const data = extractData<{ data: Product[]; total: number }>(response);
+      
+      // Filter out invalid products
+      const validProducts = (data.data || []).filter((p: any) => p != null && p.id != null);
+      const result = {
+        products: validProducts,
+        total: data.total || validProducts.length,
+      };
+      
+      // Cache farmer products
+      await offlineCacheService.cacheFarmerProducts(validProducts);
+      
+      return result;
+    } catch (error) {
+      // Try cached farmer products
+      const cachedProducts = await offlineCacheService.getCachedFarmerProducts();
+      if (cachedProducts && cachedProducts.length > 0) {
+        console.log('Using cached farmer products due to network error');
+        return {
+          products: cachedProducts,
+          total: cachedProducts.length,
+        };
+      }
+      throw error;
+    }
   },
 
   /**
@@ -124,7 +167,7 @@ export const productService = {
     if (page) params.append('page', page.toString());
     if (pageSize) params.append('pageSize', pageSize.toString());
     
-    return apiClient.get(`/farmers/${farmerId}/products?${params.toString()}`);
+    return apiClient.get(`/farmers/profile/${farmerId}/products?${params.toString()}`);
   },
 
   /**

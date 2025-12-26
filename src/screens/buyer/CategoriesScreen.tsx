@@ -530,7 +530,7 @@ export default function CategoriesScreen() {
             {/* Subcategories Grid */}
             <FlatList
               data={selectedCategory.subcategories}
-              keyExtractor={(item) => item.id}
+              keyExtractor={(item, index) => item?.id || `cat-${index}`}
               renderItem={renderSubcategoryCard}
               numColumns={3}
               contentContainerStyle={styles.gridContent}

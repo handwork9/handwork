@@ -1,10 +1,14 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, Inject, forwardRef, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, ILike } from 'typeorm';
 import { Product } from '../database/entities/product.entity';
 import { CreateProductDto, UpdateProductDto, QueryProductsDto } from './dto';
 import { PaginatedResponseDto } from '../common/dto';
 import { calculateDistance } from '../common/utils/helpers';
+import { NotificationsService, NotificationType } from '../notifications/notifications.service';
+
+// Low stock threshold - notify farmer when stock falls below this
+const LOW_STOCK_THRESHOLD = 10;
 
 // Extended product type with farmer info
 export interface ProductWithFarmerInfo extends Product {
@@ -18,9 +22,13 @@ export interface ProductWithFarmerInfo extends Product {
 
 @Injectable()
 export class ProductsService {
+  private readonly logger = new Logger(ProductsService.name);
+  
   constructor(
     @InjectRepository(Product)
     private readonly productRepository: Repository<Product>,
+    @Inject(forwardRef(() => NotificationsService))
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   /**
@@ -188,10 +196,61 @@ export class ProductsService {
 
   async updateStock(id: string, quantity: number): Promise<void> {
     await this.productRepository.decrement({ id }, 'stock', quantity);
+    
+    // Check for low stock and send notification
+    const product = await this.productRepository.findOne({
+      where: { id },
+      relations: ['farmer'],
+    });
+    
+    if (product && product.stock <= LOW_STOCK_THRESHOLD && product.stock >= 0) {
+      // Send low stock alert to farmer
+      this.notificationsService.sendPushNotification({
+        userId: product.farmerId,
+        type: NotificationType.GENERAL,
+        title: '⚠️ Low Stock Alert',
+        body: `${product.title} has only ${product.stock} ${product.unit}(s) left in stock.`,
+        data: {
+          type: 'low_stock',
+          productId: product.id,
+          productTitle: product.title,
+          stock: product.stock,
+        },
+      }).catch((err) => {
+        this.logger.warn(`Failed to send low stock alert: ${err.message}`);
+      });
+      
+      // If out of stock, mark as unavailable
+      if (product.stock <= 0) {
+        await this.productRepository.update(id, { isAvailable: false });
+        
+        this.notificationsService.sendPushNotification({
+          userId: product.farmerId,
+          type: NotificationType.GENERAL,
+          title: '❌ Product Out of Stock',
+          body: `${product.title} is now out of stock and has been marked unavailable.`,
+          data: {
+            type: 'out_of_stock',
+            productId: product.id,
+            productTitle: product.title,
+          },
+        }).catch((err) => {
+          this.logger.warn(`Failed to send out of stock alert: ${err.message}`);
+        });
+      }
+    }
+  }
+
+  async restoreStock(id: string, quantity: number): Promise<void> {
+    await this.productRepository.increment({ id }, 'stock', quantity);
   }
 
   async incrementSales(id: string, quantity: number): Promise<void> {
     await this.productRepository.increment({ id }, 'salesCount', quantity);
+  }
+
+  async decrementSales(id: string, quantity: number): Promise<void> {
+    await this.productRepository.decrement({ id }, 'salesCount', quantity);
   }
 
   async getNearbyProducts(lat: number, lng: number, radiusKm: number, limit = 10): Promise<ProductWithFarmerInfo[]> {

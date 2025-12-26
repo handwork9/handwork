@@ -20,6 +20,7 @@ import { ProductCard, LoadingSpinner, EmptyState } from '../../components/common
 import { productService } from '../../services/productService';
 import { useTheme } from '../../context/ThemeContext';
 import { FONTS } from '../../constants/theme';
+import { useAppSelector } from '../../store';
 
 type NavigationProp = NativeStackNavigationProp<BuyerStackParamList>;
 type SearchRouteProp = RouteProp<BuyerStackParamList, 'Search'>;
@@ -48,6 +49,12 @@ export default function SearchScreen() {
   const route = useRoute<SearchRouteProp>();
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
+  
+  // Get user's state for filtering products
+  const { user } = useAppSelector((state) => state.auth);
+  const defaultAddress = useAppSelector((state) => state.address.addresses.find(a => a.isDefault));
+  const userState = defaultAddress?.state || user?.state;
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<QuickFilterId | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(route.params?.category || null);
@@ -73,8 +80,8 @@ export default function SearchScreen() {
     isLoading: isLoadingVerified,
     isFetching: isFetchingVerified,
   } = useQuery({
-    queryKey: ['verified-sellers', debouncedQuery],
-    queryFn: () => productService.getVerifiedSellerProducts(undefined, 50),
+    queryKey: ['verified-sellers', debouncedQuery, userState],
+    queryFn: () => productService.getVerifiedSellerProducts(userState, 50),
     enabled: verifiedOnly,
     staleTime: 60 * 1000,
   });
@@ -84,12 +91,13 @@ export default function SearchScreen() {
     isLoading,
     isFetching,
   } = useQuery({
-    queryKey: ['search', debouncedQuery, activeFilter, categoryFilter, subcategoryFilter],
+    queryKey: ['search', debouncedQuery, activeFilter, categoryFilter, subcategoryFilter, userState],
     queryFn: () =>
       productService.getProducts({
         searchQuery: debouncedQuery || undefined,
         filter: activeFilter || undefined,
         category: categoryFilter || undefined,
+        state: userState,
         // Note: subcategory filtering is shown in UI badge but we filter by category only
         // since most products don't have subcategories set in the database yet
         // subcategory: subcategoryFilter || undefined,
@@ -326,7 +334,7 @@ export default function SearchScreen() {
       ) : (
         <FlatList
           data={products}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item, index) => item?.id || `search-${index}`}
           numColumns={2}
           contentContainerStyle={styles.resultsContent}
           columnWrapperStyle={styles.gridRow}

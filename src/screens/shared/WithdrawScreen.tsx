@@ -43,9 +43,11 @@ export default function WithdrawScreen({ route }: { route?: { params?: { balance
   const navigation = useNavigation();
   
   // Get balance from route params if passed (e.g., from EarningsScreen)
-  const initialBalance = route?.params?.balance ?? 0;
+  // We no longer use this - always fetch fresh from API
+  // const initialBalance = route?.params?.balance ?? 0;
 
-  const [walletBalance, setWalletBalance] = useState(initialBalance);
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [isLoadingBalance, setIsLoadingBalance] = useState(true);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<BankAccount | null>(null);
   const [amount, setAmount] = useState('');
@@ -88,7 +90,8 @@ export default function WithdrawScreen({ route }: { route?: { params?: { balance
   const loadData = async () => {
     try {
       setIsLoading(true);
-      console.log('[WithdrawScreen] Loading data, initialBalance from route:', initialBalance);
+      setIsLoadingBalance(true);
+      console.log('[WithdrawScreen] Loading data...');
       
       const [balance, accounts] = await Promise.all([
         walletService.getBalance(),
@@ -96,28 +99,27 @@ export default function WithdrawScreen({ route }: { route?: { params?: { balance
       ]);
       
       console.log('[WithdrawScreen] Raw balance response:', JSON.stringify(balance));
+      console.log('[WithdrawScreen] Bank accounts response:', JSON.stringify(accounts));
+      console.log('[WithdrawScreen] Number of bank accounts:', accounts?.length || 0);
       
-      // Use API balance, but keep route param balance if API returns 0
-      const apiBalance = typeof balance.available === 'string' 
-        ? parseFloat(balance.available) 
-        : (balance.available || 0);
+      // Always use API balance - handle both string and number types from PostgreSQL
+      let apiBalance = (balance as any)?.available ?? (balance as any)?.balance ?? 0;
+      if (typeof apiBalance === 'string') {
+        apiBalance = parseFloat(apiBalance) || 0;
+      }
       
       console.log('[WithdrawScreen] Parsed API balance:', apiBalance);
+      setWalletBalance(apiBalance);
       
-      if (apiBalance > 0 || !initialBalance) {
-        setWalletBalance(apiBalance);
-      } else {
-        console.log('[WithdrawScreen] Using initialBalance from route:', initialBalance);
-      }
       setBankAccounts(accounts);
       if (accounts.length > 0) {
         setSelectedAccount(accounts[0]);
       }
     } catch (error) {
       console.error('[WithdrawScreen] Error loading data:', error);
-      // Keep initialBalance from route params on error
     } finally {
       setIsLoading(false);
+      setIsLoadingBalance(false);
     }
   };
 
@@ -307,9 +309,13 @@ export default function WithdrawScreen({ route }: { route?: { params?: { balance
               <Text style={[styles.balanceLabel, dynamicStyles.textSecondary]}>
                 Available Balance
               </Text>
-              <Text style={[styles.balanceAmount, dynamicStyles.text]}>
-                ₦{(walletBalance ?? 0).toLocaleString()}
-              </Text>
+              {isLoadingBalance ? (
+                <ActivityIndicator size="small" color="#16A34A" style={{ marginTop: 8 }} />
+              ) : (
+                <Text style={[styles.balanceAmount, dynamicStyles.text]}>
+                  ₦{(walletBalance ?? 0).toLocaleString()}
+                </Text>
+              )}
             </View>
             <View style={styles.balanceDecoration}>
               <View style={[styles.decorationCircle, styles.decorationCircle1]} />

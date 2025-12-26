@@ -13,6 +13,12 @@ const cartSlice = createSlice({
   reducers: {
     addToCart: (state, action: PayloadAction<{ product: Product; quantity: number }>) => {
       const { product, quantity } = action.payload;
+      
+      // Guard against null/undefined product
+      if (!product || !product.id) {
+        return;
+      }
+      
       const existingItem = state.items.find((item) => item.productId === product.id);
       const price = Number(product.price) || 0;
 

@@ -1,12 +1,16 @@
-import { Injectable, NotFoundException, ForbiddenException, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, Inject, forwardRef, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, IsNull, Not } from 'typeorm';
-import { SupportTicket, SupportMessage, User, TicketStatus, TicketPriority, TicketCategory, MessageSender, SupportMessageType } from '../database/entities';
+import { SupportTicket, SupportMessage, User, TicketStatus, TicketPriority, TicketCategory, MessageSender, SupportMessageType, SupportReport, ReportType, ReportStatus } from '../database/entities';
 import { SupportGateway } from './support.gateway';
-import { CreateTicketDto, SendMessageDto, UpdateTicketDto, AssignTicketDto } from './dto';
+import { CreateTicketDto, SendMessageDto, UpdateTicketDto, AssignTicketDto, CreateReportDto, UpdateReportDto } from './dto';
+import { UserRole } from '../common/enums';
+import { NotificationsService, NotificationType } from '../notifications/notifications.service';
 
 @Injectable()
 export class SupportService {
+  private readonly logger = new Logger(SupportService.name);
+  
   constructor(
     @InjectRepository(SupportTicket)
     private ticketRepository: Repository<SupportTicket>,
@@ -14,8 +18,12 @@ export class SupportService {
     private messageRepository: Repository<SupportMessage>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    @InjectRepository(SupportReport)
+    private reportRepository: Repository<SupportReport>,
     @Inject(forwardRef(() => SupportGateway))
     private supportGateway: SupportGateway,
+    @Inject(forwardRef(() => NotificationsService))
+    private notificationsService: NotificationsService,
   ) {}
 
   /**
@@ -62,20 +70,28 @@ export class SupportService {
    * Get or create an active ticket for a user
    */
   async getOrCreateActiveTicket(userId: string, dto?: CreateTicketDto): Promise<SupportTicket> {
-    // Check if user has an open ticket
+    // Check if user has an open or recently resolved ticket (within last 24 hours)
     const existingTicket = await this.ticketRepository.findOne({
       where: {
         userId,
-        status: In([TicketStatus.OPEN, TicketStatus.ASSIGNED, TicketStatus.IN_PROGRESS, TicketStatus.WAITING_USER]),
+        status: In([TicketStatus.OPEN, TicketStatus.ASSIGNED, TicketStatus.IN_PROGRESS, TicketStatus.WAITING_USER, TicketStatus.RESOLVED]),
       },
       order: { createdAt: 'DESC' },
     });
 
+    // If ticket exists and is either open or resolved within last 24 hours, return it
     if (existingTicket) {
-      return this.getTicketById(existingTicket.id);
+      const isRecentlyResolved = existingTicket.status === TicketStatus.RESOLVED && 
+        existingTicket.resolvedAt && 
+        (Date.now() - new Date(existingTicket.resolvedAt).getTime()) < 24 * 60 * 60 * 1000;
+      
+      // Return existing ticket if it's still open OR if it was recently resolved
+      if (existingTicket.status !== TicketStatus.RESOLVED || isRecentlyResolved) {
+        return this.getTicketById(existingTicket.id);
+      }
     }
 
-    // Create new ticket
+    // Create new ticket only if no active/recent ticket exists
     return this.createTicket(userId, dto || {
       subject: 'Live Support Chat',
       category: TicketCategory.OTHER,
@@ -202,6 +218,8 @@ export class SupportService {
     dto: SendMessageDto,
     senderType: MessageSender,
   ): Promise<SupportMessage> {
+    this.logger.log(`[sendMessage] Received DTO: ${JSON.stringify(dto)}`);
+    
     const ticket = await this.ticketRepository.findOne({ where: { id: ticketId } });
     if (!ticket) {
       throw new NotFoundException('Ticket not found');
@@ -217,7 +235,11 @@ export class SupportService {
       metadata: dto.metadata,
     });
 
+    this.logger.log(`[sendMessage] Created message entity: ${JSON.stringify(message)}`);
+
     await this.messageRepository.save(message);
+    
+    this.logger.log(`[sendMessage] Saved message with attachments: ${JSON.stringify(message.attachments)}`);
 
     // Update ticket
     ticket.lastMessageAt = new Date();
@@ -355,12 +377,32 @@ export class SupportService {
       .groupBy('ticket.status')
       .getRawMany();
 
+    // Calculate average response time from first agent response
+    const responseTimeResult = await this.messageRepository
+      .createQueryBuilder('msg')
+      .innerJoin('support_tickets', 'ticket', 'ticket.id = msg.ticketId')
+      .select('AVG(EXTRACT(EPOCH FROM (msg.createdAt - ticket.createdAt)) / 60)', 'avgMinutes')
+      .where('msg.senderType = :agentType', { agentType: MessageSender.AGENT })
+      .andWhere(
+        `msg.id = (
+          SELECT m2.id FROM support_messages m2 
+          WHERE m2.ticketId = msg.ticketId 
+          AND m2.senderType = :agentType 
+          ORDER BY m2.createdAt ASC 
+          LIMIT 1
+        )`,
+        { agentType: MessageSender.AGENT }
+      )
+      .getRawOne();
+
+    const averageResponseMinutes = parseFloat(responseTimeResult?.avgMinutes || '0');
+
     return {
       totalTickets,
       openTickets,
       resolvedToday,
       averageRating: parseFloat(ratingResult?.avgRating || '0'),
-      averageResponseTime: 0, // TODO: Calculate from first message response
+      averageResponseTime: Math.round(averageResponseMinutes), // in minutes
       ticketsByCategory: categoryStats.reduce((acc, { category, count }) => {
         acc[category] = parseInt(count);
         return acc;
@@ -370,5 +412,272 @@ export class SupportService {
         return acc;
       }, {}),
     };
+  }
+
+  /**
+   * Get support team members (admins with support roles)
+   */
+  async getSupportTeamMembers() {
+    const SUPPORT_ROLES = [
+      UserRole.ADMIN,
+      UserRole.SUPERADMIN,
+      UserRole.SUPPORT,
+    ];
+
+    const members = await this.userRepository.find({
+      where: {
+        role: In(SUPPORT_ROLES),
+        isActive: true,
+      },
+      select: ['id', 'name', 'email', 'phone', 'role', 'avatar', 'createdAt'],
+      order: { name: 'ASC' },
+    });
+
+    // Get active ticket counts per team member
+    const assignedCounts = await this.ticketRepository
+      .createQueryBuilder('ticket')
+      .select('ticket.assignedToId', 'assignedToId')
+      .addSelect('COUNT(*)', 'count')
+      .where('ticket.status IN (:...statuses)', { statuses: [TicketStatus.ASSIGNED, TicketStatus.IN_PROGRESS, TicketStatus.WAITING_USER] })
+      .andWhere('ticket.assignedToId IS NOT NULL')
+      .groupBy('ticket.assignedToId')
+      .getRawMany();
+
+    const countMap = assignedCounts.reduce((acc, { assignedToId, count }) => {
+      acc[assignedToId] = parseInt(count);
+      return acc;
+    }, {} as Record<string, number>);
+
+    return members.map(member => ({
+      ...member,
+      activeTickets: countMap[member.id] || 0,
+    }));
+  }
+
+  // ==================== REPORT MANAGEMENT ====================
+
+  /**
+   * Create a new report
+   */
+  async createReport(userId: string, dto: CreateReportDto): Promise<SupportReport> {
+    const report = this.reportRepository.create({
+      userId,
+      ticketId: dto.ticketId,
+      type: dto.type,
+      description: dto.description,
+      status: ReportStatus.PENDING,
+    });
+
+    await this.reportRepository.save(report);
+    this.logger.log(`New report created: ${report.id} by user ${userId}`);
+
+    return this.getReportById(report.id);
+  }
+
+  /**
+   * Get report by ID
+   */
+  async getReportById(reportId: string): Promise<SupportReport> {
+    const report = await this.reportRepository.findOne({
+      where: { id: reportId },
+      relations: ['user', 'ticket', 'reviewer'],
+    });
+
+    if (!report) {
+      throw new NotFoundException('Report not found');
+    }
+
+    return report;
+  }
+
+  /**
+   * Get all reports (admin only)
+   */
+  async getReports(filters?: {
+    status?: ReportStatus;
+    type?: ReportType;
+    page?: number;
+    limit?: number;
+  }): Promise<{ reports: SupportReport[]; total: number; page: number; limit: number }> {
+    const page = filters?.page || 1;
+    const limit = filters?.limit || 20;
+    const skip = (page - 1) * limit;
+
+    const queryBuilder = this.reportRepository.createQueryBuilder('report')
+      .leftJoinAndSelect('report.user', 'user')
+      .leftJoinAndSelect('report.ticket', 'ticket')
+      .leftJoinAndSelect('report.reviewer', 'reviewer')
+      .orderBy('report.createdAt', 'DESC');
+
+    if (filters?.status) {
+      queryBuilder.andWhere('report.status = :status', { status: filters.status });
+    }
+
+    if (filters?.type) {
+      queryBuilder.andWhere('report.type = :type', { type: filters.type });
+    }
+
+    const [reports, total] = await queryBuilder
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
+
+    return { reports, total, page, limit };
+  }
+
+  /**
+   * Get user's own reports (for feedback tracking)
+   */
+  async getUserReports(userId: string, filters?: {
+    status?: ReportStatus;
+    page?: number;
+    limit?: number;
+  }): Promise<{ reports: SupportReport[]; total: number; page: number; limit: number }> {
+    const page = filters?.page || 1;
+    const limit = filters?.limit || 20;
+    const skip = (page - 1) * limit;
+
+    const queryBuilder = this.reportRepository.createQueryBuilder('report')
+      .leftJoinAndSelect('report.ticket', 'ticket')
+      .leftJoinAndSelect('report.reviewer', 'reviewer')
+      .where('report.userId = :userId', { userId })
+      .orderBy('report.createdAt', 'DESC');
+
+    if (filters?.status) {
+      queryBuilder.andWhere('report.status = :status', { status: filters.status });
+    }
+
+    const [reports, total] = await queryBuilder
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
+
+    return { reports, total, page, limit };
+  }
+
+  /**
+   * Get a specific report by ID for the user (only their own)
+   */
+  async getUserReportById(userId: string, reportId: string): Promise<SupportReport> {
+    const report = await this.reportRepository.findOne({
+      where: { id: reportId, userId },
+      relations: ['ticket', 'reviewer'],
+    });
+
+    if (!report) {
+      throw new NotFoundException('Report not found');
+    }
+
+    return report;
+  }
+
+  /**
+   * Update a report (admin only)
+   */
+  async updateReport(reportId: string, adminId: string, dto: UpdateReportDto): Promise<SupportReport> {
+    const report = await this.getReportById(reportId);
+    const previousStatus = report.status;
+
+    if (dto.status) {
+      report.status = dto.status;
+      if (dto.status !== ReportStatus.PENDING) {
+        report.reviewedBy = adminId;
+        report.reviewedAt = new Date();
+      }
+    }
+
+    if (dto.adminNotes !== undefined) {
+      report.adminNotes = dto.adminNotes;
+    }
+
+    await this.reportRepository.save(report);
+
+    // Send notification to user if status changed
+    if (dto.status && dto.status !== previousStatus) {
+      await this.notifyUserOfReportStatusChange(report, dto.status);
+    }
+
+    return this.getReportById(reportId);
+  }
+
+  /**
+   * Notify user of report status change
+   */
+  private async notifyUserOfReportStatusChange(report: SupportReport, newStatus: ReportStatus): Promise<void> {
+    try {
+      let notificationType: NotificationType;
+      let title: string;
+      let body: string;
+
+      switch (newStatus) {
+        case ReportStatus.REVIEWED:
+          notificationType = NotificationType.SUPPORT_REPORT_REVIEWED;
+          title = 'Report Under Review';
+          body = 'Your report is being reviewed by our support team.';
+          break;
+        case ReportStatus.RESOLVED:
+          notificationType = NotificationType.SUPPORT_REPORT_RESOLVED;
+          title = 'Report Resolved';
+          body = report.adminNotes 
+            ? `Your report has been resolved. Response: ${report.adminNotes.substring(0, 100)}${report.adminNotes.length > 100 ? '...' : ''}`
+            : 'Your report has been resolved. Thank you for your feedback.';
+          break;
+        case ReportStatus.DISMISSED:
+          notificationType = NotificationType.SUPPORT_REPORT_DISMISSED;
+          title = 'Report Closed';
+          body = report.adminNotes 
+            ? `Your report has been reviewed. Response: ${report.adminNotes.substring(0, 100)}${report.adminNotes.length > 100 ? '...' : ''}`
+            : 'Your report has been reviewed and closed.';
+          break;
+        default:
+          return;
+      }
+
+      await this.notificationsService.sendPushNotification({
+        userId: report.userId,
+        type: notificationType,
+        title,
+        body,
+        data: {
+          reportId: report.id,
+          reportType: report.type,
+          status: newStatus,
+        },
+      });
+
+      this.logger.log(`Notification sent to user ${report.userId} for report ${report.id} status change to ${newStatus}`);
+    } catch (error) {
+      this.logger.error(`Failed to send report notification: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get report statistics
+   */
+  async getReportStats(): Promise<{
+    total: number;
+    pending: number;
+    reviewed: number;
+    resolved: number;
+    dismissed: number;
+    byType: Record<string, number>;
+  }> {
+    const reports = await this.reportRepository.find();
+
+    const stats = {
+      total: reports.length,
+      pending: 0,
+      reviewed: 0,
+      resolved: 0,
+      dismissed: 0,
+      byType: {} as Record<string, number>,
+    };
+
+    reports.forEach(report => {
+      stats[report.status]++;
+      stats.byType[report.type] = (stats.byType[report.type] || 0) + 1;
+    });
+
+    return stats;
   }
 }

@@ -346,7 +346,7 @@ export default function MyAddressScreen() {
       >
         <View style={styles.fieldContent}>
           <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>{label}</Text>
-          <Text style={[styles.fieldValue, { color: value ? colors.text : colors.textSecondary }]} numberOfLines={1}>
+          <Text style={[styles.fieldValue, { color: value ? colors.text : colors.textSecondary }]} numberOfLines={1} ellipsizeMode="tail">
             {value || 'Not set'}
           </Text>
         </View>
@@ -376,7 +376,7 @@ export default function MyAddressScreen() {
           </View>
           <View style={styles.addressHeaderInfo}>
             <View style={styles.labelRow}>
-              <Text style={[styles.addressLabel, { color: colors.text }]} numberOfLines={1}>
+              <Text style={[styles.addressLabel, { color: colors.text }]} numberOfLines={1} ellipsizeMode="tail">
                 {address.addressLine1}
               </Text>
               {address.isDefault && (
@@ -386,7 +386,7 @@ export default function MyAddressScreen() {
                 </View>
               )}
             </View>
-            <Text style={[styles.addressPreview, { color: colors.textSecondary }]} numberOfLines={1}>
+            <Text style={[styles.addressPreview, { color: colors.textSecondary }]} numberOfLines={1} ellipsizeMode="tail">
               {address.city}, {address.state}
             </Text>
           </View>
@@ -836,6 +836,7 @@ const styles = StyleSheet.create({
   addressLabel: {
     fontSize: 17,
     fontFamily: FONTS.semiBold,
+    flex: 1,
   },
   defaultBadge: {
     flexDirection: 'row',

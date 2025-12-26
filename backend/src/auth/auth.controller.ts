@@ -11,6 +11,7 @@ import {
   Headers,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
 import { AuthService } from './auth.service';
 import { TwoFactorService } from './two-factor.service';
@@ -44,6 +45,7 @@ export class AuthController {
 
   @Public()
   @Post('signup')
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 signups per minute
   @ApiOperation({ summary: 'Register a new user' })
   @ApiResponse({ status: 201, description: 'User created successfully' })
   @ApiResponse({ status: 409, description: 'Phone or email already exists' })
@@ -58,6 +60,7 @@ export class AuthController {
 
   @Public()
   @Post('login')
+  @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 login attempts per minute
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login with email/phone and password' })
   @ApiResponse({ status: 200, description: 'Login successful or 2FA required' })
@@ -80,6 +83,7 @@ export class AuthController {
 
   @Public()
   @Post('google')
+  @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 attempts per minute
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login or signup with Google' })
   @ApiResponse({ status: 200, description: 'Login successful' })
@@ -95,6 +99,7 @@ export class AuthController {
 
   @Public()
   @Post('2fa/verify-login')
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 attempts per minute
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Complete login with 2FA code' })
   @ApiResponse({ status: 200, description: 'Login successful' })
@@ -110,6 +115,7 @@ export class AuthController {
 
   @Public()
   @Post('otp/request')
+  @Throttle({ default: { limit: 3, ttl: 60000 } }) // 3 OTP requests per minute
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Request OTP for phone verification' })
   @ApiResponse({ status: 200, description: 'OTP sent successfully' })
@@ -119,6 +125,7 @@ export class AuthController {
 
   @Public()
   @Post('otp/verify')
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 verification attempts per minute
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verify OTP and login' })
   @ApiResponse({ status: 200, description: 'OTP verified successfully or 2FA required' })
@@ -235,6 +242,7 @@ export class AuthController {
 
   @Public()
   @Post('forgot-password')
+  @Throttle({ default: { limit: 3, ttl: 300000 } }) // 3 requests per 5 minutes
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Request password reset OTP' })
   @ApiResponse({ status: 200, description: 'OTP sent successfully' })
@@ -245,6 +253,7 @@ export class AuthController {
 
   @Public()
   @Post('reset-password')
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 attempts per minute
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Reset password using OTP' })
   @ApiResponse({ status: 200, description: 'Password reset successfully' })

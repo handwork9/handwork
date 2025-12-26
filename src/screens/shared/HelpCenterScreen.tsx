@@ -120,8 +120,11 @@ export default function HelpCenterScreen() {
   };
 
   const filteredFAQs = FAQS.filter(faq => {
-    const matchesSearch = faq.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          faq.answer.toLowerCase().includes(searchQuery.toLowerCase());
+    if (!faq) return false;
+    const question = (faq.question || '').toLowerCase();
+    const answer = (faq.answer || '').toLowerCase();
+    const query = (searchQuery || '').toLowerCase();
+    const matchesSearch = question.includes(query) || answer.includes(query);
     const matchesCategory = !selectedCategory || faq.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
@@ -186,13 +189,13 @@ export default function HelpCenterScreen() {
           <TouchableOpacity
             style={[styles.quickActionCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}
             activeOpacity={0.7}
-            onPress={() => (navigation as any).navigate('ContactUs')}
+            onPress={() => (navigation as any).navigate('MyReports')}
           >
-            <View style={[styles.quickActionIcon, { backgroundColor: isDark ? 'rgba(22, 163, 74, 0.2)' : '#DCFCE7' }]}>
-              <Ionicons name="call" size={22} color="#16A34A" />
+            <View style={[styles.quickActionIcon, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.2)' : '#EDE9FE' }]}>
+              <Ionicons name="flag" size={22} color="#8B5CF6" />
             </View>
-            <Text style={[styles.quickActionTitle, { color: colors.text }]}>Call Us</Text>
-            <Text style={[styles.quickActionSubtitle, { color: isDark ? '#9CA3AF' : '#9CA3AF' }]}>Talk to us</Text>
+            <Text style={[styles.quickActionTitle, { color: colors.text }]}>My Reports</Text>
+            <Text style={[styles.quickActionSubtitle, { color: isDark ? '#9CA3AF' : '#9CA3AF' }]}>Track status</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -200,11 +203,11 @@ export default function HelpCenterScreen() {
             activeOpacity={0.7}
             onPress={() => (navigation as any).navigate('ContactUs')}
           >
-            <View style={[styles.quickActionIcon, { backgroundColor: isDark ? 'rgba(245, 158, 11, 0.2)' : '#FEF3C7' }]}>
-              <Ionicons name="mail" size={22} color="#F59E0B" />
+            <View style={[styles.quickActionIcon, { backgroundColor: isDark ? 'rgba(22, 163, 74, 0.2)' : '#DCFCE7' }]}>
+              <Ionicons name="call" size={22} color="#16A34A" />
             </View>
-            <Text style={[styles.quickActionTitle, { color: colors.text }]}>Email</Text>
-            <Text style={[styles.quickActionSubtitle, { color: isDark ? '#9CA3AF' : '#9CA3AF' }]}>Get response</Text>
+            <Text style={[styles.quickActionTitle, { color: colors.text }]}>Call Us</Text>
+            <Text style={[styles.quickActionSubtitle, { color: isDark ? '#9CA3AF' : '#9CA3AF' }]}>Talk to us</Text>
           </TouchableOpacity>
         </View>
 

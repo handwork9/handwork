@@ -94,7 +94,7 @@ export const fetchActiveOrders = createAsyncThunk(
       });
       // Filter for active orders
       const activeStatuses: OrderStatus[] = ['pending', 'confirmed', 'preparing', 'ready_for_pickup', 'rider_assigned', 'picked_up', 'in_transit'];
-      const activeOrders = response.orders.filter(order => activeStatuses.includes(order.status));
+      const activeOrders = (response.orders || []).filter(order => order != null && order.id != null && activeStatuses.includes(order.status));
       return activeOrders;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to fetch active orders');
@@ -116,7 +116,7 @@ const buyerSlice = createSlice({
       const { orderId, status, updatedAt, riderName, riderPhone, estimatedDelivery } = action.payload;
       
       // Update order in list
-      const order = state.orders.find(o => o.id === orderId);
+      const order = state.orders.find(o => o?.id === orderId);
       if (order) {
         order.status = status;
         if (riderName) order.assignedRiderName = riderName;
@@ -217,12 +217,13 @@ const buyerSlice = createSlice({
     
     // Set orders directly (from API)
     setOrders: (state, action: PayloadAction<{ orders: Order[]; total: number }>) => {
-      state.orders = action.payload.orders;
+      const validOrders = (action.payload.orders || []).filter(o => o != null && o.id != null);
+      state.orders = validOrders;
       state.ordersTotal = action.payload.total;
       
       // Update active orders
       const activeStatuses: OrderStatus[] = ['pending', 'confirmed', 'preparing', 'ready_for_pickup', 'rider_assigned', 'picked_up', 'in_transit'];
-      state.activeOrderIds = action.payload.orders
+      state.activeOrderIds = validOrders
         .filter(o => activeStatuses.includes(o.status))
         .map(o => o.id);
     },
@@ -239,12 +240,13 @@ const buyerSlice = createSlice({
       })
       .addCase(fetchBuyerOrders.fulfilled, (state, action) => {
         state.ordersLoading = false;
-        state.orders = action.payload.orders;
+        const validOrders = (action.payload.orders || []).filter((o: any) => o != null && o.id != null);
+        state.orders = validOrders;
         state.ordersTotal = action.payload.total;
         
         // Update active orders
         const activeStatuses: OrderStatus[] = ['pending', 'confirmed', 'preparing', 'ready_for_pickup', 'rider_assigned', 'picked_up', 'in_transit'];
-        state.activeOrderIds = action.payload.orders
+        state.activeOrderIds = validOrders
           .filter(o => activeStatuses.includes(o.status))
           .map(o => o.id);
       })
@@ -255,10 +257,11 @@ const buyerSlice = createSlice({
       
       // Fetch active orders
       .addCase(fetchActiveOrders.fulfilled, (state, action) => {
-        state.activeOrderIds = action.payload.map(o => o.id);
+        const validOrders = (action.payload || []).filter((o: any) => o != null && o.id != null);
+        state.activeOrderIds = validOrders.map(o => o.id);
         // Merge with existing orders
-        action.payload.forEach(activeOrder => {
-          const index = state.orders.findIndex(o => o.id === activeOrder.id);
+        validOrders.forEach(activeOrder => {
+          const index = state.orders.findIndex(o => o?.id === activeOrder.id);
           if (index !== -1) {
             state.orders[index] = activeOrder;
           } else {

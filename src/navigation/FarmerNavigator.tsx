@@ -1,13 +1,16 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { createBottomTabNavigator, BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
+import { useQueryClient } from '@tanstack/react-query';
 import { FarmerTabParamList, FarmerStackParamList } from '../types';
 import { COLORS, FONT_SIZES, FONTS } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
+import { useToast } from '../context/ToastContext';
+import { useNotificationSocket } from '../hooks/useNotificationSocket';
 
 // Farmer Screens
 import DashboardScreen from '../screens/farmer/DashboardScreen';
@@ -24,6 +27,8 @@ import FarmerActivationScreen from '../screens/farmer/FarmerActivationScreen';
 import FarmerMessagesScreen from '../screens/farmer/FarmerMessagesScreen';
 import BuyerChatScreen from '../screens/farmer/BuyerChatScreen';
 import FarmerSubscriptionScreen from '../screens/farmer/FarmerSubscriptionScreen';
+import FarmerDisputesScreen from '../screens/farmer/FarmerDisputesScreen';
+import FarmerDisputeDetailScreen from '../screens/farmer/FarmerDisputeDetailScreen';
 import ProfileScreen from '../screens/shared/ProfileScreen';
 import GoPremiumScreen from '../screens/buyer/GoPremiumScreen';
 
@@ -59,6 +64,7 @@ import TermsPrivacyScreen from '../screens/shared/TermsPrivacyScreen';
 import NotificationsScreen from '../screens/shared/NotificationsScreen';
 import NotificationDetailScreen from '../screens/shared/NotificationDetailScreen';
 import LiveChatScreen from '../screens/shared/LiveChatScreen';
+import MyReportsScreen from '../screens/shared/MyReportsScreen';
 import PayBillScreen from '../screens/shared/PayBillScreen';
 import PaymentHistoryScreen from '../screens/shared/PaymentHistoryScreen';
 import PaymentDetailScreen from '../screens/shared/PaymentDetailScreen';
@@ -68,9 +74,11 @@ import BankAccountsScreen from '../screens/shared/BankAccountsScreen';
 import TransferScreen from '../screens/shared/TransferScreen';
 import WithdrawScreen from '../screens/shared/WithdrawScreen';
 import WithdrawalHistoryScreen from '../screens/shared/WithdrawalHistoryScreen';
+import WithdrawalDetailScreen from '../screens/shared/WithdrawalDetailScreen';
 import NotificationSettingsScreen from '../screens/shared/NotificationSettingsScreen';
 import AppearanceScreen from '../screens/shared/AppearanceScreen';
 import DeleteAccountScreen from '../screens/shared/DeleteAccountScreen';
+import VideoCallScreen from '../screens/shared/VideoCallScreen';
 
 const Tab = createBottomTabNavigator<FarmerTabParamList>();
 const Stack = createNativeStackNavigator<FarmerStackParamList>();
@@ -157,6 +165,42 @@ function FarmerTabs() {
 }
 
 export function FarmerNavigator() {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  // Connect to notification WebSocket for real-time updates
+  const handleNotification = useCallback((notification: any) => {
+    console.log('[FarmerNavigator] Received notification:', notification);
+    
+    // Handle different notification types
+    if (notification.type === 'new_order' || notification.type === 'order_update') {
+      // Invalidate orders query to refetch updated orders
+      queryClient.invalidateQueries({ queryKey: ['farmer-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['farmer-analytics'] });
+    }
+    
+    if (notification.type === 'new_message') {
+      // Invalidate conversations query
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    }
+
+    // Show toast banner for notifications
+    if (notification.title && notification.body) {
+      const toastType = notification.data?.broadcastType === 'promo' ? 'promo' 
+        : notification.data?.broadcastType === 'warning' ? 'warning'
+        : notification.data?.broadcastType === 'success' ? 'success'
+        : 'info';
+      
+      showToast({
+        title: notification.title,
+        message: notification.body,
+        type: toastType,
+      });
+    }
+  }, [queryClient, showToast]);
+
+  useNotificationSocket(handleNotification);
+
   return (
     <Stack.Navigator
       screenOptions={{
@@ -192,7 +236,7 @@ export function FarmerNavigator() {
       <Stack.Screen
         name="FarmerOrderDetail"
         component={FarmerOrderDetailScreen}
-        options={{ title: 'Order Details' }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="FarmerOrders"
@@ -207,6 +251,11 @@ export function FarmerNavigator() {
       <Stack.Screen
         name="TopProducts"
         component={TopProductsScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="FarmerProducts"
+        component={ProductsScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen
@@ -405,6 +454,11 @@ export function FarmerNavigator() {
         options={{ headerShown: false }}
       />
       <Stack.Screen
+        name="MyReports"
+        component={MyReportsScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
         name="PayBill"
         component={PayBillScreen}
         options={{ headerShown: false }}
@@ -450,6 +504,11 @@ export function FarmerNavigator() {
         options={{ headerShown: false }}
       />
       <Stack.Screen
+        name="WithdrawalDetail"
+        component={WithdrawalDetailScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
         name="NotificationSettings"
         component={NotificationSettingsScreen}
         options={{ headerShown: false }}
@@ -457,6 +516,25 @@ export function FarmerNavigator() {
       <Stack.Screen
         name="Appearance"
         component={AppearanceScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="VideoCall"
+        component={VideoCallScreen}
+        options={{ 
+          headerShown: false,
+          presentation: 'fullScreenModal',
+          animation: 'fade',
+        }}
+      />
+      <Stack.Screen
+        name="MyDisputes"
+        component={FarmerDisputesScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="FarmerDisputeDetail"
+        component={FarmerDisputeDetailScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

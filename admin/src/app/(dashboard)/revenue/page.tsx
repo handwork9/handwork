@@ -15,6 +15,11 @@ import {
   Spin,
   Progress,
   Segmented,
+  Divider,
+  Badge,
+  Avatar,
+  Tooltip,
+  Button,
 } from 'antd';
 import {
   DollarOutlined,
@@ -24,10 +29,18 @@ import {
   PercentageOutlined,
   ArrowUpOutlined,
   ArrowDownOutlined,
+  TrophyOutlined,
+  ReloadOutlined,
+  ThunderboltOutlined,
+  FieldTimeOutlined,
+  BankOutlined,
+  CrownOutlined,
+  StarOutlined,
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import dayjs, { Dayjs } from 'dayjs';
 import { adminApi } from '@/lib/api';
+import type { ColumnsType } from 'antd/es/table';
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -103,6 +116,8 @@ const revenueTypeIcons: Record<string, React.ReactNode> = {
   farmer_commission: <ShopOutlined />,
   rider_commission: <CarOutlined />,
   service_fee: <PercentageOutlined />,
+  subscription: <CrownOutlined />,
+  featured_listing: <StarOutlined />,
 };
 
 export default function RevenuePage() {
@@ -113,7 +128,7 @@ export default function RevenuePage() {
   const [pageSize, setPageSize] = useState(10);
 
   // Fetch revenue dashboard
-  const { data: dashboard, isLoading: dashboardLoading } = useQuery<RevenueDashboard>({
+  const { data: dashboard, isLoading: dashboardLoading, refetch } = useQuery<RevenueDashboard>({
     queryKey: ['revenue-dashboard', dateRange?.map(d => d.format('YYYY-MM-DD'))],
     queryFn: async () => {
       const params: { startDate?: string; endDate?: string } = {};
@@ -167,13 +182,23 @@ export default function RevenuePage() {
     }).format(amount);
   };
 
-  const transactionColumns = [
+  const transactionColumns: ColumnsType<RevenueTransaction> = [
     {
       title: 'Date',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      render: (date: string) => dayjs(date).format('MMM DD, YYYY HH:mm'),
-      width: 160,
+      render: (date: string) => (
+        <Tooltip title={dayjs(date).format('DD MMM YYYY, HH:mm:ss')}>
+          <Space orientation="vertical" size={0}>
+            <Text>{dayjs(date).format('MMM DD, YYYY')}</Text>
+            <Text type="secondary" style={{ fontSize: 11 }}>
+              <FieldTimeOutlined style={{ marginRight: 4 }} />
+              {dayjs(date).format('HH:mm')}
+            </Text>
+          </Space>
+        </Tooltip>
+      ),
+      width: 140,
     },
     {
       title: 'Type',
@@ -194,32 +219,39 @@ export default function RevenuePage() {
         <Text type="secondary">{formatCurrency(amount)}</Text>
       ),
       width: 140,
-      align: 'right' as const,
+      align: 'right',
     },
     {
       title: 'Rate',
       dataIndex: 'rateApplied',
       key: 'rateApplied',
-      render: (rate: number) => `${rate}%`,
+      render: (rate: number) => (
+        <Tag color="blue">{rate}%</Tag>
+      ),
       width: 80,
-      align: 'center' as const,
+      align: 'center',
     },
     {
       title: 'Revenue',
       dataIndex: 'amount',
       key: 'amount',
       render: (amount: number) => (
-        <Text strong style={{ color: '#52c41a' }}>{formatCurrency(amount)}</Text>
+        <Text strong style={{ color: '#52c41a', fontSize: 14 }}>
+          <DollarOutlined style={{ marginRight: 4 }} />
+          {formatCurrency(amount)}
+        </Text>
       ),
-      width: 140,
-      align: 'right' as const,
+      width: 150,
+      align: 'right',
     },
     {
       title: 'Source',
       dataIndex: 'sourceUserType',
       key: 'sourceUserType',
       render: (type: string) => (
-        <Tag>{type === 'farmer' ? 'Farmer' : type === 'rider' ? 'Rider' : type}</Tag>
+        <Tag icon={type === 'farmer' ? <ShopOutlined /> : <CarOutlined />} color={type === 'farmer' ? 'green' : 'orange'}>
+          {type === 'farmer' ? 'Farmer' : type === 'rider' ? 'Rider' : type}
+        </Tag>
       ),
       width: 100,
     },
@@ -228,7 +260,9 @@ export default function RevenuePage() {
       dataIndex: 'orderId',
       key: 'orderId',
       render: (orderId: string) => (
-        <Text code style={{ fontSize: 12 }}>{orderId?.slice(0, 8)}...</Text>
+        <Text copyable={{ text: orderId }} style={{ fontFamily: 'monospace', fontSize: 11 }}>
+          {orderId?.slice(0, 8)}...
+        </Text>
       ),
       width: 120,
     },
@@ -237,9 +271,10 @@ export default function RevenuePage() {
       dataIndex: 'status',
       key: 'status',
       render: (status: string) => (
-        <Tag color={status === 'completed' ? 'success' : status === 'pending' ? 'processing' : 'error'}>
-          {status}
-        </Tag>
+        <Badge 
+          status={status === 'completed' ? 'success' : status === 'pending' ? 'processing' : 'error'} 
+          text={<Text style={{ textTransform: 'capitalize' }}>{status}</Text>}
+        />
       ),
       width: 100,
     },
@@ -254,76 +289,125 @@ export default function RevenuePage() {
   }
 
   return (
-    <div>
-      <div style={{ marginBottom: 24 }}>
-        <Title level={2} style={{ margin: 0 }}>
-          <DollarOutlined style={{ marginRight: 12 }} />
-          Platform Revenue
-        </Title>
-        <Text type="secondary">Track and analyze platform earnings from commissions and fees</Text>
+    <div style={{ padding: 24 }}>
+      {/* Header */}
+      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <Title level={2} style={{ margin: 0 }}>
+            <DollarOutlined style={{ marginRight: 12, color: '#52c41a' }} />
+            Platform Revenue
+          </Title>
+          <Text type="secondary">Track and analyze platform earnings from commissions and fees</Text>
+        </div>
+        <Button icon={<ReloadOutlined />} onClick={() => refetch()} loading={dashboardLoading}>
+          Refresh
+        </Button>
       </div>
 
       {/* Filters */}
       <Card style={{ marginBottom: 24 }}>
-        <Space wrap>
-          <RangePicker
-            value={dateRange}
-            onChange={(dates) => setDateRange(dates as [Dayjs, Dayjs] | null)}
-            placeholder={['Start Date', 'End Date']}
-          />
-          <Select
-            placeholder="Revenue Type"
-            allowClear
-            style={{ width: 180 }}
-            value={revenueType}
-            onChange={setRevenueType}
-            options={Object.entries(revenueTypeLabels).map(([value, label]) => ({
-              value,
-              label,
-            }))}
-          />
+        <Space wrap size="middle">
+          <div>
+            <Text type="secondary" style={{ display: 'block', marginBottom: 4, fontSize: 12 }}>Date Range</Text>
+            <RangePicker
+              value={dateRange}
+              onChange={(dates) => setDateRange(dates as [Dayjs, Dayjs] | null)}
+              placeholder={['Start Date', 'End Date']}
+              presets={[
+                { label: 'Today', value: [dayjs(), dayjs()] },
+                { label: 'This Week', value: [dayjs().startOf('week'), dayjs()] },
+                { label: 'This Month', value: [dayjs().startOf('month'), dayjs()] },
+                { label: 'Last 30 Days', value: [dayjs().subtract(30, 'day'), dayjs()] },
+              ]}
+            />
+          </div>
+          <div>
+            <Text type="secondary" style={{ display: 'block', marginBottom: 4, fontSize: 12 }}>Revenue Type</Text>
+            <Select
+              placeholder="All Types"
+              allowClear
+              style={{ width: 200 }}
+              value={revenueType}
+              onChange={setRevenueType}
+              options={Object.entries(revenueTypeLabels).map(([value, label]) => ({
+                value,
+                label: (
+                  <Space>
+                    {revenueTypeIcons[value]}
+                    {label}
+                  </Space>
+                ),
+              }))}
+            />
+          </div>
         </Space>
       </Card>
 
-      {/* Summary Cards */}
-      <Row gutter={[24, 24]} style={{ marginBottom: 24 }}>
+      {/* Enhanced Summary Cards */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         <Col xs={24} sm={12} lg={6}>
-          <Card>
+          <Card hoverable>
             <Statistic
-              title="Total Revenue"
+              title={
+                <Space>
+                  <DollarOutlined style={{ color: '#52c41a' }} />
+                  <span>Total Revenue</span>
+                </Space>
+              }
               value={dashboard?.totalRevenue || 0}
               precision={0}
               prefix="₦"
               styles={{ content: { color: '#52c41a' } }}
               formatter={(value) => value?.toLocaleString()}
             />
+            <Divider style={{ margin: '12px 0' }} />
+            <Badge status="success" text={<Text type="secondary">All time earnings</Text>} />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card>
+          <Card hoverable>
             <Statistic
-              title="Total Transactions"
+              title={
+                <Space>
+                  <ThunderboltOutlined style={{ color: '#1890ff' }} />
+                  <span>Total Transactions</span>
+                </Space>
+              }
               value={dashboard?.totalTransactions || 0}
-              prefix={<RiseOutlined />}
               styles={{ content: { color: '#1890ff' } }}
             />
+            <Divider style={{ margin: '12px 0' }} />
+            <Badge status="processing" text={<Text type="secondary">Revenue generating</Text>} />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card>
+          <Card hoverable>
             <Statistic
-              title="Average per Transaction"
+              title={
+                <Space>
+                  <BankOutlined style={{ color: '#722ed1' }} />
+                  <span>Average per Transaction</span>
+                </Space>
+              }
               value={dashboard?.averageRevenue || 0}
               precision={0}
               prefix="₦"
+              styles={{ content: { color: '#722ed1' } }}
               formatter={(value) => value?.toLocaleString()}
             />
+            <Divider style={{ margin: '12px 0' }} />
+            <Text type="secondary" style={{ fontSize: 12 }}>Per completed transaction</Text>
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card>
+          <Card hoverable>
             <Statistic
-              title={`${summaryPeriod.charAt(0).toUpperCase() + summaryPeriod.slice(1)} Change`}
+              title={
+                <Space>
+                  <RiseOutlined style={{ color: summary?.percentageChange && summary.percentageChange >= 0 ? '#52c41a' : '#ff4d4f' }} />
+                  <span>{summaryPeriod.charAt(0).toUpperCase() + summaryPeriod.slice(1)} Change</span>
+                </Space>
+              }
               value={summary?.percentageChange || 0}
               precision={1}
               prefix={summary?.percentageChange && summary.percentageChange >= 0 ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
@@ -331,19 +415,38 @@ export default function RevenuePage() {
               styles={{ content: { color: summary?.percentageChange && summary.percentageChange >= 0 ? '#52c41a' : '#ff4d4f' } }}
               loading={summaryLoading}
             />
+            <Divider style={{ margin: '12px 0' }} />
+            <Tag color={summary?.percentageChange && summary.percentageChange >= 0 ? 'green' : 'red'}>
+              {summary?.percentageChange && summary.percentageChange >= 0 ? 'Growing' : 'Declining'}
+            </Tag>
           </Card>
         </Col>
       </Row>
 
       {/* Revenue Breakdown & Period Comparison */}
-      <Row gutter={[24, 24]} style={{ marginBottom: 24 }}>
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         <Col xs={24} lg={12}>
-          <Card title="Revenue Breakdown by Type" extra={<DollarOutlined />}>
+          <Card 
+            title={
+              <Space>
+                <PercentageOutlined style={{ color: '#722ed1' }} />
+                Revenue Breakdown by Type
+              </Space>
+            }
+          >
             {dashboard?.breakdown?.map((item) => (
               <div key={item.type} style={{ marginBottom: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                   <Space>
-                    {revenueTypeIcons[item.type]}
+                    <Avatar 
+                      size="small" 
+                      icon={revenueTypeIcons[item.type]} 
+                      style={{ 
+                        backgroundColor: item.type === 'farmer_commission' ? '#52c41a' : 
+                                        item.type === 'rider_commission' ? '#1890ff' : 
+                                        item.type === 'service_fee' ? '#722ed1' : '#faad14' 
+                      }}
+                    />
                     <Text>{revenueTypeLabels[item.type] || item.type}</Text>
                   </Space>
                   <Text strong>{formatCurrency(item.amount)}</Text>
@@ -355,7 +458,7 @@ export default function RevenuePage() {
                     item.type === 'rider_commission' ? '#1890ff' :
                     item.type === 'service_fee' ? '#722ed1' : '#faad14'
                   }
-                  format={() => `${item.count} txns`}
+                  format={() => <Tag>{item.count} txns</Tag>}
                 />
               </div>
             ))}
@@ -366,7 +469,12 @@ export default function RevenuePage() {
         </Col>
         <Col xs={24} lg={12}>
           <Card 
-            title="Period Comparison" 
+            title={
+              <Space>
+                <FieldTimeOutlined style={{ color: '#1890ff' }} />
+                Period Comparison
+              </Space>
+            }
             extra={
               <Segmented
                 size="small"
@@ -387,25 +495,25 @@ export default function RevenuePage() {
               <>
                 <Row gutter={16} style={{ marginBottom: 24 }}>
                   <Col span={12}>
-                    <Card size="small" style={{ background: '#f6ffed' }}>
+                    <Card size="small" style={{ background: 'linear-gradient(135deg, #d4fc79 0%, #96e6a1 100%)', border: 'none' }}>
                       <Statistic
-                        title={`Current ${summaryPeriod}`}
+                        title={<Text style={{ color: '#237804' }}>Current {summaryPeriod}</Text>}
                         value={summary.currentPeriod.total || 0}
                         precision={0}
                         prefix="₦"
-                        styles={{ content: { color: '#52c41a', fontSize: 20 } }}
+                        styles={{ content: { color: '#237804', fontSize: 20 } }}
                         formatter={(value) => value?.toLocaleString()}
                       />
                     </Card>
                   </Col>
                   <Col span={12}>
-                    <Card size="small" style={{ background: '#f0f0f0' }}>
+                    <Card size="small" style={{ background: 'linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%)', border: 'none' }}>
                       <Statistic
-                        title={`Previous ${summaryPeriod}`}
+                        title={<Text style={{ color: '#595959' }}>Previous {summaryPeriod}</Text>}
                         value={summary.previousPeriod?.total || 0}
                         precision={0}
                         prefix="₦"
-                        styles={{ content: { color: '#8c8c8c', fontSize: 20 } }}
+                        styles={{ content: { color: '#595959', fontSize: 20 } }}
                         formatter={(value) => value?.toLocaleString()}
                       />
                     </Card>
@@ -416,7 +524,7 @@ export default function RevenuePage() {
                   <div style={{ marginTop: 12 }}>
                     <Space wrap>
                       {Object.entries(summary.currentPeriod.breakdown || {}).map(([type, amount]) => (
-                        <Tag key={type} color={revenueTypeColors[type]}>
+                        <Tag key={type} color={revenueTypeColors[type]} icon={revenueTypeIcons[type]}>
                           {revenueTypeLabels[type]}: {formatCurrency(amount as number)}
                         </Tag>
                       ))}
@@ -433,32 +541,47 @@ export default function RevenuePage() {
 
       {/* Top Contributors */}
       {dashboard?.topContributors && dashboard.topContributors.length > 0 && (
-        <Card title="Top Revenue Contributors" style={{ marginBottom: 24 }}>
+        <Card 
+          title={
+            <Space>
+              <TrophyOutlined style={{ color: '#faad14' }} />
+              Top Revenue Contributors
+            </Space>
+          }
+          style={{ marginBottom: 24 }}
+        >
           <Row gutter={[16, 16]}>
             {dashboard.topContributors.slice(0, 5).map((contributor, index) => (
               <Col xs={24} sm={12} lg={4} key={contributor.userId}>
-                <Card size="small" style={{ textAlign: 'center' }}>
-                  <div style={{ 
-                    width: 40, 
-                    height: 40, 
-                    borderRadius: '50%', 
-                    background: index === 0 ? '#faad14' : index === 1 ? '#bfbfbf' : index === 2 ? '#d48806' : '#f0f0f0',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    margin: '0 auto 8px',
-                    color: index < 3 ? '#fff' : '#8c8c8c',
-                    fontWeight: 'bold',
-                  }}>
-                    #{index + 1}
-                  </div>
+                <Card 
+                  size="small" 
+                  hoverable
+                  style={{ textAlign: 'center' }}
+                >
+                  <Avatar 
+                    size={48}
+                    style={{ 
+                      background: index === 0 ? 'linear-gradient(135deg, #faad14 0%, #ffc53d 100%)' : 
+                                 index === 1 ? 'linear-gradient(135deg, #bfbfbf 0%, #d9d9d9 100%)' : 
+                                 index === 2 ? 'linear-gradient(135deg, #d48806 0%, #fa8c16 100%)' : '#f0f0f0',
+                      color: index < 3 ? '#fff' : '#8c8c8c',
+                      marginBottom: 8,
+                    }}
+                  >
+                    {index + 1}
+                  </Avatar>
                   <Text strong style={{ display: 'block' }}>{contributor.userName || 'Unknown'}</Text>
-                  <Tag style={{ fontSize: 10 }}>{contributor.userType}</Tag>
-                  <div style={{ marginTop: 8 }}>
-                    <Text type="success" strong>{formatCurrency(contributor.totalRevenue)}</Text>
-                    <br />
-                    <Text type="secondary" style={{ fontSize: 12 }}>{contributor.transactionCount} transactions</Text>
-                  </div>
+                  <Tag 
+                    color={contributor.userType === 'farmer' ? 'green' : 'orange'} 
+                    icon={contributor.userType === 'farmer' ? <ShopOutlined /> : <CarOutlined />}
+                    style={{ marginTop: 4 }}
+                  >
+                    {contributor.userType}
+                  </Tag>
+                  <Divider style={{ margin: '12px 0' }} />
+                  <Text strong style={{ color: '#52c41a', fontSize: 16 }}>{formatCurrency(contributor.totalRevenue)}</Text>
+                  <br />
+                  <Text type="secondary" style={{ fontSize: 12 }}>{contributor.transactionCount} transactions</Text>
                 </Card>
               </Col>
             ))}
@@ -467,7 +590,15 @@ export default function RevenuePage() {
       )}
 
       {/* Transactions Table */}
-      <Card title="Revenue Transactions">
+      <Card 
+        title={
+          <Space>
+            <BankOutlined style={{ color: '#1890ff' }} />
+            Revenue Transactions
+          </Space>
+        }
+        extra={<Badge count={transactionsData?.total || 0} style={{ backgroundColor: '#1890ff' }} overflowCount={9999} />}
+      >
         <Table
           columns={transactionColumns}
           dataSource={Array.isArray(transactionsData?.data) ? transactionsData.data : Array.isArray(transactionsData) ? transactionsData : []}
@@ -478,13 +609,13 @@ export default function RevenuePage() {
             pageSize: pageSize,
             total: transactionsData?.total || 0,
             showSizeChanger: true,
-            showTotal: (total) => `Total ${total} transactions`,
+            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} transactions`,
             onChange: (p, ps) => {
               setPage(p);
               setPageSize(ps);
             },
           }}
-          scroll={{ x: 1100 }}
+          scroll={{ x: 1200 }}
         />
       </Card>
     </div>

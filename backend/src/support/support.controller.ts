@@ -14,8 +14,8 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { SupportService } from './support.service';
-import { CreateTicketDto, SendMessageDto, UpdateTicketDto } from './dto';
-import { TicketStatus, TicketPriority, TicketCategory, MessageSender } from '../database/entities';
+import { CreateTicketDto, SendMessageDto, UpdateTicketDto, CreateReportDto, UpdateReportDto } from './dto';
+import { TicketStatus, TicketPriority, TicketCategory, MessageSender, ReportType, ReportStatus } from '../database/entities';
 import { UserRole } from '../common/enums';
 
 interface AuthenticatedRequest {
@@ -187,15 +187,33 @@ export class SupportController {
   }
 
   /**
-   * Assign ticket to self (admin)
+   * Get support team members (admin)
+   */
+  @Get('admin/team')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.SUPPORT)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get support team members' })
+  async getSupportTeam() {
+    const team = await this.supportService.getSupportTeamMembers();
+    return { success: true, data: team };
+  }
+
+  /**
+   * Assign ticket to admin (admin)
    */
   @Post('admin/tickets/:ticketId/assign')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.SUPPORT)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Assign ticket to self (admin)' })
-  async assignTicket(@Request() req: AuthenticatedRequest, @Param('ticketId') ticketId: string) {
-    const ticket = await this.supportService.assignTicket(ticketId, req.user.id);
+  @ApiOperation({ summary: 'Assign ticket to self or specific admin' })
+  async assignTicket(
+    @Request() req: AuthenticatedRequest,
+    @Param('ticketId') ticketId: string,
+    @Body() body: { adminId?: string },
+  ) {
+    const assignToId = body.adminId || req.user.id;
+    const ticket = await this.supportService.assignTicket(ticketId, assignToId);
     return { ticket };
   }
 
@@ -267,5 +285,131 @@ export class SupportController {
   async getStatistics() {
     const statistics = await this.supportService.getStatistics();
     return { statistics };
+  }
+
+  // ==================== REPORT ENDPOINTS ====================
+
+  /**
+   * Submit a report (user)
+   */
+  @Post('reports')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Submit a report' })
+  async createReport(
+    @Request() req: AuthenticatedRequest,
+    @Body() dto: CreateReportDto,
+  ) {
+    const report = await this.supportService.createReport(req.user.id, dto);
+    return { report };
+  }
+
+  /**
+   * Get user's own reports (for feedback/status tracking)
+   */
+  @Get('reports/my')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get current user\'s submitted reports' })
+  @ApiQuery({ name: 'status', enum: ReportStatus, required: false })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  async getMyReports(
+    @Request() req: AuthenticatedRequest,
+    @Query('status') status?: ReportStatus,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const result = await this.supportService.getUserReports(req.user.id, {
+      status,
+      page: page ? parseInt(page) : undefined,
+      limit: limit ? parseInt(limit) : undefined,
+    });
+    return { success: true, data: result };
+  }
+
+  /**
+   * Get a specific report by ID (user - only their own reports)
+   */
+  @Get('reports/my/:reportId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get details of a specific report (user)' })
+  async getMyReportById(
+    @Request() req: AuthenticatedRequest,
+    @Param('reportId') reportId: string,
+  ) {
+    const report = await this.supportService.getUserReportById(req.user.id, reportId);
+    return { success: true, data: { report } };
+  }
+
+  /**
+   * Get all reports (admin)
+   */
+  @Get('admin/reports')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get all reports (admin)' })
+  @ApiQuery({ name: 'status', enum: ReportStatus, required: false })
+  @ApiQuery({ name: 'type', enum: ReportType, required: false })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  async getReports(
+    @Query('status') status?: ReportStatus,
+    @Query('type') type?: ReportType,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const result = await this.supportService.getReports({
+      status,
+      type,
+      page: page ? parseInt(page) : undefined,
+      limit: limit ? parseInt(limit) : undefined,
+    });
+    return result;
+  }
+
+  /**
+   * Get report by ID (admin)
+   */
+  @Get('admin/reports/:reportId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get report by ID (admin)' })
+  async getReport(@Param('reportId') reportId: string) {
+    const report = await this.supportService.getReportById(reportId);
+    return { report };
+  }
+
+  /**
+   * Update report (admin)
+   */
+  @Patch('admin/reports/:reportId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update report (admin)' })
+  async updateReport(
+    @Request() req: AuthenticatedRequest,
+    @Param('reportId') reportId: string,
+    @Body() dto: UpdateReportDto,
+  ) {
+    const report = await this.supportService.updateReport(reportId, req.user.id, dto);
+    return { report };
+  }
+
+  /**
+   * Get report statistics (admin)
+   */
+  @Get('admin/reports/stats/overview')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get report statistics (admin)' })
+  async getReportStats() {
+    const stats = await this.supportService.getReportStats();
+    return { stats };
   }
 }

@@ -14,7 +14,9 @@ import {
   Modal,
   TextInput,
   Platform,
+  Image,
 } from 'react-native';
+import Svg, { Path, Circle, Line, G, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,6 +25,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, FONTS } from '../../constants/theme';
+import { API_CONFIG } from '../../constants/config';
 import { useTheme } from '../../context/ThemeContext';
 import { FarmerStackParamList } from '../../types';
 import { farmerSubscriptionService, SubscriptionStatusResponse } from '../../services/farmerSubscriptionService';
@@ -256,17 +259,30 @@ const AnalyticsScreen: React.FC = () => {
 
   // Extract data from API responses with fallbacks (service already unwraps)
   const salesData: SalesData[] = salesDataResponse || [];
-  const topProducts: ProductPerformance[] = (topProductsResponse || []).map((p: any) => ({
-    id: p.id,
-    name: p.title || p.name,
-    sales: p.sales || 0,
-    revenue: p.revenue || 0,
-    growth: p.growth || 0,
-    image: p.images?.[0] || p.image || '',
-    views: p.views || 0,
-    conversionRate: p.conversionRate || 0,
-    stock: p.stock || 0,
-  }));
+  const topProducts: ProductPerformance[] = (topProductsResponse || []).map((p: any) => {
+    // Build proper image URL
+    const rawImage = p.images?.[0] || p.image || '';
+    let imageUrl = '';
+    if (rawImage) {
+      if (rawImage.startsWith('http://') || rawImage.startsWith('https://')) {
+        imageUrl = rawImage;
+      } else {
+        imageUrl = `${API_CONFIG.BASE_URL.replace('/api/v1', '')}${rawImage.startsWith('/') ? '' : '/'}${rawImage}`;
+      }
+    }
+    
+    return {
+      id: p.id,
+      name: p.title || p.name,
+      sales: p.sales || 0,
+      revenue: p.revenue || 0,
+      growth: p.growth || 0,
+      image: imageUrl,
+      views: p.views || 0,
+      conversionRate: p.conversionRate || 0,
+      stock: p.stock || 0,
+    };
+  });
   const customerInsights: CustomerInsight[] = (customerInsightsResponse || []).map((c: any) => ({
     metric: c.metric,
     value: c.value,
@@ -648,7 +664,15 @@ const AnalyticsScreen: React.FC = () => {
                 <Text style={styles.rankNumber}>#{index + 1}</Text>
               </View>
               <View style={styles.productImageContainer}>
-                {getProductIllustration(product.name, 36)}
+                {product.image ? (
+                  <Image 
+                    source={{ uri: product.image }} 
+                    style={styles.productImage} 
+                    resizeMode="cover"
+                  />
+                ) : (
+                  getProductIllustration(product.name, 36)
+                )}
               </View>
               <View style={styles.productInfo}>
                 <Text style={[styles.productName, { color: colors.text }]}>{product.name}</Text>
@@ -872,11 +896,11 @@ const AnalyticsScreen: React.FC = () => {
     );
   };
 
-  // Line Chart for Trends
+  // Line Chart for Trends using SVG
   const renderLineChart = () => {
     if (salesData.length < 2) return null;
 
-    const chartHeight = 120;
+    const chartHeight = 140;
     const chartPadding = 20;
     const effectiveWidth = CHART_WIDTH - chartPadding * 2;
     const effectiveHeight = chartHeight - chartPadding * 2;
@@ -885,77 +909,81 @@ const AnalyticsScreen: React.FC = () => {
     const minVal = Math.min(...salesData.map(d => d.value));
     const range = maxVal - minVal || 1;
 
-    // Generate SVG-like path points
+    // Generate SVG path points
     const points = salesData.map((d, i) => ({
       x: chartPadding + (i / (salesData.length - 1)) * effectiveWidth,
       y: chartPadding + effectiveHeight - ((d.value - minVal) / range) * effectiveHeight,
     }));
 
+    // Create SVG path string for the line
+    const linePath = points
+      .map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`)
+      .join(' ');
+
+    // Create path for the gradient fill area
+    const areaPath = `${linePath} L ${points[points.length - 1].x} ${chartHeight - chartPadding} L ${chartPadding} ${chartHeight - chartPadding} Z`;
+
     return (
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>Revenue Trend</Text>
         <View style={[styles.lineChartContainer, { backgroundColor: isDark ? colors.card : COLORS.surface }]}>
-          <View style={{ height: chartHeight, position: 'relative' }}>
+          <Svg width={CHART_WIDTH} height={chartHeight}>
+            <Defs>
+              <SvgLinearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+                <Stop offset="0%" stopColor={COLORS.primary} stopOpacity={0.3} />
+                <Stop offset="100%" stopColor={COLORS.primary} stopOpacity={0.05} />
+              </SvgLinearGradient>
+            </Defs>
+            
             {/* Grid lines */}
             {[0, 0.25, 0.5, 0.75, 1].map((ratio, i) => (
-              <View
+              <Line
                 key={i}
-                style={{
-                  position: 'absolute',
-                  left: chartPadding,
-                  right: chartPadding,
-                  top: chartPadding + effectiveHeight * (1 - ratio),
-                  height: 1,
-                  backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-                }}
+                x1={chartPadding}
+                y1={chartPadding + effectiveHeight * (1 - ratio)}
+                x2={CHART_WIDTH - chartPadding}
+                y2={chartPadding + effectiveHeight * (1 - ratio)}
+                stroke={isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}
+                strokeWidth={1}
               />
             ))}
             
-            {/* Data points and lines */}
+            {/* Gradient area under the line */}
+            <Path
+              d={areaPath}
+              fill="url(#areaGradient)"
+            />
+            
+            {/* Main line */}
+            <Path
+              d={linePath}
+              stroke={COLORS.primary}
+              strokeWidth={2.5}
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            
+            {/* Data points */}
             {points.map((point, i) => (
-              <React.Fragment key={i}>
-                {/* Line to next point */}
-                {i < points.length - 1 && (
-                  <View
-                    style={{
-                      position: 'absolute',
-                      left: point.x,
-                      top: Math.min(point.y, points[i + 1].y),
-                      width: Math.sqrt(
-                        Math.pow(points[i + 1].x - point.x, 2) +
-                        Math.pow(points[i + 1].y - point.y, 2)
-                      ),
-                      height: 2,
-                      backgroundColor: COLORS.primary,
-                      transform: [
-                        {
-                          rotate: `${Math.atan2(
-                            points[i + 1].y - point.y,
-                            points[i + 1].x - point.x
-                          ) * (180 / Math.PI)}deg`,
-                        },
-                      ],
-                      transformOrigin: 'left center',
-                    }}
-                  />
-                )}
-                {/* Point dot */}
-                <View
-                  style={{
-                    position: 'absolute',
-                    left: point.x - 4,
-                    top: point.y - 4,
-                    width: 8,
-                    height: 8,
-                    borderRadius: 4,
-                    backgroundColor: COLORS.primary,
-                    borderWidth: 2,
-                    borderColor: '#FFFFFF',
-                  }}
+              <G key={i}>
+                {/* Outer circle (white border) */}
+                <Circle
+                  cx={point.x}
+                  cy={point.y}
+                  r={5}
+                  fill="#FFFFFF"
                 />
-              </React.Fragment>
+                {/* Inner circle (primary color) */}
+                <Circle
+                  cx={point.x}
+                  cy={point.y}
+                  r={3.5}
+                  fill={COLORS.primary}
+                />
+              </G>
             ))}
-          </View>
+          </Svg>
           
           {/* Labels */}
           <View style={styles.lineChartLabels}>
@@ -1091,7 +1119,7 @@ const AnalyticsScreen: React.FC = () => {
           <View style={styles.subscriptionHeader}>
             <View style={[styles.subscriptionBadge, { backgroundColor: statusColor }]}>
               <Ionicons 
-                name={isPremium ? 'diamond' : isVerified ? 'checkmark-shield' : 'person'} 
+                name={isPremium ? 'diamond' : isVerified ? 'shield-checkmark' : 'person'} 
                 size={14} 
                 color="#FFFFFF" 
               />
@@ -1673,6 +1701,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: SPACING.sm,
+    overflow: 'hidden',
+  },
+  productImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
   },
   productInfo: {
     flex: 1,

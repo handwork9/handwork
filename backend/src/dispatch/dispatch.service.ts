@@ -362,8 +362,8 @@ export class DispatchService {
       );
 
       if (accepted) {
-        // Rider accepted - assign order
-        await this.assignOrderToRider(order, rider, dispatchLog);
+        // Rider accepted - assign order with calculated ETA
+        await this.assignOrderToRider(order, rider, dispatchLog, candidate.etaMinutes);
         return rider;
       }
 
@@ -402,11 +402,19 @@ export class DispatchService {
     order: Order,
     rider: Rider,
     dispatchLog: DispatchLog,
+    etaMinutes?: number,
   ): Promise<void> {
+    // Calculate estimated delivery time
+    const estimatedDeliveryTime = etaMinutes 
+      ? new Date(Date.now() + etaMinutes * 60 * 1000)
+      : new Date(Date.now() + 45 * 60 * 1000); // Default 45 minutes if not provided
+
     // Update order
     order.riderId = rider.id;
+    order.assignedRiderId = rider.id;
     order.status = OrderStatus.ASSIGNED;
     order.assignedAt = new Date();
+    order.estimatedDeliveryTime = estimatedDeliveryTime;
     await this.orderRepository.save(order);
 
     // Update rider status
@@ -418,6 +426,9 @@ export class DispatchService {
     dispatchLog.status = DispatchStatus.MATCHED;
     dispatchLog.riderId = rider.id;
     dispatchLog.matchedAt = new Date();
+    if (etaMinutes) {
+      dispatchLog.estimatedDeliveryMinutes = etaMinutes;
+    }
     await this.dispatchLogRepository.save(dispatchLog);
 
     // Notify via WebSocket
@@ -531,7 +542,25 @@ export class DispatchService {
       });
     }
 
-    await this.assignOrderToRider(order, rider, dispatchLog);
+    // Calculate ETA for this rider
+    const riderLat = rider.currentLatitude || rider.currentLat;
+    const riderLng = rider.currentLongitude || rider.currentLng;
+    const pickupLat = order.pickupPoint?.lat;
+    const pickupLng = order.pickupPoint?.lng;
+    const deliveryLat = order.deliveryAddress?.lat || order.deliveryLatitude;
+    const deliveryLng = order.deliveryAddress?.lng || order.deliveryLongitude;
+
+    let etaMinutes = 45; // Default 45 minutes
+    if (riderLat && riderLng && pickupLat && pickupLng && deliveryLat && deliveryLng) {
+      const distanceToPickup = this.calculateDistance(riderLat, riderLng, pickupLat, pickupLng);
+      const distancePickupToDelivery = this.calculateDistance(pickupLat, pickupLng, deliveryLat, deliveryLng);
+      const totalDistanceKm = distanceToPickup + distancePickupToDelivery;
+      const avgSpeedKmh = 25;
+      const pickupTimeMinutes = 5;
+      etaMinutes = Math.ceil((totalDistanceKm / avgSpeedKmh) * 60) + pickupTimeMinutes;
+    }
+
+    await this.assignOrderToRider(order, rider, dispatchLog, etaMinutes);
 
     return {
       success: true,

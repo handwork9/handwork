@@ -350,7 +350,7 @@ const FavoritesScreen: React.FC = () => {
   );
 
   // Key extractor
-  const keyExtractor = useCallback((item: Product) => item.id, []);
+  const keyExtractor = useCallback((item: Product, index: number) => item?.id || `fav-${index}`, []);
 
   // List header with summary
   const renderHeader = useCallback(() => {

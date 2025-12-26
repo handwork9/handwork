@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,26 +11,33 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Animated,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
 import { walletService } from '../../services/walletService';
+import apiClient from '../../services/apiClient';
 import { SPACING, FONT_SIZES, FONTS } from '../../constants/theme';
+import { triggerHaptic } from '../../utils/haptics';
+import { formatCurrency, formatCurrencyFull } from '../../utils/formatters';
 
 interface RecentRecipient {
   id: string;
   name: string;
   phone: string;
   avatar?: string;
+  lastTransfer?: string;
 }
 
-const QUICK_AMOUNTS = [1000, 2000, 5000, 10000, 20000, 50000];
+const QUICK_AMOUNTS = [500, 1000, 2000, 5000, 10000, 20000];
 
 export default function TransferScreen() {
   const { colors, isDark } = useTheme();
   const navigation = useNavigation();
+  const route = useRoute();
   const insets = useSafeAreaInsets();
 
   const [amount, setAmount] = useState('');
@@ -40,19 +47,44 @@ export default function TransferScreen() {
   const [isVerifying, setIsVerifying] = useState(false);
   const [verifiedRecipient, setVerifiedRecipient] = useState<RecentRecipient | null>(null);
   const [walletBalance, setWalletBalance] = useState(0);
+  const [isLoadingBalance, setIsLoadingBalance] = useState(true);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [pin, setPin] = useState(['', '', '', '']);
   const [pinError, setPinError] = useState('');
-  const [recentRecipients, setRecentRecipients] = useState<RecentRecipient[]>([
-    { id: '1', name: 'John Doe', phone: '08012345678' },
-    { id: '2', name: 'Jane Smith', phone: '08098765432' },
-    { id: '3', name: 'Mike Johnson', phone: '07011223344' },
-  ]);
+  const [transferReference, setTransferReference] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [recentRecipients, setRecentRecipients] = useState<RecentRecipient[]>([]);
+
+  // Animations
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const successScaleAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    loadWalletBalance();
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+    ]).start();
+    
+    loadRecentRecipients();
   }, []);
+
+  // Refresh balance whenever screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadWalletBalance();
+    }, [])
+  );
 
   useEffect(() => {
     if (recipient.length === 11) {
@@ -62,33 +94,71 @@ export default function TransferScreen() {
     }
   }, [recipient]);
 
+  const loadRecentRecipients = async () => {
+    try {
+      const response = await apiClient.get<{ id: string; name: string; phone: string; avatar?: string; lastTransfer: string }[]>('/wallet/recent-recipients');
+      const recipients = (response as any)?.data || response;
+      if (Array.isArray(recipients)) {
+        setRecentRecipients(recipients);
+      }
+    } catch (error) {
+      console.error('Error loading recent recipients:', error);
+      // Keep the list empty if there's an error
+    }
+  };
+
   const loadWalletBalance = async () => {
     try {
+      setIsLoadingBalance(true);
       const balance = await walletService.getBalance();
-      setWalletBalance(balance.available);
+      const availableBalance = (balance as any)?.available ?? (balance as any)?.balance ?? 0;
+      setWalletBalance(typeof availableBalance === 'string' ? parseFloat(availableBalance) : availableBalance);
     } catch (error) {
       console.error('Error loading balance:', error);
+    } finally {
+      setIsLoadingBalance(false);
     }
   };
 
   const verifyRecipient = async () => {
     setIsVerifying(true);
-    // Simulate verification
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    triggerHaptic('light');
     
-    // Check if it's a known recipient
-    const known = recentRecipients.find((r) => r.phone === recipient);
-    if (known) {
-      setVerifiedRecipient(known);
-    } else {
-      // Simulate finding a new user
-      setVerifiedRecipient({
-        id: 'new',
-        name: 'New User',
+    try {
+      // Call API to look up user by phone
+      const response = await apiClient.post<{ success: boolean; data: { found: boolean; user: { id: string; name: string; phone: string; avatar?: string } | null } }>('/users/lookup/phone', {
         phone: recipient,
       });
+      
+      console.log('Phone lookup response:', JSON.stringify(response, null, 2));
+      
+      // Backend wraps response in { success, data }
+      const result = (response as any).data || response;
+      
+      console.log('Extracted result:', JSON.stringify(result, null, 2));
+      
+      if (result.found && result.user) {
+        console.log('Setting verified recipient:', result.user.name);
+        setVerifiedRecipient({
+          id: result.user.id,
+          name: result.user.name,
+          phone: result.user.phone,
+          avatar: result.user.avatar,
+        });
+        triggerHaptic('success');
+      } else {
+        setVerifiedRecipient(null);
+        Alert.alert('User Not Found', 'No Handwork user found with this phone number. Please check and try again.');
+        triggerHaptic('error');
+      }
+    } catch (error: any) {
+      console.error('Error verifying recipient:', error);
+      setVerifiedRecipient(null);
+      Alert.alert('Error', 'Could not verify recipient. Please try again.');
+      triggerHaptic('error');
+    } finally {
+      setIsVerifying(false);
     }
-    setIsVerifying(false);
   };
 
   const numericAmount = parseFloat(amount.replace(/,/g, '')) || 0;
@@ -96,10 +166,12 @@ export default function TransferScreen() {
   const totalAmount = numericAmount + transferFee;
 
   const handleQuickAmount = (value: number) => {
+    triggerHaptic('light');
     setAmount(value.toLocaleString());
   };
 
   const handleTransfer = () => {
+    triggerHaptic('medium');
     if (!verifiedRecipient) {
       Alert.alert('Error', 'Please enter a valid recipient phone number');
       return;
@@ -118,37 +190,68 @@ export default function TransferScreen() {
     setShowConfirmModal(true);
   };
 
-  const confirmTransfer = async () => {
+  const confirmTransfer = async (enteredPin?: string) => {
     setIsLoading(true);
-    setShowConfirmModal(false);
+    setShowPinModal(false);
 
     try {
       // Call actual transfer API - backend debits wallet before confirming
+      // Backend validates PIN if user has PIN enabled
       const result = await walletService.transfer({
         amount: numericAmount,
         recipientPhone: verifiedRecipient!.phone,
+        pin: enteredPin,
       });
       
-      if (result.status === 'completed') {
-        Alert.alert(
-          'Transfer Successful',
-          `₦${numericAmount.toLocaleString()} has been sent to ${verifiedRecipient?.name}\n\nReference: ${result.reference}`,
-          [{ text: 'OK', onPress: () => navigation.goBack() }]
-        );
-      } else {
-        Alert.alert('Transfer Pending', 'Your transfer is being processed. You will be notified once completed.');
-      }
+      // Backend returns the transaction if successful (no status field, success = no error)
+      // Show success modal with animation
+      setTransferReference(result.reference || `TRF_${Date.now()}`);
+      setShowSuccessModal(true);
+      Animated.spring(successScaleAnim, {
+        toValue: 1,
+        tension: 50,
+        friction: 7,
+        useNativeDriver: true,
+      }).start();
+      triggerHaptic('success');
+      
+      // Refresh wallet balance and recent recipients
+      loadWalletBalance();
+      loadRecentRecipients();
     } catch (error: any) {
       const errorMessage = error?.response?.data?.message || error?.message || 'Something went wrong. Please try again.';
       Alert.alert('Transfer Failed', errorMessage);
+      triggerHaptic('error');
     } finally {
       setIsLoading(false);
     }
   };
 
   const selectRecipient = (r: RecentRecipient) => {
+    triggerHaptic('light');
     setRecipient(r.phone);
     setVerifiedRecipient(r);
+  };
+
+  const filteredRecipients = recentRecipients.filter(
+    (r) =>
+      r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.phone.includes(searchQuery)
+  );
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const getAvatarColor = (name: string) => {
+    const avatarColors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'];
+    const index = name.charCodeAt(0) % avatarColors.length;
+    return avatarColors[index];
   };
 
   return (
@@ -157,10 +260,15 @@ export default function TransferScreen() {
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity
           style={[styles.backButton, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
-          onPress={() => navigation.goBack()}
+          onPress={() => {
+            triggerHaptic('light');
+            navigation.goBack();
+          }}
         >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Transfer</Text>
+        <View style={{ width: 40 }} />
       </View>
 
       <KeyboardAvoidingView
@@ -173,29 +281,105 @@ export default function TransferScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Page Title Section */}
-          <View style={styles.pageTitleSection}>
-            <Text style={[styles.pageTitle, { color: colors.text }]}>Transfer</Text>
-            <Text style={[styles.pageSubtitle, { color: colors.textSecondary }]}>Send money to friends and family</Text>
-          </View>
+          {/* Hero Balance Card */}
+          <Animated.View
+            style={[
+              styles.heroCard,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+              },
+            ]}
+          >
+            <LinearGradient
+              colors={isDark ? ['#1B5E20', '#2E7D32'] : ['#43A047', '#66BB6A']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.heroGradient}
+            >
+              <View style={styles.heroContent}>
+                <View style={styles.heroIconContainer}>
+                  <MaterialCommunityIcons name="wallet-outline" size={24} color="#FFFFFF" />
+                </View>
+                <View style={styles.heroTextContainer}>
+                  <Text style={styles.heroLabel}>Available Balance</Text>
+                  {isLoadingBalance ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" style={{ marginTop: 4 }} />
+                  ) : (
+                    <Text style={styles.heroAmount}>{formatCurrencyFull(walletBalance)}</Text>
+                  )}
+                </View>
+              </View>
+              <View style={styles.heroDecoration}>
+                <View style={[styles.heroCircle, styles.heroCircle1]} />
+                <View style={[styles.heroCircle, styles.heroCircle2]} />
+              </View>
+            </LinearGradient>
+          </Animated.View>
 
-          {/* Balance Card */}
-          <View style={[styles.balanceCard, { backgroundColor: isDark ? colors.card : '#DEDEE0' }]}>
-            <View style={styles.balanceCentered}>
-              <Text style={[styles.balanceLabel, { color: colors.textSecondary }]}>Available Balance</Text>
-              <Text style={[styles.balanceValue, { color: colors.text }]}>₦{walletBalance.toLocaleString()}</Text>
+          {/* Amount Input Section */}
+          <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>ENTER AMOUNT</Text>
+            <View style={[styles.amountCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+              <View style={styles.amountInputContainer}>
+                <Text style={[styles.currencySymbol, { color: colors.primary }]}>₦</Text>
+                <TextInput
+                  style={[styles.amountInput, { color: colors.text }]}
+                  placeholder="0"
+                  placeholderTextColor={colors.textSecondary}
+                  value={amount}
+                  onChangeText={(text) => {
+                    const numeric = text.replace(/[^0-9]/g, '');
+                    setAmount(numeric ? parseInt(numeric, 10).toLocaleString() : '');
+                  }}
+                  keyboardType="number-pad"
+                />
+              </View>
+              
+              {/* Quick Amount Chips */}
+              <View style={styles.quickAmountsContainer}>
+                {QUICK_AMOUNTS.map((value) => {
+                  const isSelected = numericAmount === value;
+                  return (
+                    <TouchableOpacity
+                      key={value}
+                      style={[
+                        styles.quickAmountChip,
+                        {
+                          backgroundColor: isSelected
+                            ? colors.primary
+                            : isDark
+                            ? 'rgba(255,255,255,0.1)'
+                            : '#F5F5F5',
+                        },
+                      ]}
+                      onPress={() => handleQuickAmount(value)}
+                    >
+                      <Text
+                        style={[
+                          styles.quickAmountText,
+                          { color: isSelected ? '#FFFFFF' : colors.text },
+                        ]}
+                      >
+                        {value >= 1000 ? `₦${value / 1000}k` : `₦${value}`}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             </View>
-          </View>
+          </Animated.View>
 
-          {/* Recipient Input */}
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>RECIPIENT</Text>
-          <View style={[styles.insetGroupedContainer, { backgroundColor: isDark ? colors.card : '#DEDEE0' }]}>
-            <View style={styles.inputRow}>
-              <View style={styles.inputIconContainer}>
-                <Ionicons name="person" size={20} color="#43A047" />
+          {/* Recipient Section */}
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>SEND TO</Text>
+          <View style={[styles.recipientCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+            {/* Phone Input */}
+            <View style={[styles.phoneInputContainer, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#F5F5F5' }]}>
+              <View style={[styles.phoneInputIcon, { backgroundColor: isDark ? 'rgba(67,160,71,0.2)' : '#E8F5E9' }]}>
+                <Ionicons name="call" size={20} color="#43A047" />
               </View>
               <TextInput
-                style={[styles.input, { color: colors.text }]}
+                style={[styles.phoneInput, { color: colors.text }]}
                 placeholder="Enter phone number"
                 placeholderTextColor={colors.textSecondary}
                 value={recipient}
@@ -205,106 +389,87 @@ export default function TransferScreen() {
               />
               {isVerifying && <ActivityIndicator size="small" color="#43A047" />}
               {verifiedRecipient && !isVerifying && (
-                <Ionicons name="checkmark-circle" size={22} color="#43A047" />
+                <View style={styles.verifiedBadge}>
+                  <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                </View>
               )}
             </View>
+
+            {/* Verified Recipient Display */}
             {verifiedRecipient && (
-              <>
-                <View style={[styles.separator, { backgroundColor: 'rgba(60, 60, 67, 0.12)' }]} />
-                <View style={styles.verifiedRow}>
-                  <View style={styles.verifiedAvatar}>
-                    <Text style={styles.verifiedAvatarText}>
-                      {verifiedRecipient.name.charAt(0).toUpperCase()}
-                    </Text>
-                  </View>
-                  <Text style={[styles.verifiedName, { color: colors.text }]}>{verifiedRecipient.name}</Text>
+              <View style={styles.verifiedRecipientContainer}>
+                <View style={[styles.recipientAvatar, { backgroundColor: getAvatarColor(verifiedRecipient.name) }]}>
+                  <Text style={styles.recipientAvatarText}>{getInitials(verifiedRecipient.name)}</Text>
                 </View>
-              </>
+                <View style={styles.recipientDetails}>
+                  <Text style={[styles.recipientName, { color: colors.text }]}>{verifiedRecipient.name}</Text>
+                  <Text style={[styles.recipientPhone, { color: colors.textSecondary }]}>
+                    Handwork User • {verifiedRecipient.phone}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.clearRecipientButton}
+                  onPress={() => {
+                    setRecipient('');
+                    setVerifiedRecipient(null);
+                  }}
+                >
+                  <Ionicons name="close-circle" size={22} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
             )}
           </View>
 
           {/* Recent Recipients */}
-          {recentRecipients.length > 0 && !verifiedRecipient && (
+          {!verifiedRecipient && recentRecipients.length > 0 && (
             <>
-              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>RECENT</Text>
-              <View style={[styles.insetGroupedContainer, { backgroundColor: isDark ? colors.card : '#DEDEE0' }]}>
-                {recentRecipients.map((r, index) => (
-                  <React.Fragment key={r.id}>
-                    <TouchableOpacity style={styles.recipientRow} onPress={() => selectRecipient(r)}>
-                      <View style={styles.recipientAvatar}>
-                        <Text style={styles.recipientAvatarText}>{r.name.charAt(0).toUpperCase()}</Text>
-                      </View>
-                      <View style={styles.recipientInfo}>
-                        <Text style={[styles.recipientName, { color: colors.text }]}>{r.name}</Text>
-                        <Text style={[styles.recipientPhone, { color: colors.textSecondary }]}>{r.phone}</Text>
-                      </View>
-                      <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-                    </TouchableOpacity>
-                    {index < recentRecipients.length - 1 && (
-                      <View style={[styles.separator, { backgroundColor: 'rgba(60, 60, 67, 0.12)' }]} />
-                    )}
-                  </React.Fragment>
+              <View style={styles.recentHeader}>
+                <Text style={[styles.sectionTitle, { color: colors.textSecondary, marginBottom: 0 }]}>RECENT</Text>
+              </View>
+              <View style={[styles.recentCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+                {/* Search Input */}
+                <View style={[styles.searchContainer, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#F5F5F5' }]}>
+                  <Ionicons name="search" size={18} color={colors.textSecondary} />
+                  <TextInput
+                    style={[styles.searchInput, { color: colors.text }]}
+                    placeholder="Search contacts..."
+                    placeholderTextColor={colors.textSecondary}
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                  />
+                </View>
+
+                {filteredRecipients.map((r, index) => (
+                  <TouchableOpacity
+                    key={r.id}
+                    style={[
+                      styles.recentRecipientItem,
+                      index < filteredRecipients.length - 1 && styles.recentRecipientItemBorder,
+                    ]}
+                    onPress={() => selectRecipient(r)}
+                  >
+                    <View style={[styles.recipientAvatar, { backgroundColor: getAvatarColor(r.name) }]}>
+                      <Text style={styles.recipientAvatarText}>{getInitials(r.name)}</Text>
+                    </View>
+                    <View style={styles.recipientDetails}>
+                      <Text style={[styles.recipientName, { color: colors.text }]}>{r.name}</Text>
+                      <Text style={[styles.recipientMeta, { color: colors.textSecondary }]}>
+                        {r.phone} • {r.lastTransfer}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+                  </TouchableOpacity>
                 ))}
               </View>
             </>
           )}
 
-          {/* Amount Input */}
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>AMOUNT</Text>
-          <View style={[styles.insetGroupedContainer, { backgroundColor: isDark ? colors.card : '#DEDEE0' }]}>
-            <View style={styles.amountInputContainer}>
-              <Text style={[styles.currencySymbol, { color: colors.text }]}>₦</Text>
-              <TextInput
-                style={[styles.amountInput, { color: colors.text }]}
-                placeholder="0"
-                placeholderTextColor={colors.textSecondary}
-                value={amount}
-                onChangeText={(text) => {
-                  const numeric = text.replace(/[^0-9]/g, '');
-                  setAmount(numeric ? parseInt(numeric, 10).toLocaleString() : '');
-                }}
-                keyboardType="number-pad"
-              />
-            </View>
-          </View>
-
-          {/* Quick Amounts */}
-          <View style={[styles.insetGroupedContainer, { backgroundColor: isDark ? colors.card : '#DEDEE0' }]}>
-            <View style={styles.quickAmountsContainer}>
-              {QUICK_AMOUNTS.map((value) => {
-                const isSelected = numericAmount === value;
-                return (
-                  <TouchableOpacity
-                    key={value}
-                    style={[
-                      styles.quickAmountButton,
-                      {
-                        backgroundColor: isSelected ? colors.primary : (isDark ? colors.background : '#F8F8F8'),
-                        borderColor: isSelected ? colors.primary : 'transparent',
-                      },
-                    ]}
-                    onPress={() => handleQuickAmount(value)}
-                  >
-                    <Text
-                      style={[
-                        styles.quickAmountText,
-                        { color: isSelected ? '#FFFFFF' : colors.text },
-                      ]}
-                    >
-                      ₦{value.toLocaleString()}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-
-          {/* Note (Optional) */}
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>NOTE (OPTIONAL)</Text>
-          <View style={[styles.insetGroupedContainer, { backgroundColor: isDark ? colors.card : '#DEDEE0' }]}>
+          {/* Note Input */}
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>ADD NOTE (OPTIONAL)</Text>
+          <View style={[styles.noteCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
             <TextInput
               style={[styles.noteInput, { color: colors.text }]}
-              placeholder="Add a note..."
+              placeholder="What's this for?"
               placeholderTextColor={colors.textSecondary}
               value={note}
               onChangeText={setNote}
@@ -313,24 +478,27 @@ export default function TransferScreen() {
             />
           </View>
 
-          {/* Transfer Info */}
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>SUMMARY</Text>
-          <View style={[styles.insetGroupedContainer, { backgroundColor: isDark ? colors.card : '#DEDEE0' }]}>
-            <View style={styles.summaryRow}>
-              <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Transfer Amount</Text>
-              <Text style={[styles.summaryValue, { color: colors.text }]}>₦{numericAmount.toLocaleString()}</Text>
+          {/* Summary Card */}
+          {numericAmount > 0 && verifiedRecipient && (
+            <View style={[styles.summaryCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+              <View style={styles.summaryRow}>
+                <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Transfer Amount</Text>
+                <Text style={[styles.summaryValue, { color: colors.text }]}>{formatCurrency(numericAmount)}</Text>
+              </View>
+              <View style={styles.summaryDivider} />
+              <View style={styles.summaryRow}>
+                <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Transfer Fee</Text>
+                <View style={styles.freeBadge}>
+                  <Text style={styles.freeBadgeText}>FREE</Text>
+                </View>
+              </View>
+              <View style={styles.summaryDivider} />
+              <View style={styles.summaryRow}>
+                <Text style={[styles.summaryLabelBold, { color: colors.text }]}>Total</Text>
+                <Text style={[styles.summaryValueBold, { color: colors.text }]}>{formatCurrency(totalAmount)}</Text>
+              </View>
             </View>
-            <View style={[styles.separator, { backgroundColor: 'rgba(60, 60, 67, 0.12)' }]} />
-            <View style={styles.summaryRow}>
-              <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Fee</Text>
-              <Text style={[styles.summaryValue, { color: '#10B981' }]}>Free</Text>
-            </View>
-            <View style={[styles.separator, { backgroundColor: 'rgba(60, 60, 67, 0.12)' }]} />
-            <View style={styles.summaryRow}>
-              <Text style={[styles.summaryLabelBold, { color: colors.text }]}>Total</Text>
-              <Text style={[styles.summaryValueBold, { color: colors.text }]}>₦{totalAmount.toLocaleString()}</Text>
-            </View>
-          </View>
+          )}
         </ScrollView>
 
         {/* Transfer Button */}
@@ -342,13 +510,37 @@ export default function TransferScreen() {
             ]}
             onPress={handleTransfer}
             disabled={!verifiedRecipient || numericAmount < 100 || isLoading}
+            activeOpacity={0.8}
           >
-            {isLoading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.transferButtonText}>Transfer ₦{numericAmount.toLocaleString()}</Text>
-            )}
+            <LinearGradient
+              colors={
+                !verifiedRecipient || numericAmount < 100
+                  ? ['#C8E6C9', '#C8E6C9']
+                  : ['#43A047', '#2E7D32']
+              }
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.transferButtonGradient}
+            >
+              {isLoading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <MaterialCommunityIcons name="send" size={20} color="#FFFFFF" />
+                  <Text style={styles.transferButtonText}>
+                    Send {numericAmount > 0 ? formatCurrency(numericAmount) : 'Money'}
+                  </Text>
+                </>
+              )}
+            </LinearGradient>
           </TouchableOpacity>
+          
+          <View style={styles.securityNote}>
+            <Ionicons name="shield-checkmark" size={14} color={colors.textSecondary} />
+            <Text style={[styles.securityNoteText, { color: colors.textSecondary }]}>
+              Instant & secure transfers
+            </Text>
+          </View>
         </View>
       </KeyboardAvoidingView>
 
@@ -513,15 +705,10 @@ export default function TransferScreen() {
                             // Check if PIN is complete
                             if (firstEmptyIndex === 3) {
                               const enteredPin = newPin.join('');
-                              // Validate PIN (for demo, using 1234)
-                              if (enteredPin === '1234') {
-                                setShowPinModal(false);
-                                setPin(['', '', '', '']);
-                                confirmTransfer();
-                              } else {
-                                setPinError('Incorrect PIN. Please try again.');
-                                setTimeout(() => setPin(['', '', '', '']), 500);
-                              }
+                              // Let backend verify PIN
+                              setShowPinModal(false);
+                              setPin(['', '', '', '']);
+                              confirmTransfer(enteredPin);
                             }
                           }
                         }
@@ -553,6 +740,79 @@ export default function TransferScreen() {
               <Text style={styles.forgotPinText}>Forgot PIN?</Text>
             </TouchableOpacity>
           </View>
+        </View>
+      </Modal>
+
+      {/* Success Modal */}
+      <Modal visible={showSuccessModal} transparent animationType="fade">
+        <View style={styles.successModalOverlay}>
+          <Animated.View 
+            style={[
+              styles.successModalContent, 
+              { 
+                backgroundColor: isDark ? colors.card : '#FFFFFF',
+                transform: [{ scale: successScaleAnim }],
+              }
+            ]}
+          >
+            {/* Success Icon */}
+            <View style={styles.successIconContainer}>
+              <LinearGradient
+                colors={['#43A047', '#2E7D32']}
+                style={styles.successIconGradient}
+              >
+                <Ionicons name="checkmark" size={48} color="#FFFFFF" />
+              </LinearGradient>
+            </View>
+
+            {/* Success Message */}
+            <Text style={[styles.successTitle, { color: colors.text }]}>Transfer Successful!</Text>
+            <Text style={[styles.successAmount, { color: colors.primary }]}>
+              {formatCurrency(numericAmount)}
+            </Text>
+            <Text style={[styles.successRecipient, { color: colors.textSecondary }]}>
+              sent to {verifiedRecipient?.name}
+            </Text>
+
+            {/* Transaction Reference */}
+            <View style={[styles.referenceContainer, { backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
+              <Text style={[styles.referenceLabel, { color: colors.textSecondary }]}>Reference</Text>
+              <Text style={[styles.referenceValue, { color: colors.text }]}>{transferReference}</Text>
+            </View>
+
+            {/* Action Buttons */}
+            <TouchableOpacity
+              style={styles.successButton}
+              onPress={() => {
+                setShowSuccessModal(false);
+                navigation.goBack();
+              }}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={['#43A047', '#2E7D32']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.successButtonGradient}
+              >
+                <Text style={styles.successButtonText}>Done</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.newTransferButton}
+              onPress={() => {
+                setShowSuccessModal(false);
+                setAmount('');
+                setRecipient('');
+                setVerifiedRecipient(null);
+                setNote('');
+                successScaleAnim.setValue(0);
+              }}
+            >
+              <Text style={[styles.newTransferText, { color: colors.primary }]}>Make Another Transfer</Text>
+            </TouchableOpacity>
+          </Animated.View>
         </View>
       </Modal>
     </View>
@@ -793,16 +1053,11 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   transferButton: {
-    backgroundColor: '#43A047',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
     borderRadius: 12,
-    gap: 8,
+    overflow: 'hidden',
   },
   transferButtonDisabled: {
-    backgroundColor: '#C8E6C9',
+    opacity: 1,
   },
   transferButtonText: {
     fontSize: 17,
@@ -1006,5 +1261,523 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#007AFF',
     fontWeight: '500',
+  },
+  // Hero Card Styles
+  heroCard: {
+    borderRadius: 16,
+    marginBottom: 24,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#43A047',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
+  },
+  heroGradient: {
+    padding: 20,
+  },
+  heroContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  heroIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroTextContainer: {
+    flex: 1,
+  },
+  heroLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.85)',
+    marginBottom: 4,
+  },
+  heroAmount: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  heroDecoration: {
+    position: 'absolute',
+    right: -20,
+    top: -20,
+  },
+  heroCircle: {
+    position: 'absolute',
+    borderRadius: 100,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  heroCircle1: {
+    width: 100,
+    height: 100,
+    right: 0,
+    top: 0,
+  },
+  heroCircle2: {
+    width: 60,
+    height: 60,
+    right: 60,
+    top: 60,
+  },
+  // Header Title
+  headerTitle: {
+    flex: 1,
+    fontSize: 17,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  // Quick Amount Chip Styles
+  quickAmountChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  quickAmountText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  // Phone Input Icon
+  phoneInputIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Verified Badge
+  verifiedBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#43A047',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Verified Recipient Container
+  verifiedRecipientContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(67, 160, 71, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(67, 160, 71, 0.2)',
+  },
+  // Recipient Details
+  recipientDetails: {
+    flex: 1,
+  },
+  // Clear Recipient Button
+  clearRecipientButton: {
+    padding: 4,
+  },
+  // Recent Header
+  recentHeader: {
+    marginBottom: 8,
+  },
+  // Recent Card
+  recentCard: {
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  // Search Container
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 12,
+  },
+  // Search Input
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    padding: 0,
+  },
+  // Recent Recipient Item Border
+  recentRecipientItemBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  // Recipient Meta
+  recipientMeta: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  // Amount Card Styles
+  amountCard: {
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  amountHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  amountTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  amountInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  currencyLarge: {
+    fontSize: 36,
+    fontWeight: '700',
+    marginRight: 4,
+  },
+  amountInputLarge: {
+    flex: 1,
+    fontSize: 36,
+    fontWeight: '700',
+    padding: 0,
+  },
+  quickAmountChipsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  quickAmountChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1.5,
+  },
+  quickAmountChipText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  // Recipient Card Styles
+  recipientCard: {
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  recipientHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  recipientHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  recipientTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  phoneInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  phoneInput: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '500',
+    padding: 0,
+  },
+  verifiedRecipientCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(67, 160, 71, 0.08)',
+    marginBottom: 16,
+    borderWidth: 1.5,
+    borderColor: 'rgba(67, 160, 71, 0.2)',
+  },
+  verifiedAvatarLarge: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#43A047',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginTop: 4,
+  },
+  verifiedBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#2E7D32',
+  },
+  recentSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  recentLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    letterSpacing: 0.3,
+  },
+  searchButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  searchButtonText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#43A047',
+  },
+  recentRecipientItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    borderRadius: 10,
+  },
+  recentAvatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recentAvatarText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  recentRecipientInfo: {
+    flex: 1,
+  },
+  recentRecipientName: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  recentRecipientPhone: {
+    fontSize: 13,
+  },
+  // Note Card Styles
+  noteCard: {
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  // Summary Card Styles
+  summaryCard: {
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  summaryDivider: {
+    height: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.06)',
+    marginVertical: 8,
+  },
+  freeBadge: {
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  freeBadgeText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#2E7D32',
+  },
+  // Transfer Button Styles
+  transferButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 12,
+    gap: 10,
+  },
+  securityNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 12,
+  },
+  securityNoteText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  // Success Modal Styles
+  successModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  successModalContent: {
+    width: '85%',
+    maxWidth: 340,
+    borderRadius: 24,
+    padding: 24,
+    alignItems: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.25,
+        shadowRadius: 20,
+      },
+      android: {
+        elevation: 10,
+      },
+    }),
+  },
+  successIconContainer: {
+    marginBottom: 20,
+  },
+  successIconGradient: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  successTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  successAmount: {
+    fontSize: 32,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  successRecipient: {
+    fontSize: 15,
+    marginBottom: 20,
+  },
+  referenceContainer: {
+    width: '100%',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 24,
+    alignItems: 'center',
+  },
+  referenceLabel: {
+    fontSize: 13,
+    marginBottom: 4,
+  },
+  referenceValue: {
+    fontSize: 15,
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  successButton: {
+    width: '100%',
+    marginBottom: 12,
+  },
+  successButtonGradient: {
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  successButtonText: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  newTransferButton: {
+    paddingVertical: 12,
+  },
+  newTransferText: {
+    fontSize: 15,
+    fontWeight: '600',
   },
 });

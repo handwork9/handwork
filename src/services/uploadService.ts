@@ -26,13 +26,15 @@ export const uploadService = {
     folder: string = 'products'
   ): Promise<{ success: boolean; data?: UploadResponse; error?: string }> {
     try {
+      console.log('[UploadService] Uploading image to folder:', folder);
       const response = await apiClient.post<ApiResponse<UploadResponse>>('/uploads/image', {
         base64,
         folder,
       });
+      console.log('[UploadService] Upload response:', JSON.stringify(response.data, null, 2));
       return { success: true, data: response.data };
     } catch (error: any) {
-      console.error('Upload image error:', error);
+      console.error('[UploadService] Upload image error:', error);
       return { 
         success: false, 
         error: error.response?.data?.message || 'Failed to upload image' 

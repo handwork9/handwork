@@ -15,8 +15,9 @@ export class AdminGuard implements CanActivate {
       throw new ForbiddenException('Authentication required');
     }
 
-    // Check if user is admin or super_admin
-    if (user.role !== 'admin' && user.role !== 'super_admin') {
+    // Check if user has admin access (admin, superadmin, operations, finance, support)
+    const adminRoles = ['admin', 'superadmin', 'operations', 'finance', 'support'];
+    if (!adminRoles.includes(user.role)) {
       throw new ForbiddenException('Admin access required');
     }
 

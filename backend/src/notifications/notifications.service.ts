@@ -32,6 +32,11 @@ export enum NotificationType {
   DELIVERY_EARNINGS = 'delivery_earnings',
   PROMO = 'promo',
   GENERAL = 'general',
+  // Support Report notifications
+  SUPPORT_REPORT_RECEIVED = 'support_report_received',
+  SUPPORT_REPORT_REVIEWED = 'support_report_reviewed',
+  SUPPORT_REPORT_RESOLVED = 'support_report_resolved',
+  SUPPORT_REPORT_DISMISSED = 'support_report_dismissed',
 }
 
 export interface NotificationPayload {
@@ -596,5 +601,129 @@ export class NotificationsService {
     this.logger.log(`Notification settings updated for user ${userId}`);
 
     return this.getNotificationSettings(userId);
+  }
+
+  /**
+   * Send broadcast notification to users based on target audience
+   */
+  async sendBroadcastNotification(
+    title: string,
+    message: string,
+    type: string,
+    targetAudience: string,
+    adminId: string,
+    imageUrl?: string,
+  ): Promise<{ success: boolean; count: number; message: string }> {
+    // Build query based on target audience
+    const queryBuilder = this.userRepository.createQueryBuilder('user')
+      .where('user.isActive = :isActive', { isActive: true });
+
+    switch (targetAudience) {
+      case 'buyers':
+        queryBuilder.andWhere('user.role = :role', { role: 'buyer' });
+        break;
+      case 'farmers':
+        queryBuilder.andWhere('user.role = :role', { role: 'farmer' });
+        break;
+      case 'riders':
+        queryBuilder.andWhere('user.role = :role', { role: 'rider' });
+        break;
+      case 'all':
+      default:
+        // No additional filter, send to all active users
+        break;
+    }
+
+    const users = await queryBuilder.select(['user.id']).getMany();
+
+    if (users.length === 0) {
+      return {
+        success: true,
+        count: 0,
+        message: 'No users found matching the target audience',
+      };
+    }
+
+    // Map notification type
+    let notificationType: NotificationType;
+    switch (type) {
+      case 'promo':
+        notificationType = NotificationType.PROMO;
+        break;
+      case 'warning':
+      case 'info':
+      case 'success':
+      default:
+        notificationType = NotificationType.GENERAL;
+        break;
+    }
+
+    // Prepare broadcast data
+    const broadcastData = {
+      type: notificationType,
+      title,
+      body: message,
+      data: {
+        broadcastType: type,
+        sentBy: adminId,
+        sentAt: new Date().toISOString(),
+        imageUrl: imageUrl || null,
+      },
+      timestamp: new Date().toISOString(),
+    };
+
+    // Send WebSocket broadcast for real-time in-app notification
+    this.notificationsGateway.broadcast(broadcastData);
+    this.logger.log(`WebSocket broadcast sent to all connected users`);
+
+    // Send bulk push notification with optional image (for offline users)
+    const successCount = await this.sendBulkPushNotificationWithImage({
+      userIds: users.map(u => u.id),
+      type: notificationType,
+      title,
+      body: message,
+      imageUrl,
+      data: {
+        broadcastType: type,
+        sentBy: adminId,
+        sentAt: new Date().toISOString(),
+        imageUrl: imageUrl || null,
+      },
+    });
+
+    this.logger.log(`Broadcast notification sent by admin ${adminId} to ${successCount}/${users.length} ${targetAudience} users`);
+
+    return {
+      success: true,
+      count: successCount,
+      message: `Notification sent to ${successCount} ${targetAudience === 'all' ? '' : targetAudience + ' '}users`,
+    };
+  }
+
+  /**
+   * Send bulk push notifications with optional image
+   */
+  async sendBulkPushNotificationWithImage(payload: BulkNotificationPayload & { imageUrl?: string }): Promise<number> {
+    let successCount = 0;
+
+    for (const userId of payload.userIds) {
+      const success = await this.sendPushNotification({
+        userId,
+        type: payload.type,
+        title: payload.title,
+        body: payload.body,
+        data: payload.data,
+        imageUrl: payload.imageUrl,
+      });
+
+      if (success) {
+        successCount++;
+      }
+    }
+
+    this.logger.log(
+      `Bulk notification with image sent to ${successCount}/${payload.userIds.length} users`,
+    );
+    return successCount;
   }
 }

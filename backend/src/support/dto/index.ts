@@ -1,6 +1,6 @@
 import { IsString, IsOptional, IsEnum, IsUUID, IsObject } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { TicketCategory, TicketPriority, SupportMessageType } from '../../database/entities';
+import { TicketCategory, TicketPriority, SupportMessageType, ReportType, ReportStatus } from '../../database/entities';
 
 export class CreateTicketDto {
   @ApiProperty({ description: 'Subject of the support ticket' })
@@ -84,4 +84,32 @@ export class AssignTicketDto {
   @ApiProperty({ description: 'Admin ID to assign to' })
   @IsUUID()
   adminId: string;
+}
+
+export class CreateReportDto {
+  @ApiProperty({ enum: ReportType, description: 'Type of report' })
+  @IsEnum(ReportType)
+  type: ReportType;
+
+  @ApiPropertyOptional({ description: 'Ticket ID if reporting within a chat session' })
+  @IsOptional()
+  @IsUUID()
+  ticketId?: string;
+
+  @ApiPropertyOptional({ description: 'Additional description of the issue' })
+  @IsOptional()
+  @IsString()
+  description?: string;
+}
+
+export class UpdateReportDto {
+  @ApiPropertyOptional({ enum: ReportStatus })
+  @IsOptional()
+  @IsEnum(ReportStatus)
+  status?: ReportStatus;
+
+  @ApiPropertyOptional({ description: 'Admin notes about this report' })
+  @IsOptional()
+  @IsString()
+  adminNotes?: string;
 }

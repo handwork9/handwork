@@ -220,6 +220,23 @@ export default function TransactionHistoryScreen() {
 
   const renderTransactionItem = (transaction: Transaction, index: number, items: Transaction[]) => {
     const isLast = index === items.length - 1;
+    const isCredit = transaction.type === 'credit';
+    
+    // Get category icon based on title
+    const getCategoryIcon = () => {
+      const title = transaction.title.toLowerCase();
+      if (title.includes('earnings') || title.includes('order')) return 'bag-check';
+      if (title.includes('delivery')) return 'bicycle';
+      if (title.includes('withdrawal')) return 'wallet';
+      if (title.includes('top-up') || title.includes('topup')) return 'add-circle';
+      if (title.includes('commission')) return 'calculator';
+      if (title.includes('refund')) return 'refresh-circle';
+      if (title.includes('bonus') || title.includes('cashback')) return 'gift';
+      if (title.includes('transfer')) return 'swap-horizontal';
+      if (title.includes('subscription') || title.includes('premium')) return 'star';
+      if (title.includes('purchase') || title.includes('payment')) return 'cart';
+      return isCredit ? 'arrow-down-circle' : 'arrow-up-circle';
+    };
 
     return (
       <React.Fragment key={transaction.id}>
@@ -228,50 +245,91 @@ export default function TransactionHistoryScreen() {
           activeOpacity={0.7}
           onPress={() => (navigation as any).navigate('TransactionDetail', { transaction })}
         >
-          <View style={[styles.transactionIcon, { backgroundColor: transaction.type === 'credit' ? '#DCFCE7' : '#FEE2E2' }]}>
-            <Ionicons 
-              name={transaction.type === 'credit' ? 'arrow-down' : 'arrow-up'} 
-              size={18} 
-              color={transaction.type === 'credit' ? '#16A34A' : '#EF4444'} 
-            />
+          {/* Enhanced Icon with Gradient Background */}
+          <View style={styles.transactionIconWrapper}>
+            <LinearGradient
+              colors={isCredit ? ['#10B981', '#059669'] : ['#EF4444', '#DC2626']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.transactionIconGradient}
+            >
+              <Ionicons name={getCategoryIcon() as any} size={20} color="#FFFFFF" />
+            </LinearGradient>
+            {/* Pulse indicator for recent transactions */}
+            {transaction.date.includes('Today') && (
+              <View style={[styles.transactionPulse, { backgroundColor: isCredit ? '#10B981' : '#EF4444' }]} />
+            )}
           </View>
+          
+          {/* Transaction Info */}
           <View style={styles.transactionInfo}>
-            <Text style={[styles.transactionTitle, dynamicStyles.text]}>{transaction.title}</Text>
-            <Text style={[styles.transactionDesc, dynamicStyles.textSecondary]}>
-              {transaction.description}
+            <View style={styles.transactionTitleRow}>
+              <Text style={[styles.transactionTitle, dynamicStyles.text]} numberOfLines={1}>
+                {transaction.title}
+              </Text>
+              {transaction.date.includes('Today') && (
+                <View style={[styles.newBadge, { backgroundColor: isCredit ? '#ECFDF5' : '#FEF2F2' }]}>
+                  <Text style={[styles.newBadgeText, { color: isCredit ? '#059669' : '#DC2626' }]}>NEW</Text>
+                </View>
+              )}
+            </View>
+            <Text style={[styles.transactionDesc, dynamicStyles.textSecondary]} numberOfLines={1}>
+              {transaction.description || 'No description'}
             </Text>
-            <Text style={[styles.transactionTime, dynamicStyles.textSecondary]}>
-              {transaction.date.includes(',') ? transaction.date.split(',')[1].trim() : transaction.date}
-            </Text>
+            <View style={styles.transactionMetaRow}>
+              <Ionicons name="time-outline" size={12} color={colors.textSecondary} />
+              <Text style={[styles.transactionTime, dynamicStyles.textSecondary]}>
+                {transaction.date.includes(',') ? transaction.date.split(',')[1].trim() : transaction.date}
+              </Text>
+            </View>
           </View>
+          
+          {/* Amount Section */}
           <View style={styles.transactionRight}>
             <Text
               style={[
                 styles.transactionAmount,
-                { color: transaction.type === 'credit' ? '#16A34A' : '#EF4444' },
+                { color: isCredit ? '#059669' : '#DC2626' },
               ]}
             >
-              {transaction.type === 'credit' ? '+' : '-'}{formatCurrency(transaction.amount ?? 0)}
+              {isCredit ? '+' : '-'}{formatCurrency(transaction.amount ?? 0)}
             </Text>
             <View
               style={[
                 styles.typeBadge,
-                { backgroundColor: transaction.type === 'credit' ? '#DCFCE7' : '#FEE2E2' },
+                { 
+                  backgroundColor: isCredit ? '#ECFDF5' : '#FEF2F2',
+                  borderWidth: 1,
+                  borderColor: isCredit ? '#A7F3D0' : '#FECACA',
+                },
               ]}
             >
+              <Ionicons 
+                name={isCredit ? 'trending-up' : 'trending-down'} 
+                size={10} 
+                color={isCredit ? '#059669' : '#DC2626'} 
+              />
               <Text
                 style={[
                   styles.typeText,
-                  { color: transaction.type === 'credit' ? '#16A34A' : '#EF4444' },
+                  { color: isCredit ? '#059669' : '#DC2626' },
                 ]}
               >
-                {transaction.type === 'credit' ? 'Credit' : 'Debit'}
+                {isCredit ? 'Credit' : 'Debit'}
               </Text>
             </View>
           </View>
-          <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+          
+          {/* Chevron */}
+          <View style={[styles.chevronWrapper, { backgroundColor: isDark ? '#3C3C3E' : '#F3F4F6' }]}>
+            <Ionicons name="chevron-forward" size={14} color={colors.textSecondary} />
+          </View>
         </TouchableOpacity>
-        {!isLast && <View style={[styles.separator, { backgroundColor: 'rgba(60, 60, 67, 0.12)' }]} />}
+        {!isLast && (
+          <View style={styles.separatorWrapper}>
+            <View style={[styles.separator, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]} />
+          </View>
+        )}
       </React.Fragment>
     );
   };
@@ -313,69 +371,70 @@ export default function TransactionHistoryScreen() {
           <Text style={[styles.pageTitle, { color: colors.text }]}>Transaction History</Text>
           <Text style={[styles.pageSubtitle, { color: colors.textSecondary }]}>View all your wallet transactions</Text>
         </View>
-        {/* Hero Card */}
-        <View style={styles.heroCard}>
+        
+        {/* Summary Media Card */}
+        <View style={[styles.summaryMediaCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+          {/* Gradient Header with Illustration */}
           <LinearGradient
             colors={['#059669', '#10B981', '#34D399']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={styles.heroCardGradient}
+            style={styles.summaryMediaHeader}
           >
             {/* Decorative circles */}
-            <View style={styles.heroDecorCircle1} />
-            <View style={styles.heroDecorCircle2} />
-            <View style={styles.heroDecorCircle3} />
+            <View style={[styles.summaryDecorCircle, { top: -20, right: -20, opacity: 0.1 }]} />
+            <View style={[styles.summaryDecorCircle, { bottom: -30, left: 60, opacity: 0.08, width: 80, height: 80 }]} />
             
-            {/* Header with illustration */}
-            <View style={styles.heroHeader}>
-              <View style={styles.heroTitleContainer}>
-                <Text style={styles.heroTitle}>Transaction Summary</Text>
-                <Text style={styles.heroSubtitle}>
-                  {transactions.length} transaction{transactions.length !== 1 ? 's' : ''} total
-                </Text>
-              </View>
-              <View style={styles.heroIllustration}>
-                <TransactionHistoryIllustration size={70} />
-              </View>
-            </View>
-            
-            {/* Summary Stats */}
-            <View style={styles.heroStats}>
-              <View style={styles.heroStatItem}>
-                <View style={styles.heroStatIconWrapper}>
-                  <View style={[styles.heroStatIcon, { backgroundColor: 'rgba(255,255,255,0.95)' }]}>
-                    <Ionicons name="trending-up" size={20} color="#059669" />
-                  </View>
+            <View style={styles.summaryHeaderContent}>
+              <View style={styles.summaryHeaderLeft}>
+                <Text style={styles.summaryHeaderLabel}>Transaction Summary</Text>
+                <Text style={styles.summaryHeaderValue}>{transactions.length}</Text>
+                <View style={styles.summaryHeaderBadge}>
+                  <Ionicons name="receipt-outline" size={12} color="#FFFFFF" />
+                  <Text style={styles.summaryHeaderBadgeText}>Total Transactions</Text>
                 </View>
-                <Text style={styles.heroStatLabel}>Total Income</Text>
-                <Text style={styles.heroStatValue}>
-                  +{formatCurrency(totalCredit)}
-                </Text>
               </View>
-              
-              <View style={styles.heroStatDivider} />
-              
-              <View style={styles.heroStatItem}>
-                <View style={styles.heroStatIconWrapper}>
-                  <View style={[styles.heroStatIcon, { backgroundColor: 'rgba(255,255,255,0.95)' }]}>
-                    <Ionicons name="trending-down" size={20} color="#EF4444" />
-                  </View>
-                </View>
-                <Text style={styles.heroStatLabel}>Total Expenses</Text>
-                <Text style={styles.heroStatValue}>
-                  -{formatCurrency(totalDebit)}
-                </Text>
+              <View style={styles.summaryIllustrationContainer}>
+                <TransactionHistoryIllustration size={85} />
               </View>
-            </View>
-            
-            {/* Net Balance */}
-            <View style={styles.heroNetBalance}>
-              <Text style={styles.heroNetLabel}>Net Balance</Text>
-              <Text style={[styles.heroNetValue, { color: totalCredit - totalDebit >= 0 ? '#FFFFFF' : '#FEF2F2' }]}>
-                {totalCredit - totalDebit >= 0 ? '+' : ''}{formatCurrency(totalCredit - totalDebit)}
-              </Text>
             </View>
           </LinearGradient>
+          
+          {/* Stats Grid */}
+          <View style={styles.summaryStatsGrid}>
+            {/* Total Income */}
+            <View style={[styles.summaryStatItem, { borderRightWidth: 1, borderRightColor: isDark ? '#3D3D3D' : '#F0F0F0' }]}>
+              <View style={[styles.summaryStatIconBg, { backgroundColor: '#ECFDF5' }]}>
+                <View style={[styles.summaryStatIconInner, { backgroundColor: '#10B981' }]}>
+                  <Ionicons name="trending-up" size={16} color="#FFFFFF" />
+                </View>
+              </View>
+              <Text style={[styles.summaryStatLabel, { color: colors.textSecondary }]}>Income</Text>
+              <Text style={[styles.summaryStatValue, { color: '#10B981' }]}>+{formatCurrency(totalCredit)}</Text>
+            </View>
+            
+            {/* Total Expenses */}
+            <View style={styles.summaryStatItem}>
+              <View style={[styles.summaryStatIconBg, { backgroundColor: '#FEF2F2' }]}>
+                <View style={[styles.summaryStatIconInner, { backgroundColor: '#EF4444' }]}>
+                  <Ionicons name="trending-down" size={16} color="#FFFFFF" />
+                </View>
+              </View>
+              <Text style={[styles.summaryStatLabel, { color: colors.textSecondary }]}>Expenses</Text>
+              <Text style={[styles.summaryStatValue, { color: '#EF4444' }]}>-{formatCurrency(totalDebit)}</Text>
+            </View>
+          </View>
+          
+          {/* Net Balance Footer */}
+          <View style={[styles.summaryNetBalanceFooter, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : '#F0FDF4' }]}>
+            <View style={styles.summaryNetBalanceContent}>
+              <Ionicons name="wallet-outline" size={18} color="#059669" />
+              <Text style={[styles.summaryNetBalanceLabel, { color: colors.textSecondary }]}>Net Balance</Text>
+            </View>
+            <Text style={[styles.summaryNetBalanceValue, { color: totalCredit - totalDebit >= 0 ? '#059669' : '#EF4444' }]}>
+              {totalCredit - totalDebit >= 0 ? '+' : ''}{formatCurrency(totalCredit - totalDebit)}
+            </Text>
+          </View>
         </View>
 
         {/* Search Bar with Filter Button */}
@@ -643,6 +702,128 @@ const styles = StyleSheet.create({
   pageSubtitle: {
     fontSize: FONT_SIZES.md,
     fontFamily: FONTS.regular,
+  },
+  // Summary Media Card Styles
+  summaryMediaCard: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    marginBottom: SPACING.lg,
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  summaryMediaHeader: {
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.lg,
+    paddingBottom: SPACING.xl,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  summaryDecorCircle: {
+    position: 'absolute',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#FFFFFF',
+  },
+  summaryHeaderContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  summaryHeaderLeft: {
+    flex: 1,
+  },
+  summaryHeaderLabel: {
+    fontSize: 14,
+    fontFamily: FONTS.medium,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginBottom: 4,
+  },
+  summaryHeaderValue: {
+    fontSize: 42,
+    fontFamily: FONTS.bold,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
+  },
+  summaryHeaderBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    marginTop: 8,
+    gap: 4,
+  },
+  summaryHeaderBadgeText: {
+    fontSize: 11,
+    fontFamily: FONTS.medium,
+    color: '#FFFFFF',
+  },
+  summaryIllustrationContainer: {
+    marginLeft: SPACING.md,
+  },
+  summaryStatsGrid: {
+    flexDirection: 'row',
+    paddingVertical: SPACING.md,
+  },
+  summaryStatItem: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: SPACING.sm,
+  },
+  summaryStatIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.xs,
+  },
+  summaryStatIconInner: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  summaryStatLabel: {
+    fontSize: 12,
+    fontFamily: FONTS.medium,
+    marginBottom: 4,
+  },
+  summaryStatValue: {
+    fontSize: 18,
+    fontFamily: FONTS.bold,
+    fontWeight: '700',
+  },
+  summaryNetBalanceFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  summaryNetBalanceContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  summaryNetBalanceLabel: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: FONTS.medium,
+  },
+  summaryNetBalanceValue: {
+    fontSize: 18,
+    fontFamily: FONTS.bold,
+    fontWeight: '700',
   },
   heroCard: {
     marginBottom: SPACING.lg,
@@ -940,85 +1121,142 @@ const styles = StyleSheet.create({
     marginHorizontal: SPACING.md,
   },
   dateSectionHeader: {
-    marginBottom: SPACING.sm,
+    marginBottom: SPACING.sm + 2,
     marginLeft: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   dateSectionTitle: {
-    fontSize: FONT_SIZES.xs,
-    fontFamily: FONTS.medium,
-    fontWeight: '600',
-    letterSpacing: 0.5,
+    fontSize: 11,
+    fontFamily: FONTS.semiBold,
+    fontWeight: '700',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
   transactionsCard: {
-    borderRadius: 16,
+    borderRadius: 20,
     marginBottom: SPACING.lg,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.04)',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
       },
       android: {
-        elevation: 2,
+        elevation: 4,
       },
     }),
   },
   transactionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: SPACING.md,
-    gap: 12,
+    paddingVertical: SPACING.md + 2,
+    paddingHorizontal: SPACING.md,
+    gap: 14,
   },
-  transactionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+  transactionIconWrapper: {
+    position: 'relative',
+  },
+  transactionIconGradient: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  transactionPulse: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
   transactionInfo: {
     flex: 1,
+    gap: 3,
+  },
+  transactionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   transactionTitle: {
     fontSize: FONT_SIZES.md,
     fontFamily: FONTS.semiBold,
     fontWeight: '600',
-    marginBottom: 2,
+    flex: 1,
+  },
+  newBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  newBadgeText: {
+    fontSize: 8,
+    fontFamily: FONTS.bold,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   transactionDesc: {
     fontSize: FONT_SIZES.sm,
     fontFamily: FONTS.regular,
-    marginBottom: 2,
+    opacity: 0.8,
+  },
+  transactionMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
   },
   transactionTime: {
-    fontSize: FONT_SIZES.xs,
+    fontSize: 11,
     fontFamily: FONTS.regular,
   },
   transactionRight: {
     alignItems: 'flex-end',
-    marginRight: 4,
+    gap: 6,
   },
   transactionAmount: {
-    fontSize: FONT_SIZES.md,
+    fontSize: FONT_SIZES.md + 1,
     fontFamily: FONTS.bold,
     fontWeight: '700',
-    marginBottom: 4,
   },
   typeBadge: {
-    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: 6,
   },
   typeText: {
-    fontSize: 10,
+    fontSize: 9,
     fontFamily: FONTS.semiBold,
     fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  chevronWrapper: {
+    width: 24,
+    height: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  separatorWrapper: {
+    paddingLeft: 76,
+    paddingRight: SPACING.md,
   },
   separator: {
-    height: StyleSheet.hairlineWidth,
-    marginLeft: 72,
+    height: 1,
   },
   emptyCard: {
     borderRadius: 16,

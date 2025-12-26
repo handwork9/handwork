@@ -35,15 +35,18 @@ export const profileStatsService = {
    */
   async getFarmerStats(): Promise<FarmerProfileStats> {
     try {
+      console.log('[ProfileStatsService] Calling /farmers/analytics/dashboard');
       const response = await apiClient.get<any>('/farmers/analytics/dashboard');
+      console.log('[ProfileStatsService] Response:', response);
       const data = extractData<any>(response);
+      console.log('[ProfileStatsService] Extracted data:', data);
       return {
         totalProducts: data.totalProducts || 0,
         totalOrders: data.totalOrders || 0,
         avgRating: data.avgRating || 0,
       };
-    } catch (error) {
-      console.error('Error fetching farmer stats:', error);
+    } catch (error: any) {
+      console.error('[ProfileStatsService] Error fetching farmer stats:', error?.message, error?.response?.data);
       return {
         totalProducts: 0,
         totalOrders: 0,

@@ -763,7 +763,13 @@ export default function SignupScreen({ navigation }: Props) {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>{getStepTitle()}</Text>
-        <View style={styles.headerPlaceholder} />
+        <TouchableOpacity
+          style={styles.supportButton}
+          onPress={() => (navigation as any).navigate('LiveChat')}
+          accessibilityLabel="Live Support"
+        >
+          <Ionicons name="chatbubble-ellipses-outline" size={24} color={COLORS.primary} />
+        </TouchableOpacity>
       </View>
 
       <KeyboardAvoidingView
@@ -2350,8 +2356,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontFamily: Platform.OS === 'ios' ? 'Avenir-Heavy' : 'sans-serif-medium',
   },
-  headerPlaceholder: {
+  supportButton: {
     width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   welcomeSection: {
     marginBottom: 32,

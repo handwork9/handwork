@@ -3,7 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody, ApiResponse, ApiParam } 
 import { UsersService, BuyerPremiumDto } from './users.service';
 import { UpdateUserDto, UpdateDeviceTokenDto, UpdateLocationDto, ApplyAsFarmerDto, RequestAccountDeletionDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { CurrentUser } from '../common/decorators';
+import { CurrentUser, Public } from '../common/decorators';
 import { User } from '../database/entities/user.entity';
 
 @ApiTags('Users')
@@ -98,6 +98,59 @@ export class UsersController {
   async getUser(@Param('id') id: string) {
     const user = await this.usersService.findById(id);
     return this.sanitizeUser(user);
+  }
+
+  @Public()
+  @Post('lookup/phone')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Look up user by phone number for transfers' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        phone: { type: 'string', example: '08012345678' },
+      },
+      required: ['phone'],
+    },
+  })
+  @ApiResponse({ status: 200, description: 'User found' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async lookupUserByPhone(@Body('phone') phone: string) {
+    // Normalize phone number to +234 format
+    let normalizedPhone = phone.trim();
+    
+    // If phone starts with 0, replace with +234
+    if (normalizedPhone.startsWith('0')) {
+      normalizedPhone = '+234' + normalizedPhone.substring(1);
+    }
+    // If phone starts with 234, add +
+    else if (normalizedPhone.startsWith('234')) {
+      normalizedPhone = '+' + normalizedPhone;
+    }
+    // If phone doesn't start with +, add +234
+    else if (!normalizedPhone.startsWith('+')) {
+      normalizedPhone = '+234' + normalizedPhone;
+    }
+    
+    // Try normalized phone first
+    let user = await this.usersService.findByPhone(normalizedPhone);
+    
+    // If not found, try original phone as fallback
+    if (!user && normalizedPhone !== phone) {
+      user = await this.usersService.findByPhone(phone);
+    }
+    if (!user) {
+      return { found: false, user: null };
+    }
+    return {
+      found: true,
+      user: {
+        id: user.id,
+        name: user.name,
+        phone: user.phone,
+        avatar: user.avatar,
+      },
+    };
   }
 
   @Get('settings/security')

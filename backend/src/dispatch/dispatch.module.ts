@@ -14,6 +14,11 @@ import { RidersModule } from '../riders/riders.module';
     TypeOrmModule.forFeature([DispatchLog, Order, Rider]),
     BullModule.registerQueue({
       name: 'dispatch',
+      redis: {
+        host: process.env.REDIS_HOST || 'localhost',
+        port: parseInt(process.env.REDIS_PORT || '6379', 10),
+        password: process.env.REDIS_PASSWORD || 'redis123',
+      },
       defaultJobOptions: {
         removeOnComplete: true,
         removeOnFail: false,
@@ -29,6 +34,6 @@ import { RidersModule } from '../riders/riders.module';
   ],
   controllers: [DispatchController],
   providers: [DispatchService, DispatchProcessor, DispatchGateway],
-  exports: [DispatchService],
+  exports: [DispatchService, DispatchGateway],
 })
 export class DispatchModule {}

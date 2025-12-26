@@ -34,6 +34,9 @@ import {
   SignupPaymentScreen,
 } from '../screens/auth/signup';
 
+// Shared Screens
+import LiveChatScreen from '../screens/shared/LiveChatScreen';
+
 const Stack = createNativeStackNavigator<AuthStackParamList>();
 const ONBOARDING_KEY = '@handwork_onboarding_complete';
 
@@ -104,6 +107,9 @@ export function AuthNavigator() {
       <Stack.Screen name="SignupFarmDetails" component={SignupFarmDetailsScreen} />
       <Stack.Screen name="SignupFarmVerification" component={SignupFarmVerificationScreen} />
       <Stack.Screen name="SignupPayment" component={SignupPaymentScreen} />
+      
+      {/* Shared Screens */}
+      <Stack.Screen name="LiveChat" component={LiveChatScreen} />
     </Stack.Navigator>
   );
 }

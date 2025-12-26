@@ -40,6 +40,8 @@ export interface DebitWalletDto {
   amount: number;
   category: TransactionCategory;
   description: string;
+  orderId?: string;
+  orderNumber?: string;
   metadata?: Record<string, any>;
 }
 
@@ -336,6 +338,8 @@ export class WalletService {
         balanceAfter,
         description: dto.description,
         reference: generateReference('WLT'),
+        orderId: dto.orderId,
+        orderNumber: dto.orderNumber,
         metadata: dto.metadata,
       });
 
@@ -512,6 +516,8 @@ export class WalletService {
     limit = 20,
     category?: TransactionCategory,
   ): Promise<PaginatedResponseDto<WalletTransaction>> {
+    this.logger.log(`[getTransactionHistory] ownerId: ${ownerId}, ownerType: ${ownerType}, page: ${page}, limit: ${limit}, category: ${category || 'all'}`);
+    
     const queryBuilder = this.walletTransactionRepository
       .createQueryBuilder('transaction')
       .where('transaction.ownerId = :ownerId', { ownerId })
@@ -527,6 +533,7 @@ export class WalletService {
       .take(limit);
 
     const [transactions, total] = await queryBuilder.getManyAndCount();
+    this.logger.log(`[getTransactionHistory] Found ${transactions.length} transactions (total: ${total})`);
     return new PaginatedResponseDto(transactions, total, page, limit);
   }
 
@@ -645,6 +652,15 @@ export class WalletService {
       throw new BadRequestException('Minimum transfer amount is ₦100');
     }
 
+    // Find sender to determine their owner type
+    const sender = await this.userRepository.findOne({
+      where: { id: senderId },
+    });
+
+    if (!sender) {
+      throw new NotFoundException('Sender not found');
+    }
+
     // Find recipient by phone
     const recipient = await this.userRepository.findOne({
       where: { phone: recipientPhone },
@@ -658,10 +674,44 @@ export class WalletService {
       throw new BadRequestException('You cannot transfer to yourself');
     }
 
+    // Determine sender owner type and ID based on role
+    let senderOwnerId = senderId;
+    let senderOwnerType: WalletOwnerType;
+    
+    if (sender.role === 'rider') {
+      senderOwnerType = WalletOwnerType.RIDER;
+      // For riders, we need to use their rider entity ID
+      const senderRider = await this.riderRepository.findOne({ where: { userId: senderId } });
+      if (senderRider) {
+        senderOwnerId = senderRider.id;
+      }
+    } else if (sender.role === 'farmer') {
+      senderOwnerType = WalletOwnerType.FARMER;
+    } else {
+      senderOwnerType = WalletOwnerType.BUYER;
+    }
+
+    // Determine recipient owner type and ID based on role
+    let recipientOwnerId = recipient.id;
+    let recipientOwnerType: WalletOwnerType;
+    
+    if (recipient.role === 'rider') {
+      recipientOwnerType = WalletOwnerType.RIDER;
+      // For riders, we need to use their rider entity ID
+      const recipientRider = await this.riderRepository.findOne({ where: { userId: recipient.id } });
+      if (recipientRider) {
+        recipientOwnerId = recipientRider.id;
+      }
+    } else if (recipient.role === 'farmer') {
+      recipientOwnerType = WalletOwnerType.FARMER;
+    } else {
+      recipientOwnerType = WalletOwnerType.BUYER;
+    }
+
     // First, debit the sender's wallet - this will throw if insufficient balance
     const debitTransaction = await this.debitWallet({
-      ownerId: senderId,
-      ownerType: WalletOwnerType.FARMER, // Works for both farmers and buyers
+      ownerId: senderOwnerId,
+      ownerType: senderOwnerType,
       amount,
       category: TransactionCategory.TRANSFER,
       description: `Transfer to ${recipient.name} (${recipientPhone})`,
@@ -670,15 +720,15 @@ export class WalletService {
 
     // Only after successful debit, credit the recipient
     await this.creditWallet({
-      ownerId: recipient.id,
-      ownerType: WalletOwnerType.FARMER,
+      ownerId: recipientOwnerId,
+      ownerType: recipientOwnerType,
       amount,
       category: TransactionCategory.TRANSFER,
-      description: `Transfer received from user`,
-      metadata: { senderId, transactionRef: debitTransaction.reference },
+      description: `Transfer received from ${sender.name}`,
+      metadata: { senderId, senderName: sender.name, transactionRef: debitTransaction.reference },
     });
 
-    this.logger.log(`Transfer of ${amount} from ${senderId} to ${recipient.id} completed`);
+    this.logger.log(`Transfer of ${amount} from ${sender.role} ${senderId} to ${recipient.role} ${recipient.id} completed`);
 
     return debitTransaction;
   }
@@ -686,6 +736,7 @@ export class WalletService {
   /**
    * Pay for a service/bill from wallet
    * IMPORTANT: This debits wallet BEFORE confirming success
+   * For order payments, always use BUYER ownerType since the user is acting as a buyer
    */
   async payForService(
     userId: string,
@@ -693,22 +744,137 @@ export class WalletService {
     description: string,
     orderId?: string,
   ): Promise<WalletTransaction> {
+    this.logger.log(`[payForService] userId: ${userId}, amount: ${amount}, description: ${description}, orderId: ${orderId}`);
+    
     if (amount < 100) {
       throw new BadRequestException('Minimum payment amount is ₦100');
     }
 
+    // Look up user to verify they exist
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // For purchases (order payments), always use BUYER ownerType
+    // The user is acting as a buyer regardless of their primary role
+    const ownerType = WalletOwnerType.BUYER;
+
+    this.logger.log(`[payForService] User role: ${user.role}, using ownerType: ${ownerType} for purchase`);
+
     // Debit the wallet - this will throw if insufficient balance
     const transaction = await this.debitWallet({
       ownerId: userId,
-      ownerType: WalletOwnerType.FARMER, // Works for both farmers and buyers
+      ownerType,
       amount,
       category: TransactionCategory.PURCHASE,
       description,
-      metadata: orderId ? { orderId } : undefined,
+      orderId, // Store orderId in the transaction record
+      metadata: orderId ? { orderId, orderPayment: true } : undefined,
     });
 
-    this.logger.log(`Service payment of ${amount} completed for user ${userId}`);
+    this.logger.log(`[payForService] Transaction created: ${transaction.id}, reference: ${transaction.reference}`);
 
     return transaction;
+  }
+
+  /**
+   * Check if earnings have been processed for an order
+   */
+  async checkEarningsProcessed(orderId: string): Promise<boolean> {
+    const transaction = await this.walletTransactionRepository.findOne({
+      where: { 
+        orderId,
+        category: TransactionCategory.ORDER_EARNINGS,
+      },
+    });
+    return !!transaction;
+  }
+
+  /**
+   * Get recent transfer recipients for a user
+   * Returns users who have received transfers from the sender, sorted by most recent
+   */
+  async getRecentTransferRecipients(
+    senderId: string,
+    limit = 10,
+  ): Promise<Array<{
+    id: string;
+    name: string;
+    phone: string;
+    avatar?: string;
+    lastTransfer: string;
+  }>> {
+    // Find all transfer transactions where this user was the sender
+    const transfers = await this.walletTransactionRepository
+      .createQueryBuilder('transaction')
+      .where('transaction.ownerId = :senderId', { senderId })
+      .andWhere('transaction.category = :category', { category: TransactionCategory.TRANSFER })
+      .andWhere('transaction.type = :type', { type: TransactionType.DEBIT })
+      .orderBy('transaction.createdAt', 'DESC')
+      .getMany();
+
+    // Extract unique recipient IDs from metadata
+    const recipientMap = new Map<string, Date>();
+    for (const transfer of transfers) {
+      const recipientId = transfer.metadata?.recipientId;
+      if (recipientId && !recipientMap.has(recipientId)) {
+        recipientMap.set(recipientId, transfer.createdAt);
+      }
+    }
+
+    // Get user details for each recipient
+    const recipientIds = Array.from(recipientMap.keys()).slice(0, limit);
+    if (recipientIds.length === 0) {
+      return [];
+    }
+
+    const users = await this.userRepository
+      .createQueryBuilder('user')
+      .where('user.id IN (:...ids)', { ids: recipientIds })
+      .getMany();
+
+    // Format the response
+    const recipients = users.map(user => {
+      const lastTransferDate = recipientMap.get(user.id);
+      return {
+        id: user.id,
+        name: user.name,
+        phone: user.phone,
+        avatar: user.avatar,
+        lastTransfer: this.formatRelativeTime(lastTransferDate),
+      };
+    });
+
+    // Sort by most recent transfer
+    recipients.sort((a, b) => {
+      const dateA = recipientMap.get(a.id)?.getTime() || 0;
+      const dateB = recipientMap.get(b.id)?.getTime() || 0;
+      return dateB - dateA;
+    });
+
+    return recipients;
+  }
+
+  /**
+   * Format date as relative time (e.g., "2 days ago")
+   */
+  private formatRelativeTime(date?: Date): string {
+    if (!date) return 'Unknown';
+
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    const diffWeeks = Math.floor(diffDays / 7);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    if (diffWeeks < 4) return `${diffWeeks} week${diffWeeks > 1 ? 's' : ''} ago`;
+
+    return date.toLocaleDateString();
   }
 }

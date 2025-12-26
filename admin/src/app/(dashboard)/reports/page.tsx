@@ -12,8 +12,14 @@ import {
   Row,
   Col,
   Statistic,
-  message,
+  App,
   Spin,
+  Divider,
+  Tag,
+  Badge,
+  Avatar,
+  Tooltip,
+  Progress,
 } from 'antd';
 import {
   FileExcelOutlined,
@@ -21,6 +27,16 @@ import {
   DollarOutlined,
   ShoppingCartOutlined,
   CarOutlined,
+  BarChartOutlined,
+  RiseOutlined,
+  FallOutlined,
+  ShopOutlined,
+  ClockCircleOutlined,
+  ReloadOutlined,
+  TrophyOutlined,
+  ThunderboltOutlined,
+  PercentageOutlined,
+  CalendarOutlined,
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { adminApi } from '@/lib/api';
@@ -32,18 +48,24 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   ResponsiveContainer,
   Legend,
+  PieChart,
+  Pie,
+  Cell,
 } from 'recharts';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
 
+const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
+
 const formatCurrency = (value: number) => `₦${value.toLocaleString()}`;
 
 export default function ReportsPage() {
+  const { message } = App.useApp();
   const [dateRange, setDateRange] = useState<[dayjs.Dayjs, dayjs.Dayjs]>([
     dayjs().subtract(30, 'day'),
     dayjs(),
@@ -51,7 +73,7 @@ export default function ReportsPage() {
   const [reportType, setReportType] = useState('overview');
 
   // Fetch report data
-  const { data: reportData, isLoading } = useQuery({
+  const { data: reportData, isLoading, refetch } = useQuery({
     queryKey: ['report', reportType, dateRange],
     queryFn: async () => {
       const params = {
@@ -68,7 +90,6 @@ export default function ReportsPage() {
     try {
       message.loading(`Generating ${format.toUpperCase()} report...`);
       
-      // In production, this would call the API to generate the export
       const response = await adminApi.exportReport({
         type: reportType,
         format,
@@ -76,7 +97,6 @@ export default function ReportsPage() {
         endDate: dateRange[1].format('YYYY-MM-DD'),
       });
 
-      // Create download link
       const blob = new Blob([response.data], {
         type: format === 'csv' ? 'text/csv' : 'application/pdf',
       });
@@ -93,76 +113,45 @@ export default function ReportsPage() {
     }
   };
 
-  // Mock data for development
-  const mockOverview = {
+  const data = reportData || {
     summary: {
-      totalRevenue: 8456000,
-      totalOrders: 1284,
-      avgOrderValue: 6585,
-      totalDeliveries: 1180,
-      avgDeliveryTime: 35,
-      cancellationRate: 2.3,
+      totalRevenue: 0,
+      totalOrders: 0,
+      avgOrderValue: 0,
+      totalDeliveries: 0,
+      avgDeliveryTime: 0,
+      cancellationRate: 0,
     },
-    revenueByDay: [
-      { date: '2024-01-01', revenue: 280000, orders: 42 },
-      { date: '2024-01-02', revenue: 320000, orders: 48 },
-      { date: '2024-01-03', revenue: 290000, orders: 44 },
-      { date: '2024-01-04', revenue: 350000, orders: 52 },
-      { date: '2024-01-05', revenue: 410000, orders: 62 },
-      { date: '2024-01-06', revenue: 450000, orders: 68 },
-      { date: '2024-01-07', revenue: 380000, orders: 57 },
-    ],
-    ordersByCategory: [
-      { category: 'Vegetables', orders: 450, revenue: 2250000 },
-      { category: 'Fruits', orders: 320, revenue: 1920000 },
-      { category: 'Grains', orders: 280, revenue: 2520000 },
-      { category: 'Dairy', orders: 150, revenue: 1050000 },
-      { category: 'Others', orders: 84, revenue: 716000 },
-    ],
-    topFarmers: [
-      { name: 'Fresh Farm Produce', orders: 156, revenue: 1248000 },
-      { name: 'Organic Gardens', orders: 128, revenue: 960000 },
-      { name: 'Harvest Nigeria', orders: 95, revenue: 665000 },
-      { name: 'Green Acres', orders: 82, revenue: 574000 },
-      { name: 'Farm Direct', orders: 71, revenue: 497000 },
-    ],
-    topRiders: [
-      { name: 'John Adamu', deliveries: 156, earnings: 234000 },
-      { name: 'Ibrahim Musa', deliveries: 142, earnings: 213000 },
-      { name: 'Chukwu Emmanuel', deliveries: 128, earnings: 192000 },
-      { name: 'Yusuf Aliyu', deliveries: 115, earnings: 172500 },
-    ],
+    revenueByDay: [],
+    ordersByCategory: [],
+    topFarmers: [],
+    topRiders: [],
   };
 
-  const data = reportData || mockOverview;
+  // Calculate growth percentages (mock - would come from API in real app)
+  const revenueGrowth = 12.5;
+  const ordersGrowth = 8.3;
+  const deliveryGrowth = 15.2;
 
   return (
-    <div>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 24,
-        }}
-      >
+    <div style={{ padding: 24 }}>
+      {/* Header */}
+      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <Title level={2} style={{ margin: 0 }}>
-            Reports
+            <BarChartOutlined style={{ marginRight: 12, color: '#4f46e5' }} />
+            Reports & Analytics
           </Title>
-          <Text type="secondary">Analytics and export reports</Text>
+          <Text type="secondary">Comprehensive analytics and exportable reports</Text>
         </div>
         <Space>
-          <Button
-            icon={<FileExcelOutlined />}
-            onClick={() => handleExport('csv')}
-          >
+          <Button icon={<ReloadOutlined />} onClick={() => refetch()} loading={isLoading}>
+            Refresh
+          </Button>
+          <Button icon={<FileExcelOutlined />} onClick={() => handleExport('csv')}>
             Export CSV
           </Button>
-          <Button
-            icon={<FilePdfOutlined />}
-            onClick={() => handleExport('pdf')}
-          >
+          <Button type="primary" icon={<FilePdfOutlined />} onClick={() => handleExport('pdf')}>
             Export PDF
           </Button>
         </Space>
@@ -170,27 +159,44 @@ export default function ReportsPage() {
 
       {/* Filters */}
       <Card style={{ marginBottom: 24 }}>
-        <Space wrap>
-          <Select
-            value={reportType}
-            onChange={setReportType}
-            style={{ width: 200 }}
-            options={[
-              { value: 'overview', label: 'Overview Report' },
-              { value: 'revenue', label: 'Revenue Report' },
-              { value: 'orders', label: 'Orders Report' },
-              { value: 'riders', label: 'Riders Report' },
-              { value: 'farmers', label: 'Farmers Report' },
-            ]}
-          />
-          <RangePicker
-            value={dateRange}
-            onChange={(dates) => {
-              if (dates) {
-                setDateRange(dates as [dayjs.Dayjs, dayjs.Dayjs]);
-              }
-            }}
-          />
+        <Space wrap size="middle">
+          <div>
+            <Text type="secondary" style={{ display: 'block', marginBottom: 4, fontSize: 12 }}>Report Type</Text>
+            <Select
+              value={reportType}
+              onChange={setReportType}
+              style={{ width: 200 }}
+              options={[
+                { value: 'overview', label: <Space><BarChartOutlined />Overview Report</Space> },
+                { value: 'revenue', label: <Space><DollarOutlined />Revenue Report</Space> },
+                { value: 'orders', label: <Space><ShoppingCartOutlined />Orders Report</Space> },
+                { value: 'riders', label: <Space><CarOutlined />Riders Report</Space> },
+                { value: 'farmers', label: <Space><ShopOutlined />Farmers Report</Space> },
+              ]}
+            />
+          </div>
+          <div>
+            <Text type="secondary" style={{ display: 'block', marginBottom: 4, fontSize: 12 }}>Date Range</Text>
+            <RangePicker
+              value={dateRange}
+              onChange={(dates) => {
+                if (dates) {
+                  setDateRange(dates as [dayjs.Dayjs, dayjs.Dayjs]);
+                }
+              }}
+              presets={[
+                { label: 'Last 7 Days', value: [dayjs().subtract(7, 'day'), dayjs()] },
+                { label: 'Last 30 Days', value: [dayjs().subtract(30, 'day'), dayjs()] },
+                { label: 'Last 90 Days', value: [dayjs().subtract(90, 'day'), dayjs()] },
+                { label: 'This Year', value: [dayjs().startOf('year'), dayjs()] },
+              ]}
+            />
+          </div>
+          <div style={{ marginLeft: 'auto' }}>
+            <Tag color="blue" icon={<CalendarOutlined />}>
+              {dateRange[0].format('MMM DD')} - {dateRange[1].format('MMM DD, YYYY')}
+            </Tag>
+          </div>
         </Space>
       </Card>
 
@@ -200,58 +206,122 @@ export default function ReportsPage() {
         </div>
       ) : (
         <>
-          {/* Summary Stats */}
-          <Row gutter={16} style={{ marginBottom: 24 }}>
-            <Col span={4}>
-              <Card>
+          {/* Enhanced Summary Stats */}
+          <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+            <Col xs={24} sm={12} lg={4}>
+              <Card hoverable>
                 <Statistic
-                  title="Total Revenue"
+                  title={
+                    <Space>
+                      <DollarOutlined style={{ color: '#4f46e5' }} />
+                      <span>Total Revenue</span>
+                    </Space>
+                  }
                   value={data.summary.totalRevenue}
                   formatter={(v) => formatCurrency(Number(v))}
-                  prefix={<DollarOutlined />}
+                  styles={{ content: { color: '#4f46e5' } }}
                 />
+                <Divider style={{ margin: '12px 0' }} />
+                <Space>
+                  {revenueGrowth >= 0 ? (
+                    <Tag color="green" icon={<RiseOutlined />}>{revenueGrowth}%</Tag>
+                  ) : (
+                    <Tag color="red" icon={<FallOutlined />}>{Math.abs(revenueGrowth)}%</Tag>
+                  )}
+                  <Text type="secondary" style={{ fontSize: 12 }}>vs last period</Text>
+                </Space>
               </Card>
             </Col>
-            <Col span={4}>
-              <Card>
+            <Col xs={24} sm={12} lg={4}>
+              <Card hoverable>
                 <Statistic
-                  title="Total Orders"
+                  title={
+                    <Space>
+                      <ShoppingCartOutlined style={{ color: '#10b981' }} />
+                      <span>Total Orders</span>
+                    </Space>
+                  }
                   value={data.summary.totalOrders}
-                  prefix={<ShoppingCartOutlined />}
+                  styles={{ content: { color: '#10b981' } }}
                 />
+                <Divider style={{ margin: '12px 0' }} />
+                <Space>
+                  {ordersGrowth >= 0 ? (
+                    <Tag color="green" icon={<RiseOutlined />}>{ordersGrowth}%</Tag>
+                  ) : (
+                    <Tag color="red" icon={<FallOutlined />}>{Math.abs(ordersGrowth)}%</Tag>
+                  )}
+                  <Text type="secondary" style={{ fontSize: 12 }}>vs last period</Text>
+                </Space>
               </Card>
             </Col>
-            <Col span={4}>
-              <Card>
+            <Col xs={24} sm={12} lg={4}>
+              <Card hoverable>
                 <Statistic
-                  title="Avg Order Value"
+                  title={
+                    <Space>
+                      <ThunderboltOutlined style={{ color: '#f59e0b' }} />
+                      <span>Avg Order Value</span>
+                    </Space>
+                  }
                   value={data.summary.avgOrderValue}
                   formatter={(v) => formatCurrency(Number(v))}
+                  styles={{ content: { color: '#f59e0b' } }}
                 />
+                <Divider style={{ margin: '12px 0' }} />
+                <Text type="secondary" style={{ fontSize: 12 }}>Per transaction</Text>
               </Card>
             </Col>
-            <Col span={4}>
-              <Card>
+            <Col xs={24} sm={12} lg={4}>
+              <Card hoverable>
                 <Statistic
-                  title="Deliveries"
+                  title={
+                    <Space>
+                      <CarOutlined style={{ color: '#8b5cf6' }} />
+                      <span>Deliveries</span>
+                    </Space>
+                  }
                   value={data.summary.totalDeliveries}
-                  prefix={<CarOutlined />}
+                  styles={{ content: { color: '#8b5cf6' } }}
                 />
+                <Divider style={{ margin: '12px 0' }} />
+                <Space>
+                  <Tag color="green" icon={<RiseOutlined />}>{deliveryGrowth}%</Tag>
+                  <Text type="secondary" style={{ fontSize: 12 }}>growth</Text>
+                </Space>
               </Card>
             </Col>
-            <Col span={4}>
-              <Card>
+            <Col xs={24} sm={12} lg={4}>
+              <Card hoverable>
                 <Statistic
-                  title="Avg Delivery Time"
+                  title={
+                    <Space>
+                      <ClockCircleOutlined style={{ color: '#06b6d4' }} />
+                      <span>Avg Delivery Time</span>
+                    </Space>
+                  }
                   value={data.summary.avgDeliveryTime}
                   suffix="mins"
+                  styles={{ content: { color: '#06b6d4' } }}
+                />
+                <Divider style={{ margin: '12px 0' }} />
+                <Progress 
+                  percent={100 - (data.summary.avgDeliveryTime / 60 * 100)} 
+                  size="small" 
+                  showInfo={false}
+                  strokeColor="#06b6d4"
                 />
               </Card>
             </Col>
-            <Col span={4}>
-              <Card>
+            <Col xs={24} sm={12} lg={4}>
+              <Card hoverable>
                 <Statistic
-                  title="Cancel Rate"
+                  title={
+                    <Space>
+                      <PercentageOutlined style={{ color: data.summary.cancellationRate > 5 ? '#ef4444' : '#10b981' }} />
+                      <span>Cancel Rate</span>
+                    </Space>
+                  }
                   value={data.summary.cancellationRate}
                   suffix="%"
                   precision={1}
@@ -261,27 +331,43 @@ export default function ReportsPage() {
                     },
                   }}
                 />
+                <Divider style={{ margin: '12px 0' }} />
+                <Badge 
+                  status={data.summary.cancellationRate > 5 ? 'error' : 'success'} 
+                  text={<Text style={{ fontSize: 12 }}>{data.summary.cancellationRate > 5 ? 'Needs attention' : 'Healthy'}</Text>}
+                />
               </Card>
             </Col>
           </Row>
 
           {/* Charts */}
-          <Row gutter={16} style={{ marginBottom: 24 }}>
-            <Col span={16}>
-              <Card title="Revenue & Orders Trend">
-                <ResponsiveContainer width="100%" height={300}>
+          <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+            <Col xs={24} lg={16}>
+              <Card 
+                title={
+                  <Space>
+                    <RiseOutlined style={{ color: '#4f46e5' }} />
+                    Revenue & Orders Trend
+                  </Space>
+                }
+                extra={<Tag color="blue">{dateRange[1].diff(dateRange[0], 'day')} days</Tag>}
+              >
+                <ResponsiveContainer width="100%" height={320}>
                   <LineChart data={data.revenueByDay}>
-                    <CartesianGrid strokeDasharray="3 3" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis
                       dataKey="date"
                       tickFormatter={(date) => dayjs(date).format('MMM DD')}
+                      stroke="#8c8c8c"
                     />
                     <YAxis
                       yAxisId="left"
                       tickFormatter={(value) => `₦${(value / 1000)}k`}
+                      stroke="#8c8c8c"
                     />
-                    <YAxis yAxisId="right" orientation="right" />
-                    <Tooltip
+                    <YAxis yAxisId="right" orientation="right" stroke="#8c8c8c" />
+                    <RechartsTooltip
+                      contentStyle={{ borderRadius: 8, border: '1px solid #f0f0f0' }}
                       formatter={(value: number, name: string) => [
                         name === 'revenue' ? formatCurrency(value) : value,
                         name === 'revenue' ? 'Revenue' : 'Orders',
@@ -294,7 +380,8 @@ export default function ReportsPage() {
                       type="monotone"
                       dataKey="revenue"
                       stroke="#4f46e5"
-                      strokeWidth={2}
+                      strokeWidth={3}
+                      dot={{ fill: '#4f46e5', r: 4 }}
                       name="Revenue"
                     />
                     <Line
@@ -302,34 +389,70 @@ export default function ReportsPage() {
                       type="monotone"
                       dataKey="orders"
                       stroke="#10b981"
-                      strokeWidth={2}
+                      strokeWidth={3}
+                      dot={{ fill: '#10b981', r: 4 }}
                       name="Orders"
                     />
                   </LineChart>
                 </ResponsiveContainer>
               </Card>
             </Col>
-            <Col span={8}>
-              <Card title="Orders by Category">
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={data.ordersByCategory} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" />
-                    <YAxis dataKey="category" type="category" width={80} />
-                    <Tooltip
-                      formatter={(value: number) => [value, 'Orders']}
-                    />
-                    <Bar dataKey="orders" fill="#4f46e5" />
-                  </BarChart>
+            <Col xs={24} lg={8}>
+              <Card 
+                title={
+                  <Space>
+                    <ShoppingCartOutlined style={{ color: '#f59e0b' }} />
+                    Orders by Category
+                  </Space>
+                }
+              >
+                <ResponsiveContainer width="100%" height={320}>
+                  {data.ordersByCategory.length > 0 ? (
+                    <PieChart>
+                      <Pie
+                        data={data.ordersByCategory}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={100}
+                        fill="#8884d8"
+                        paddingAngle={5}
+                        dataKey="orders"
+                        nameKey="category"
+                        label={({ name, value }) => `${name}: ${value}`}
+                      >
+                        {data.ordersByCategory.map((entry: { category: string; orders: number }, index: number) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip formatter={(value: number) => [value, 'Orders']} />
+                    </PieChart>
+                  ) : (
+                    <BarChart data={data.ordersByCategory} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" />
+                      <YAxis dataKey="category" type="category" width={80} />
+                      <RechartsTooltip formatter={(value: number) => [value, 'Orders']} />
+                      <Bar dataKey="orders" fill="#4f46e5" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  )}
                 </ResponsiveContainer>
               </Card>
             </Col>
           </Row>
 
-          {/* Tables */}
-          <Row gutter={16}>
-            <Col span={12}>
-              <Card title="Top Farmers">
+          {/* Top Performers Tables */}
+          <Row gutter={[16, 16]}>
+            <Col xs={24} lg={12}>
+              <Card 
+                title={
+                  <Space>
+                    <TrophyOutlined style={{ color: '#f59e0b' }} />
+                    Top Farmers
+                  </Space>
+                }
+                extra={<Badge count={data.topFarmers?.length || 0} style={{ backgroundColor: '#52c41a' }} />}
+              >
                 <Table
                   dataSource={data.topFarmers}
                   rowKey="name"
@@ -338,30 +461,55 @@ export default function ReportsPage() {
                   columns={[
                     {
                       title: '#',
-                      render: (_, __, index) => index + 1,
-                      width: 40,
+                      render: (_, __, index) => (
+                        <Avatar 
+                          size="small" 
+                          style={{ 
+                            backgroundColor: index === 0 ? '#faad14' : index === 1 ? '#bfbfbf' : index === 2 ? '#d48806' : '#f0f0f0',
+                            color: index < 3 ? '#fff' : '#8c8c8c'
+                          }}
+                        >
+                          {index + 1}
+                        </Avatar>
+                      ),
+                      width: 50,
                     },
                     {
                       title: 'Farmer',
                       dataIndex: 'name',
+                      render: (name: string) => (
+                        <Space>
+                          <ShopOutlined style={{ color: '#52c41a' }} />
+                          <Text strong>{name}</Text>
+                        </Space>
+                      ),
                     },
                     {
                       title: 'Orders',
                       dataIndex: 'orders',
                       align: 'right',
+                      render: (orders: number) => <Tag color="blue">{orders}</Tag>,
                     },
                     {
                       title: 'Revenue',
                       dataIndex: 'revenue',
-                      render: (v: number) => formatCurrency(v),
+                      render: (v: number) => <Text strong style={{ color: '#52c41a' }}>{formatCurrency(v)}</Text>,
                       align: 'right',
                     },
                   ]}
                 />
               </Card>
             </Col>
-            <Col span={12}>
-              <Card title="Top Riders">
+            <Col xs={24} lg={12}>
+              <Card 
+                title={
+                  <Space>
+                    <TrophyOutlined style={{ color: '#f59e0b' }} />
+                    Top Riders
+                  </Space>
+                }
+                extra={<Badge count={data.topRiders?.length || 0} style={{ backgroundColor: '#1890ff' }} />}
+              >
                 <Table
                   dataSource={data.topRiders}
                   rowKey="name"
@@ -370,22 +518,39 @@ export default function ReportsPage() {
                   columns={[
                     {
                       title: '#',
-                      render: (_, __, index) => index + 1,
-                      width: 40,
+                      render: (_, __, index) => (
+                        <Avatar 
+                          size="small" 
+                          style={{ 
+                            backgroundColor: index === 0 ? '#faad14' : index === 1 ? '#bfbfbf' : index === 2 ? '#d48806' : '#f0f0f0',
+                            color: index < 3 ? '#fff' : '#8c8c8c'
+                          }}
+                        >
+                          {index + 1}
+                        </Avatar>
+                      ),
+                      width: 50,
                     },
                     {
                       title: 'Rider',
                       dataIndex: 'name',
+                      render: (name: string) => (
+                        <Space>
+                          <CarOutlined style={{ color: '#fa8c16' }} />
+                          <Text strong>{name}</Text>
+                        </Space>
+                      ),
                     },
                     {
                       title: 'Deliveries',
                       dataIndex: 'deliveries',
                       align: 'right',
+                      render: (deliveries: number) => <Tag color="orange">{deliveries}</Tag>,
                     },
                     {
                       title: 'Earnings',
                       dataIndex: 'earnings',
-                      render: (v: number) => formatCurrency(v),
+                      render: (v: number) => <Text strong style={{ color: '#1890ff' }}>{formatCurrency(v)}</Text>,
                       align: 'right',
                     },
                   ]}

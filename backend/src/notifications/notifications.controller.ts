@@ -89,6 +89,7 @@ export class NotificationsController {
           enum: Object.values(NotificationType),
           example: 'general',
         },
+        imageUrl: { type: 'string', example: '/uploads/notifications/promo.jpg', nullable: true },
         data: { type: 'object', example: { key: 'value' } },
       },
     },
@@ -104,6 +105,7 @@ export class NotificationsController {
       title: string;
       body: string;
       type?: NotificationType;
+      imageUrl?: string;
       data?: Record<string, any>;
     },
   ): Promise<{ message: string; success: boolean }> {
@@ -112,7 +114,11 @@ export class NotificationsController {
       type: body.type || NotificationType.GENERAL,
       title: body.title,
       body: body.body,
-      data: body.data,
+      imageUrl: body.imageUrl,
+      data: {
+        ...body.data,
+        imageUrl: body.imageUrl || null,
+      },
     });
 
     return {

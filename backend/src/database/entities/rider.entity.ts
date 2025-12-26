@@ -134,6 +134,10 @@ export class Rider {
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   walletBalance: number;
 
+  // Daily earning goal set by rider
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 5000 })
+  dailyGoal: number;
+
   // Subscription/Premium fields
   @Column({
     type: 'enum',
@@ -147,6 +151,22 @@ export class Rider {
 
   @Column({ default: false })
   isPremium: boolean;
+
+  // Manual priority boost set by admin (1.0 = no boost, 2.0 = double priority)
+  @Column({ type: 'decimal', precision: 3, scale: 2, default: 1.0 })
+  manualBoost: number;
+
+  // When the manual boost expires (null = no expiry)
+  @Column({ type: 'timestamp', nullable: true })
+  manualBoostExpiresAt: Date;
+
+  // Reason for the manual boost (for audit trail)
+  @Column({ type: 'text', nullable: true })
+  manualBoostReason: string;
+
+  // Admin who set the boost
+  @Column({ nullable: true })
+  manualBoostSetBy: string;
 
   @OneToMany(() => Order, (order: Order) => order.assignedRider)
   orders: Order[];
@@ -168,15 +188,33 @@ export class Rider {
     return this.isPremium && this.subscriptionExpiresAt && new Date() < this.subscriptionExpiresAt;
   }
 
+  // Helper to check if rider has active manual boost
+  hasActiveManualBoost(): boolean {
+    if (!this.manualBoost || this.manualBoost <= 1.0) return false;
+    if (!this.manualBoostExpiresAt) return true; // No expiry means always active
+    return new Date() < this.manualBoostExpiresAt;
+  }
+
+  // Get the effective manual boost multiplier
+  getManualBoost(): number {
+    return this.hasActiveManualBoost() ? Number(this.manualBoost) : 1.0;
+  }
+
   // Get priority boost based on current tier
   getPriorityBoost(): number {
-    if (!this.hasActivePremium()) return 1.0;
-    const boosts: Record<SubscriptionTier, number> = {
-      [SubscriptionTier.BASIC]: 1.0,
-      [SubscriptionTier.SILVER]: 1.5,
-      [SubscriptionTier.GOLD]: 2.0,
-      [SubscriptionTier.PLATINUM]: 3.0,
-    };
-    return boosts[this.currentTier] || 1.0;
+    let subscriptionBoost = 1.0;
+    if (this.hasActivePremium()) {
+      const boosts: Record<SubscriptionTier, number> = {
+        [SubscriptionTier.BASIC]: 1.0,
+        [SubscriptionTier.SILVER]: 1.5,
+        [SubscriptionTier.GOLD]: 2.0,
+        [SubscriptionTier.PLATINUM]: 3.0,
+      };
+      subscriptionBoost = boosts[this.currentTier] || 1.0;
+    }
+    
+    // Combine subscription boost with manual boost (multiplicative)
+    const manualBoost = this.getManualBoost();
+    return subscriptionBoost * manualBoost;
   }
 }

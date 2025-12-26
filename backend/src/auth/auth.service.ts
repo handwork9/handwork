@@ -26,6 +26,7 @@ import { DeviceType } from '../database/entities/session.entity';
 import { SignupDto, LoginDto, RefreshTokenDto, VerifyOtpDto, TwoFactorLoginDto, GoogleLoginDto } from './dto';
 import { JwtPayload, AuthTokens } from './interfaces';
 import { UserRole, VehicleType } from '../common/enums';
+import { BCRYPT_ROUNDS } from '../common/config/security.config';
 
 // Response type for login when 2FA is required
 export interface TwoFactorRequiredResponse {
@@ -93,7 +94,7 @@ export class AuthService {
     }
 
     // Hash password
-    const hashedPassword = await bcrypt.hash(dto.password, 10);
+    const hashedPassword = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
 
     // Create user
     const user = this.userRepository.create({
@@ -105,6 +106,8 @@ export class AuthService {
       state: dto.state,
       city: dto.city,
       address: dto.address,
+      latitude: dto.latitude,
+      longitude: dto.longitude,
       nationality: dto.nationality,
       nationalityCode: dto.nationalityCode,
     });
@@ -382,7 +385,7 @@ export class AuthService {
 
       // Create new user from Google data
       const randomPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12);
-      const hashedPassword = await bcrypt.hash(randomPassword, 10);
+      const hashedPassword = await bcrypt.hash(randomPassword, BCRYPT_ROUNDS);
 
       user = this.userRepository.create({
         name: name || email.split('@')[0],
@@ -538,7 +541,7 @@ export class AuthService {
       user = this.userRepository.create({
         phone: normalizedPhone, // Use normalized format
         name: 'User',
-        password: await bcrypt.hash(Math.random().toString(36), 10),
+        password: await bcrypt.hash(Math.random().toString(36), BCRYPT_ROUNDS),
         isPhoneVerified: true,
       });
       await this.userRepository.save(user);
@@ -620,7 +623,7 @@ export class AuthService {
     }
 
     // Hash new password and save
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const hashedPassword = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
     await this.userRepository.update(userId, { password: hashedPassword });
 
     // Send password changed confirmation email
@@ -694,7 +697,7 @@ export class AuthService {
     }
 
     // Hash new password and save
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const hashedPassword = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
     await this.userRepository.update(user.id, { password: hashedPassword });
 
     // Send password changed confirmation email
@@ -840,7 +843,7 @@ export class AuthService {
   }
 
   private async updateRefreshToken(userId: string, refreshToken: string): Promise<void> {
-    const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
+    const hashedRefreshToken = await bcrypt.hash(refreshToken, BCRYPT_ROUNDS);
     await this.userRepository.update(userId, { refreshToken: hashedRefreshToken });
   }
 

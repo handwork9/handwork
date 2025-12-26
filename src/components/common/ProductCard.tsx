@@ -21,6 +21,12 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
   const { colors, isDark, getFontSize, getFontWeight } = useTheme();
   const dispatch = useAppDispatch();
   const favoriteIds = useAppSelector(selectFavoriteIds);
+  
+  // Early return if product is invalid
+  if (!product || !product.id) {
+    return null;
+  }
+  
   const isFavorite = favoriteIds.includes(product.id);
 
   const handleFavoriteToggle = useCallback(() => {

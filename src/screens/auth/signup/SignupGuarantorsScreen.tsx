@@ -227,6 +227,8 @@ export default function SignupGuarantorsScreen({ navigation, route }: Props) {
         state: params.state,
         city: params.city,
         address: params.address,
+        latitude: params.latitude,
+        longitude: params.longitude,
         nationality: params.nationality,
         nationalityCode: params.nationalityCode,
         // Rider specific

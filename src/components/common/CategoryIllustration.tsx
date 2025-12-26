@@ -98,7 +98,7 @@ const CategoryIllustration: React.FC<CategoryIllustrationProps> = ({
   containerStyle,
 }) => {
   // Normalize category ID
-  const normalizedId = categoryId.toLowerCase().replace(/[\s-]/g, '_');
+  const normalizedId = (categoryId || '').toLowerCase().replace(/[\s-]/g, '_');
   
   // Try to get the illustration component
   const IllustrationComponent = useIllustration ? ILLUSTRATION_MAP[normalizedId] : null;

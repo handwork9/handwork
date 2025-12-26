@@ -77,6 +77,14 @@ export class SignupDto {
   @IsOptional()
   address?: string;
 
+  @ApiProperty({ example: 6.5244, required: false, description: 'Latitude coordinate' })
+  @IsOptional()
+  latitude?: number;
+
+  @ApiProperty({ example: 3.3792, required: false, description: 'Longitude coordinate' })
+  @IsOptional()
+  longitude?: number;
+
   @ApiProperty({ example: 'Nigeria', required: false })
   @IsString()
   @IsOptional()

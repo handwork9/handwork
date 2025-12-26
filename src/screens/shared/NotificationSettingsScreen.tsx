@@ -18,6 +18,7 @@ import { useTheme, ACCENT_COLOR_VALUES } from '../../context/ThemeContext';
 import { notificationService, NotificationSettings } from '../../services/notificationService';
 import { FONTS } from '../../constants/theme';
 import { triggerHaptic } from '../../utils/haptics';
+import LiveSupportBanner from '../../components/common/LiveSupportBanner';
 import { useAppDispatch } from '../../store';
 import { setNotificationSettings, updateNotificationSetting } from '../../store/slices/notificationSettingsSlice';
 
@@ -429,6 +430,12 @@ export default function NotificationSettingsScreen() {
             </Text>
           </View>
         </View>
+
+        {/* Need Help Section */}
+        <Text style={[styles.sectionTitle, { color: colors.textSecondary, marginTop: 24, marginLeft: 16, marginBottom: 8 }]}>
+          NEED HELP?
+        </Text>
+        <LiveSupportBanner variant="minimal" style={{ marginHorizontal: 16, marginBottom: 16 }} />
 
         {/* Footer */}
         <Text style={[styles.footerNote, { color: colors.textSecondary }]}>

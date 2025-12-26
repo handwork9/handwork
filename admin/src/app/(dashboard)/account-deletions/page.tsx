@@ -9,7 +9,6 @@ import {
   Button,
   Select,
   Typography,
-  message,
   Avatar,
   Drawer,
   Descriptions,
@@ -20,6 +19,7 @@ import {
   Col,
   Timeline,
   Alert,
+  App,
 } from 'antd';
 import {
   DeleteOutlined,
@@ -110,6 +110,7 @@ const getRoleColor = (role: string) => {
 };
 
 export default function AccountDeletionsPage() {
+  const { message } = App.useApp();
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -152,8 +153,11 @@ export default function AccountDeletionsPage() {
       setDrawerVisible(false);
       setAdminNotes('');
     },
-    onError: () => {
-      message.error('Failed to process request');
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } } };
+      const errorMessage = err?.response?.data?.message || 'Failed to process request';
+      message.error(errorMessage);
+      console.error('Review deletion request error:', error);
     },
   });
 
@@ -169,6 +173,13 @@ export default function AccountDeletionsPage() {
 
   const confirmReview = () => {
     if (!selectedRequest) return;
+    
+    // Rejection requires a reason
+    if (reviewAction === 'reject' && !adminNotes?.trim()) {
+      message.error('Please provide a reason for rejection');
+      return;
+    }
+    
     reviewMutation.mutate({
       requestId: selectedRequest.id,
       action: reviewAction,
@@ -304,7 +315,7 @@ export default function AccountDeletionsPage() {
             <Statistic
               title="Pending"
               value={stats?.pending || 0}
-              valueStyle={{ color: '#faad14' }}
+              styles={{ content: { color: '#faad14' } }}
               prefix={<ClockCircleOutlined />}
             />
           </Card>
@@ -314,7 +325,7 @@ export default function AccountDeletionsPage() {
             <Statistic
               title="Approved"
               value={stats?.approved || 0}
-              valueStyle={{ color: '#52c41a' }}
+              styles={{ content: { color: '#52c41a' } }}
               prefix={<CheckCircleOutlined />}
             />
           </Card>
@@ -324,7 +335,7 @@ export default function AccountDeletionsPage() {
             <Statistic
               title="Rejected"
               value={stats?.rejected || 0}
-              valueStyle={{ color: '#ff4d4f' }}
+              styles={{ content: { color: '#ff4d4f' } }}
               prefix={<CloseCircleOutlined />}
             />
           </Card>
@@ -360,7 +371,7 @@ export default function AccountDeletionsPage() {
       <Card>
         <Table
           columns={columns}
-          dataSource={data?.items || []}
+          dataSource={data?.requests || data?.items || []}
           rowKey="id"
           loading={isLoading}
           pagination={{
@@ -382,7 +393,7 @@ export default function AccountDeletionsPage() {
         title="Deletion Request Details"
         open={drawerVisible}
         onClose={() => setDrawerVisible(false)}
-        width={500}
+        size="large"
         extra={
           selectedRequest?.status === 'pending' && (
             <Space>
@@ -407,7 +418,7 @@ export default function AccountDeletionsPage() {
         {selectedRequest && (
           <>
             <Alert
-              message={`Status: ${selectedRequest.status.toUpperCase()}`}
+              title={`Status: ${selectedRequest.status.toUpperCase()}`}
               type={
                 selectedRequest.status === 'pending'
                   ? 'warning'
@@ -492,7 +503,7 @@ export default function AccountDeletionsPage() {
                 items={[
                   {
                     color: 'blue',
-                    children: (
+                    content: (
                       <>
                         <Text strong>Request Submitted</Text>
                         <br />
@@ -506,7 +517,7 @@ export default function AccountDeletionsPage() {
                     ? [
                         {
                           color: selectedRequest.status === 'approved' ? 'green' : 'red',
-                          children: (
+                          content: (
                             <>
                               <Text strong>
                                 {selectedRequest.status === 'approved' ? 'Approved' : 'Rejected'} by Admin
@@ -526,7 +537,7 @@ export default function AccountDeletionsPage() {
                     ? [
                         {
                           color: 'gray',
-                          children: (
+                          content: (
                             <>
                               <Text strong>Account Deleted</Text>
                               <br />
@@ -573,7 +584,7 @@ export default function AccountDeletionsPage() {
       >
         {reviewAction === 'approve' ? (
           <Alert
-            message="Warning"
+            title="Warning"
             description="Approving this request will schedule the user's account for permanent deletion. This action cannot be undone."
             type="warning"
             showIcon
@@ -582,7 +593,7 @@ export default function AccountDeletionsPage() {
           />
         ) : (
           <Alert
-            message="Rejection"
+            title="Rejection"
             description="The user will be notified that their deletion request has been rejected."
             type="info"
             showIcon
@@ -591,7 +602,9 @@ export default function AccountDeletionsPage() {
         )}
 
         <div>
-          <Text strong>Admin Notes (optional)</Text>
+          <Text strong>
+            {reviewAction === 'approve' ? 'Admin Notes (optional)' : 'Rejection Reason (required)'}
+          </Text>
           <TextArea
             rows={4}
             placeholder={

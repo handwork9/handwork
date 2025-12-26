@@ -40,6 +40,11 @@ const STATUS_LABELS: Record<OrderStatus, string> = {
 export function OrderCard({ order, onPress, showTrackingButton = true }: OrderCardProps) {
   const { colors } = useTheme();
   
+  // Early return if order is invalid
+  if (!order || !order.id) {
+    return null;
+  }
+  
   const dynamicStyles = useMemo(() => ({
     container: { backgroundColor: colors.card },
     orderId: { color: colors.text },

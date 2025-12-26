@@ -290,7 +290,15 @@ export const authService = {
         },
       };
     }
-    return apiClient.put('/users/profile', data);
+    try {
+      const user = await apiClient.put<User>('/users/profile', data);
+      return { success: true, data: user };
+    } catch (error: any) {
+      return { 
+        success: false, 
+        message: error?.response?.data?.message || error?.message || 'Failed to update profile' 
+      };
+    }
   },
 
   /**

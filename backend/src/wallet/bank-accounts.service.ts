@@ -71,8 +71,8 @@ export class BankAccountsService {
       );
     }
 
-    // Create transfer recipient on Paystack
-    let recipientCode: string | undefined;
+    // Create transfer recipient on Paystack - this must succeed for withdrawals to work
+    let recipientCode: string;
     try {
       const recipient = await this.paystackService.createTransferRecipient({
         name: data.accountName,
@@ -82,7 +82,12 @@ export class BankAccountsService {
       recipientCode = recipient.recipient_code;
     } catch (error) {
       console.error('Failed to create Paystack transfer recipient:', error);
-      // Continue without recipient code - can be created later
+      // Provide a helpful error message
+      const errorMsg = error.message || 'Unknown error';
+      if (errorMsg.includes('Cannot resolve account')) {
+        throw new BadRequestException('Unable to verify bank account. Please ensure the account number is correct and belongs to the selected bank.');
+      }
+      throw new BadRequestException(`Failed to verify bank account: ${errorMsg}`);
     }
 
     const bankAccount = this.bankAccountRepository.create({

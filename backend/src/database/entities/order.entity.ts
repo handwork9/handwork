@@ -106,6 +106,9 @@ export class Order {
   })
   paymentStatus: PaymentStatus;
 
+  @Column({ nullable: true })
+  paymentMethod: string; // 'card' | 'wallet'
+
   @Column({ type: 'jsonb' })
   pickupPoint: PickupPoint;
 
@@ -201,6 +204,9 @@ export class Order {
 
   @Column({ type: 'int', nullable: true })
   riderRating: number;
+
+  @Column({ nullable: true })
+  proofOfDeliveryPhoto: string;
 
   @OneToOne(() => Payment, (payment: Payment) => payment.order)
   payment: Payment;

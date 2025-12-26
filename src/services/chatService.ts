@@ -56,6 +56,7 @@ export interface CreateConversationPayload {
 
 type MessageHandler = (message: ChatMessage) => void;
 type TypingHandler = (data: { conversationId: string; userId: string; isTyping: boolean }) => void;
+type ConversationUpdateHandler = (data: { conversationId: string; lastMessage: ChatMessage }) => void;
 
 // Get the WebSocket URL for chat (port 3002 with /chat namespace)
 const getChatWsUrl = () => {
@@ -63,13 +64,14 @@ const getChatWsUrl = () => {
   const baseUrl = API_CONFIG.WS_URL
     .replace('ws://', 'http://')
     .replace('wss://', 'https://')
-    .replace(':3000', ':3002');
+    .replace(/:30\d{2}/, ':3002');
   return `${baseUrl}/chat`;
 };
 
 class ChatService {
   private messageHandlers: Map<string, MessageHandler[]> = new Map();
   private typingHandlers: Map<string, TypingHandler[]> = new Map();
+  private conversationUpdateHandlers: ConversationUpdateHandler[] = [];
   private socket: Socket | null = null;
   private isSocketSetup = false;
   private isConnecting = false;
@@ -107,6 +109,8 @@ class ChatService {
       this.isConnecting = false;
       // Authenticate with user ID
       this.socket?.emit('chat:auth', { userId });
+      // Setup listeners after connection
+      this.setupSocketListeners();
     });
 
     this.socket.on('disconnect', (reason) => {
@@ -161,6 +165,12 @@ class ChatService {
     options?: { orderId?: string; productId?: string }
   ): Promise<Conversation | null> {
     try {
+      // Validate participantId is a non-empty string that looks like a UUID
+      if (!participantId || participantId.trim() === '' || participantId.length < 32) {
+        console.error('Invalid participantId:', participantId);
+        return null;
+      }
+      
       console.log('getOrCreateConversation called:', { participantId, participantRole, options });
       const response = await apiClient.post<{ success: boolean; data: { conversation: Conversation } }>('/chat/conversations', {
         orderId: options?.orderId,
@@ -237,6 +247,48 @@ class ChatService {
   }
 
   /**
+   * Delete a conversation
+   */
+  async deleteConversation(conversationId: string): Promise<boolean> {
+    try {
+      await apiClient.delete(`/chat/conversations/${conversationId}`);
+      return true;
+    } catch (error) {
+      console.error('Failed to delete conversation:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Mute/unmute a conversation
+   */
+  async muteConversation(conversationId: string, muted: boolean): Promise<boolean> {
+    try {
+      await apiClient.patch(`/chat/conversations/${conversationId}/mute`, { muted });
+      return true;
+    } catch (error) {
+      console.error('Failed to mute/unmute conversation:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get online status for a list of users
+   */
+  async getOnlineStatus(userIds: string[]): Promise<Record<string, boolean>> {
+    try {
+      const response = await apiClient.post<{ onlineStatus: Record<string, boolean> }>(
+        '/chat/online-status',
+        { userIds }
+      );
+      return response.data?.onlineStatus || {};
+    } catch (error) {
+      console.error('Failed to get online status:', error);
+      return {};
+    }
+  }
+
+  /**
    * Send typing indicator
    */
   sendTypingIndicator(conversationId: string, isTyping: boolean): void {
@@ -251,7 +303,7 @@ class ChatService {
   subscribeToMessages(conversationId: string, handler: MessageHandler): void {
     // Ensure socket is connected
     this.connectSocket();
-    this.setupSocketListeners();
+    // Listeners are set up on connect event
 
     if (!this.messageHandlers.has(conversationId)) {
       this.messageHandlers.set(conversationId, []);
@@ -299,7 +351,7 @@ class ChatService {
    */
   subscribeToTyping(conversationId: string, handler: TypingHandler): void {
     this.connectSocket();
-    this.setupSocketListeners();
+    // Listeners are set up on connect event
 
     if (!this.typingHandlers.has(conversationId)) {
       this.typingHandlers.set(conversationId, []);
@@ -338,6 +390,10 @@ class ChatService {
       if (handlers) {
         handlers.forEach(handler => handler(message));
       }
+      // Notify conversation update handlers
+      this.conversationUpdateHandlers.forEach(handler => {
+        handler({ conversationId: message.conversationId, lastMessage: message });
+      });
     });
 
     // Listen for new message notifications (for when not in conversation room)
@@ -347,6 +403,10 @@ class ChatService {
       if (handlers) {
         handlers.forEach(handler => handler(data.message));
       }
+      // Notify conversation update handlers
+      this.conversationUpdateHandlers.forEach(handler => {
+        handler({ conversationId: data.conversationId, lastMessage: data.message });
+      });
     });
 
     // Listen for message status updates
@@ -369,6 +429,26 @@ class ChatService {
   }
 
   /**
+   * Subscribe to conversation list updates (new messages in any conversation)
+   * This is used by MessagesScreen to update the conversation list when new messages arrive
+   */
+  subscribeToConversationUpdates(handler: ConversationUpdateHandler): void {
+    this.connectSocket();
+    // Listeners are set up on connect event, no need to call here
+    this.conversationUpdateHandlers.push(handler);
+  }
+
+  /**
+   * Unsubscribe from conversation list updates
+   */
+  unsubscribeFromConversationUpdates(handler: ConversationUpdateHandler): void {
+    const index = this.conversationUpdateHandlers.indexOf(handler);
+    if (index > -1) {
+      this.conversationUpdateHandlers.splice(index, 1);
+    }
+  }
+
+  /**
    * Cleanup all subscriptions
    */
   cleanup(): void {
@@ -379,6 +459,7 @@ class ChatService {
     });
     this.messageHandlers.clear();
     this.typingHandlers.clear();
+    this.conversationUpdateHandlers.length = 0;
     this.disconnectSocket();
   }
 }

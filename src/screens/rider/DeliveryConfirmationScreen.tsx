@@ -123,6 +123,7 @@ export default function DeliveryConfirmationScreen() {
     queryClient.invalidateQueries({ queryKey: ['active-delivery'] });
     queryClient.invalidateQueries({ queryKey: ['rider-earnings'] });
     queryClient.invalidateQueries({ queryKey: ['available-jobs'] });
+    queryClient.invalidateQueries({ queryKey: ['wallet-balance'] });
     
     // Trigger success haptic
     triggerSuccessHaptic();

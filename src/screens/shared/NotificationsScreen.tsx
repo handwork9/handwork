@@ -7,16 +7,18 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, FONT_SIZES, SHADOWS, FONTS } from '../../constants/theme';
-import { EmptyState } from '../../components/common';
+import { EmptyState, LiveSupportBanner } from '../../components/common';
 import { notificationService, Notification } from '../../services/notificationService';
 import { useTheme } from '../../context/ThemeContext';
 import { useAppSelector } from '../../store';
+import { API_BASE_URL } from '../../services/apiClient';
 
 export function NotificationsScreen() {
   const navigation = useNavigation();
@@ -103,16 +105,19 @@ export function NotificationsScreen() {
       markAsReadMutation.mutate(notification.id);
     }
     
-    if (notification.orderId) {
+    // Get orderId from either the direct field or from data object
+    const orderId = notification.orderId || notification.data?.orderId;
+    
+    if (orderId) {
       // Navigate based on user role
       if (user?.role === 'rider') {
         // ActiveDelivery is a tab screen, navigate to the tab
         (navigation as any).navigate('RiderTabs', { screen: 'ActiveDelivery' });
       } else if (user?.role === 'farmer') {
-        (navigation as any).navigate('FarmerOrderDetail', { orderId: notification.orderId });
+        (navigation as any).navigate('FarmerOrderDetail', { orderId });
       } else {
         // Default to buyer
-        (navigation as any).navigate('OrderTracking', { orderId: notification.orderId });
+        (navigation as any).navigate('OrderTracking', { orderId });
       }
     } else {
       (navigation as any).navigate('NotificationDetail', { notification });
@@ -143,8 +148,16 @@ export function NotificationsScreen() {
     return { today, yesterday, earlier };
   }, [notifications]);
 
+  // Helper to get full image URL
+  const getImageUrl = (imageUrl: string | undefined | null): string | null => {
+    if (!imageUrl) return null;
+    if (imageUrl.startsWith('http')) return imageUrl;
+    return `${API_BASE_URL}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+  };
+
   const renderNotification = (notification: Notification, index: number, isLast: boolean) => {
     const colorConfig = getNotificationColor(notification.type);
+    const imageUrl = getImageUrl(notification.data?.imageUrl);
     
     return (
       <TouchableOpacity
@@ -168,9 +181,16 @@ export function NotificationsScreen() {
             </Text>
             <Text style={[styles.time, { color: colors.textSecondary }]}>{formatTime(notification.createdAt)}</Text>
           </View>
-          <Text style={[styles.message, { color: colors.textSecondary }]} numberOfLines={2}>
+          <Text style={[styles.message, { color: colors.textSecondary }]} numberOfLines={imageUrl ? 1 : 2}>
             {notification.message}
           </Text>
+          {imageUrl && (
+            <Image
+              source={{ uri: imageUrl }}
+              style={styles.notificationImage}
+              resizeMode="cover"
+            />
+          )}
         </View>
         {!notification.read && <View style={styles.unreadDot} />}
       </TouchableOpacity>
@@ -238,6 +258,9 @@ export function NotificationsScreen() {
         data={notifications.length === 0 ? [] : [1]}
         renderItem={() => (
           <View>
+            {/* Live Support Banner */}
+            <LiveSupportBanner variant="minimal" style={{ marginHorizontal: 16, marginBottom: 12 }} />
+            
             {renderSection('TODAY', groupedNotifications.today)}
             {renderSection('YESTERDAY', groupedNotifications.yesterday)}
             {renderSection('EARLIER', groupedNotifications.earlier)}
@@ -364,6 +387,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: FONTS.regular,
     lineHeight: 18,
+  },
+  notificationImage: {
+    width: '100%',
+    height: 120,
+    borderRadius: 8,
+    marginTop: 8,
   },
   unreadDot: {
     width: 8,

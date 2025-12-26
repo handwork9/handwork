@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { WalletService } from './wallet.service';
 import { WalletController } from './wallet.controller';
 import { BankAccountsController } from './bank-accounts.controller';
+import { WithdrawalsController } from './withdrawals.controller';
 import { BankAccountsService } from './bank-accounts.service';
 import { WalletTransaction } from '../database/entities/wallet-transaction.entity';
 import { PlatformRevenue } from '../database/entities/platform-revenue.entity';
@@ -21,7 +22,7 @@ import { AuthModule } from '../auth/auth.module';
     forwardRef(() => PaymentsModule),
     forwardRef(() => AuthModule),
   ],
-  controllers: [WalletController, BankAccountsController],
+  controllers: [WalletController, BankAccountsController, WithdrawalsController],
   providers: [WalletService, BankAccountsService],
   exports: [WalletService, BankAccountsService],
 })

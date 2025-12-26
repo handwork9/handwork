@@ -3,12 +3,19 @@ export enum UserRole {
   FARMER = 'farmer',
   RIDER = 'rider',
   ADMIN = 'admin',
+  SUPERADMIN = 'superadmin',
+  OPERATIONS = 'operations',
+  FINANCE = 'finance',
+  SUPPORT = 'support',
 }
 
 export enum OrderStatus {
   PENDING = 'pending',
   CREATED = 'created',
   CONFIRMED = 'confirmed',
+  PREPARING = 'preparing',
+  READY_FOR_PICKUP = 'ready_for_pickup',
+  RIDER_ASSIGNED = 'rider_assigned',
   ASSIGNED = 'assigned',
   PICKED_UP = 'picked_up',
   IN_TRANSIT = 'in_transit',

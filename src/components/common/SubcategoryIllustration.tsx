@@ -379,7 +379,7 @@ const SubcategoryIllustration: React.FC<SubcategoryIllustrationProps> = ({
   fallbackIcon,
 }) => {
   // Normalize subcategory ID
-  const normalizedId = subcategoryId.toLowerCase().replace(/[\s]/g, '-');
+  const normalizedId = (subcategoryId || '').toLowerCase().replace(/[\s]/g, '-');
   
   // Try to get the illustration component
   const IllustrationComponent = useIllustration ? SUBCATEGORY_ILLUSTRATION_MAP[normalizedId] : null;

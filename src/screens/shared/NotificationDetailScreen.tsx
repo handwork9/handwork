@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, FONT_SIZES, FONTS } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
 import { notificationService } from '../../services/notificationService';
+import LiveSupportBanner from '../../components/common/LiveSupportBanner';
 import { useAppSelector } from '../../store';
 
 interface Notification {
@@ -235,17 +236,20 @@ export function NotificationDetailScreen() {
   };
 
   const handleAction = () => {
+    // Get orderId from either the direct field or from data object
+    const orderId = notification.orderId || notification.data?.orderId;
+    
     switch (notification.type) {
       case 'order':
-        if (notification.orderId) {
-          navigateToOrderScreen(notification.orderId);
+        if (orderId) {
+          navigateToOrderScreen(orderId);
         } else {
           navigation.goBack();
         }
         break;
       case 'delivery':
-        if (notification.orderId) {
-          navigateToOrderScreen(notification.orderId);
+        if (orderId) {
+          navigateToOrderScreen(orderId);
         } else {
           navigation.goBack();
         }
@@ -456,6 +460,12 @@ export function NotificationDetailScreen() {
               <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
+        </Animated.View>
+
+        {/* Need Help Section */}
+        <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+          <Text style={[styles.sectionTitle, dynamicStyles.textSecondary]}>NEED HELP?</Text>
+          <LiveSupportBanner variant="compact" style={{ marginHorizontal: 0, marginBottom: 16 }} />
         </Animated.View>
       </Animated.ScrollView>
 

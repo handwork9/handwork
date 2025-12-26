@@ -14,6 +14,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Path, Circle, Line, G, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { AuthStackParamList } from '../../types';
 import { COLORS, SPACING, FONTS } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
@@ -100,12 +101,17 @@ const AnimatedBar = ({ value, month, index, maxValue, isDark }: { value: number;
   );
 };
 
-// Line Chart Component
+// Line Chart Component using SVG
 const LineChart = ({ isDark }: { isDark?: boolean }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const maxValue = Math.max(...GROWTH_DATA);
+  const minValue = Math.min(...GROWTH_DATA);
   const chartWidth = width - 80;
   const chartHeight = 120;
+  const padding = 10;
+  const effectiveWidth = chartWidth - padding * 2;
+  const effectiveHeight = chartHeight - padding * 2;
+  const range = maxValue - minValue || 1;
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -116,58 +122,62 @@ const LineChart = ({ isDark }: { isDark?: boolean }) => {
   }, []);
 
   const points = GROWTH_DATA.map((value, index) => ({
-    x: (index / (GROWTH_DATA.length - 1)) * chartWidth,
-    y: chartHeight - (value / maxValue) * chartHeight,
+    x: padding + (index / (GROWTH_DATA.length - 1)) * effectiveWidth,
+    y: padding + effectiveHeight - ((value - minValue) / range) * effectiveHeight,
   }));
+
+  // Create SVG path string
+  const linePath = points
+    .map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`)
+    .join(' ');
+
+  // Create path for gradient fill
+  const areaPath = `${linePath} L ${points[points.length - 1].x} ${chartHeight - padding} L ${padding} ${chartHeight - padding} Z`;
 
   return (
     <Animated.View style={[styles.lineChartContainer, { opacity: fadeAnim }]}>
-      <View style={styles.lineChart}>
+      <Svg width={chartWidth} height={chartHeight}>
+        <Defs>
+          <SvgLinearGradient id="lineGradient" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0%" stopColor="#2196F3" stopOpacity={0.3} />
+            <Stop offset="100%" stopColor="#2196F3" stopOpacity={0.05} />
+          </SvgLinearGradient>
+        </Defs>
+        
         {/* Grid lines */}
         {[0, 1, 2, 3].map((i) => (
-          <View
+          <Line
             key={i}
-            style={[styles.gridLine, { top: (i / 3) * chartHeight, backgroundColor: isDark ? '#374151' : '#E5E7EB' }]}
+            x1={padding}
+            y1={padding + (i / 3) * effectiveHeight}
+            x2={chartWidth - padding}
+            y2={padding + (i / 3) * effectiveHeight}
+            stroke={isDark ? '#374151' : '#E5E7EB'}
+            strokeWidth={1}
           />
         ))}
         
-        {/* Data points and connecting lines */}
+        {/* Gradient area under line */}
+        <Path d={areaPath} fill="url(#lineGradient)" />
+        
+        {/* Main line */}
+        <Path
+          d={linePath}
+          stroke="#2196F3"
+          strokeWidth={2.5}
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        
+        {/* Data points */}
         {points.map((point, index) => (
-          <React.Fragment key={index}>
-            {/* Connecting line to next point */}
-            {index < points.length - 1 && (
-              <View
-                style={[
-                  styles.lineSegment,
-                  {
-                    left: point.x,
-                    top: point.y,
-                    width: Math.sqrt(
-                      Math.pow(points[index + 1].x - point.x, 2) +
-                      Math.pow(points[index + 1].y - point.y, 2)
-                    ),
-                    transform: [
-                      {
-                        rotate: `${Math.atan2(
-                          points[index + 1].y - point.y,
-                          points[index + 1].x - point.x
-                        )}rad`,
-                      },
-                    ],
-                  },
-                ]}
-              />
-            )}
-            {/* Data point */}
-            <View
-              style={[
-                styles.dataPoint,
-                { left: point.x - 5, top: point.y - 5 },
-              ]}
-            />
-          </React.Fragment>
+          <G key={index}>
+            <Circle cx={point.x} cy={point.y} r={5} fill="#FFFFFF" />
+            <Circle cx={point.x} cy={point.y} r={3.5} fill="#2196F3" />
+          </G>
         ))}
-      </View>
+      </Svg>
       <View style={styles.lineChartLabels}>
         <Text style={[styles.lineChartLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>Jun</Text>
         <Text style={[styles.lineChartLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>Sep</Text>
@@ -177,7 +187,7 @@ const LineChart = ({ isDark }: { isDark?: boolean }) => {
   );
 };
 
-// Donut Chart Component
+// Donut Chart Component using SVG
 const DonutChart = ({ isDark, cardColor }: { isDark?: boolean; cardColor?: string }) => {
   const rotateAnim = useRef(new Animated.Value(0)).current;
   
@@ -196,40 +206,64 @@ const DonutChart = ({ isDark, cardColor }: { isDark?: boolean; cardColor?: strin
     { percent: 10, color: '#9C27B0', label: 'Others' },
   ];
 
+  const size = 120;
+  const strokeWidth = 20;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const center = size / 2;
+
+  // Calculate cumulative offset for each segment
+  let cumulativePercent = 0;
+
   return (
     <View style={styles.donutContainer}>
       <View style={styles.donutChart}>
         <Animated.View
-          style={[
-            styles.donutOuter,
-            {
-              backgroundColor: isDark ? '#374151' : '#E5E7EB',
-              transform: [
-                {
-                  rotate: rotateAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ['0deg', '360deg'],
-                  }),
-                },
-              ],
-            },
-          ]}
+          style={{
+            width: size,
+            height: size,
+            transform: [
+              {
+                rotate: rotateAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ['-90deg', '270deg'],
+                }),
+              },
+            ],
+          }}
         >
-          {segments.map((seg, i) => {
-            const rotation = segments.slice(0, i).reduce((sum, s) => sum + s.percent * 3.6, 0);
-            return (
-              <View
-                key={i}
-                style={[
-                  styles.donutSegment,
-                  {
-                    backgroundColor: seg.color,
-                    transform: [{ rotate: `${rotation}deg` }],
-                  },
-                ]}
-              />
-            );
-          })}
+          <Svg width={size} height={size}>
+            {/* Background circle */}
+            <Circle
+              cx={center}
+              cy={center}
+              r={radius}
+              stroke={isDark ? '#374151' : '#E5E7EB'}
+              strokeWidth={strokeWidth}
+              fill="none"
+            />
+            {/* Colored segments */}
+            {segments.map((seg, i) => {
+              const segmentLength = (seg.percent / 100) * circumference;
+              const offset = cumulativePercent * circumference / 100;
+              cumulativePercent += seg.percent;
+              
+              return (
+                <Circle
+                  key={i}
+                  cx={center}
+                  cy={center}
+                  r={radius}
+                  stroke={seg.color}
+                  strokeWidth={strokeWidth}
+                  fill="none"
+                  strokeDasharray={`${segmentLength} ${circumference - segmentLength}`}
+                  strokeDashoffset={-offset}
+                  strokeLinecap="butt"
+                />
+              );
+            })}
+          </Svg>
         </Animated.View>
         <View style={[styles.donutInner, { backgroundColor: cardColor || COLORS.white }]}>
           <Text style={[styles.donutValue, { color: isDark ? '#F9FAFB' : '#1F2937' }]}>100%</Text>
@@ -516,36 +550,11 @@ const styles = StyleSheet.create({
   lineChartContainer: {
     paddingVertical: 10,
   },
-  lineChart: {
-    height: 120,
-    position: 'relative',
-  },
-  gridLine: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    height: 1,
-    backgroundColor: '#E5E7EB',
-  },
-  lineSegment: {
-    position: 'absolute',
-    height: 2,
-    backgroundColor: '#2196F3',
-    transformOrigin: 'left center',
-  },
-  dataPoint: {
-    position: 'absolute',
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#2196F3',
-    borderWidth: 2,
-    borderColor: COLORS.white,
-  },
   lineChartLabels: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: 8,
+    paddingHorizontal: 10,
   },
   lineChartLabel: {
     fontSize: 11,
@@ -562,20 +571,8 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     position: 'relative',
-  },
-  donutOuter: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#E5E7EB',
-    overflow: 'hidden',
-  },
-  donutSegment: {
-    position: 'absolute',
-    width: '50%',
-    height: '100%',
-    left: '50%',
-    transformOrigin: 'left center',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   donutInner: {
     position: 'absolute',

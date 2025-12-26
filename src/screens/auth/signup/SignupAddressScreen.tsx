@@ -17,6 +17,7 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Location from 'expo-location';
 import { AuthStackParamList } from '../../../types';
 import { COLORS, SPACING, FONT_SIZES, FONTS } from '../../../constants/theme';
 import { useTheme } from '../../../context/ThemeContext';
@@ -98,6 +99,11 @@ export default function SignupAddressScreen({ navigation, route }: Props) {
   const [cityFocused, setCityFocused] = useState(false);
   const [addressFocused, setAddressFocused] = useState(false);
   
+  // Location coordinates
+  const [latitude, setLatitude] = useState<number | undefined>(undefined);
+  const [longitude, setLongitude] = useState<number | undefined>(undefined);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
+  
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
   const progressAnim = useRef(new Animated.Value(0)).current;
@@ -105,6 +111,29 @@ export default function SignupAddressScreen({ navigation, route }: Props) {
   const searchInputRef = useRef<RNTextInput>(null);
   
   const addressAnimValue = useRef(new Animated.Value(0)).current;
+
+  // Get user's current location on mount
+  useEffect(() => {
+    const getLocation = async () => {
+      try {
+        setIsGettingLocation(true);
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const location = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+          setLatitude(location.coords.latitude);
+          setLongitude(location.coords.longitude);
+          console.log('[SignupAddress] Got location:', location.coords.latitude, location.coords.longitude);
+        }
+      } catch (error) {
+        console.log('[SignupAddress] Error getting location:', error);
+      } finally {
+        setIsGettingLocation(false);
+      }
+    };
+    getLocation();
+  }, []);
 
   useEffect(() => {
     Animated.timing(progressAnim, {
@@ -219,6 +248,8 @@ export default function SignupAddressScreen({ navigation, route }: Props) {
       state: addressMode === 'manual' ? state : 'Lagos', // Default for search mode
       city: addressMode === 'manual' ? city : 'Lagos',
       address: fullAddress,
+      latitude,
+      longitude,
     });
   };
 

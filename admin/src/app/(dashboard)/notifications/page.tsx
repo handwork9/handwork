@@ -12,12 +12,16 @@ import {
   Table,
   Tag,
   Tabs,
-  Modal,
-  message,
+  App,
   Avatar,
   Row,
   Col,
   Statistic,
+  Modal,
+  Upload,
+  Tooltip,
+  Badge,
+  Progress,
 } from 'antd';
 import {
   SendOutlined,
@@ -25,11 +29,21 @@ import {
   TeamOutlined,
   HistoryOutlined,
   ReloadOutlined,
+  PictureOutlined,
+  DeleteOutlined,
+  UserOutlined,
+  NotificationOutlined,
+  RiseOutlined,
+  CheckCircleOutlined,
+  EyeOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { adminApi } from '@/lib/api';
+import { adminApi, normalizeImageUrl } from '@/lib/api';
 import type { ColumnsType } from 'antd/es/table';
+import type { UploadFile, UploadChangeParam } from 'antd/es/upload';
 import dayjs from 'dayjs';
+import Image from 'next/image';
 
 const { Title, Text } = Typography;
 
@@ -51,14 +65,141 @@ interface NotificationForm {
   message: string;
   type: 'info' | 'warning' | 'success' | 'promo';
   targetAudience: 'all' | 'buyers' | 'farmers' | 'riders';
+  imageUrl?: string;
+}
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  role: string;
+  avatar?: string;
+}
+
+interface IndividualNotificationForm {
+  userId: string;
+  title: string;
+  message: string;
+  type: 'info' | 'warning' | 'success' | 'promo';
+  imageUrl?: string;
 }
 
 export default function NotificationsPage() {
+  const { message, modal } = App.useApp();
   const queryClient = useQueryClient();
   const [form] = Form.useForm();
+  const [individualForm] = Form.useForm();
   const [previewModal, setPreviewModal] = useState(false);
+  const [userSearch, setUserSearch] = useState('');
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  
+  // Watch form values reactively
+  const formType = Form.useWatch('type', form);
+  const formTitle = Form.useWatch('title', form);
+  const formMessage = Form.useWatch('message', form);
+  const formTargetAudience = Form.useWatch('targetAudience', form);
+  const formImageUrl = Form.useWatch('imageUrl', form);
+  
+  // Watch individual form values
+  const indFormType = Form.useWatch('type', individualForm);
+  const indFormTitle = Form.useWatch('title', individualForm);
+  const indFormMessage = Form.useWatch('message', individualForm);
+  const indFormImageUrl = Form.useWatch('imageUrl', individualForm);
+  
   const [page, setPage] = useState(1);
+  const [imageUploading, setImageUploading] = useState(false);
+  const [indImageUploading, setIndImageUploading] = useState(false);
   const [pageSize, setPageSize] = useState(10);
+
+  // Handle image upload
+  const handleImageUpload = async (info: UploadChangeParam<UploadFile>) => {
+    const { status, originFileObj } = info.file;
+    
+    if (status === 'uploading') {
+      setImageUploading(true);
+      return;
+    }
+    
+    if (status === 'done' || originFileObj) {
+      try {
+        // Convert file to base64
+        const toBase64 = (file: Blob) => new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        const base64 = await toBase64(originFileObj as Blob);
+        const response = await adminApi.uploadNotificationImage({ base64, folder: 'notifications' });
+        const imageUrl = response.data.url || response.data.data?.url;
+        form.setFieldValue('imageUrl', imageUrl);
+        message.success('Image uploaded successfully');
+      } catch {
+        message.error('Failed to upload image');
+      } finally {
+        setImageUploading(false);
+      }
+    }
+    
+    if (status === 'error') {
+      setImageUploading(false);
+      message.error('Image upload failed');
+    }
+  };
+
+  const handleRemoveImage = () => {
+    form.setFieldValue('imageUrl', undefined);
+  };
+
+  const handleRemoveIndImage = () => {
+    individualForm.setFieldValue('imageUrl', undefined);
+  };
+
+  // Handle individual image upload
+  const handleIndImageUpload = async (info: UploadChangeParam<UploadFile>) => {
+    const { status, originFileObj } = info.file;
+    
+    if (status === 'uploading') {
+      setIndImageUploading(true);
+      return;
+    }
+    
+    if (status === 'done' || originFileObj) {
+      try {
+        // Convert file to base64
+        const toBase64 = (file: Blob) => new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        const base64 = await toBase64(originFileObj as Blob);
+        const response = await adminApi.uploadNotificationImage({ base64, folder: 'notifications' });
+        const imageUrl = response.data.url || response.data.data?.url;
+        individualForm.setFieldValue('imageUrl', imageUrl);
+        message.success('Image uploaded successfully');
+      } catch {
+        message.error('Failed to upload image');
+      } finally {
+        setIndImageUploading(false);
+      }
+    }
+    
+    if (status === 'error') {
+      setIndImageUploading(false);
+      message.error('Image upload failed');
+    }
+  };
+
+  // Fetch all users for individual notification dropdown
+  const { data: usersData, isLoading: usersLoading } = useQuery({
+    queryKey: ['all-users'],
+    queryFn: async () => {
+      const response = await adminApi.getUsers({ limit: 1000 });
+      return response.data.data;
+    },
+  });
 
   // Fetch notification history
   const { data: notificationsData, isLoading, refetch } = useQuery({
@@ -69,7 +210,7 @@ export default function NotificationsPage() {
     },
   });
 
-  // Send notification mutation
+  // Send broadcast notification mutation
   const sendMutation = useMutation({
     mutationFn: (data: NotificationForm) =>
       adminApi.sendBroadcastNotification(data),
@@ -83,9 +224,31 @@ export default function NotificationsPage() {
     },
   });
 
+  // Send individual notification mutation
+  const sendIndividualMutation = useMutation({
+    mutationFn: (data: IndividualNotificationForm) =>
+      adminApi.sendIndividualNotification({
+        userId: data.userId,
+        title: data.title,
+        body: data.message,
+        type: data.type,
+        imageUrl: data.imageUrl,
+      }),
+    onSuccess: () => {
+      message.success('Notification sent successfully');
+      individualForm.resetFields();
+      setSelectedUser(null);
+      setUserSearch('');
+      queryClient.invalidateQueries({ queryKey: ['admin-notifications'] });
+    },
+    onError: (error: Error & { response?: { data?: { message?: string } } }) => {
+      message.error(error.response?.data?.message || 'Failed to send notification');
+    },
+  });
+
   const handleSend = () => {
     form.validateFields().then((values) => {
-      Modal.confirm({
+      modal.confirm({
         title: 'Confirm Send',
         content: (
           <div>
@@ -101,7 +264,49 @@ export default function NotificationsPage() {
         ),
         okText: 'Send Now',
         onOk: () => {
-          sendMutation.mutate(values);
+          sendMutation.mutate({ ...values, imageUrl: formImageUrl });
+        },
+      });
+    });
+  };
+
+  const handleSendIndividual = () => {
+    if (!selectedUser) {
+      message.error('Please select a user');
+      return;
+    }
+    
+    individualForm.validateFields().then((values) => {
+      modal.confirm({
+        title: 'Confirm Send',
+        content: (
+          <div>
+            <p>You are about to send a notification to:</p>
+            <Space>
+              <Avatar src={selectedUser.avatar} icon={<UserOutlined />} />
+              <div>
+                <Text strong>{selectedUser.name}</Text>
+                <br />
+                <Text type="secondary">{selectedUser.email}</Text>
+              </div>
+            </Space>
+            <p style={{ marginTop: 16 }}>
+              <strong>Title:</strong> {values.title}
+            </p>
+            <p>
+              <strong>Message:</strong> {values.message}
+            </p>
+          </div>
+        ),
+        okText: 'Send Now',
+        onOk: () => {
+          sendIndividualMutation.mutate({
+            userId: selectedUser.id,
+            title: values.title,
+            message: values.message,
+            type: values.type,
+            imageUrl: indFormImageUrl,
+          });
         },
       });
     });
@@ -133,48 +338,35 @@ export default function NotificationsPage() {
     return colors[audience] || 'default';
   };
 
-  // Mock data for development
-  const mockNotifications: Notification[] = [
-    {
-      id: '1',
-      title: 'Weekend Discount!',
-      message: 'Enjoy 20% off on all deliveries this weekend!',
-      type: 'promo',
-      targetAudience: 'all',
-      targetCount: 5000,
-      sentCount: 4850,
-      readCount: 2340,
-      createdAt: new Date().toISOString(),
-      createdBy: 'Admin User',
-    },
-    {
-      id: '2',
-      title: 'System Maintenance',
-      message: 'Scheduled maintenance on Sunday 2am-4am. Services may be unavailable.',
-      type: 'warning',
-      targetAudience: 'all',
-      targetCount: 5000,
-      sentCount: 5000,
-      readCount: 4120,
-      createdAt: '2024-12-14T10:00:00.000Z',
-      createdBy: 'Admin User',
-    },
-    {
-      id: '3',
-      title: 'New Payment Method',
-      message: 'Bank transfer payments are now available for all orders!',
-      type: 'info',
-      targetAudience: 'buyers',
-      targetCount: 3200,
-      sentCount: 3200,
-      readCount: 1890,
-      createdAt: '2024-12-13T10:00:00.000Z',
-      createdBy: 'Admin User',
-    },
-  ];
+  // Get role color for tags
+  const getRoleColor = (role: string) => {
+    const colors: Record<string, string> = {
+      buyer: 'cyan',
+      farmer: 'green',
+      rider: 'purple',
+      admin: 'red',
+    };
+    return colors[role?.toLowerCase()] || 'default';
+  };
 
-  const notifications = notificationsData?.items || mockNotifications;
-  const total = notificationsData?.total || mockNotifications.length;
+  // User dropdown options with name and role
+  const userOptions = (usersData?.users || []).map((user: User) => ({
+    value: user.id,
+    label: (
+      <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+        <Space>
+          <Avatar size="small" src={user.avatar} icon={<UserOutlined />} />
+          <Text>{user.name}</Text>
+        </Space>
+        <Tag color={getRoleColor(user.role)}>{user.role?.toUpperCase()}</Tag>
+      </Space>
+    ),
+    user,
+  }));
+
+  // Use API data - show empty state if no notifications
+  const notifications = notificationsData?.items || [];
+  const total = notificationsData?.total || 0;
 
   const columns: ColumnsType<Notification> = [
     {
@@ -240,84 +432,139 @@ export default function NotificationsPage() {
     },
   ];
 
-  const formValues = form.getFieldsValue();
-
   return (
-    <div>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 24,
-        }}
-      >
-        <div>
-          <Title level={2} style={{ margin: 0 }}>
-            Notifications
-          </Title>
-          <Text type="secondary">Send broadcast notifications to users</Text>
+    <div style={{ margin: -24 }}>
+      {/* Gradient Header */}
+      <div style={{ 
+        background: 'linear-gradient(135deg, #f59e0b 0%, #ea580c 100%)',
+        padding: '24px 24px 80px 24px',
+        marginBottom: -56,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ 
+              width: 48, 
+              height: 48, 
+              borderRadius: 12, 
+              background: 'rgba(255,255,255,0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <NotificationOutlined style={{ fontSize: 24, color: '#fff' }} />
+            </div>
+            <div>
+              <Title level={3} style={{ color: '#fff', margin: 0 }}>Notifications</Title>
+              <Text style={{ color: 'rgba(255,255,255,0.8)' }}>Send broadcast notifications to users</Text>
+            </div>
+          </div>
+          <Tooltip title="Refresh history">
+            <Button 
+              icon={<ReloadOutlined />} 
+              onClick={() => refetch()}
+              style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff' }}
+            />
+          </Tooltip>
         </div>
       </div>
 
-      {/* Stats */}
-      <Row gutter={16} style={{ marginBottom: 24 }}>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title="Total Sent (30 days)"
-              value={12500}
-              prefix={<SendOutlined />}
-            />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title="Total Read"
-              value={8320}
-              styles={{ content: { color: '#10b981' } }}
-              prefix={<BellOutlined />}
-            />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title="Read Rate"
-              value={66.5}
-              suffix="%"
-              precision={1}
-            />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title="Active Users"
-              value={5000}
-              prefix={<TeamOutlined />}
-            />
-          </Card>
-        </Col>
-      </Row>
+      {/* Stats Cards */}
+      <div style={{ padding: '0 24px', marginBottom: 24 }}>
+        <Row gutter={16}>
+          <Col xs={12} sm={6}>
+            <Card 
+              size="small" 
+              style={{ borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+              styles={{ body: { padding: 16 } }}
+            >
+              <Statistic
+                title={<Text type="secondary" style={{ fontSize: 12 }}>Total Sent (30 days)</Text>}
+                value={12500}
+                prefix={<SendOutlined style={{ color: '#f59e0b' }} />}
+                styles={{ content: { fontSize: 24 } }}
+              />
+            </Card>
+          </Col>
+          <Col xs={12} sm={6}>
+            <Card 
+              size="small" 
+              style={{ borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+              styles={{ body: { padding: 16 } }}
+            >
+              <Statistic
+                title={<Text type="secondary" style={{ fontSize: 12 }}>Total Read</Text>}
+                value={8320}
+                prefix={<EyeOutlined style={{ color: '#10b981' }} />}
+                styles={{ content: { fontSize: 24, color: '#10b981' } }}
+              />
+            </Card>
+          </Col>
+          <Col xs={12} sm={6}>
+            <Card 
+              size="small" 
+              style={{ borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+              styles={{ body: { padding: 16 } }}
+            >
+              <div>
+                <Text type="secondary" style={{ fontSize: 12 }}>Read Rate</Text>
+                <div style={{ marginTop: 8 }}>
+                  <Progress 
+                    percent={66.5} 
+                    strokeColor="#8b5cf6" 
+                    size="small"
+                    format={(percent) => <Text strong style={{ fontSize: 18 }}>{percent}%</Text>}
+                  />
+                </div>
+              </div>
+            </Card>
+          </Col>
+          <Col xs={12} sm={6}>
+            <Card 
+              size="small" 
+              style={{ borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+              styles={{ body: { padding: 16 } }}
+            >
+              <Statistic
+                title={<Text type="secondary" style={{ fontSize: 12 }}>Active Users</Text>}
+                value={5000}
+                prefix={<TeamOutlined style={{ color: '#3b82f6' }} />}
+                styles={{ content: { fontSize: 24 } }}
+              />
+            </Card>
+          </Col>
+        </Row>
+      </div>
+
+      {/* Main Content */}
+      <div style={{ padding: '0 24px 24px' }}>
 
       <Tabs
         defaultActiveKey="compose"
         destroyOnHidden={false}
+        type="card"
+        style={{ background: '#fff', borderRadius: 12, padding: 16 }}
         items={[
           {
             key: 'compose',
             label: (
               <span>
                 <SendOutlined />
-                Compose
+                Broadcast
               </span>
             ),
             children: (
               <Row gutter={24}>
                 <Col xs={24} lg={14}>
-                  <Card title="New Notification">
+                  <Card 
+                    title={
+                      <Space>
+                        <ThunderboltOutlined style={{ color: '#f59e0b' }} />
+                        <span>New Broadcast Notification</span>
+                      </Space>
+                    }
+                    style={{ borderRadius: 12 }}
+                    styles={{ body: { padding: 20 } }}
+                  >
                     <Form
                       form={form}
                       layout="vertical"
@@ -383,6 +630,47 @@ export default function NotificationsPage() {
                         />
                       </Form.Item>
 
+                      <Form.Item
+                        label="Image (Optional)"
+                        extra="Add an image to make your notification more engaging"
+                      >
+                        {formImageUrl ? (
+                          <div style={{ position: 'relative', width: 200 }}>
+                            <Image
+                              src={normalizeImageUrl(formImageUrl)}
+                              alt="Notification"
+                              width={200}
+                              height={120}
+                              style={{ borderRadius: 8, objectFit: 'cover' }}
+                            />
+                            <Button
+                              type="primary"
+                              danger
+                              size="small"
+                              icon={<DeleteOutlined />}
+                              onClick={handleRemoveImage}
+                              style={{ position: 'absolute', top: 8, right: 8 }}
+                            />
+                          </div>
+                        ) : (
+                          <Upload
+                            accept="image/*"
+                            showUploadList={false}
+                            customRequest={({ onSuccess }) => {
+                              setTimeout(() => onSuccess?.('ok'), 0);
+                            }}
+                            onChange={handleImageUpload}
+                          >
+                            <Button
+                              icon={<PictureOutlined />}
+                              loading={imageUploading}
+                            >
+                              {imageUploading ? 'Uploading...' : 'Upload Image'}
+                            </Button>
+                          </Upload>
+                        )}
+                      </Form.Item>
+
                       <Form.Item>
                         <Space>
                           <Button onClick={handlePreview}>Preview</Button>
@@ -401,65 +689,103 @@ export default function NotificationsPage() {
                 </Col>
 
                 <Col xs={24} lg={10}>
-                  <Card title="Preview">
+                  <Card 
+                    title={
+                      <Space>
+                        <EyeOutlined style={{ color: '#8b5cf6' }} />
+                        <span>Live Preview</span>
+                      </Space>
+                    }
+                    style={{ borderRadius: 12 }}
+                    styles={{ body: { padding: 20 } }}
+                  >
                     <div
                       style={{
-                        background: '#f5f5f5',
-                        borderRadius: 12,
-                        padding: 16,
-                        maxWidth: 320,
+                        background: 'linear-gradient(135deg, #f5f5f5 0%, #e5e5e5 100%)',
+                        borderRadius: 16,
+                        padding: 20,
+                        maxWidth: 340,
                         margin: '0 auto',
                       }}
                     >
                       <div
                         style={{
                           background: 'white',
-                          borderRadius: 8,
-                          padding: 12,
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                          borderRadius: 12,
+                          overflow: 'hidden',
+                          boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
                         }}
                       >
-                        <Space align="start">
-                          <Avatar
-                            size={40}
-                            style={{ background: '#4f46e5' }}
-                            icon={<BellOutlined />}
+                        {formImageUrl && (
+                          <Image
+                            src={normalizeImageUrl(formImageUrl)}
+                            alt="Notification"
+                            width={320}
+                            height={160}
+                            style={{ width: '100%', height: 160, objectFit: 'cover' }}
                           />
-                          <div style={{ flex: 1 }}>
-                            <Text strong style={{ display: 'block' }}>
-                              {formValues?.title || 'Notification Title'}
-                            </Text>
-                            <Text type="secondary" style={{ fontSize: 12 }}>
-                              {formValues?.message || 'Your notification message will appear here...'}
-                            </Text>
-                            <br />
-                            <Text type="secondary" style={{ fontSize: 11 }}>
-                              Just now
-                            </Text>
-                          </div>
-                        </Space>
+                        )}
+                        <div style={{ padding: 16 }}>
+                          <Space align="start">
+                            <Avatar
+                              size={44}
+                              style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #ea580c 100%)' }}
+                              icon={<BellOutlined />}
+                            />
+                            <div style={{ flex: 1 }}>
+                              <Text strong style={{ display: 'block', fontSize: 15 }}>
+                                {formTitle || 'Notification Title'}
+                              </Text>
+                              <Text type="secondary" style={{ fontSize: 13 }}>
+                                {formMessage || 'Your notification message will appear here...'}
+                              </Text>
+                              <br />
+                              <Text type="secondary" style={{ fontSize: 11 }}>
+                                Just now
+                              </Text>
+                            </div>
+                          </Space>
+                        </div>
                       </div>
                     </div>
 
-                    <div style={{ marginTop: 24 }}>
+                    <div style={{ marginTop: 24, padding: 16, background: '#fafafa', borderRadius: 12 }}>
                       <Text type="secondary">
                         This notification will be sent to{' '}
-                        <Tag color={getAudienceColor(formValues?.targetAudience || 'all')}>
-                          {(formValues?.targetAudience || 'all').toUpperCase()}
+                        <Tag color={getAudienceColor(formTargetAudience || 'all')}>
+                          {(formTargetAudience || 'all').toUpperCase()}
                         </Tag>
                         users as a{' '}
-                        <Tag color={getTypeColor(formValues?.type || 'info')}>
-                          {(formValues?.type || 'info').toUpperCase()}
+                        <Tag color={getTypeColor(formType || 'info')}>
+                          {(formType || 'info').toUpperCase()}
                         </Tag>
                         notification.
+                        {formImageUrl && (
+                          <>
+                            <br />
+                            <Tag color="cyan" style={{ marginTop: 8 }}>
+                              <PictureOutlined /> Image attached
+                            </Tag>
+                          </>
+                        )}
                       </Text>
                     </div>
                   </Card>
 
-                  <Card title="Quick Templates" style={{ marginTop: 16 }}>
+                  <Card 
+                    title={
+                      <Space>
+                        <ThunderboltOutlined style={{ color: '#10b981' }} />
+                        <span>Quick Templates</span>
+                      </Space>
+                    }
+                    style={{ marginTop: 16, borderRadius: 12 }}
+                    styles={{ body: { padding: 16 } }}
+                  >
                     <Space orientation="vertical" style={{ width: '100%' }}>
                       <Button
                         block
+                        style={{ height: 'auto', padding: '12px 16px', textAlign: 'left' }}
                         onClick={() => {
                           form.setFieldsValue({
                             type: 'promo',
@@ -468,10 +794,15 @@ export default function NotificationsPage() {
                           });
                         }}
                       >
-                        🎉 Weekend Promo
+                        <div>
+                          <Text strong>🎉 Weekend Promo</Text>
+                          <br />
+                          <Text type="secondary" style={{ fontSize: 12 }}>Promotional discount template</Text>
+                        </div>
                       </Button>
                       <Button
                         block
+                        style={{ height: 'auto', padding: '12px 16px', textAlign: 'left' }}
                         onClick={() => {
                           form.setFieldsValue({
                             type: 'warning',
@@ -480,10 +811,15 @@ export default function NotificationsPage() {
                           });
                         }}
                       >
-                        ⚠️ Maintenance Notice
+                        <div>
+                          <Text strong>⚠️ Maintenance Notice</Text>
+                          <br />
+                          <Text type="secondary" style={{ fontSize: 12 }}>Service interruption template</Text>
+                        </div>
                       </Button>
                       <Button
                         block
+                        style={{ height: 'auto', padding: '12px 16px', textAlign: 'left' }}
                         onClick={() => {
                           form.setFieldsValue({
                             type: 'info',
@@ -492,9 +828,270 @@ export default function NotificationsPage() {
                           });
                         }}
                       >
-                        📢 Feature Announcement
+                        <div>
+                          <Text strong>📢 Feature Announcement</Text>
+                          <br />
+                          <Text type="secondary" style={{ fontSize: 12 }}>New feature rollout template</Text>
+                        </div>
                       </Button>
                     </Space>
+                  </Card>
+                </Col>
+              </Row>
+            ),
+          },
+          {
+            key: 'individual',
+            label: (
+              <span>
+                <UserOutlined />
+                Individual
+              </span>
+            ),
+            children: (
+              <Row gutter={24}>
+                <Col xs={24} lg={14}>
+                  <Card 
+                    title={
+                      <Space>
+                        <UserOutlined style={{ color: '#3b82f6' }} />
+                        <span>Send to Specific User</span>
+                      </Space>
+                    }
+                    style={{ borderRadius: 12 }}
+                    styles={{ body: { padding: 20 } }}
+                  >
+                    <Form
+                      form={individualForm}
+                      layout="vertical"
+                      initialValues={{
+                        type: 'info',
+                      }}
+                    >
+                      <Form.Item
+                        label="Select User"
+                        required
+                        validateStatus={selectedUser ? 'success' : undefined}
+                      >
+                        <Select
+                          showSearch
+                          placeholder="Select a user..."
+                          filterOption={(input, option) => {
+                            const opt = option as { user?: User };
+                            if (!opt.user) return false;
+                            const searchText = `${opt.user.name} ${opt.user.email} ${opt.user.phone || ''} ${opt.user.role}`.toLowerCase();
+                            return searchText.includes(input.toLowerCase());
+                          }}
+                          onChange={(_, option) => {
+                            const opt = option as { user: User };
+                            setSelectedUser(opt.user);
+                          }}
+                          loading={usersLoading}
+                          options={userOptions}
+                          value={selectedUser?.id}
+                          notFoundContent={usersLoading ? 'Loading users...' : 'No users found'}
+                          style={{ width: '100%' }}
+                          optionLabelProp="label"
+                          styles={{ popup: { root: { maxHeight: 400 } } }}
+                        />
+                        {selectedUser && (
+                          <div style={{ marginTop: 12, padding: 12, background: '#f5f5f5', borderRadius: 8 }}>
+                            <Space>
+                              <Avatar src={selectedUser.avatar} icon={<UserOutlined />} size={48} />
+                              <div>
+                                <Text strong>{selectedUser.name}</Text>
+                                <br />
+                                <Text type="secondary">{selectedUser.email}</Text>
+                                <br />
+                                <Tag color={getAudienceColor(selectedUser.role)}>{selectedUser.role.toUpperCase()}</Tag>
+                              </div>
+                            </Space>
+                          </div>
+                        )}
+                      </Form.Item>
+
+                      <Form.Item
+                        name="type"
+                        label="Notification Type"
+                        rules={[{ required: true }]}
+                      >
+                        <Select
+                          options={[
+                            { value: 'info', label: '📢 Info' },
+                            { value: 'success', label: '✅ Success' },
+                            { value: 'warning', label: '⚠️ Warning' },
+                            { value: 'promo', label: '🎉 Promotion' },
+                          ]}
+                        />
+                      </Form.Item>
+
+                      <Form.Item
+                        name="title"
+                        label="Title"
+                        rules={[
+                          { required: true, message: 'Please enter a title' },
+                          { max: 50, message: 'Title must be 50 characters or less' },
+                        ]}
+                      >
+                        <Input placeholder="Enter notification title" maxLength={50} showCount />
+                      </Form.Item>
+
+                      <Form.Item
+                        name="message"
+                        label="Message"
+                        rules={[
+                          { required: true, message: 'Please enter a message' },
+                          { max: 200, message: 'Message must be 200 characters or less' },
+                        ]}
+                      >
+                        <Input.TextArea
+                          rows={4}
+                          placeholder="Enter notification message"
+                          maxLength={200}
+                          showCount
+                        />
+                      </Form.Item>
+
+                      <Form.Item
+                        label="Image (Optional)"
+                        extra="Add an image to make your notification more engaging"
+                      >
+                        {indFormImageUrl ? (
+                          <div style={{ position: 'relative', width: 200 }}>
+                            <Image
+                              src={normalizeImageUrl(indFormImageUrl)}
+                              alt="Notification"
+                              width={200}
+                              height={120}
+                              style={{ borderRadius: 8, objectFit: 'cover' }}
+                            />
+                            <Button
+                              type="primary"
+                              danger
+                              size="small"
+                              icon={<DeleteOutlined />}
+                              onClick={handleRemoveIndImage}
+                              style={{ position: 'absolute', top: 8, right: 8 }}
+                            />
+                          </div>
+                        ) : (
+                          <Upload
+                            accept="image/*"
+                            showUploadList={false}
+                            customRequest={({ onSuccess }) => {
+                              setTimeout(() => onSuccess?.('ok'), 0);
+                            }}
+                            onChange={handleIndImageUpload}
+                          >
+                            <Button
+                              icon={<PictureOutlined />}
+                              loading={indImageUploading}
+                            >
+                              {indImageUploading ? 'Uploading...' : 'Upload Image'}
+                            </Button>
+                          </Upload>
+                        )}
+                      </Form.Item>
+
+                      <Form.Item>
+                        <Button
+                          type="primary"
+                          icon={<SendOutlined />}
+                          onClick={handleSendIndividual}
+                          loading={sendIndividualMutation.isPending}
+                          disabled={!selectedUser}
+                        >
+                          Send to {selectedUser?.name || 'User'}
+                        </Button>
+                      </Form.Item>
+                    </Form>
+                  </Card>
+                </Col>
+
+                <Col xs={24} lg={10}>
+                  <Card 
+                    title={
+                      <Space>
+                        <EyeOutlined style={{ color: '#8b5cf6' }} />
+                        <span>Live Preview</span>
+                      </Space>
+                    }
+                    style={{ borderRadius: 12 }}
+                    styles={{ body: { padding: 20 } }}
+                  >
+                    <div
+                      style={{
+                        background: 'linear-gradient(135deg, #f5f5f5 0%, #e5e5e5 100%)',
+                        borderRadius: 16,
+                        padding: 20,
+                        maxWidth: 340,
+                        margin: '0 auto',
+                      }}
+                    >
+                      <div
+                        style={{
+                          background: 'white',
+                          borderRadius: 12,
+                          overflow: 'hidden',
+                          boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+                        }}
+                      >
+                        {indFormImageUrl && (
+                          <Image
+                            src={normalizeImageUrl(indFormImageUrl)}
+                            alt="Notification"
+                            width={320}
+                            height={160}
+                            style={{ width: '100%', height: 160, objectFit: 'cover' }}
+                          />
+                        )}
+                        <div style={{ padding: 16 }}>
+                          <Space align="start">
+                            <Avatar
+                              size={44}
+                              style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)' }}
+                              icon={<BellOutlined />}
+                            />
+                            <div style={{ flex: 1 }}>
+                              <Text strong style={{ display: 'block', fontSize: 15 }}>
+                                {indFormTitle || 'Notification Title'}
+                              </Text>
+                              <Text type="secondary" style={{ fontSize: 13 }}>
+                                {indFormMessage || 'Your notification message will appear here...'}
+                              </Text>
+                              <br />
+                              <Text type="secondary" style={{ fontSize: 11 }}>
+                                Just now
+                              </Text>
+                            </div>
+                          </Space>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ marginTop: 24, padding: 16, background: '#fafafa', borderRadius: 12 }}>
+                      <Text type="secondary">
+                        This notification will be sent to{' '}
+                        {selectedUser ? (
+                          <Tag color="blue">{selectedUser.name}</Tag>
+                        ) : (
+                          <Tag>No user selected</Tag>
+                        )}
+                        {' '}as a{' '}
+                        <Tag color={getTypeColor(indFormType || 'info')}>
+                          {(indFormType || 'info').toUpperCase()}
+                        </Tag>
+                        notification.
+                        {indFormImageUrl && (
+                          <>
+                            <br />
+                            <Tag color="cyan" style={{ marginTop: 8 }}>
+                              <PictureOutlined /> Image attached
+                            </Tag>
+                          </>
+                        )}
+                      </Text>
+                    </div>
                   </Card>
                 </Col>
               </Row>
@@ -510,6 +1107,8 @@ export default function NotificationsPage() {
             ),
             children: (
               <Card
+                style={{ borderRadius: 12 }}
+                styles={{ body: { padding: 0 } }}
                 extra={
                   <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
                     Refresh
@@ -538,6 +1137,7 @@ export default function NotificationsPage() {
           },
         ]}
       />
+      </div>
 
       {/* Preview Modal */}
       <Modal
@@ -567,15 +1167,15 @@ export default function NotificationsPage() {
             style={{ background: '#4f46e5', marginBottom: 16 }}
             icon={<BellOutlined />}
           />
-          <Title level={4}>{formValues?.title}</Title>
-          <Text>{formValues?.message}</Text>
+          <Title level={4}>{formTitle}</Title>
+          <Text>{formMessage}</Text>
           <div style={{ marginTop: 24 }}>
             <Space>
-              <Tag color={getTypeColor(formValues?.type || 'info')}>
-                {(formValues?.type || 'info').toUpperCase()}
+              <Tag color={getTypeColor(formType || 'info')}>
+                {(formType || 'info').toUpperCase()}
               </Tag>
-              <Tag color={getAudienceColor(formValues?.targetAudience || 'all')}>
-                {(formValues?.targetAudience || 'all').toUpperCase()}
+              <Tag color={getAudienceColor(formTargetAudience || 'all')}>
+                {(formTargetAudience || 'all').toUpperCase()}
               </Tag>
             </Space>
           </div>

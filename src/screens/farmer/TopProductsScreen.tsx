@@ -12,6 +12,7 @@ import {
   Dimensions,
   ActivityIndicator,
   Modal,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -24,6 +25,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { FarmerStackParamList } from '../../types';
 import { getProductIllustration } from '../../assets/illustrations/products';
 import { farmerAnalyticsService } from '../../services/farmerAnalyticsService';
+import { API_CONFIG } from '../../constants/config';
 
 type NavigationProp = NativeStackNavigationProp<FarmerStackParamList>;
 
@@ -63,18 +65,20 @@ const TopProductsScreen: React.FC = () => {
   });
 
   // Transform API response to ProductPerformance format
-  const allProducts: ProductPerformance[] = ((productsResponse as any)?.data || productsResponse || []).map((p: any) => ({
-    id: p.id,
-    name: p.title || p.name,
-    sales: p.sales || 0,
-    revenue: p.revenue || 0,
-    growth: p.growth || 0,
-    image: p.images?.[0] || '',
-    category: p.category || 'vegetables',
-    stock: p.stock || 0,
-    views: p.views || 0,
-    conversionRate: p.conversionRate || 0,
-  }));
+  const allProducts: ProductPerformance[] = ((productsResponse as any)?.data || productsResponse || [])
+    .filter((p: any) => p != null && p.id != null)
+    .map((p: any) => ({
+      id: p.id,
+      name: p.title || p.name,
+      sales: p.sales || 0,
+      revenue: p.revenue || 0,
+      growth: p.growth || 0,
+      image: p.images?.[0] || '',
+      category: p.category || 'vegetables',
+      stock: p.stock || 0,
+      views: p.views || 0,
+      conversionRate: p.conversionRate || 0,
+    }));
 
   // Animations
   const listAnim = useRef(new Animated.Value(0)).current;
@@ -271,9 +275,9 @@ const TopProductsScreen: React.FC = () => {
             <Text style={[styles.emptyText, { color: colors.textSecondary }]}>Add products to see performance analytics</Text>
           </View>
         ) : (
-          products.map((product, index) => (
+          products.filter(p => p != null && p.id != null).map((product, index) => (
           <Animated.View
-            key={product.id}
+            key={product.id || `product-${index}`}
             style={{
               opacity: listAnim,
               transform: [
@@ -301,7 +305,15 @@ const TopProductsScreen: React.FC = () => {
               </View>
               
               <View style={styles.productImageContainer}>
-                {getProductIllustration(product.name, 40)}
+                {product.image ? (
+                  <Image 
+                    source={{ uri: product.image.startsWith('http') ? product.image : `${API_CONFIG.BASE_URL}${product.image}` }}
+                    style={styles.productImage}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  getProductIllustration(product.name, 40)
+                )}
               </View>
               
               <View style={styles.productInfo}>
@@ -650,6 +662,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: SPACING.sm,
+    overflow: 'hidden',
+    ...SHADOWS.small,
+  },
+  productImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   productInfo: {
     flex: 1,

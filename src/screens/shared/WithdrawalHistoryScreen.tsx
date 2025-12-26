@@ -14,9 +14,11 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
 import { SPACING, FONT_SIZES, FONTS } from '../../constants/theme';
 import { withdrawalService, Withdrawal, WithdrawalStatus } from '../../services/withdrawalService';
+import { WithdrawHeroIllustration } from '../../assets/illustrations/stats';
 
 const STATUS_CONFIG: Record<WithdrawalStatus, { label: string; color: string; bgColor: string; icon: string }> = {
   pending: {
@@ -85,9 +87,10 @@ export default function WithdrawalHistoryScreen() {
     try {
       setIsLoading(true);
       const response = await withdrawalService.getWithdrawals();
-      setTransactions(response.withdrawals);
+      setTransactions(response?.withdrawals || []);
     } catch (error) {
       console.error('Error loading withdrawal history:', error);
+      setTransactions([]);
     } finally {
       setIsLoading(false);
     }
@@ -123,54 +126,116 @@ export default function WithdrawalHistoryScreen() {
   const renderTransaction = (transaction: Withdrawal, index: number) => {
     const statusConfig = STATUS_CONFIG[transaction.status];
     const isLast = index === filteredTransactions.length - 1;
+    const dateStr = formatDate(transaction.createdAt);
+    const isToday = dateStr.includes('Today');
+    
+    // Get gradient colors based on status
+    const getGradientColors = (): [string, string] => {
+      switch (transaction.status) {
+        case 'completed': return ['#10B981', '#059669'];
+        case 'pending': return ['#F59E0B', '#D97706'];
+        case 'processing': return ['#3B82F6', '#2563EB'];
+        case 'failed': return ['#EF4444', '#DC2626'];
+        case 'cancelled': return ['#6B7280', '#4B5563'];
+        default: return ['#10B981', '#059669'];
+      }
+    };
 
     return (
-      <View key={transaction.id}>
+      <TouchableOpacity 
+        key={transaction.id}
+        activeOpacity={0.7}
+        onPress={() => (navigation as any).navigate('WithdrawalDetail', { withdrawal: transaction })}
+      >
         <View style={styles.transactionItem}>
-          <View style={styles.transactionLeft}>
-            <View style={styles.bankIconContainer}>
-              <MaterialCommunityIcons name="bank-outline" size={22} color="#16A34A" />
-            </View>
-            <View style={styles.transactionInfo}>
-              <Text style={[styles.bankName, dynamicStyles.text]}>
+          {/* Enhanced Icon with Gradient */}
+          <View style={styles.transactionIconWrapper}>
+            <LinearGradient
+              colors={getGradientColors()}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.transactionIconGradient}
+            >
+              <MaterialCommunityIcons name="bank-transfer-out" size={22} color="#FFFFFF" />
+            </LinearGradient>
+            {/* Status indicator dot */}
+            {(transaction.status === 'pending' || transaction.status === 'processing') && (
+              <View style={[styles.statusPulse, { backgroundColor: statusConfig.color }]} />
+            )}
+          </View>
+          
+          {/* Transaction Info */}
+          <View style={styles.transactionInfo}>
+            <View style={styles.transactionTitleRow}>
+              <Text style={[styles.bankName, dynamicStyles.text]} numberOfLines={1}>
                 {transaction.bankAccount.bankName}
               </Text>
+              {isToday && (
+                <View style={[styles.newBadge, { backgroundColor: statusConfig.bgColor }]}>
+                  <Text style={[styles.newBadgeText, { color: statusConfig.color }]}>NEW</Text>
+                </View>
+              )}
+            </View>
+            <View style={styles.accountRow}>
+              <Ionicons name="card-outline" size={12} color={colors.textSecondary} />
               <Text style={[styles.accountNumber, dynamicStyles.textSecondary]}>
                 ****{transaction.bankAccount.accountNumber.slice(-4)}
               </Text>
             </View>
+            <View style={styles.dateRow}>
+              <Ionicons name="time-outline" size={12} color={colors.textSecondary} />
+              <Text style={[styles.dateText, dynamicStyles.textSecondary]}>
+                {dateStr}
+              </Text>
+            </View>
           </View>
+          
+          {/* Amount Section */}
           <View style={styles.transactionRight}>
-            <Text style={[styles.amount, dynamicStyles.text]}>
+            <Text style={[styles.amount, { color: statusConfig.color }]}>
               ₦{(transaction.amount ?? 0).toLocaleString()}
             </Text>
-            <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
-              <Ionicons name={statusConfig.icon as any} size={12} color={statusConfig.color} />
+            <View style={[
+              styles.statusBadge, 
+              { 
+                backgroundColor: statusConfig.bgColor,
+                borderWidth: 1,
+                borderColor: statusConfig.color + '40',
+              }
+            ]}>
+              <Ionicons name={statusConfig.icon as any} size={11} color={statusConfig.color} />
               <Text style={[styles.statusText, { color: statusConfig.color }]}>
                 {statusConfig.label}
               </Text>
             </View>
           </View>
+          
+          {/* Chevron */}
+          <View style={[styles.chevronWrapper, { backgroundColor: isDark ? '#3C3C3E' : '#F3F4F6' }]}>
+            <Ionicons name="chevron-forward" size={14} color={colors.textSecondary} />
+          </View>
         </View>
 
-        <View style={[styles.transactionDetails, { borderTopColor: 'rgba(60, 60, 67, 0.12)' }]}>
-          <View style={styles.detailRow}>
-            <Text style={[styles.detailLabel, dynamicStyles.textSecondary]}>Reference</Text>
-            <Text style={[styles.detailValue, dynamicStyles.text]}>{transaction.reference}</Text>
+        {/* Details Card */}
+        <View style={[styles.transactionDetails, { borderTopColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
+          <View style={styles.detailsGrid}>
+            <View style={styles.detailItem}>
+              <Text style={[styles.detailLabel, dynamicStyles.textSecondary]}>Reference</Text>
+              <Text style={[styles.detailValue, dynamicStyles.text]} numberOfLines={1}>{transaction.reference}</Text>
+            </View>
+            <View style={styles.detailItem}>
+              <Text style={[styles.detailLabel, dynamicStyles.textSecondary]}>Fee</Text>
+              <Text style={[styles.detailValue, transaction.fee === 0 ? styles.freeText : dynamicStyles.text]}>
+                {transaction.fee === 0 ? 'Free' : `₦${transaction.fee}`}
+              </Text>
+            </View>
           </View>
-          <View style={styles.detailRow}>
-            <Text style={[styles.detailLabel, dynamicStyles.textSecondary]}>Fee</Text>
-            <Text style={[styles.detailValue, transaction.fee === 0 ? styles.freeText : dynamicStyles.text]}>
-              {transaction.fee === 0 ? 'Free' : `₦${transaction.fee}`}
-            </Text>
-          </View>
-          <View style={styles.detailRow}>
-            <Text style={[styles.detailLabel, dynamicStyles.textSecondary]}>Net Amount</Text>
+          <View style={[styles.netAmountRow, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : '#F0FDF4' }]}>
+            <View style={styles.netAmountLeft}>
+              <Ionicons name="wallet-outline" size={16} color="#059669" />
+              <Text style={[styles.netAmountLabel, { color: colors.textSecondary }]}>Net Amount</Text>
+            </View>
             <Text style={styles.netAmount}>₦{(transaction.netAmount ?? 0).toLocaleString()}</Text>
-          </View>
-          <View style={styles.detailRow}>
-            <Text style={[styles.detailLabel, dynamicStyles.textSecondary]}>Date</Text>
-            <Text style={[styles.detailValue, dynamicStyles.text]}>{formatDate(transaction.createdAt)}</Text>
           </View>
         </View>
 
@@ -181,8 +246,12 @@ export default function WithdrawalHistoryScreen() {
           </View>
         )}
 
-        {!isLast && <View style={styles.transactionSeparator} />}
-      </View>
+        {!isLast && (
+          <View style={styles.transactionSeparatorWrapper}>
+            <View style={[styles.transactionSeparator, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' }]} />
+          </View>
+        )}
+      </TouchableOpacity>
     );
   };
 
@@ -294,55 +363,77 @@ export default function WithdrawalHistoryScreen() {
           )}
           scrollEventThrottle={16}
         >
-          {/* Section Header */}
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionHeaderTitle, dynamicStyles.text]}>Withdrawal History</Text>
-          </View>
-
-          {/* Summary Stats */}
-          <View style={styles.sectionSubHeader}>
-            <Text style={[styles.sectionSubHeaderTitle, dynamicStyles.textSecondary]}>SUMMARY</Text>
-          </View>
-          <View style={[styles.summaryCard, dynamicStyles.card]}>
-            <View style={styles.summaryRow}>
-              <View style={styles.summaryItem}>
-                <View style={[styles.summaryIconContainer, { backgroundColor: '#DCFCE7' }]}>
-                  <MaterialCommunityIcons name="cash-check" size={22} color="#16A34A" />
-                </View>
-                <View>
-                  <Text style={[styles.summaryLabel, dynamicStyles.textSecondary]}>Total Withdrawn</Text>
-                  <Text style={[styles.summaryValue, { color: '#16A34A' }]}>
+          {/* Summary Media Card */}
+          <View style={[styles.summaryMediaCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+            {/* Gradient Header with Illustration */}
+            <LinearGradient
+              colors={['#FF9500', '#FF7A00', '#FF5C00']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.summaryMediaHeader}
+            >
+              {/* Decorative circles */}
+              <View style={[styles.summaryDecorCircle, { top: -20, right: -20, opacity: 0.1 }]} />
+              <View style={[styles.summaryDecorCircle, { bottom: -30, left: 60, opacity: 0.08, width: 80, height: 80 }]} />
+              
+              <View style={styles.summaryHeaderContent}>
+                <View style={styles.summaryHeaderLeft}>
+                  <Text style={styles.summaryHeaderLabel}>Withdrawal Summary</Text>
+                  <Text style={styles.summaryHeaderValue}>
                     ₦{transactions
                       .filter(t => t.status === 'completed')
                       .reduce((sum, t) => sum + t.netAmount, 0)
                       .toLocaleString()}
                   </Text>
+                  <View style={styles.summaryHeaderBadge}>
+                    <MaterialCommunityIcons name="cash-check" size={12} color="#FFFFFF" />
+                    <Text style={styles.summaryHeaderBadgeText}>Total Withdrawn</Text>
+                  </View>
+                </View>
+                <View style={styles.summaryIllustrationContainer}>
+                  <WithdrawHeroIllustration width={85} height={85} />
                 </View>
               </View>
-              <View style={[styles.summaryDivider, { backgroundColor: 'rgba(60, 60, 67, 0.12)' }]} />
-              <View style={styles.summaryItem}>
-                <View style={[styles.summaryIconContainer, { backgroundColor: '#DBEAFE' }]}>
-                  <MaterialCommunityIcons name="check-circle-outline" size={22} color="#3B82F6" />
+            </LinearGradient>
+            
+            {/* Stats Grid */}
+            <View style={styles.summaryStatsGrid}>
+              {/* Successful */}
+              <View style={[styles.summaryStatItem, { borderRightWidth: 1, borderRightColor: isDark ? '#3D3D3D' : '#F0F0F0' }]}>
+                <View style={[styles.summaryStatIconBg, { backgroundColor: '#ECFDF5' }]}>
+                  <View style={[styles.summaryStatIconInner, { backgroundColor: '#10B981' }]}>
+                    <Ionicons name="checkmark-circle" size={16} color="#FFFFFF" />
+                  </View>
                 </View>
-                <View>
-                  <Text style={[styles.summaryLabel, dynamicStyles.textSecondary]}>Successful</Text>
-                  <Text style={[styles.summaryValue, dynamicStyles.text]}>
-                    {transactions.filter(t => t.status === 'completed').length}
-                  </Text>
-                </View>
+                <Text style={[styles.summaryStatLabel, { color: colors.textSecondary }]}>Successful</Text>
+                <Text style={[styles.summaryStatValue, { color: '#10B981' }]}>
+                  {transactions.filter(t => t.status === 'completed').length}
+                </Text>
               </View>
-              <View style={[styles.summaryDivider, { backgroundColor: 'rgba(60, 60, 67, 0.12)' }]} />
-              <View style={styles.summaryItem}>
-                <View style={[styles.summaryIconContainer, { backgroundColor: '#FEF3C7' }]}>
-                  <MaterialCommunityIcons name="clock-outline" size={22} color="#F59E0B" />
+              
+              {/* Pending */}
+              <View style={styles.summaryStatItem}>
+                <View style={[styles.summaryStatIconBg, { backgroundColor: '#FEF3C7' }]}>
+                  <View style={[styles.summaryStatIconInner, { backgroundColor: '#F59E0B' }]}>
+                    <Ionicons name="time" size={16} color="#FFFFFF" />
+                  </View>
                 </View>
-                <View>
-                  <Text style={[styles.summaryLabel, dynamicStyles.textSecondary]}>Pending</Text>
-                  <Text style={[styles.summaryValue, dynamicStyles.text]}>
-                    {transactions.filter(t => t.status === 'pending' || t.status === 'processing').length}
-                  </Text>
-                </View>
+                <Text style={[styles.summaryStatLabel, { color: colors.textSecondary }]}>Pending</Text>
+                <Text style={[styles.summaryStatValue, { color: '#F59E0B' }]}>
+                  {transactions.filter(t => t.status === 'pending' || t.status === 'processing').length}
+                </Text>
               </View>
+            </View>
+            
+            {/* Total Transactions Footer */}
+            <View style={[styles.summaryFooter, { backgroundColor: isDark ? 'rgba(255, 149, 0, 0.1)' : '#FFF7ED' }]}>
+              <View style={styles.summaryFooterContent}>
+                <MaterialCommunityIcons name="receipt-text-outline" size={18} color="#FF9500" />
+                <Text style={[styles.summaryFooterLabel, { color: colors.textSecondary }]}>Total Withdrawals</Text>
+              </View>
+              <Text style={[styles.summaryFooterValue, { color: '#FF9500' }]}>
+                {transactions.length}
+              </Text>
             </View>
           </View>
 
@@ -526,136 +617,274 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
-  summaryCard: {
-    borderRadius: 16,
+  // Summary Media Card Styles
+  summaryMediaCard: {
+    borderRadius: 20,
+    overflow: 'hidden',
     marginBottom: SPACING.lg,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
+    shadowColor: '#FF9500',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
   },
-  summaryRow: {
+  summaryMediaHeader: {
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.lg,
+    paddingBottom: SPACING.xl,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  summaryDecorCircle: {
+    position: 'absolute',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#FFFFFF',
+  },
+  summaryHeaderContent: {
     flexDirection: 'row',
-    padding: SPACING.md,
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  summaryItem: {
+  summaryHeaderLeft: {
     flex: 1,
+  },
+  summaryHeaderLabel: {
+    fontSize: 14,
+    fontFamily: FONTS.medium,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginBottom: 4,
+  },
+  summaryHeaderValue: {
+    fontSize: 32,
+    fontFamily: FONTS.bold,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
+  },
+  summaryHeaderBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    marginTop: 8,
+    gap: 4,
   },
-  summaryIconContainer: {
-    width: 40,
-    height: 40,
+  summaryHeaderBadgeText: {
+    fontSize: 11,
+    fontFamily: FONTS.medium,
+    color: '#FFFFFF',
+  },
+  summaryIllustrationContainer: {
+    marginLeft: SPACING.md,
+  },
+  summaryStatsGrid: {
+    flexDirection: 'row',
+    paddingVertical: SPACING.md,
+  },
+  summaryStatItem: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: SPACING.sm,
+  },
+  summaryStatIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.xs,
+  },
+  summaryStatIconInner: {
+    width: 32,
+    height: 32,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  summaryValue: {
-    fontSize: FONT_SIZES.md,
+  summaryStatLabel: {
+    fontSize: 12,
+    fontFamily: FONTS.medium,
+    marginBottom: 4,
+  },
+  summaryStatValue: {
+    fontSize: 18,
     fontFamily: FONTS.bold,
     fontWeight: '700',
   },
-  summaryLabel: {
-    fontSize: FONT_SIZES.xs,
-    fontFamily: FONTS.regular,
-    marginBottom: 2,
+  summaryFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 0, 0, 0.05)',
   },
-  summaryDivider: {
-    width: 1,
-    marginVertical: 4,
-    marginHorizontal: 8,
+  summaryFooterContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  summaryFooterLabel: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: FONTS.medium,
+  },
+  summaryFooterValue: {
+    fontSize: 18,
+    fontFamily: FONTS.bold,
+    fontWeight: '700',
   },
   transactionsCard: {
-    borderRadius: 16,
+    borderRadius: 20,
     marginBottom: SPACING.lg,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.04)',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
       },
       android: {
-        elevation: 2,
+        elevation: 4,
       },
     }),
   },
   transactionItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'flex-start',
     padding: SPACING.md,
+    paddingBottom: SPACING.sm,
+    gap: 14,
   },
-  transactionLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+  transactionIconWrapper: {
+    position: 'relative',
   },
-  bankIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#DCFCE7',
+  transactionIconGradient: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  statusPulse: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
   transactionInfo: {
-    gap: 2,
+    flex: 1,
+    gap: 4,
+  },
+  transactionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  newBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  newBadgeText: {
+    fontSize: 8,
+    fontFamily: FONTS.bold,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   bankName: {
     fontSize: FONT_SIZES.md,
     fontFamily: FONTS.semiBold,
     fontWeight: '600',
+    flex: 1,
+  },
+  accountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   accountNumber: {
     fontSize: FONT_SIZES.sm,
     fontFamily: FONTS.regular,
+    opacity: 0.8,
+  },
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+  },
+  dateText: {
+    fontSize: 11,
+    fontFamily: FONTS.regular,
   },
   transactionRight: {
     alignItems: 'flex-end',
-    gap: 4,
+    gap: 6,
+    flexShrink: 0,
+  },
+  chevronWrapper: {
+    width: 24,
+    height: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   amount: {
-    fontSize: FONT_SIZES.md,
+    fontSize: FONT_SIZES.md + 1,
     fontFamily: FONTS.bold,
     fontWeight: '700',
+    textAlign: 'right',
   },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 6,
     gap: 4,
   },
   statusText: {
-    fontSize: 11,
+    fontSize: 9,
     fontFamily: FONTS.semiBold,
     fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
   transactionDetails: {
     paddingHorizontal: SPACING.md,
-    paddingBottom: SPACING.md,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingBottom: SPACING.sm,
+    borderTopWidth: 1,
     marginTop: 4,
   },
-  detailRow: {
+  detailsGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 6,
+    paddingVertical: SPACING.sm,
+    gap: SPACING.md,
+  },
+  detailItem: {
+    flex: 1,
+    gap: 2,
   },
   detailLabel: {
-    fontSize: FONT_SIZES.sm,
+    fontSize: 11,
     fontFamily: FONTS.regular,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    opacity: 0.7,
   },
   detailValue: {
     fontSize: FONT_SIZES.sm,
@@ -663,34 +892,56 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   freeText: {
-    color: '#16A34A',
+    color: '#059669',
     fontWeight: '600',
   },
-  netAmount: {
+  netAmountRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: SPACING.sm + 2,
+    borderRadius: 10,
+    marginTop: 4,
+  },
+  netAmountLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  netAmountLabel: {
     fontSize: FONT_SIZES.sm,
-    fontFamily: FONTS.semiBold,
-    fontWeight: '600',
-    color: '#16A34A',
+    fontFamily: FONTS.medium,
+  },
+  netAmount: {
+    fontSize: FONT_SIZES.md,
+    fontFamily: FONTS.bold,
+    fontWeight: '700',
+    color: '#059669',
   },
   failureReason: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEE2E2',
-    padding: 10,
-    paddingHorizontal: 12,
-    borderRadius: 8,
+    backgroundColor: '#FEF2F2',
+    padding: 12,
+    paddingHorizontal: 14,
+    borderRadius: 10,
     marginHorizontal: SPACING.md,
     marginBottom: SPACING.sm,
-    gap: 8,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: '#FECACA',
   },
   failureReasonText: {
     flex: 1,
     fontSize: FONT_SIZES.sm,
     fontFamily: FONTS.regular,
-    color: '#EF4444',
+    color: '#DC2626',
+  },
+  transactionSeparatorWrapper: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 6,
   },
   transactionSeparator: {
-    height: 12,
-    backgroundColor: 'rgba(60, 60, 67, 0.06)',
+    height: 1,
   },
 });

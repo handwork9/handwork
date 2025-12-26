@@ -12,15 +12,20 @@ import {
   Alert,
   Linking,
   ActivityIndicator,
+  Modal,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import * as Location from 'expo-location';
+import * as FileSystem from 'expo-file-system';
 import { COLORS, SPACING, FONT_SIZES, SHADOWS, BORDER_RADIUS } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
 import { useMessageBanner } from '../../context/MessageBannerContext';
 import { useAppSelector } from '../../store';
 import { chatService, ChatMessage } from '../../services/chatService';
+import { uploadService } from '../../services/uploadService';
 import { AttachmentMenu, EmojiPicker } from '../../components/common/ChatInputAccessories';
 import ProfileModal, { ProfileData } from '../../components/common/ProfileModal';
 
@@ -30,6 +35,9 @@ interface Message {
   sender: 'buyer' | 'rider';
   timestamp: Date;
   status?: 'sending' | 'sent' | 'delivered' | 'read';
+  type?: 'text' | 'image' | 'location';
+  imageUrl?: string;
+  location?: { lat: number; lng: number };
 }
 
 interface Rider {
@@ -98,7 +106,14 @@ const RiderChatScreen: React.FC = () => {
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const conversationIdRef = useRef<string | null>(null);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    conversationIdRef.current = conversationId;
+  }, [conversationId]);
 
   // Animations
   const headerAnim = useRef(new Animated.Value(0)).current;
@@ -124,6 +139,43 @@ const RiderChatScreen: React.FC = () => {
     },
   }), [colors, isDark]);
 
+  // Handle new incoming messages - defined before useEffect
+  const handleNewMessage = useCallback((chatMessage: ChatMessage) => {
+    if (chatMessage.senderId === currentUser?.id) return;
+
+    const newMessage: Message = {
+      id: chatMessage.id,
+      text: chatMessage.text,
+      sender: 'rider',
+      timestamp: new Date(chatMessage.createdAt),
+      status: chatMessage.status as Message['status'],
+      type: chatMessage.type as Message['type'],
+      imageUrl: chatMessage.metadata?.imageUrl,
+      location: chatMessage.metadata?.location,
+    };
+
+    setMessages(prev => {
+      // Avoid duplicates by checking if message already exists
+      if (prev.some(m => m.id === newMessage.id)) {
+        return prev;
+      }
+      return [...prev, newMessage];
+    });
+    setIsTyping(false);
+
+    // Scroll to bottom
+    setTimeout(() => {
+      flatListRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+  }, [currentUser?.id]);
+
+  // Handle typing indicators - defined before useEffect
+  const handleTypingIndicator = useCallback((data: { conversationId: string; userId: string; isTyping: boolean }) => {
+    if (data.userId !== currentUser?.id) {
+      setIsTyping(data.isTyping);
+    }
+  }, [currentUser?.id]);
+
   useEffect(() => {
     Animated.spring(headerAnim, {
       toValue: 1,
@@ -141,7 +193,9 @@ const RiderChatScreen: React.FC = () => {
         return;
       }
 
-      if (!rider.id && !initialConversationId) {
+      // Validate we have required data
+      const hasRiderId = rider.id && rider.id.length > 0;
+      if (!hasRiderId && !initialConversationId) {
         setIsLoading(false);
         return;
       }
@@ -161,6 +215,9 @@ const RiderChatScreen: React.FC = () => {
             sender: msg.senderId === currentUser.id ? 'buyer' : 'rider',
             timestamp: new Date(msg.createdAt),
             status: msg.status as Message['status'],
+            type: msg.type as Message['type'],
+            imageUrl: msg.metadata?.imageUrl,
+            location: msg.metadata?.location,
           }));
           setMessages(formattedMessages);
 
@@ -196,6 +253,9 @@ const RiderChatScreen: React.FC = () => {
           sender: msg.senderId === currentUser.id ? 'buyer' : 'rider',
           timestamp: new Date(msg.createdAt),
           status: msg.status as Message['status'],
+          type: msg.type as Message['type'],
+          imageUrl: msg.metadata?.imageUrl,
+          location: msg.metadata?.location,
         }));
         setMessages(formattedMessages);
 
@@ -207,11 +267,6 @@ const RiderChatScreen: React.FC = () => {
 
         // Subscribe to typing indicators
         chatService.subscribeToTyping(conversation.id, handleTypingIndicator);
-
-        return () => {
-          chatService.unsubscribeFromMessages(conversation.id, handleNewMessage);
-          chatService.unsubscribeFromTyping(conversation.id, handleTypingIndicator);
-        };
       } catch (error) {
         console.error('Failed to initialize chat:', error);
         Alert.alert('Error', 'Failed to load chat. Please try again.');
@@ -226,50 +281,24 @@ const RiderChatScreen: React.FC = () => {
       // Clear active conversation when leaving the screen
       setActiveConversationId(null);
       
+      // Unsubscribe from chat events
+      if (conversationIdRef.current) {
+        chatService.unsubscribeFromMessages(conversationIdRef.current);
+        chatService.unsubscribeFromTyping(conversationIdRef.current);
+      }
+      
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
     };
-  }, [rider.id, currentUser?.id, orderId, initialConversationId, setActiveConversationId]);
+  }, [rider.id, currentUser?.id, orderId, initialConversationId, setActiveConversationId, handleNewMessage, handleTypingIndicator]);
 
-  // Handle new incoming messages
-  const handleNewMessage = useCallback((chatMessage: ChatMessage) => {
-    if (chatMessage.senderId === currentUser?.id) return;
-
-    const newMessage: Message = {
-      id: chatMessage.id,
-      text: chatMessage.text,
-      sender: 'rider',
-      timestamp: new Date(chatMessage.createdAt),
-      status: chatMessage.status as Message['status'],
-    };
-
-    setMessages(prev => {
-      // Avoid duplicates by checking if message already exists
-      if (prev.some(m => m.id === newMessage.id)) {
-        return prev;
-      }
-      return [...prev, newMessage];
-    });
-    setIsTyping(false);
-
-    // Mark as read
+  // Mark messages as read when conversation is set
+  useEffect(() => {
     if (conversationId) {
       chatService.markAsRead(conversationId);
     }
-
-    // Scroll to bottom
-    setTimeout(() => {
-      flatListRef.current?.scrollToEnd({ animated: true });
-    }, 100);
-  }, [currentUser?.id, conversationId]);
-
-  // Handle typing indicators
-  const handleTypingIndicator = useCallback((data: { conversationId: string; userId: string; isTyping: boolean }) => {
-    if (data.userId !== currentUser?.id) {
-      setIsTyping(data.isTyping);
-    }
-  }, [currentUser?.id]);
+  }, [conversationId]);
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -414,18 +443,184 @@ const RiderChatScreen: React.FC = () => {
     responseTime: rider.responseTime,
   };
 
-  const handleSelectImage = (uri: string) => {
-    Alert.alert('Image Selected', 'Image sending feature coming soon!');
-    console.log('Selected image:', uri);
+  const handleSelectImage = async (uri: string) => {
+    if (!conversationId) {
+      Alert.alert('Error', 'Please wait for chat to connect');
+      return;
+    }
+    await sendImageMessage(uri);
   };
 
-  const handleSelectCamera = (uri: string) => {
-    Alert.alert('Photo Taken', 'Photo sending feature coming soon!');
-    console.log('Camera photo:', uri);
+  const handleSelectCamera = async (uri: string) => {
+    if (!conversationId) {
+      Alert.alert('Error', 'Please wait for chat to connect');
+      return;
+    }
+    await sendImageMessage(uri);
   };
 
-  const handleSelectLocation = () => {
-    Alert.alert('Share Location', 'Location sharing feature coming soon!');
+  const sendImageMessage = async (uri: string) => {
+    const tempId = `temp-${Date.now()}`;
+    
+    // Create optimistic message
+    const newMessage: Message = {
+      id: tempId,
+      text: 'Sending image...',
+      sender: 'buyer',
+      timestamp: new Date(),
+      status: 'sending',
+      type: 'image',
+      imageUrl: uri,
+    };
+    
+    setMessages(prev => [...prev, newMessage]);
+    setIsSending(true);
+    setShowAttachmentMenu(false);
+    
+    // Scroll to bottom
+    setTimeout(() => {
+      flatListRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+    
+    try {
+      let base64: string;
+      
+      // Read file as base64 with fallback
+      if (FileSystem.EncodingType?.Base64) {
+        base64 = await FileSystem.readAsStringAsync(uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+      } else {
+        // Fallback using fetch and FileReader
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result as string;
+            resolve(result.split(',')[1] || result);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      }
+      
+      // Detect MIME type
+      const extension = uri.split('.').pop()?.toLowerCase() || 'jpg';
+      let mimeType = 'image/jpeg';
+      if (extension === 'png') mimeType = 'image/png';
+      else if (extension === 'gif') mimeType = 'image/gif';
+      else if (extension === 'webp') mimeType = 'image/webp';
+      
+      // Upload image
+      const uploadResult = await uploadService.uploadImage(
+        `data:${mimeType};base64,${base64}`,
+        'chat'
+      );
+      
+      if (!uploadResult.success || !uploadResult.data?.url) {
+        throw new Error(uploadResult.error || 'Failed to upload image');
+      }
+      
+      // Send message with image URL
+      const sentMessage = await chatService.sendMessage({
+        conversationId: conversationId!,
+        text: '',
+        type: 'image',
+        metadata: { imageUrl: uploadResult.data.url },
+      });
+      
+      if (!sentMessage) {
+        throw new Error('Failed to send image message');
+      }
+      
+      // Update message with server response
+      setMessages(prev =>
+        prev.map(msg =>
+          msg.id === tempId
+            ? { ...msg, id: sentMessage.id, status: 'sent', text: '', imageUrl: uploadResult.data!.url }
+            : msg
+        )
+      );
+    } catch (error: any) {
+      console.error('Failed to send image:', error);
+      Alert.alert('Error', error.message || 'Failed to send image');
+      // Remove failed message
+      setMessages(prev => prev.filter(msg => msg.id !== tempId));
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleSelectLocation = async () => {
+    if (!conversationId) {
+      Alert.alert('Error', 'Please wait for chat to connect');
+      return;
+    }
+    
+    try {
+      // Request location permission
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Location permission is required to share your location');
+        return;
+      }
+      
+      setIsSending(true);
+      setShowAttachmentMenu(false);
+      
+      // Get current location
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      
+      const { latitude, longitude } = location.coords;
+      const tempId = `temp-${Date.now()}`;
+      
+      // Create optimistic message
+      const newMessage: Message = {
+        id: tempId,
+        text: '📍 Sharing location...',
+        sender: 'buyer',
+        timestamp: new Date(),
+        status: 'sending',
+        type: 'location',
+        location: { lat: latitude, lng: longitude },
+      };
+      
+      setMessages(prev => [...prev, newMessage]);
+      
+      // Scroll to bottom
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+      
+      // Send location message
+      const sentMessage = await chatService.sendMessage({
+        conversationId: conversationId!,
+        text: '📍 Location shared',
+        type: 'location',
+        metadata: { location: { lat: latitude, lng: longitude } },
+      });
+      
+      if (!sentMessage) {
+        throw new Error('Failed to send location');
+      }
+      
+      // Update message with server response
+      setMessages(prev =>
+        prev.map(msg =>
+          msg.id === tempId
+            ? { ...msg, id: sentMessage.id, status: 'sent', text: '📍 Location shared' }
+            : msg
+        )
+      );
+    } catch (error: any) {
+      console.error('Failed to share location:', error);
+      Alert.alert('Error', error.message || 'Failed to share location');
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const handleSelectEmoji = (emoji: string) => {
@@ -466,13 +661,48 @@ const RiderChatScreen: React.FC = () => {
         <View style={[
           styles.messageBubble,
           isBuyer ? styles.messageBubbleRight : [styles.messageBubbleLeft, dynamicStyles.messageBubbleOther],
+          item.type === 'image' && styles.imageBubble,
         ]}>
-          <Text style={[
-            styles.messageText,
-            isBuyer ? styles.messageTextRight : { color: colors.text },
-          ]}>
-            {item.text}
-          </Text>
+          {(item.type === 'image' || item.imageUrl) && item.imageUrl ? (
+            <TouchableOpacity 
+              onPress={() => setSelectedImage(item.imageUrl!)}
+            >
+              <Image 
+                source={{ uri: item.imageUrl }} 
+                style={styles.messageImage}
+                resizeMode="cover"
+              />
+            </TouchableOpacity>
+          ) : item.type === 'location' && item.location ? (
+            <TouchableOpacity 
+              onPress={() => {
+                // Open location in maps
+                const url = Platform.select({
+                  ios: `maps:0,0?q=${item.location!.lat},${item.location!.lng}`,
+                  android: `geo:${item.location!.lat},${item.location!.lng}?q=${item.location!.lat},${item.location!.lng}`,
+                }) || `https://www.google.com/maps/search/?api=1&query=${item.location!.lat},${item.location!.lng}`;
+                Linking.openURL(url).catch(() => {
+                  Alert.alert('Error', 'Unable to open maps');
+                });
+              }}
+              style={styles.locationMessage}
+            >
+              <Ionicons name="location" size={24} color={isBuyer ? '#FFFFFF' : '#16A34A'} />
+              <Text style={[
+                styles.locationText,
+                isBuyer ? styles.messageTextRight : { color: colors.text },
+              ]}>
+                {item.text || 'Tap to view location'}
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <Text style={[
+              styles.messageText,
+              isBuyer ? styles.messageTextRight : { color: colors.text },
+            ]}>
+              {item.text}
+            </Text>
+          )}
           <View style={styles.messageFooter}>
             <Text style={[
               styles.messageTime,
@@ -680,6 +910,30 @@ const RiderChatScreen: React.FC = () => {
         onClose={() => setShowProfileModal(false)}
         profile={riderProfileData}
       />
+
+      {/* Image Preview Modal */}
+      <Modal
+        visible={!!selectedImage}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedImage(null)}
+      >
+        <View style={styles.imagePreviewOverlay}>
+          <TouchableOpacity
+            style={styles.imagePreviewCloseButton}
+            onPress={() => setSelectedImage(null)}
+          >
+            <Ionicons name="close" size={30} color="#FFF" />
+          </TouchableOpacity>
+          {selectedImage && (
+            <Image
+              source={{ uri: selectedImage }}
+              style={styles.imagePreviewFull}
+              resizeMode="contain"
+            />
+          )}
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 };
@@ -786,6 +1040,24 @@ const styles = StyleSheet.create({
   messageBubbleRight: {
     backgroundColor: COLORS.primary,
     borderBottomRightRadius: 4,
+  },
+  imageBubble: {
+    padding: 4,
+  },
+  messageImage: {
+    width: 200,
+    height: 200,
+    borderRadius: 14,
+  },
+  locationMessage: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: SPACING.xs,
+  },
+  locationText: {
+    marginLeft: SPACING.xs,
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '500',
   },
   messageText: {
     fontSize: FONT_SIZES.md,
@@ -905,6 +1177,23 @@ const styles = StyleSheet.create({
   typingText: {
     fontSize: FONT_SIZES.sm,
     fontStyle: 'italic',
+  },
+  imagePreviewOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imagePreviewCloseButton: {
+    position: 'absolute',
+    top: 60,
+    right: 20,
+    zIndex: 10,
+    padding: 10,
+  },
+  imagePreviewFull: {
+    width: '100%',
+    height: '80%',
   },
 });
 

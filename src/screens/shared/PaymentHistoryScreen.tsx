@@ -104,7 +104,7 @@ export default function PaymentHistoryScreen() {
   };
 
   const getCategoryIcon = (category: string): keyof typeof Ionicons.glyphMap => {
-    switch (category.toLowerCase()) {
+    switch ((category || '').toLowerCase()) {
       case 'electricity': return 'flash';
       case 'airtime': return 'phone-portrait';
       case 'data': return 'wifi';
@@ -116,7 +116,7 @@ export default function PaymentHistoryScreen() {
   };
 
   const getCategoryColor = (category: string) => {
-    switch (category.toLowerCase()) {
+    switch ((category || '').toLowerCase()) {
       case 'electricity': return '#F59E0B';
       case 'airtime': return '#10B981';
       case 'data': return '#3B82F6';
@@ -128,14 +128,20 @@ export default function PaymentHistoryScreen() {
   };
 
   const filteredPayments = payments.filter(payment => {
+    if (!payment) return false;
+    const provider = (payment.provider || '').toLowerCase();
+    const category = (payment.category || '').toLowerCase();
+    const accountNumber = payment.accountNumber || '';
+    const query = (searchQuery || '').toLowerCase();
+    
     const matchesSearch = 
-      payment.provider.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      payment.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      payment.accountNumber.includes(searchQuery);
+      provider.includes(query) ||
+      category.includes(query) ||
+      accountNumber.includes(searchQuery || '');
     
     const matchesFilter = 
       selectedFilter === 'All' || 
-      payment.status.toLowerCase() === selectedFilter.toLowerCase();
+      (payment.status || '').toLowerCase() === (selectedFilter || '').toLowerCase();
     
     return matchesSearch && matchesFilter;
   });

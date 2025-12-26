@@ -323,6 +323,51 @@ export const DebitTransactionIllustration: React.FC<IllustrationProps> = ({ size
   </Svg>
 );
 
+// Live Support Chat - Headset with chat bubbles
+export const LiveSupportIllustration: React.FC<IllustrationProps> = ({ size = 120 }) => (
+  <Svg width={size} height={size} viewBox="0 0 120 120" fill="none">
+    <Defs>
+      <LinearGradient id="ls_headset" x1="0%" y1="0%" x2="0%" y2="100%">
+        <Stop offset="0%" stopColor="#3B82F6" />
+        <Stop offset="100%" stopColor="#1D4ED8" />
+      </LinearGradient>
+      <LinearGradient id="ls_bubble" x1="0%" y1="0%" x2="100%" y2="100%">
+        <Stop offset="0%" stopColor="#60A5FA" />
+        <Stop offset="100%" stopColor="#3B82F6" />
+      </LinearGradient>
+    </Defs>
+    {/* Outer glow */}
+    <Circle cx="60" cy="60" r="55" fill="rgba(59, 130, 246, 0.12)" />
+    {/* Head circle */}
+    <Circle cx="60" cy="55" r="28" fill="none" stroke="url(#ls_headset)" strokeWidth="6" />
+    {/* Headset band */}
+    <Path d="M32 55 Q32 28 60 28 Q88 28 88 55" stroke="url(#ls_headset)" strokeWidth="5" strokeLinecap="round" fill="none" />
+    {/* Left ear cup */}
+    <Rect x="25" y="48" width="14" height="22" rx="7" fill="url(#ls_headset)" />
+    <Rect x="28" y="52" width="8" height="14" rx="4" fill="#1E40AF" />
+    {/* Right ear cup */}
+    <Rect x="81" y="48" width="14" height="22" rx="7" fill="url(#ls_headset)" />
+    <Rect x="84" y="52" width="8" height="14" rx="4" fill="#1E40AF" />
+    {/* Microphone boom */}
+    <Path d="M39 65 Q39 75 50 78" stroke="#1D4ED8" strokeWidth="3" strokeLinecap="round" fill="none" />
+    <Circle cx="52" cy="80" r="5" fill="url(#ls_headset)" />
+    <Circle cx="52" cy="80" r="3" fill="#60A5FA" />
+    {/* Chat bubble right */}
+    <Path d="M75 75 L95 75 Q100 75 100 80 L100 92 Q100 97 95 97 L82 97 L78 103 L78 97 L75 97 Q70 97 70 92 L70 80 Q70 75 75 75 Z" fill="url(#ls_bubble)" />
+    {/* Chat dots */}
+    <Circle cx="78" cy="86" r="2" fill="#FFF" />
+    <Circle cx="85" cy="86" r="2" fill="#FFF" />
+    <Circle cx="92" cy="86" r="2" fill="#FFF" />
+    {/* Online indicator */}
+    <Circle cx="95" cy="72" r="6" fill="#22C55E" />
+    <Circle cx="95" cy="72" r="4" fill="#4ADE80" />
+    {/* Sparkles */}
+    <Circle cx="18" cy="35" r="2" fill="#60A5FA" opacity={0.8} />
+    <Circle cx="102" cy="40" r="2" fill="#60A5FA" opacity={0.7} />
+    <Path d="M15 65 L17 70 L15 75 L13 70 Z" fill="#3B82F6" opacity={0.6} />
+  </Svg>
+);
+
 export default {
   FarmerActivationIllustration,
   GoPremiumIllustration,
@@ -334,4 +379,5 @@ export default {
   TransactionHistoryIllustration,
   CreditTransactionIllustration,
   DebitTransactionIllustration,
+  LiveSupportIllustration,
 };

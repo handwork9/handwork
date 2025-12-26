@@ -628,7 +628,7 @@ const AddDiscountScreen: React.FC = () => {
               <FlatList
                 data={products}
                 renderItem={renderProductItem}
-                keyExtractor={(item) => item.id}
+                keyExtractor={(item, index) => item?.id || `prod-${index}`}
                 contentContainerStyle={styles.productPickerList}
                 showsVerticalScrollIndicator={false}
               />

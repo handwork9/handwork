@@ -15,9 +15,11 @@ import {
   Col,
   Alert,
   Tabs,
-  message,
+  App,
   Descriptions,
   Tag,
+  Tooltip,
+  Statistic,
 } from 'antd';
 import {
   SaveOutlined,
@@ -26,6 +28,8 @@ import {
   DollarOutlined,
   ClockCircleOutlined,
   ThunderboltOutlined,
+  CarOutlined,
+  RocketOutlined,
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '@/lib/api';
@@ -71,6 +75,7 @@ export default function DispatchPage() {
   const queryClient = useQueryClient();
   const [form] = Form.useForm();
   const { featureFlags, setFeatureFlag } = useConfigStore();
+  const { message } = App.useApp();
 
   // Fetch current config
   const { data: configData } = useQuery({
@@ -132,51 +137,139 @@ export default function DispatchPage() {
   };
 
   return (
-    <div>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 24,
-        }}
-      >
-        <div>
-          <Title level={2} style={{ margin: 0 }}>
-            Dispatch Configuration
-          </Title>
-          <Text type="secondary">Configure delivery pricing, timing, and auto-dispatch settings</Text>
+    <div style={{ margin: -24 }}>
+      {/* Gradient Header */}
+      <div style={{ 
+        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+        padding: '24px 24px 80px 24px',
+        marginBottom: -56,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ 
+              width: 48, 
+              height: 48, 
+              borderRadius: 12, 
+              background: 'rgba(255,255,255,0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <RocketOutlined style={{ fontSize: 24, color: '#fff' }} />
+            </div>
+            <div>
+              <Title level={3} style={{ color: '#fff', margin: 0 }}>Dispatch Configuration</Title>
+              <Text style={{ color: 'rgba(255,255,255,0.8)' }}>Configure delivery pricing, timing, and auto-dispatch settings</Text>
+            </div>
+          </div>
+          <Space>
+            <Tooltip title="Reset to defaults">
+              <Button 
+                icon={<ReloadOutlined />} 
+                onClick={handleReset}
+                style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff' }}
+              >
+                Reset
+              </Button>
+            </Tooltip>
+            <Button
+              type="primary"
+              icon={<SaveOutlined />}
+              onClick={handleSave}
+              loading={saveMutation.isPending}
+              style={{ background: '#fff', color: '#10b981', border: 'none' }}
+            >
+              Save Changes
+            </Button>
+          </Space>
         </div>
-        <Space>
-          <Button icon={<ReloadOutlined />} onClick={handleReset}>
-            Reset to Defaults
-          </Button>
-          <Button
-            type="primary"
-            icon={<SaveOutlined />}
-            onClick={handleSave}
-            loading={saveMutation.isPending}
-          >
-            Save Changes
-          </Button>
-        </Space>
       </div>
 
-      <Alert
-        title="Configuration Changes"
-        description="Changes will take effect immediately for new orders. Existing orders will continue with their original settings."
-        type="info"
-        showIcon
-        style={{ marginBottom: 24 }}
-      />
+      {/* Stats Cards */}
+      <div style={{ padding: '0 24px', marginBottom: 24 }}>
+        <Row gutter={16}>
+          <Col xs={12} sm={6}>
+            <Card 
+              size="small" 
+              style={{ borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+              styles={{ body: { padding: 16 } }}
+            >
+              <Statistic
+                title={<Text type="secondary" style={{ fontSize: 12 }}>Base Fee</Text>}
+                value={config.baseFee}
+                prefix="₦"
+                styles={{ content: { fontSize: 24 } }}
+              />
+            </Card>
+          </Col>
+          <Col xs={12} sm={6}>
+            <Card 
+              size="small" 
+              style={{ borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+              styles={{ body: { padding: 16 } }}
+            >
+              <Statistic
+                title={<Text type="secondary" style={{ fontSize: 12 }}>Per Km Rate</Text>}
+                value={config.perKmRate}
+                prefix="₦"
+                styles={{ content: { fontSize: 24 } }}
+              />
+            </Card>
+          </Col>
+          <Col xs={12} sm={6}>
+            <Card 
+              size="small" 
+              style={{ borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+              styles={{ body: { padding: 16 } }}
+            >
+              <Statistic
+                title={<Text type="secondary" style={{ fontSize: 12 }}>Max Radius</Text>}
+                value={config.maxDeliveryRadius}
+                suffix="km"
+                styles={{ content: { fontSize: 24 } }}
+              />
+            </Card>
+          </Col>
+          <Col xs={12} sm={6}>
+            <Card 
+              size="small" 
+              style={{ borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+              styles={{ body: { padding: 16 } }}
+            >
+              <Statistic
+                title={<Text type="secondary" style={{ fontSize: 12 }}>Auto-Dispatch</Text>}
+                value={config.autoDispatchEnabled ? 'On' : 'Off'}
+                prefix={<ThunderboltOutlined style={{ color: config.autoDispatchEnabled ? '#10b981' : '#8c8c8c' }} />}
+                styles={{ content: { fontSize: 24, color: config.autoDispatchEnabled ? '#10b981' : '#8c8c8c' } }}
+              />
+            </Card>
+          </Col>
+        </Row>
+      </div>
+
+      {/* Main Content */}
+      <div style={{ padding: '0 24px 24px' }}>
+        <Alert
+          title="Configuration Changes"
+          description="Changes will take effect immediately for new orders. Existing orders will continue with their original settings."
+          type="info"
+          showIcon
+          style={{ marginBottom: 24, borderRadius: 12 }}
+        />
 
       <Form
         form={form}
         layout="vertical"
         initialValues={config}
       >
+        <Card 
+          style={{ borderRadius: 16, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+          styles={{ body: { padding: 0 } }}
+        >
         <Tabs
           defaultActiveKey="pricing"
+          type="card"
+          style={{ padding: 16 }}
           items={[
             {
               key: 'pricing',
@@ -189,7 +282,16 @@ export default function DispatchPage() {
               children: (
                 <Row gutter={24}>
                   <Col xs={24} lg={12}>
-                    <Card title="Delivery Fees" style={{ marginBottom: 24 }}>
+                    <Card 
+                      title={
+                        <Space>
+                          <DollarOutlined style={{ color: '#10b981' }} />
+                          <span>Delivery Fees</span>
+                        </Space>
+                      }
+                      style={{ marginBottom: 24, borderRadius: 12 }}
+                      styles={{ body: { padding: 20 } }}
+                    >
                       <Form.Item
                         name="baseFee"
                         label="Base Delivery Fee"
@@ -263,7 +365,16 @@ export default function DispatchPage() {
                   </Col>
 
                   <Col xs={24} lg={12}>
-                    <Card title="Peak Hours Pricing" style={{ marginBottom: 24 }}>
+                    <Card 
+                      title={
+                        <Space>
+                          <ClockCircleOutlined style={{ color: '#f59e0b' }} />
+                          <span>Peak Hours Pricing</span>
+                        </Space>
+                      }
+                      style={{ marginBottom: 24, borderRadius: 12 }}
+                      styles={{ body: { padding: 20 } }}
+                    >
                       <Form.Item
                         name="peakHoursEnabled"
                         label="Enable Peak Hours Pricing"
@@ -353,18 +464,29 @@ export default function DispatchPage() {
               children: (
                 <Row gutter={24}>
                   <Col xs={24} lg={12}>
-                    <Card title="Delivery Estimates">
+                    <Card 
+                      title={
+                        <Space>
+                          <ClockCircleOutlined style={{ color: '#3b82f6' }} />
+                          <span>Delivery Estimates</span>
+                        </Space>
+                      }
+                      style={{ borderRadius: 12 }}
+                      styles={{ body: { padding: 20 } }}
+                    >
                       <Form.Item
                         name="estimatedPrepTime"
                         label="Estimated Preparation Time (minutes)"
                         tooltip="Average time for farmers to prepare orders"
                       >
-                        <InputNumber
-                          style={{ width: '100%' }}
-                          min={5}
-                          max={120}
-                          addonAfter="mins"
-                        />
+                        <Space.Compact style={{ width: '100%' }}>
+                          <InputNumber
+                            style={{ width: '100%' }}
+                            min={5}
+                            max={120}
+                          />
+                          <Button disabled style={{ pointerEvents: 'none' }}>mins</Button>
+                        </Space.Compact>
                       </Form.Item>
 
                       <Form.Item
@@ -372,12 +494,14 @@ export default function DispatchPage() {
                         label="Average Delivery Speed"
                         tooltip="Average rider speed for time calculations"
                       >
-                        <InputNumber
-                          style={{ width: '100%' }}
-                          min={10}
-                          max={60}
-                          addonAfter="km/h"
-                        />
+                        <Space.Compact style={{ width: '100%' }}>
+                          <InputNumber
+                            style={{ width: '100%' }}
+                            min={10}
+                            max={60}
+                          />
+                          <Button disabled style={{ pointerEvents: 'none' }}>km/h</Button>
+                        </Space.Compact>
                       </Form.Item>
 
                       <Form.Item
@@ -385,18 +509,29 @@ export default function DispatchPage() {
                         label="Buffer Time (minutes)"
                         tooltip="Extra time added to delivery estimates"
                       >
-                        <InputNumber
-                          style={{ width: '100%' }}
-                          min={0}
-                          max={30}
-                          addonAfter="mins"
-                        />
+                        <Space.Compact style={{ width: '100%' }}>
+                          <InputNumber
+                            style={{ width: '100%' }}
+                            min={0}
+                            max={30}
+                          />
+                          <Button disabled style={{ pointerEvents: 'none' }}>mins</Button>
+                        </Space.Compact>
                       </Form.Item>
                     </Card>
                   </Col>
 
                   <Col xs={24} lg={12}>
-                    <Card title="Delivery Radius">
+                    <Card 
+                      title={
+                        <Space>
+                          <CarOutlined style={{ color: '#8b5cf6' }} />
+                          <span>Delivery Radius</span>
+                        </Space>
+                      }
+                      style={{ borderRadius: 12 }}
+                      styles={{ body: { padding: 20 } }}
+                    >
                       <Form.Item
                         name="maxDeliveryRadius"
                         label="Maximum Delivery Radius"
@@ -442,7 +577,16 @@ export default function DispatchPage() {
               children: (
                 <Row gutter={24}>
                   <Col xs={24} lg={12}>
-                    <Card title="Auto-Dispatch Settings">
+                    <Card 
+                      title={
+                        <Space>
+                          <ThunderboltOutlined style={{ color: '#10b981' }} />
+                          <span>Auto-Dispatch Settings</span>
+                        </Space>
+                      }
+                      style={{ borderRadius: 12 }}
+                      styles={{ body: { padding: 20 } }}
+                    >
                       <Form.Item
                         name="autoDispatchEnabled"
                         label="Enable Auto-Dispatch"
@@ -457,12 +601,14 @@ export default function DispatchPage() {
                         label="Dispatch Delay (seconds)"
                         tooltip="Time to wait before auto-dispatching after order is ready"
                       >
-                        <InputNumber
-                          style={{ width: '100%' }}
-                          min={0}
-                          max={300}
-                          addonAfter="secs"
-                        />
+                        <Space.Compact style={{ width: '100%' }}>
+                          <InputNumber
+                            style={{ width: '100%' }}
+                            min={0}
+                            max={300}
+                          />
+                          <Button disabled style={{ pointerEvents: 'none' }}>secs</Button>
+                        </Space.Compact>
                       </Form.Item>
 
                       <Form.Item
@@ -491,7 +637,16 @@ export default function DispatchPage() {
                   </Col>
 
                   <Col xs={24} lg={12}>
-                    <Card title="Rider Selection Criteria">
+                    <Card 
+                      title={
+                        <Space>
+                          <SettingOutlined style={{ color: '#ef4444' }} />
+                          <span>Rider Selection Criteria</span>
+                        </Space>
+                      }
+                      style={{ borderRadius: 12 }}
+                      styles={{ body: { padding: 20 } }}
+                    >
                       <Form.Item
                         name="maxActiveOrdersPerRider"
                         label="Max Active Orders per Rider"
@@ -547,7 +702,16 @@ export default function DispatchPage() {
               children: (
                 <Row gutter={24}>
                   <Col xs={24} lg={12}>
-                    <Card title="Marketplace Features">
+                    <Card 
+                      title={
+                        <Space>
+                          <SettingOutlined style={{ color: '#3b82f6' }} />
+                          <span>Marketplace Features</span>
+                        </Space>
+                      }
+                      style={{ borderRadius: 12 }}
+                      styles={{ body: { padding: 20 } }}
+                    >
                       <Space orientation="vertical" style={{ width: '100%' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div>
@@ -601,7 +765,16 @@ export default function DispatchPage() {
                   </Col>
 
                   <Col xs={24} lg={12}>
-                    <Card title="System Features">
+                    <Card 
+                      title={
+                        <Space>
+                          <ThunderboltOutlined style={{ color: '#f59e0b' }} />
+                          <span>System Features</span>
+                        </Space>
+                      }
+                      style={{ borderRadius: 12 }}
+                      styles={{ body: { padding: 20 } }}
+                    >
                       <Space orientation="vertical" style={{ width: '100%' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div>
@@ -634,7 +807,9 @@ export default function DispatchPage() {
             },
           ]}
         />
+        </Card>
       </Form>
+      </div>
     </div>
   );
 }

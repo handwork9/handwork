@@ -121,22 +121,36 @@ class SocketService {
    * Subscribe to order updates
    */
   subscribeToOrder(orderId: string, handler: (event: SocketEvent) => void): void {
-    const room = `orders.${orderId}`;
+    const room = `order:${orderId}`;
     this.joinRoom(room);
-    this.on(room, handler);
+    
+    // Listen for all order-related events
+    this.on('order:status', (data: any) => {
+      if (data.orderId === orderId) {
+        handler({ type: 'order:status', data });
+      }
+    });
+    this.on('order:assigned', (data: any) => {
+      if (data.orderId === orderId) {
+        handler({ type: 'order:assigned', data });
+      }
+    });
+    this.on('rider:location', (data: any) => {
+      if (data.orderId === orderId) {
+        handler({ type: 'rider:location', data });
+      }
+    });
   }
 
   /**
    * Unsubscribe from order updates
    */
   unsubscribeFromOrder(orderId: string, handler?: (event: SocketEvent) => void): void {
-    const room = `orders.${orderId}`;
+    const room = `order:${orderId}`;
     this.leaveRoom(room);
-    if (handler) {
-      this.off(room, handler);
-    } else {
-      this.off(room);
-    }
+    this.off('order:status');
+    this.off('order:assigned');
+    this.off('rider:location');
   }
 
   /**

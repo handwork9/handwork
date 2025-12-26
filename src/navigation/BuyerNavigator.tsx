@@ -1,13 +1,16 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { createBottomTabNavigator, BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
+import { useQueryClient } from '@tanstack/react-query';
 import { BuyerTabParamList, BuyerStackParamList } from '../types';
 import { COLORS, FONT_SIZES, FONTS } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
+import { useToast } from '../context/ToastContext';
+import { useNotificationSocket } from '../hooks/useNotificationSocket';
 
 // Buyer Screens
 import HomeScreen from '../screens/buyer/HomeScreen';
@@ -20,6 +23,9 @@ import FarmerProfileScreen from '../screens/buyer/FarmerProfileScreen';
 import CartScreen from '../screens/buyer/CartScreen';
 import CheckoutScreen from '../screens/buyer/CheckoutScreen';
 import OrderTrackingScreen from '../screens/buyer/OrderTrackingScreen';
+import OrderDisputeScreen from '../screens/buyer/OrderDisputeScreen';
+import MyDisputesScreen from '../screens/buyer/MyDisputesScreen';
+import WriteReviewScreen from '../screens/buyer/WriteReviewScreen';
 import OrderConfirmationScreen from '../screens/buyer/OrderConfirmationScreen';
 import OrderCompletedScreen from '../screens/buyer/OrderCompletedScreen';
 import NotificationsScreen from '../screens/shared/NotificationsScreen';
@@ -61,6 +67,7 @@ import ContactUsScreen from '../screens/shared/ContactUsScreen';
 import RateAppScreen from '../screens/shared/RateAppScreen';
 import TermsPrivacyScreen from '../screens/shared/TermsPrivacyScreen';
 import LiveChatScreen from '../screens/shared/LiveChatScreen';
+import MyReportsScreen from '../screens/shared/MyReportsScreen';
 import PayBillScreen from '../screens/shared/PayBillScreen';
 import PaymentHistoryScreen from '../screens/shared/PaymentHistoryScreen';
 import PaymentDetailScreen from '../screens/shared/PaymentDetailScreen';
@@ -71,10 +78,12 @@ import RiderChatScreen from '../screens/buyer/RiderChatScreen';
 import GoPremiumScreen from '../screens/buyer/GoPremiumScreen';
 import GoPremiumLearnMoreScreen from '../screens/buyer/GoPremiumLearnMoreScreen';
 import VerifiedSellersLearnMoreScreen from '../screens/buyer/VerifiedSellersLearnMoreScreen';
+import NearbyFarmersMapScreen from '../screens/buyer/NearbyFarmersMapScreen';
 import CategoriesScreen from '../screens/buyer/CategoriesScreen';
 import NotificationSettingsScreen from '../screens/shared/NotificationSettingsScreen';
 import AppearanceScreen from '../screens/shared/AppearanceScreen';
 import DeleteAccountScreen from '../screens/shared/DeleteAccountScreen';
+import VideoCallScreen from '../screens/shared/VideoCallScreen';
 
 const Tab = createBottomTabNavigator<BuyerTabParamList>();
 const Stack = createNativeStackNavigator<BuyerStackParamList>();
@@ -165,6 +174,41 @@ function BuyerTabs() {
 
 export function BuyerNavigator() {
   const { colors } = useTheme();
+  const { showToast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Connect to notification WebSocket for real-time updates
+  const handleNotification = useCallback((notification: any) => {
+    console.log('[BuyerNavigator] Received notification:', notification);
+    
+    // Handle different notification types
+    if (notification.type === 'order_update' || notification.type === 'order_status') {
+      // Invalidate orders query to refetch updated orders
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['order'] });
+    }
+    
+    if (notification.type === 'new_message') {
+      // Invalidate conversations query
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    }
+
+    // Show toast banner for notifications
+    if (notification.title && notification.body) {
+      const toastType = notification.data?.broadcastType === 'promo' ? 'promo' 
+        : notification.data?.broadcastType === 'warning' ? 'warning'
+        : notification.data?.broadcastType === 'success' ? 'success'
+        : 'info';
+      
+      showToast({
+        title: notification.title,
+        message: notification.body,
+        type: toastType,
+      });
+    }
+  }, [queryClient, showToast]);
+
+  useNotificationSocket(handleNotification);
   
   return (
     <Stack.Navigator
@@ -209,6 +253,21 @@ export function BuyerNavigator() {
       <Stack.Screen
         name="OrderTracking"
         component={OrderTrackingScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="OrderDispute"
+        component={OrderDisputeScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="MyDisputes"
+        component={MyDisputesScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="WriteReview"
+        component={WriteReviewScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen
@@ -412,6 +471,11 @@ export function BuyerNavigator() {
         options={{ headerShown: false }}
       />
       <Stack.Screen
+        name="MyReports"
+        component={MyReportsScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
         name="PayBill"
         component={PayBillScreen}
         options={{ headerShown: false }}
@@ -462,6 +526,11 @@ export function BuyerNavigator() {
         options={{ headerShown: false }}
       />
       <Stack.Screen
+        name="NearbyFarmersMap"
+        component={NearbyFarmersMapScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
         name="Categories"
         component={CategoriesScreen}
         options={{ headerShown: false }}
@@ -480,6 +549,15 @@ export function BuyerNavigator() {
         name="Appearance"
         component={AppearanceScreen}
         options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="VideoCall"
+        component={VideoCallScreen}
+        options={{ 
+          headerShown: false,
+          presentation: 'fullScreenModal',
+          animation: 'fade',
+        }}
       />
     </Stack.Navigator>
   );

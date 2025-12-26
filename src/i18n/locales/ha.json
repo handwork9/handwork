@@ -105,12 +105,17 @@
   "cart": {
     "title": "Kwali",
     "empty": "Kwalin ku babu komai",
+    "emptyDescription": "Ƙara wasu kayan lambu don farawa!",
+    "browseProducts": "Duba Kayayyaki",
     "subtotal": "Jimlar ƙasa",
     "deliveryFee": "Kuɗin Isarwa",
     "total": "Jimla",
-    "checkout": "Biya",
+    "checkout": "Ci gaba zuwa Biya",
     "removeItem": "Cire Abu",
     "clearCart": "Share Kwali",
+    "clearCartConfirm": "Cire duk abubuwa daga kwali?",
+    "orderSummary": "TAƘAITACCEN ODA",
+    "calculatedAtCheckout": "Za a ƙidaya lokacin biya",
     "itemAdded": "An ƙara abu zuwa kwali",
     "itemRemoved": "An cire abu daga kwali"
   },
@@ -183,10 +188,16 @@
   },
   "wallet": {
     "title": "Jakar Kuɗi",
+    "myWallet": "Jakar Kuɗina",
+    "manageBalance": "Kula da ragowar kuɗi da ma'amaloli",
     "balance": "Ragowar",
+    "availableBalance": "Ragowar da ake da shi",
     "topUp": "Ƙara Kuɗi",
     "withdraw": "Fitar Kuɗi",
     "transactions": "Ma'amaloli",
+    "recentTransactions": "MA'AMALOLI NA KWANAN NAN",
+    "noTransactions": "Babu ma'amaloli tukuna",
+    "transactionHistoryAppear": "Tarihin ma'amalolin ku zai bayyana a nan",
     "transfer": "Tura Kuɗi",
     "history": "Tarihi",
     "paymentMethods": "Hanyoyin Biyan Kuɗi"
@@ -223,12 +234,20 @@
   },
   "farmer": {
     "title": "Manomi",
+    "dashboard": "Allon Gonar Ku",
     "myProducts": "Kayayyakina",
     "addProduct": "Ƙara Kaya",
     "editProduct": "Gyara Kaya",
-    "sales": "Siyayya",
+    "sales": "Tallace-tallace",
     "earnings": "Riba",
-    "analytics": "Nazari"
+    "analytics": "Nazari",
+    "pendingOrders": "Oda masu jira",
+    "processingOrders": "Ana aiki",
+    "totalProducts": "Jimlar Kaya",
+    "lowStock": "Ƙarancin Kaya",
+    "recentOrders": "Odoci na baya-bayan nan",
+    "topSellers": "Mafi kyau",
+    "viewAll": "Duba duka"
   },
   "rider": {
     "title": "Direban Isarwa",

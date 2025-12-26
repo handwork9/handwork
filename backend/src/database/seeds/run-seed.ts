@@ -11,14 +11,14 @@ const seedData = async () => {
   const queryRunner = dataSource.createQueryRunner();
 
   try {
-    // Create admin user
+    // Create superadmin user
     const adminPasswordHash = await bcrypt.hash('admin123', 10);
     await queryRunner.query(`
       INSERT INTO users (email, phone, password, name, role, "isPhoneVerified", "isActive")
-      VALUES ('admin@handwork.ng', '+2348000000000', $1, 'Admin User', 'admin', true, true)
-      ON CONFLICT (email) DO NOTHING;
+      VALUES ('admin@handwork.ng', '+2348000000000', $1, 'Super Admin', 'superadmin', true, true)
+      ON CONFLICT (email) DO UPDATE SET role = 'superadmin', name = 'Super Admin';
     `, [adminPasswordHash]);
-    console.log('✓ Admin user created');
+    console.log('✓ Super Admin user created');
 
     // Create sample farmer
     const farmerPasswordHash = await bcrypt.hash('farmer123', 10);
@@ -43,12 +43,39 @@ const seedData = async () => {
 
     if (riderUserId) {
       await queryRunner.query(`
-        INSERT INTO riders ("userId", "vehicleType", "vehiclePlate", status, "isVerified", state)
-        VALUES ($1, 'motorcycle', 'LAG-123-ABC', 'available', true, 'Lagos')
-        ON CONFLICT ("userId") DO NOTHING;
+        INSERT INTO riders ("userId", "vehicleType", "vehiclePlate", status, "isVerified", state, "applicationStatus", "isOnline", "currentState")
+        VALUES ($1, 'motorcycle', 'LAG-123-ABC', 'available', true, 'Lagos', 'approved', true, 'Lagos')
+        ON CONFLICT ("userId") DO UPDATE SET "applicationStatus" = 'approved', "isVerified" = true, "isOnline" = true, "currentState" = 'Lagos';
       `, [riderUserId]);
     }
-    console.log('✓ Sample rider created');
+    console.log('✓ Sample Lagos rider created');
+
+    // Create FCT rider
+    const fctRiderPasswordHash = await bcrypt.hash('rider123', 10);
+    const fctRiderUserResult = await queryRunner.query(`
+      INSERT INTO users (email, phone, password, name, role, "isPhoneVerified", "isActive")
+      VALUES ('rider.fct@handwork.ng', '+2348000000010', $1, 'Emeka Rider', 'rider', true, true)
+      ON CONFLICT (email) DO UPDATE SET name = 'Emeka Rider'
+      RETURNING id;
+    `, [fctRiderPasswordHash]);
+    const fctRiderUserId = fctRiderUserResult[0]?.id;
+
+    if (fctRiderUserId) {
+      await queryRunner.query(`
+        INSERT INTO riders ("userId", "vehicleType", "vehiclePlate", status, "isVerified", state, "applicationStatus", "isOnline", "currentState")
+        VALUES ($1, 'motorcycle', 'ABJ-456-XYZ', 'available', true, 'FCT', 'approved', true, 'FCT')
+        ON CONFLICT ("userId") DO UPDATE SET "applicationStatus" = 'approved', "isVerified" = true, "isOnline" = true, "currentState" = 'FCT', state = 'FCT';
+      `, [fctRiderUserId]);
+    }
+    console.log('✓ Sample FCT rider created');
+
+    // Also update existing rider a34ed514-9622-4955-b8d6-5a55d349062a to FCT if it exists
+    await queryRunner.query(`
+      UPDATE riders 
+      SET "applicationStatus" = 'approved', "isVerified" = true, "isOnline" = true, "currentState" = 'FCT', state = 'FCT'
+      WHERE id = 'a34ed514-9622-4955-b8d6-5a55d349062a';
+    `);
+    console.log('✓ Updated existing rider to FCT');
 
     // Create sample buyer
     const buyerPasswordHash = await bcrypt.hash('buyer123', 10);

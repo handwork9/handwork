@@ -1,0 +1,40 @@
+# Backend .gitignore
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment files - NEVER commit these!
+.env
+.env.local
+.env.production
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Test coverage
+coverage/
+
+# Uploads (use S3 in production)
+uploads/
+
+# Docker
+.docker/
+
+# TypeORM
+migrations/*.js

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,23 +11,27 @@ import {
   ActivityIndicator,
   Animated,
   Alert,
+  Dimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Swipeable } from 'react-native-gesture-handler';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
 import { FONTS } from '../../constants/theme';
-import { chatService, Conversation as ApiConversation } from '../../services/chatService';
+import { chatService, Conversation as ApiConversation, ChatMessage } from '../../services/chatService';
 import { useAppSelector, useAppDispatch } from '../../store';
 import { useBuyerSocket, useMessageNotifications } from '../../hooks/useBuyerSocket';
-import { markConversationRead } from '../../store/slices/buyerSlice';
+import { markConversationRead, clearMessageNotifications } from '../../store/slices/buyerSlice';
 import { 
   EmptyMessagesIllustration, 
   NoSearchResultsIllustration,
   OfflineIllustration 
 } from '../../assets/illustrations/messages';
+
+const { width } = Dimensions.get('window');
 
 interface Conversation {
   id: string;
@@ -73,6 +77,8 @@ export default function MessagesScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [typingUsers, setTypingUsers] = useState<Record<string, boolean>>({});
   const [pinnedConversations, setPinnedConversations] = useState<Set<string>>(new Set());
+  const [activeFilter, setActiveFilter] = useState<'all' | 'unread' | 'pinned'>('all');
+  const scrollY = useRef(new Animated.Value(0)).current;
 
   // Storage keys
   const ARCHIVED_IDS_KEY = '@buyer_archived_conversation_ids';
@@ -155,10 +161,69 @@ export default function MessagesScreen() {
     }
   }, [messageNotifications.length]);
 
+  // Subscribe to real-time conversation updates (new messages)
+  useEffect(() => {
+    const handleConversationUpdate = (data: { conversationId: string; lastMessage: ChatMessage }) => {
+      console.log('[MessagesScreen] Conversation update received:', data);
+      
+      // Update the conversation in the list with the new last message
+      setConversations(prev => {
+        const existingIndex = prev.findIndex(c => c.id === data.conversationId);
+        if (existingIndex !== -1) {
+          const updated = [...prev];
+          const isFromCurrentUser = data.lastMessage.senderId === currentUser?.id;
+          updated[existingIndex] = {
+            ...updated[existingIndex],
+            lastMessage: data.lastMessage.text,
+            lastMessageTime: new Date(data.lastMessage.createdAt),
+            // Only increment unread if message is from someone else
+            unreadCount: isFromCurrentUser 
+              ? updated[existingIndex].unreadCount 
+              : updated[existingIndex].unreadCount + 1,
+          };
+          return updated;
+        }
+        // If conversation not found, refetch all conversations
+        fetchConversations();
+        return prev;
+      });
+      
+      // Also update archived conversations if needed
+      setArchivedConversations(prev => {
+        const existingIndex = prev.findIndex(c => c.id === data.conversationId);
+        if (existingIndex !== -1) {
+          const updated = [...prev];
+          const isFromCurrentUser = data.lastMessage.senderId === currentUser?.id;
+          updated[existingIndex] = {
+            ...updated[existingIndex],
+            lastMessage: data.lastMessage.text,
+            lastMessageTime: new Date(data.lastMessage.createdAt),
+            unreadCount: isFromCurrentUser 
+              ? updated[existingIndex].unreadCount 
+              : updated[existingIndex].unreadCount + 1,
+          };
+          return updated;
+        }
+        return prev;
+      });
+    };
+
+    chatService.subscribeToConversationUpdates(handleConversationUpdate);
+    
+    return () => {
+      chatService.unsubscribeFromConversationUpdates(handleConversationUpdate);
+    };
+  }, [currentUser?.id, fetchConversations]);
+
   // Fetch conversations from API
   const fetchConversations = useCallback(async () => {
     try {
       const apiConversations = await chatService.getConversations();
+      
+      // If no conversations exist, clear any stale message notifications
+      if (apiConversations.length === 0) {
+        dispatch(clearMessageNotifications());
+      }
       
       // Transform API conversations to local format
       const transformedConversations: Conversation[] = apiConversations.map((conv: ApiConversation) => {
@@ -174,24 +239,48 @@ export default function MessagesScreen() {
           lastMessage: conv.lastMessage?.text || 'No messages yet',
           lastMessageTime: new Date(conv.lastMessage?.createdAt || conv.createdAt),
           unreadCount: conv.unreadCount,
-          isOnline: false, // TODO: implement online status
+          isOnline: false, // Will be updated by fetchOnlineStatus
           productId: conv.productId,
+          isMuted: (conv as any).isMuted || false,
         };
       });
       
+      // Deduplicate conversations by id
+      const uniqueConversations = transformedConversations.reduce((acc: Conversation[], conv) => {
+        if (!acc.find(existing => existing.id === conv.id)) {
+          acc.push(conv);
+        }
+        return acc;
+      }, []);
+      
       // Filter out archived conversations and set them separately
-      const activeConversations = transformedConversations.filter(c => !archivedIds.has(c.id));
-      const archived = transformedConversations.filter(c => archivedIds.has(c.id));
+      const activeConversations = uniqueConversations.filter(c => !archivedIds.has(c.id));
+      const archived = uniqueConversations.filter(c => archivedIds.has(c.id));
       
       setConversations(activeConversations);
       setArchivedConversations(archived);
+      
+      // Fetch online status for all participants
+      const allParticipantIds = uniqueConversations.map(c => c.farmerId).filter(Boolean);
+      if (allParticipantIds.length > 0) {
+        chatService.getOnlineStatus(allParticipantIds).then(onlineStatus => {
+          setConversations(prev => prev.map(conv => ({
+            ...conv,
+            isOnline: onlineStatus[conv.farmerId] || false,
+          })));
+          setArchivedConversations(prev => prev.map(conv => ({
+            ...conv,
+            isOnline: onlineStatus[conv.farmerId] || false,
+          })));
+        });
+      }
     } catch (error) {
       console.error('Failed to fetch conversations:', error);
     } finally {
       setIsLoading(false);
       setRefreshing(false);
     }
-  }, [currentUser?.id, archivedIds]);
+  }, [currentUser?.id, archivedIds, dispatch]);
 
   // Load conversations on mount and when screen focuses
   useEffect(() => {
@@ -225,7 +314,28 @@ export default function MessagesScreen() {
     }, [fetchConversations])
   );
 
-  // Sort conversations: pinned first, then by time
+  // Dynamic styles based on theme
+  const dynamicStyles = useMemo(() => ({
+    container: { backgroundColor: isDark ? colors.background : '#F9FAFB' },
+    header: { backgroundColor: isDark ? colors.background : '#F9FAFB' },
+    searchBg: { backgroundColor: isDark ? colors.card : '#FFFFFF' },
+    cardBg: { backgroundColor: isDark ? colors.card : '#FFFFFF' },
+    filterPill: { backgroundColor: isDark ? colors.card : '#FFFFFF' },
+    filterPillActive: { backgroundColor: '#22C55E' },
+    filterText: { color: colors.textSecondary },
+    filterTextActive: { color: '#FFFFFF' },
+    statCardBorder: { borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' },
+    skeletonBg: { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB' },
+  }), [isDark, colors]);
+
+  // Stats calculation
+  const stats = useMemo(() => {
+    const total = conversations.length;
+    const unread = conversations.filter(c => c.unreadCount > 0).length;
+    const pinned = conversations.filter(c => pinnedConversations.has(c.id)).length;
+    return { total, unread, pinned };
+  }, [conversations, pinnedConversations]);
+
   // Sort conversations: pinned first, then by time
   const sortedConversations = [...(showArchived ? archivedConversations : conversations)].sort((a, b) => {
     if (!showArchived) {
@@ -237,10 +347,29 @@ export default function MessagesScreen() {
     return b.lastMessageTime.getTime() - a.lastMessageTime.getTime();
   });
 
-  const filteredConversations = sortedConversations.filter(conv =>
-    conv.farmerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    conv.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Apply filters
+  const filteredConversations = useMemo(() => {
+    let result = sortedConversations;
+    
+    // Apply active filter
+    if (activeFilter === 'unread') {
+      result = result.filter(c => c.unreadCount > 0);
+    } else if (activeFilter === 'pinned') {
+      result = result.filter(c => pinnedConversations.has(c.id));
+    }
+    
+    // Apply search
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(conv => {
+        const farmerName = (conv.farmerName || '').toLowerCase();
+        const lastMessage = (conv.lastMessage || '').toLowerCase();
+        return farmerName.includes(query) || lastMessage.includes(query);
+      });
+    }
+    
+    return result;
+  }, [sortedConversations, activeFilter, searchQuery, pinnedConversations]);
 
   const formatTime = (date: Date) => {
     const now = new Date();
@@ -263,6 +392,7 @@ export default function MessagesScreen() {
 
   const handleConversationPress = (conversation: Conversation) => {
     (navigation as any).navigate('FarmerChat', {
+      conversationId: conversation.id,
       farmerId: conversation.farmerId,
       farmerName: conversation.farmerName,
       farmerPhone: conversation.farmerPhone,
@@ -283,9 +413,13 @@ export default function MessagesScreen() {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: () => {
-            setConversations(prev => prev.filter(c => c.id !== conversationId));
-            // TODO: Call API to delete conversation
+          onPress: async () => {
+            const success = await chatService.deleteConversation(conversationId);
+            if (success) {
+              setConversations(prev => prev.filter(c => c.id !== conversationId));
+            } else {
+              Alert.alert('Error', 'Failed to delete conversation');
+            }
           },
         },
       ]
@@ -329,11 +463,27 @@ export default function MessagesScreen() {
     closeSwipeable(conversationId);
   }, []);
 
-  const handleMute = useCallback((conversationId: string) => {
-    // TODO: Implement mute functionality
+  const handleMute = useCallback(async (conversationId: string) => {
+    const conversation = conversations.find(c => c.id === conversationId);
+    const isMuted = (conversation as any)?.isMuted || false;
+    const newMutedState = !isMuted;
+    
+    const success = await chatService.muteConversation(conversationId, newMutedState);
+    if (success) {
+      setConversations(prev => prev.map(c => 
+        c.id === conversationId ? { ...c, isMuted: newMutedState } as any : c
+      ));
+      Alert.alert(
+        newMutedState ? 'Muted' : 'Unmuted', 
+        newMutedState 
+          ? 'You will no longer receive notifications from this conversation.'
+          : 'Notifications enabled for this conversation.'
+      );
+    } else {
+      Alert.alert('Error', 'Failed to update notification settings');
+    }
     closeSwipeable(conversationId);
-    Alert.alert('Muted', 'You will no longer receive notifications from this conversation.');
-  }, []);
+  }, [conversations]);
 
   const closeSwipeable = (conversationId: string) => {
     swipeableRefs.current.get(conversationId)?.close();
@@ -426,8 +576,9 @@ export default function MessagesScreen() {
   };
 
   // Combine local unread count with WebSocket notifications
+  // Only show unread count if there are actual conversations
   const localUnread = conversations.reduce((sum, conv) => sum + conv.unreadCount, 0);
-  const combinedUnreadCount = Math.max(localUnread, totalUnread);
+  const combinedUnreadCount = conversations.length > 0 ? Math.max(localUnread, totalUnread) : 0;
 
   const renderConversation = ({ item }: { item: Conversation }) => {
     const isPinned = pinnedConversations.has(item.id);
@@ -618,18 +769,140 @@ export default function MessagesScreen() {
     );
   };
 
+  // Filter options
+  const FILTER_OPTIONS = [
+    { id: 'all', label: 'All', icon: 'chatbubbles-outline' },
+    { id: 'unread', label: 'Unread', icon: 'mail-unread-outline', count: stats.unread },
+    { id: 'pinned', label: 'Pinned', icon: 'pin-outline', count: stats.pinned },
+  ];
+
+  // Stats Header Component
+  const renderStatsHeader = () => (
+    <View style={styles.statsHeader}>
+      {/* Main Stats Card */}
+      <LinearGradient
+        colors={['#22C55E', '#16A34A']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.mainStatCard}
+      >
+        <View style={styles.statIconBg}>
+          <Ionicons name="chatbubbles" size={24} color="#fff" />
+        </View>
+        <Text style={styles.mainStatNumber}>{stats.total}</Text>
+        <Text style={styles.mainStatLabel}>Total Chats</Text>
+        {isConnected && (
+          <View style={styles.liveIndicator}>
+            <View style={styles.liveDot} />
+            <Text style={styles.liveText}>Live</Text>
+          </View>
+        )}
+      </LinearGradient>
+
+      {/* Secondary Stats */}
+      <View style={styles.secondaryStats}>
+        <View style={[styles.secondaryStatCard, dynamicStyles.cardBg, dynamicStyles.statCardBorder]}>
+          <View style={[styles.secondaryIconBg, { backgroundColor: '#FEE2E2' }]}>
+            <Ionicons name="mail-unread" size={18} color="#EF4444" />
+          </View>
+          <Text style={[styles.secondaryStatNumber, { color: colors.text }]}>{stats.unread}</Text>
+          <Text style={[styles.secondaryStatLabel, { color: colors.textSecondary }]}>Unread</Text>
+        </View>
+        <View style={[styles.secondaryStatCard, dynamicStyles.cardBg, dynamicStyles.statCardBorder]}>
+          <View style={[styles.secondaryIconBg, { backgroundColor: '#DBEAFE' }]}>
+            <Ionicons name="pin" size={18} color="#3B82F6" />
+          </View>
+          <Text style={[styles.secondaryStatNumber, { color: colors.text }]}>{stats.pinned}</Text>
+          <Text style={[styles.secondaryStatLabel, { color: colors.textSecondary }]}>Pinned</Text>
+        </View>
+      </View>
+    </View>
+  );
+
+  // Filter Pills Component
+  const renderFilterPills = () => (
+    <View style={styles.filterContainer}>
+      {FILTER_OPTIONS.map((filter) => (
+        <TouchableOpacity
+          key={filter.id}
+          style={[
+            styles.filterPill,
+            dynamicStyles.filterPill,
+            activeFilter === filter.id && dynamicStyles.filterPillActive,
+          ]}
+          onPress={() => setActiveFilter(filter.id as 'all' | 'unread' | 'pinned')}
+        >
+          <Ionicons 
+            name={filter.icon as any} 
+            size={16} 
+            color={activeFilter === filter.id ? '#fff' : colors.textSecondary} 
+          />
+          <Text style={[
+            styles.filterText,
+            activeFilter === filter.id ? dynamicStyles.filterTextActive : dynamicStyles.filterText,
+          ]}>
+            {filter.label}
+          </Text>
+          {filter.count !== undefined && filter.count > 0 && (
+            <View style={[
+              styles.filterBadge,
+              { backgroundColor: activeFilter === filter.id ? 'rgba(255,255,255,0.3)' : '#EF4444' }
+            ]}>
+              <Text style={styles.filterBadgeText}>{filter.count}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+
+  // Loading Skeleton
+  const renderSkeleton = () => (
+    <View style={styles.skeletonContainer}>
+      {/* Stats skeleton */}
+      <View style={styles.statsHeader}>
+        <View style={[styles.mainStatCard, dynamicStyles.skeletonBg, { opacity: 0.5 }]} />
+        <View style={styles.secondaryStats}>
+          <View style={[styles.secondaryStatCard, dynamicStyles.skeletonBg]} />
+          <View style={[styles.secondaryStatCard, dynamicStyles.skeletonBg]} />
+        </View>
+      </View>
+      {/* Conversation skeletons */}
+      {[1, 2, 3, 4].map((i) => (
+        <View key={i} style={[styles.skeletonCard, dynamicStyles.cardBg]}>
+          <View style={[styles.skeletonAvatar, dynamicStyles.skeletonBg]} />
+          <View style={styles.skeletonContent}>
+            <View style={[styles.skeletonName, dynamicStyles.skeletonBg]} />
+            <View style={[styles.skeletonMessage, dynamicStyles.skeletonBg]} />
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+
+  // List Header
+  const renderListHeader = () => (
+    <View style={styles.listHeader}>
+      {renderStatsHeader()}
+      {!showArchived && renderFilterPills()}
+    </View>
+  );
+
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
+    <View style={[styles.container, dynamicStyles.container]}>
       {/* Connection Status Banner */}
       {!isConnected && conversations.length > 0 && (
-        <View style={styles.connectionBanner}>
-          <Ionicons name="cloud-offline-outline" size={16} color="#FFFFFF" />
-          <Text style={styles.connectionBannerText}>Reconnecting...</Text>
+        <View style={[styles.connectionBanner, { paddingTop: insets.top }]}>
+          <View style={styles.connectionBannerContent}>
+            <View style={styles.connectionBannerDot} />
+            <Ionicons name="cloud-offline-outline" size={16} color="#FFFFFF" />
+            <Text style={styles.connectionBannerText}>Reconnecting...</Text>
+          </View>
         </View>
       )}
       
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
+      <View style={[styles.header, { paddingTop: !isConnected && conversations.length > 0 ? 8 : insets.top + 8 }, dynamicStyles.header]}>
         <View style={styles.headerTop}>
           {showArchived ? (
             <TouchableOpacity style={styles.backToMessages} onPress={() => setShowArchived(false)}>
@@ -639,30 +912,27 @@ export default function MessagesScreen() {
           ) : (
             <>
               <Text style={[styles.headerTitle, { color: colors.text }]}>Messages</Text>
-              {combinedUnreadCount > 0 && (
-                <View style={[styles.totalUnreadBadge, { backgroundColor: colors.primary }]}>
-                  <Text style={styles.totalUnreadText}>{combinedUnreadCount}</Text>
-                </View>
-              )}
             </>
           )}
-          {!showArchived && archivedConversations.length > 0 && (
-            <TouchableOpacity 
-              style={styles.archiveButton}
-              onPress={() => setShowArchived(true)}
-            >
-              <Ionicons name="archive-outline" size={22} color={colors.primary} />
-              {archivedConversations.length > 0 && (
-                <View style={styles.archiveBadge}>
-                  <Text style={styles.archiveBadgeText}>{archivedConversations.length}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          )}
+          <View style={styles.headerActions}>
+            {!showArchived && archivedConversations.length > 0 && (
+              <TouchableOpacity 
+                style={styles.archiveButton}
+                onPress={() => setShowArchived(true)}
+              >
+                <Ionicons name="archive-outline" size={22} color={colors.textSecondary} />
+                {archivedConversations.length > 0 && (
+                  <View style={styles.archiveBadge}>
+                    <Text style={styles.archiveBadgeText}>{archivedConversations.length}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
         
         {/* Search Bar */}
-        <View style={[styles.searchContainer, { backgroundColor: isDark ? colors.card : '#DEDEE0' }]}>
+        <View style={[styles.searchContainer, dynamicStyles.searchBg]}>
           <Ionicons name="search" size={18} color={colors.textSecondary} />
           <TextInput
             style={[styles.searchInput, { color: colors.text }]}
@@ -681,16 +951,14 @@ export default function MessagesScreen() {
 
       {/* Loading State */}
       {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading conversations...</Text>
-        </View>
+        renderSkeleton()
       ) : (
         /* Conversations List */
-        <FlatList
+        <Animated.FlatList
           data={filteredConversations}
           keyExtractor={(item) => item.id}
           renderItem={renderConversation}
+          ListHeaderComponent={renderListHeader}
           contentContainerStyle={[
             styles.listContent,
             filteredConversations.length === 0 && styles.emptyListContent
@@ -703,6 +971,11 @@ export default function MessagesScreen() {
           ItemSeparatorComponent={() => (
             <View style={[styles.separator, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60, 60, 67, 0.12)' }]} />
           )}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: false }
+          )}
+          scrollEventThrottle={16}
         />
       )}
     </View>
@@ -720,12 +993,18 @@ const styles = StyleSheet.create({
   headerTop: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 12,
   },
   headerTitle: {
     fontSize: 34,
     fontWeight: '700',
     fontFamily: FONTS.bold,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   totalUnreadBadge: {
     marginLeft: 8,
@@ -743,8 +1022,163 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 10,
-    borderRadius: 10,
+    borderRadius: 12,
     gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  // Stats Header Styles
+  listHeader: {
+    paddingBottom: 8,
+  },
+  statsHeader: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  mainStatCard: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 16,
+    minHeight: 120,
+  },
+  statIconBg: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  mainStatNumber: {
+    fontSize: 32,
+    fontWeight: '800',
+    fontFamily: FONTS.bold,
+    color: '#fff',
+  },
+  mainStatLabel: {
+    fontSize: 14,
+    fontFamily: FONTS.medium,
+    color: 'rgba(255,255,255,0.9)',
+    marginTop: 2,
+  },
+  liveIndicator: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#fff',
+  },
+  liveText: {
+    fontSize: 10,
+    fontFamily: FONTS.semiBold,
+    color: '#fff',
+  },
+  secondaryStats: {
+    flex: 1,
+    gap: 8,
+  },
+  secondaryStatCard: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 10,
+  },
+  secondaryIconBg: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryStatNumber: {
+    fontSize: 20,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
+  },
+  secondaryStatLabel: {
+    fontSize: 12,
+    fontFamily: FONTS.regular,
+  },
+  // Filter Styles
+  filterContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+  },
+  filterPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+  },
+  filterText: {
+    fontSize: 13,
+    fontFamily: FONTS.medium,
+  },
+  filterBadge: {
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  filterBadgeText: {
+    fontSize: 10,
+    fontFamily: FONTS.semiBold,
+    color: '#fff',
+  },
+  // Skeleton Styles
+  skeletonContainer: {
+    padding: 16,
+  },
+  skeletonCard: {
+    flexDirection: 'row',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  skeletonAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    marginRight: 12,
+  },
+  skeletonContent: {
+    flex: 1,
+    justifyContent: 'center',
+    gap: 8,
+  },
+  skeletonName: {
+    width: '50%',
+    height: 16,
+    borderRadius: 4,
+  },
+  skeletonMessage: {
+    width: '80%',
+    height: 14,
+    borderRadius: 4,
   },
   searchInput: {
     flex: 1,
@@ -902,17 +1336,28 @@ const styles = StyleSheet.create({
   },
   // Connection banner styles
   connectionBanner: {
+    backgroundColor: '#FF9500',
+    paddingBottom: 10,
+  },
+  connectionBannerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FF9500',
     paddingVertical: 8,
-    gap: 6,
+    gap: 8,
+  },
+  connectionBannerDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FFFFFF',
+    opacity: 0.8,
   },
   connectionBannerText: {
     color: '#FFFFFF',
     fontSize: 13,
     fontFamily: FONTS.medium,
+    fontWeight: '600',
   },
   // Swipe action styles
   swipeActionsLeft: {

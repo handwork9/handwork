@@ -355,55 +355,26 @@ export const walletService = {
    * Pay with wallet
    */
   async payWithWallet(data: WalletPaymentRequest): Promise<WalletTransaction> {
-    try {
-      const response = await apiClient.post<WalletTransaction>('/wallet/pay', data);
-      return response;
-    } catch (error) {
-      // Mock response for development
-      return {
-        id: `txn_${Date.now()}`,
-        userId: 'user_1',
-        type: 'payment',
-        amount: data.amount,
-        fee: 0,
-        netAmount: data.amount,
-        status: 'completed',
-        reference: `PAY_${Date.now().toString(36).toUpperCase()}`,
-        description: data.description,
-        metadata: data.orderId ? { orderId: data.orderId } : undefined,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-    }
+    const response = await apiClient.post<{ success: boolean; data: WalletTransaction } | WalletTransaction>('/wallet/pay', data);
+    // Handle wrapped response { success: true, data: {...} }
+    const result = (response as any)?.data || response;
+    console.log('[walletService] payWithWallet result:', JSON.stringify(result));
+    return result;
   },
 
   /**
    * Pay for premium subscription
    */
-  async payForPremium(tier: string, amount: number): Promise<WalletTransaction> {
-    try {
-      const response = await apiClient.post<WalletTransaction>('/wallet/pay-premium', {
-        tier,
-        amount,
-      });
-      return response;
-    } catch (error) {
-      // Mock response for development
-      return {
-        id: `txn_${Date.now()}`,
-        userId: 'user_1',
-        type: 'premium',
-        amount: amount,
-        fee: 0,
-        netAmount: amount,
-        status: 'completed',
-        reference: `PREM_${Date.now().toString(36).toUpperCase()}`,
-        description: `${tier.charAt(0).toUpperCase() + tier.slice(1)} Premium Subscription`,
-        metadata: { premiumTier: tier },
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-    }
+  async payForPremium(tier: string, amount: number): Promise<{ success: boolean; message?: string; user?: any }> {
+    console.log('[walletService] payForPremium called with tier:', tier, 'amount:', amount);
+    const response = await apiClient.post<any>('/wallet/pay-premium', {
+      tier,
+      amount,
+    });
+    console.log('[walletService] payForPremium response:', JSON.stringify(response));
+    // Handle wrapped response { success: true, data: {...} }
+    const result = (response as any)?.data || response;
+    return result;
   },
 
   /**
@@ -440,25 +411,8 @@ export const walletService = {
    * Transfer to another user
    */
   async transfer(data: TransferRequest): Promise<WalletTransaction> {
-    try {
-      const response = await apiClient.post<WalletTransaction>('/wallet/transfer', data);
-      return response;
-    } catch (error) {
-      // Mock response for development
-      return {
-        id: `txn_${Date.now()}`,
-        userId: 'user_1',
-        type: 'transfer_out',
-        amount: data.amount,
-        fee: 0,
-        netAmount: data.amount,
-        status: 'completed',
-        reference: `TRF_${Date.now().toString(36).toUpperCase()}`,
-        description: `Transfer to ${data.recipientPhone}`,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-    }
+    const response = await apiClient.post<WalletTransaction>('/wallet/transfer', data);
+    return response;
   },
 
   /**

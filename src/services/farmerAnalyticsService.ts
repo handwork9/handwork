@@ -58,6 +58,7 @@ class FarmerAnalyticsService {
    */
   async getDashboard(): Promise<DashboardStats> {
     const response = await apiClient.get<ApiResponse<DashboardStats>>('/farmers/analytics/dashboard');
+    console.log('[farmerAnalyticsService] Dashboard raw response:', JSON.stringify(response));
     const result = response as any;
     return result?.data?.data || result?.data || result;
   }
@@ -77,7 +78,9 @@ class FarmerAnalyticsService {
   async getTopProducts(limit: number = 10): Promise<ProductPerformance[]> {
     const response = await apiClient.get<ApiResponse<ProductPerformance[]>>(`/farmers/analytics/products?limit=${limit}`);
     const result = response as any;
-    return result?.data?.data || result?.data || result || [];
+    const data = result?.data?.data || result?.data || result || [];
+    // Filter out any null/undefined items or items without id
+    return Array.isArray(data) ? data.filter((p: any) => p != null && p.id != null) : [];
   }
 
   /**

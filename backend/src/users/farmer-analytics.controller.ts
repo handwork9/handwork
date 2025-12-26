@@ -30,11 +30,16 @@ export class FarmerAnalyticsController {
   @Get('dashboard')
   @ApiOperation({ summary: 'Get farmer dashboard analytics' })
   async getDashboard(@Request() req: AuthenticatedRequest) {
-    const data = await this.analyticsService.getDashboardStats(req.user.id);
-    return {
-      success: true,
-      data,
-    };
+    console.log('[FarmerAnalytics] Dashboard request from user:', req.user.id, 'role:', req.user.role);
+    try {
+      const data = await this.analyticsService.getDashboardStats(req.user.id);
+      console.log('[FarmerAnalytics] Dashboard data:', JSON.stringify(data));
+      // Return data directly - ResponseInterceptor will wrap it in { success: true, data }
+      return data;
+    } catch (error) {
+      console.error('[FarmerAnalytics] Dashboard error:', error);
+      throw error;
+    }
   }
 
   @Get('sales')
@@ -44,11 +49,7 @@ export class FarmerAnalyticsController {
     @Request() req: AuthenticatedRequest,
     @Query('period') period: 'week' | 'month' | 'year' = 'week',
   ) {
-    const data = await this.analyticsService.getSalesData(req.user.id, period);
-    return {
-      success: true,
-      data,
-    };
+    return this.analyticsService.getSalesData(req.user.id, period);
   }
 
   @Get('products')
@@ -58,11 +59,7 @@ export class FarmerAnalyticsController {
     @Request() req: AuthenticatedRequest,
     @Query('limit') limit: number = 10,
   ) {
-    const data = await this.analyticsService.getTopProducts(req.user.id, limit);
-    return {
-      success: true,
-      data,
-    };
+    return this.analyticsService.getTopProducts(req.user.id, limit);
   }
 
   @Get('products/:productId/sales')
@@ -74,61 +71,37 @@ export class FarmerAnalyticsController {
     @Param('productId') productId: string,
     @Query('period') period: 'week' | 'month' | 'year' = 'week',
   ) {
-    const data = await this.analyticsService.getProductSalesHistory(req.user.id, productId, period);
-    return {
-      success: true,
-      data,
-    };
+    return this.analyticsService.getProductSalesHistory(req.user.id, productId, period);
   }
 
   @Get('customers')
   @ApiOperation({ summary: 'Get customer insights' })
   async getCustomerInsights(@Request() req: AuthenticatedRequest) {
-    const data = await this.analyticsService.getCustomerInsights(req.user.id);
-    return {
-      success: true,
-      data,
-    };
+    return this.analyticsService.getCustomerInsights(req.user.id);
   }
 
   @Get('revenue-breakdown')
   @ApiOperation({ summary: 'Get revenue breakdown by category' })
   async getRevenueBreakdown(@Request() req: AuthenticatedRequest) {
-    const data = await this.analyticsService.getRevenueBreakdown(req.user.id);
-    return {
-      success: true,
-      data,
-    };
+    return this.analyticsService.getRevenueBreakdown(req.user.id);
   }
 
   @Get('today-hourly')
   @ApiOperation({ summary: 'Get today\'s hourly sales for sparkline chart' })
   async getTodayHourlySales(@Request() req: AuthenticatedRequest) {
-    const data = await this.analyticsService.getTodayHourlySales(req.user.id);
-    return {
-      success: true,
-      data,
-    };
+    return this.analyticsService.getTodayHourlySales(req.user.id);
   }
 
   @Get('peak-hours')
   @ApiOperation({ summary: 'Get peak selling hours' })
   async getPeakHours(@Request() req: AuthenticatedRequest) {
-    const data = await this.analyticsService.getPeakHours(req.user.id);
-    return {
-      success: true,
-      data,
-    };
+    return this.analyticsService.getPeakHours(req.user.id);
   }
 
   @Get('goal')
   @ApiOperation({ summary: 'Get farmer revenue goal' })
   async getRevenueGoal(@Request() req: AuthenticatedRequest) {
-    const data = await this.analyticsService.getRevenueGoal(req.user.id);
-    return {
-      success: true,
-      data,
-    };
+    return this.analyticsService.getRevenueGoal(req.user.id);
   }
 
   @Post('goal')
@@ -138,9 +111,6 @@ export class FarmerAnalyticsController {
     @Body() body: { goal: number },
   ) {
     await this.analyticsService.setRevenueGoal(req.user.id, body.goal);
-    return {
-      success: true,
-      message: 'Revenue goal updated successfully',
-    };
+    return { message: 'Revenue goal updated successfully' };
   }
 }

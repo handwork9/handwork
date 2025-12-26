@@ -24,13 +24,23 @@ class BuyerSocketService {
     }
 
     // Connect to the dispatch namespace on port 3002 for order tracking
-    // API_CONFIG.BASE_URL is like "http://172.20.10.3:3000/api/v1"
-    // We need "http://172.20.10.3:3002/dispatch"
-    const baseUrl = API_CONFIG.BASE_URL
-      .replace('/api/v1', '')
-      .replace('/api', '')
-      .replace(':3000', ':3002');
-    const socketUrl = `${baseUrl}/dispatch`;
+    // Use WS_URL if available, otherwise construct from BASE_URL
+    let socketUrl: string;
+    if (API_CONFIG.WS_URL) {
+      // WS_URL is like "http://192.168.0.195:3001"
+      // Replace port with 3002 for dispatch gateway
+      socketUrl = API_CONFIG.WS_URL
+        .replace('ws://', 'http://')
+        .replace('wss://', 'https://')
+        .replace(/:30\d{2}/, ':3002') + '/dispatch';
+    } else {
+      // Fallback: construct from BASE_URL
+      const baseUrl = API_CONFIG.BASE_URL
+        .replace('/api/v1', '')
+        .replace('/api', '')
+        .replace(/:30\d{2}/, ':3002');
+      socketUrl = `${baseUrl}/dispatch`;
+    }
     
     console.log('[BuyerSocket] Connecting to:', socketUrl);
     
@@ -74,6 +84,12 @@ class BuyerSocketService {
     this.socket.on('connect_error', (error) => {
       console.error('[BuyerSocket] Connection error:', error.message);
       this.reconnectAttempts++;
+      
+      // If we've exhausted reconnect attempts, give up gracefully
+      if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+        console.warn('[BuyerSocket] Max reconnect attempts reached, disabling socket');
+        this.disconnect();
+      }
     });
 
     // Order status updates

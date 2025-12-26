@@ -31,6 +31,20 @@ export class UpdateUserDto {
   @IsString()
   @IsOptional()
   address?: string;
+
+  @ApiProperty({ required: false, description: 'Latitude coordinate for location' })
+  @IsNumber()
+  @IsOptional()
+  @Min(-90)
+  @Max(90)
+  latitude?: number;
+
+  @ApiProperty({ required: false, description: 'Longitude coordinate for location' })
+  @IsNumber()
+  @IsOptional()
+  @Min(-180)
+  @Max(180)
+  longitude?: number;
 }
 
 export class UpdateDeviceTokenDto {

@@ -57,7 +57,8 @@ import OthersIllustration from '../../assets/illustrations/categories/OthersIllu
 import SeeAllIllustration from '../../assets/illustrations/categories/SeeAllIllustration';
 import ProcessedIllustration from '../../assets/illustrations/categories/ProcessedIllustration';
 import SeedsIllustration from '../../assets/illustrations/categories/SeedsIllustration';
-import { FarmerActivationIllustration, GoPremiumIllustration, VerifiedSellerIllustration } from '../../assets/illustrations/hero';
+import { FarmerActivationIllustration, GoPremiumIllustration, VerifiedSellerIllustration, LiveSupportIllustration } from '../../assets/illustrations/hero';
+import LiveSupportBanner from '../../components/common/LiveSupportBanner';
 
 type NavigationProp = CompositeNavigationProp<
   BottomTabNavigationProp<BuyerTabParamList, 'Home'>,
@@ -146,6 +147,15 @@ const PROMO_BANNERS = [
     bgLight: '#42A5F5',
     bgDark: '#1976D2',
   },
+  {
+    id: 'livesupport',
+    title: 'Live Support',
+    subtitle: 'Get instant help from our team',
+    route: 'LiveChat',
+    illustration: LiveSupportIllustration,
+    bgLight: '#3B82F6',
+    bgDark: '#1E40AF',
+  },
 ] as const;
 
 export default function HomeScreen() {
@@ -157,6 +167,9 @@ export default function HomeScreen() {
   const { location } = useLocation();
   const { colors, isDark, accessibility, getAnimationDuration } = useTheme();
   const { t } = useTranslation();
+  
+  // Get user's state from default address or user profile
+  const userState = defaultAddress?.state || user?.state;
   
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [promoClaimed, setPromoClaimed] = useState(false);
@@ -239,10 +252,11 @@ export default function HomeScreen() {
     refetch,
     isRefetching,
   } = useQuery({
-    queryKey: ['products', selectedCategory],
+    queryKey: ['products', selectedCategory, userState],
     queryFn: () =>
       productService.getProducts({
         category: selectedCategory?.toLowerCase() || undefined,
+        state: userState,
         lat: location?.latitude,
         lng: location?.longitude,
         limit: 20,
@@ -252,145 +266,145 @@ export default function HomeScreen() {
 
   // Fetch products for different category sections - DISABLED FOR PERFORMANCE TESTING
   const { data: vegetablesData } = useQuery({
-    queryKey: ['products', 'vegetables'],
-    queryFn: () => productService.getProducts({ category: 'vegetables', limit: 6 }),
+    queryKey: ['products', 'vegetables', userState],
+    queryFn: () => productService.getProducts({ category: 'vegetables', state: userState, limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: fruitsData } = useQuery({
-    queryKey: ['products', 'fruits'],
-    queryFn: () => productService.getProducts({ category: 'fruits', limit: 6 }),
+    queryKey: ['products', 'fruits', userState],
+    queryFn: () => productService.getProducts({ category: 'fruits', state: userState, limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: grainsData } = useQuery({
-    queryKey: ['products', 'grains'],
-    queryFn: () => productService.getProducts({ category: 'grains', limit: 6 }),
+    queryKey: ['products', 'grains', userState],
+    queryFn: () => productService.getProducts({ category: 'grains', state: userState, limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: dairyData } = useQuery({
-    queryKey: ['products', 'dairy'],
-    queryFn: () => productService.getProducts({ category: 'dairy', limit: 6 }),
+    queryKey: ['products', 'dairy', userState],
+    queryFn: () => productService.getProducts({ category: 'dairy', state: userState, limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: meatData } = useQuery({
-    queryKey: ['products', 'meat'],
-    queryFn: () => productService.getProducts({ category: 'meat', limit: 6 }),
+    queryKey: ['products', 'meat', userState],
+    queryFn: () => productService.getProducts({ category: 'meat', state: userState, limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: seafoodData } = useQuery({
-    queryKey: ['products', 'seafood'],
-    queryFn: () => productService.getProducts({ category: 'seafood', limit: 6 }),
+    queryKey: ['products', 'seafood', userState],
+    queryFn: () => productService.getProducts({ category: 'seafood', state: userState, limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   // Additional category queries
   const { data: eggsData } = useQuery({
-    queryKey: ['products', 'eggs'],
-    queryFn: () => productService.getProducts({ category: 'eggs', limit: 6 }),
+    queryKey: ['products', 'eggs', userState],
+    queryFn: () => productService.getProducts({ category: 'eggs', state: userState, limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: poultryData } = useQuery({
-    queryKey: ['products', 'poultry'],
-    queryFn: () => productService.getProducts({ category: 'poultry', limit: 6 }),
+    queryKey: ['products', 'poultry', userState],
+    queryFn: () => productService.getProducts({ category: 'poultry', state: userState, limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: herbsData } = useQuery({
-    queryKey: ['products', 'herbs_spices'],
-    queryFn: () => productService.getProducts({ category: 'herbs_spices', limit: 6 }),
+    queryKey: ['products', 'herbs_spices', userState],
+    queryFn: () => productService.getProducts({ category: 'herbs_spices', state: userState, limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: honeyData } = useQuery({
-    queryKey: ['products', 'honey'],
-    queryFn: () => productService.getProducts({ category: 'honey', limit: 6 }),
+    queryKey: ['products', 'honey', userState],
+    queryFn: () => productService.getProducts({ category: 'honey', state: userState, limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: nutsData } = useQuery({
-    queryKey: ['products', 'nuts'],
-    queryFn: () => productService.getProducts({ category: 'nuts', limit: 6 }),
+    queryKey: ['products', 'nuts', userState],
+    queryFn: () => productService.getProducts({ category: 'nuts', state: userState, limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: tubersData } = useQuery({
-    queryKey: ['products', 'tubers'],
-    queryFn: () => productService.getProducts({ category: 'tubers', limit: 6 }),
+    queryKey: ['products', 'tubers', userState],
+    queryFn: () => productService.getProducts({ category: 'tubers', state: userState, limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: oilsData } = useQuery({
-    queryKey: ['products', 'oils'],
-    queryFn: () => productService.getProducts({ category: 'oils', limit: 6 }),
+    queryKey: ['products', 'oils', userState],
+    queryFn: () => productService.getProducts({ category: 'oils', state: userState, limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: legumesData } = useQuery({
-    queryKey: ['products', 'legumes'],
-    queryFn: () => productService.getProducts({ category: 'legumes', limit: 6 }),
+    queryKey: ['products', 'legumes', userState],
+    queryFn: () => productService.getProducts({ category: 'legumes', state: userState, limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: processedData } = useQuery({
-    queryKey: ['products', 'processed'],
-    queryFn: () => productService.getProducts({ category: 'processed', limit: 6 }),
+    queryKey: ['products', 'processed', userState],
+    queryFn: () => productService.getProducts({ category: 'processed', state: userState, limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: livestockData } = useQuery({
-    queryKey: ['products', 'livestock'],
-    queryFn: () => productService.getProducts({ category: 'livestock', limit: 6 }),
+    queryKey: ['products', 'livestock', userState],
+    queryFn: () => productService.getProducts({ category: 'livestock', state: userState, limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: seedsData } = useQuery({
-    queryKey: ['products', 'seeds'],
-    queryFn: () => productService.getProducts({ category: 'seeds', limit: 6 }),
+    queryKey: ['products', 'seeds', userState],
+    queryFn: () => productService.getProducts({ category: 'seeds', state: userState, limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: beveragesData } = useQuery({
-    queryKey: ['products', 'beverages'],
-    queryFn: () => productService.getProducts({ category: 'beverages', limit: 6 }),
+    queryKey: ['products', 'beverages', userState],
+    queryFn: () => productService.getProducts({ category: 'beverages', state: userState, limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: othersData } = useQuery({
-    queryKey: ['products', 'others'],
-    queryFn: () => productService.getProducts({ category: 'others', limit: 6 }),
+    queryKey: ['products', 'others', userState],
+    queryFn: () => productService.getProducts({ category: 'others', state: userState, limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
-  // Fetch promoted products from real API (no state filter - show all promoted products)
+  // Fetch promoted products - filter by state to show local promoted products
   const { data: promotedData } = useQuery({
-    queryKey: ['products', 'promoted'],
-    queryFn: () => productService.getPromotedProducts(undefined, 6),
+    queryKey: ['products', 'promoted', userState],
+    queryFn: () => productService.getPromotedProducts(userState, 6),
     staleTime: 5 * 60 * 1000,
   });
 
-  // Fetch sponsored products from verified/premium sellers
+  // Fetch sponsored products from verified/premium sellers - filter by state
   const { data: sponsoredData } = useQuery({
-    queryKey: ['products', 'sponsored'],
-    queryFn: () => productService.getSponsoredProducts(undefined, 12),
+    queryKey: ['products', 'sponsored', userState],
+    queryFn: () => productService.getSponsoredProducts(userState, 12),
     staleTime: 5 * 60 * 1000,
   });
 
-  // Fetch admin-curated official store products from real API (no state filter - show all official products)
+  // Fetch admin-curated official store products - filter by state
   const { data: adminProductsData } = useQuery({
-    queryKey: ['products', 'admin-products'],
-    queryFn: () => productService.getAdminProducts(undefined, 6),
+    queryKey: ['products', 'admin-products', userState],
+    queryFn: () => productService.getAdminProducts(userState, 6),
     staleTime: 5 * 60 * 1000,
   });
 
-  // Fetch recommended products from real API (no state filter - show all recommended products)
+  // Fetch recommended products - filter by state
   const { data: recommendedData } = useQuery({
-    queryKey: ['products', 'recommended'],
-    queryFn: () => productService.getRecommendedProducts(undefined, 20),
+    queryKey: ['products', 'recommended', userState],
+    queryFn: () => productService.getRecommendedProducts(userState, 20),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -489,6 +503,17 @@ export default function HomeScreen() {
             style={[styles.headerIconButton, { backgroundColor: isDark ? '#2C2C2E' : '#F5F5F5' }]}
             onPress={() => {
               triggerHaptic();
+              navigation.navigate('NearbyFarmersMap');
+            }}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="map-outline" size={26} color={colors.text} />
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.headerIconButton, { backgroundColor: isDark ? '#2C2C2E' : '#F5F5F5' }]}
+            onPress={() => {
+              triggerHaptic();
               navigation.navigate('Notifications');
             }}
             activeOpacity={0.7}
@@ -562,8 +587,9 @@ export default function HomeScreen() {
     <View style={styles.categoriesFlat}>
       <View style={styles.categoriesGrid}>
           {PRODUCT_CATEGORIES.slice(0, 8).map((category, index) => {
-            const catConfig = CATEGORY_ICONS[category.toLowerCase()] || CATEGORY_ICONS.others;
-            const CategoryIllustration = CATEGORY_ILLUSTRATIONS[category.toLowerCase()];
+            const categoryLower = (category || '').toLowerCase();
+            const catConfig = CATEGORY_ICONS[categoryLower] || CATEGORY_ICONS.others;
+            const CategoryIllustration = CATEGORY_ILLUSTRATIONS[categoryLower];
             const isSelected = selectedCategory === category;
             // Colorful backgrounds for each category
             const categoryBg = isDark 
@@ -1730,11 +1756,17 @@ export default function HomeScreen() {
     );
   };
 
+  // Render Live Support Banner
+  const renderLiveSupportBanner = () => (
+    <LiveSupportBanner variant="compact" style={{ marginHorizontal: 8, marginTop: 8 }} />
+  );
+
   const renderListHeader = () => (
     <>
       <View style={[styles.mainContentCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
         {renderAdBanner()}
         {renderCategories()}
+        {renderLiveSupportBanner()}
         {renderPromoBanner()}
         {renderCategorySections()}
       </View>

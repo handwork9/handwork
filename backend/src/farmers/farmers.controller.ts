@@ -20,7 +20,7 @@ export class FarmersController {
   ) {}
 
   @Public()
-  @Get(':farmerId')
+  @Get('profile/:farmerId')
   @ApiOperation({ summary: 'Get farmer profile by ID (public)' })
   @ApiParam({ name: 'farmerId', description: 'Farmer ID' })
   async getFarmerProfile(@Param('farmerId') farmerId: string) {
@@ -51,7 +51,7 @@ export class FarmersController {
   }
 
   @Public()
-  @Get(':farmerId/products')
+  @Get('profile/:farmerId/products')
   @ApiOperation({ summary: 'Get farmer products by farmer ID (public)' })
   @ApiParam({ name: 'farmerId', description: 'Farmer ID' })
   @ApiQuery({ name: 'page', required: false })

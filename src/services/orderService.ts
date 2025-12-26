@@ -36,7 +36,10 @@ export const orderService = {
    */
   async getOrderById(id: string): Promise<Order> {
     const response = await apiClient.get<any>(`/orders/${id}`);
-    return extractData<Order>(response);
+    const order = extractData<Order>(response);
+    console.log('[orderService.getOrderById] Order:', JSON.stringify(order, null, 2));
+    console.log('[orderService.getOrderById] assignedRider:', order?.assignedRider);
+    return order;
   },
 
   /**
@@ -51,10 +54,45 @@ export const orderService = {
     if (params.pageSize) queryParams.append('pageSize', params.pageSize.toString());
     if (params.status) queryParams.append('status', params.status);
     
-    const response = await apiClient.get<{ orders: Order[]; total: number }>(
+    const response = await apiClient.get<any>(
       `/orders?${queryParams.toString()}`
     );
-    return response;
+    
+    console.log('[orderService.getOrders] Raw response keys:', Object.keys(response || {}));
+    console.log('[orderService.getOrders] response.success:', response?.success);
+    console.log('[orderService.getOrders] response.data type:', typeof response?.data);
+    if (response?.data && typeof response.data === 'object') {
+      console.log('[orderService.getOrders] response.data keys:', Object.keys(response.data));
+    }
+    
+    // Backend wraps with ResponseInterceptor: { success: true, data: PaginatedResponseDto }
+    // PaginatedResponseDto has { data: [...orders], total: N, page: N, ... }
+    let ordersArray: any[] = [];
+    let total = 0;
+    
+    if (response?.success && response?.data) {
+      // Wrapped response: { success: true, data: { data: [...], total: N } }
+      const paginatedData = response.data;
+      ordersArray = paginatedData?.data || [];
+      total = paginatedData?.total || 0;
+    } else if (Array.isArray(response?.data)) {
+      // Direct array in data
+      ordersArray = response.data;
+      total = response.total || ordersArray.length;
+    } else if (Array.isArray(response)) {
+      // Direct array response
+      ordersArray = response;
+      total = ordersArray.length;
+    }
+    
+    console.log('[orderService.getOrders] Extracted ordersArray length:', ordersArray.length);
+    
+    // Filter out invalid orders
+    const validOrders = ordersArray.filter((o: any) => o != null && o.id != null);
+    return {
+      orders: validOrders,
+      total: total || validOrders.length,
+    };
   },
 
   /**
@@ -93,7 +131,8 @@ export const orderService = {
     if (page) params.append('page', page.toString());
     if (pageSize) params.append('pageSize', pageSize.toString());
     
-    return apiClient.get(`/farmers/${farmerId}/orders?${params.toString()}`);
+    // Farmers get their orders through the general /orders endpoint which filters by role
+    return apiClient.get(`/orders?${params.toString()}`);
   },
 
   /**
@@ -154,9 +193,13 @@ export const riderService = {
    */
   async updateDeliveryStatus(
     deliveryId: string,
-    status: string
+    status: string,
+    proofOfDeliveryPhoto?: string
   ): Promise<ApiResponse<Order>> {
-    return apiClient.patch(`/riders/deliveries/${deliveryId}/status`, { status });
+    return apiClient.patch(`/riders/deliveries/${deliveryId}/status`, { 
+      status,
+      ...(proofOfDeliveryPhoto && { proofOfDeliveryPhoto }),
+    });
   },
 
   /**
@@ -185,8 +228,19 @@ export const riderService = {
     pendingPayout: number;
     recentDeliveries: any[];
     weeklyBreakdown: any[];
+    dailyGoal?: number;
+    rating?: number;
+    completionRate?: number;
+    streakDays?: number;
   }>> {
     return apiClient.get(`/riders/earnings?period=${period}`);
+  },
+
+  /**
+   * Update daily earning goal
+   */
+  async updateDailyGoal(dailyGoal: number): Promise<ApiResponse<{ success: boolean; dailyGoal: number }>> {
+    return apiClient.patch('/riders/daily-goal', { dailyGoal });
   },
 
   /**
@@ -201,5 +255,57 @@ export const riderService = {
    */
   async getProfile(): Promise<ApiResponse<any>> {
     return apiClient.get('/riders/profile');
+  },
+
+  /**
+   * Get subscription pricing for all tiers
+   */
+  async getSubscriptionPricing(): Promise<ApiResponse<any>> {
+    return apiClient.get('/riders/subscriptions/pricing');
+  },
+
+  /**
+   * Get all subscription tiers with benefits
+   */
+  async getSubscriptionTiers(): Promise<ApiResponse<any>> {
+    return apiClient.get('/riders/subscriptions/tiers');
+  },
+
+  /**
+   * Subscribe to a premium tier
+   */
+  async subscribeToPremium(
+    tier: 'basic' | 'silver' | 'gold' | 'platinum',
+    duration: 'weekly' | 'monthly' | 'quarterly',
+    paymentMethod: 'wallet' | 'card' = 'wallet',
+    autoRenew: boolean = false
+  ): Promise<ApiResponse<any>> {
+    return apiClient.post('/riders/subscriptions/subscribe', {
+      tier,
+      duration,
+      paymentMethod,
+      autoRenew,
+    });
+  },
+
+  /**
+   * Cancel current subscription
+   */
+  async cancelSubscription(reason?: string): Promise<ApiResponse<any>> {
+    return apiClient.post('/riders/subscriptions/cancel', { reason });
+  },
+
+  /**
+   * Get current active subscription
+   */
+  async getCurrentSubscription(): Promise<ApiResponse<any>> {
+    return apiClient.get('/riders/subscriptions/current');
+  },
+
+  /**
+   * Get subscription history
+   */
+  async getSubscriptionHistory(): Promise<ApiResponse<any>> {
+    return apiClient.get('/riders/subscriptions/history');
   },
 };

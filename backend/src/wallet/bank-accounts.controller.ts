@@ -58,7 +58,9 @@ export class BankAccountsController {
     },
   })
   async getBankAccounts(@CurrentUser() user: User) {
+    console.log('[BankAccountsController] getBankAccounts - userId:', user.id);
     const accounts = await this.bankAccountsService.getBankAccounts(user.id);
+    console.log('[BankAccountsController] getBankAccounts - found accounts:', accounts.length);
     return { accounts };
   }
 

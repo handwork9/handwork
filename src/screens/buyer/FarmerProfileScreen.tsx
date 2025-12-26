@@ -34,7 +34,7 @@ export default function FarmerProfileScreen({ navigation, route }: Props) {
 
   const { data: farmerData, isLoading: farmerLoading } = useQuery({
     queryKey: ['farmer', farmerId],
-    queryFn: () => apiClient.get<{ success: boolean; data: FarmerData }>(`/farmers/${farmerId}`),
+    queryFn: () => apiClient.get<{ success: boolean; data: FarmerData }>(`/farmers/profile/${farmerId}`),
   });
 
   const { data: productsData, isLoading: productsLoading } = useQuery({

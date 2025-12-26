@@ -331,7 +331,43 @@ export default function PaymentMethodsScreen() {
       useNativeDriver: true,
     }).start();
     loadBanks();
+    loadSavedBankAccounts();
   }, []);
+
+  // Load saved bank accounts from backend
+  const loadSavedBankAccounts = async () => {
+    try {
+      const accounts = await withdrawalService.getBankAccounts();
+      console.log('[PaymentMethodsScreen] Loaded bank accounts:', accounts.length);
+      
+      // Add bank accounts to Redux if not already there
+      accounts.forEach((account) => {
+        const existsInRedux = storedMethods.some(
+          (m) => m.type === 'bank' && m.accountNumber === account.accountNumber
+        );
+        
+        if (!existsInRedux) {
+          const last4 = account.accountNumber.slice(-4);
+          const method: PaymentMethod = {
+            id: account.id,
+            type: 'bank',
+            label: account.bankName,
+            details: `Account ending in ${last4}`,
+            icon: 'storefront',
+            iconColor: '#FF9500',
+            iconBg: '#FF950020',
+            bankName: account.bankName,
+            accountNumber: account.accountNumber,
+            accountName: account.accountName,
+            isDefault: account.isDefault,
+          };
+          dispatch(addPaymentMethod(method));
+        }
+      });
+    } catch (error) {
+      console.error('[PaymentMethodsScreen] Error loading saved bank accounts:', error);
+    }
+  };
 
   // Auto-verify bank account when account number is 10 digits and bank is selected
   useEffect(() => {
@@ -545,11 +581,23 @@ export default function PaymentMethodsScreen() {
     }
   };
 
-  const handleSetDefault = (id: string) => {
-    dispatch(setDefaultPaymentMethod(id));
+  const handleSetDefault = async (id: string) => {
+    try {
+      // Update on backend first for bank accounts
+      const method = storedMethods.find(m => m.id === id);
+      if (method?.type === 'bank') {
+        await withdrawalService.setDefaultAccount(id);
+      }
+      dispatch(setDefaultPaymentMethod(id));
+    } catch (error) {
+      console.error('Error setting default payment method:', error);
+      Alert.alert('Error', 'Failed to set default payment method');
+    }
   };
 
   const handleDelete = (id: string) => {
+    const method = storedMethods.find(m => m.id === id);
+    
     Alert.alert(
       'Delete Payment Method',
       'Are you sure you want to delete this payment method?',
@@ -558,14 +606,27 @@ export default function PaymentMethodsScreen() {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: () => dispatch(removePaymentMethod(id)),
+          onPress: async () => {
+            try {
+              // Delete from backend first for bank accounts
+              if (method?.type === 'bank') {
+                await withdrawalService.deleteBankAccount(id);
+              }
+              // Then remove from Redux
+              dispatch(removePaymentMethod(id));
+            } catch (error) {
+              console.error('Error deleting payment method:', error);
+              Alert.alert('Error', 'Failed to delete payment method');
+            }
+          },
         },
       ]
     );
   };
 
   const handleViewDetails = (method: PaymentMethod) => {
-    setSelectedMethod(method);
+    // Toggle expand/collapse - if same method is tapped, collapse it
+    setSelectedMethod(prev => prev?.id === method.id ? null : method);
   };
 
   const renderPaymentCard = (method: PaymentMethod) => {
@@ -620,43 +681,51 @@ export default function PaymentMethodsScreen() {
               {method.details || (isCard ? `•••• ${method.cardNumber?.slice(-4)}` : `Account ending in ${method.accountNumber?.slice(-4)}`)}
             </Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+          <Ionicons 
+            name={selectedMethod?.id === method.id ? "chevron-down" : "chevron-forward"} 
+            size={18} 
+            color="#9CA3AF" 
+          />
         </TouchableOpacity>
 
-        {/* Details */}
-        <View style={styles.fieldsContainer}>
-          {isCard ? (
-            <>
-              {renderFieldItem('Cardholder Name', method.cardholderName)}
-              {renderFieldItem('Expires', method.cardExpiry)}
-            </>
-          ) : (
-            <>
-              {renderFieldItem('Account Name', method.accountName)}
-              {renderFieldItem('Account Number', `•••••• ${method.accountNumber?.slice(-4)}`)}
-            </>
-          )}
-        </View>
+        {/* Details - Only show when this card is selected */}
+        {selectedMethod?.id === method.id && (
+          <>
+            <View style={styles.fieldsContainer}>
+              {isCard ? (
+                <>
+                  {renderFieldItem('Cardholder Name', method.cardholderName)}
+                  {renderFieldItem('Expires', method.cardExpiry)}
+                </>
+              ) : (
+                <>
+                  {renderFieldItem('Account Name', method.accountName)}
+                  {renderFieldItem('Account Number', `•••••• ${method.accountNumber?.slice(-4)}`)}
+                </>
+              )}
+            </View>
 
-        {/* Actions */}
-        <View style={styles.actionsRow}>
-          {!method.isDefault && (
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => handleSetDefault(method.id)}
-            >
-              <Ionicons name="star-outline" size={18} color="#16A34A" />
-              <Text style={[styles.actionText, { color: '#16A34A' }]}>Set Default</Text>
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => handleDelete(method.id)}
-          >
-            <Ionicons name="trash-outline" size={18} color="#EF4444" />
-            <Text style={[styles.actionText, { color: '#EF4444' }]}>Delete</Text>
-          </TouchableOpacity>
-        </View>
+            {/* Actions */}
+            <View style={styles.actionsRow}>
+              {!method.isDefault && (
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={() => handleSetDefault(method.id)}
+                >
+                  <Ionicons name="star-outline" size={18} color="#16A34A" />
+                  <Text style={[styles.actionText, { color: '#16A34A' }]}>Set Default</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => handleDelete(method.id)}
+              >
+                <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                <Text style={[styles.actionText, { color: '#EF4444' }]}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
       </View>
     );
   };
@@ -1377,15 +1446,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flexWrap: 'wrap',
+    flex: 1,
   },
   paymentLabel: {
     fontSize: 17,
     fontFamily: FONTS.semiBold,
+    flexShrink: 1,
   },
   defaultBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    flexShrink: 0,
   },
   defaultBadgeText: {
     fontSize: 12,

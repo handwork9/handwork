@@ -127,9 +127,16 @@ export const fetchRiderProfile = createAsyncThunk(
   'rider/fetchProfile',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await apiClient.get<RiderProfile>('/riders/profile');
-      return response;
+      const response = await apiClient.get<{ success: boolean; data: RiderProfile }>('/riders/profile');
+      console.log('[riderSlice] fetchRiderProfile raw response:', response);
+      // apiClient returns response.data, which is { success: true, data: {...} }
+      // So we need response.data to get the actual profile
+      const profile = (response as any).data || response;
+      console.log('[riderSlice] Extracted profile:', profile);
+      console.log('[riderSlice] isOnline:', profile.isOnline, 'type:', typeof profile.isOnline);
+      return profile as RiderProfile;
     } catch (error: any) {
+      console.log('[riderSlice] fetchRiderProfile error:', error);
       return rejectWithValue(error.message || 'Failed to fetch rider profile');
     }
   }
@@ -163,9 +170,14 @@ export const updateRiderStatus = createAsyncThunk(
   'rider/updateStatus',
   async (status: { isOnline?: boolean; isAvailable?: boolean }, { rejectWithValue }) => {
     try {
-      const response = await apiClient.patch<RiderProfile>('/riders/status', status);
-      return response;
+      console.log('[riderSlice] updateRiderStatus called with:', status);
+      const response = await apiClient.patch<{ success: boolean; data: RiderProfile }>('/riders/status', status);
+      console.log('[riderSlice] updateRiderStatus response:', response);
+      // Handle wrapped response format { success: true, data: {...} }
+      const profile = response.data || response;
+      return profile;
     } catch (error: any) {
+      console.log('[riderSlice] updateRiderStatus error:', error);
       return rejectWithValue(error.message || 'Failed to update status');
     }
   }
@@ -271,6 +283,7 @@ const riderSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchRiderProfile.fulfilled, (state, action) => {
+        console.log('[riderSlice] fetchRiderProfile.fulfilled - setting isOnline to:', action.payload.isOnline);
         state.isLoading = false;
         state.profile = action.payload;
         state.isOnline = action.payload.isOnline;

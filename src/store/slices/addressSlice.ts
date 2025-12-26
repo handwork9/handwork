@@ -13,6 +13,8 @@ export interface Address {
   postalCode: string;
   country: string;
   isDefault: boolean;
+  lat?: number;
+  lng?: number;
 }
 
 interface AddressState {
@@ -49,10 +51,12 @@ const addressSlice = createSlice({
   initialState,
   reducers: {
     setAddresses: (state, action: PayloadAction<Address[]>) => {
-      state.addresses = action.payload;
-      saveAddressesToStorage(action.payload);
+      const validAddresses = (action.payload || []).filter(a => a != null && a.id != null);
+      state.addresses = validAddresses;
+      saveAddressesToStorage(validAddresses);
     },
     addAddress: (state, action: PayloadAction<Address>) => {
+      if (!action.payload?.id) return;
       // If this is the first address, make it default
       if (state.addresses.length === 0) {
         action.payload.isDefault = true;
@@ -61,15 +65,17 @@ const addressSlice = createSlice({
       saveAddressesToStorage(state.addresses);
     },
     updateAddress: (state, action: PayloadAction<Address>) => {
-      const index = state.addresses.findIndex(a => a.id === action.payload.id);
+      if (!action.payload?.id) return;
+      const index = state.addresses.findIndex(a => a?.id === action.payload.id);
       if (index !== -1) {
         state.addresses[index] = action.payload;
       }
       saveAddressesToStorage(state.addresses);
     },
     deleteAddress: (state, action: PayloadAction<string>) => {
-      const wasDefault = state.addresses.find(a => a.id === action.payload)?.isDefault;
-      state.addresses = state.addresses.filter(a => a.id !== action.payload);
+      if (!action.payload) return;
+      const wasDefault = state.addresses.find(a => a?.id === action.payload)?.isDefault;
+      state.addresses = state.addresses.filter(a => a?.id !== action.payload);
       // If deleted address was default, make the first one default
       if (wasDefault && state.addresses.length > 0) {
         state.addresses[0].isDefault = true;
@@ -77,9 +83,10 @@ const addressSlice = createSlice({
       saveAddressesToStorage(state.addresses);
     },
     setDefaultAddress: (state, action: PayloadAction<string>) => {
+      if (!action.payload) return;
       state.addresses = state.addresses.map(a => ({
         ...a,
-        isDefault: a.id === action.payload,
+        isDefault: a?.id === action.payload,
       }));
       saveAddressesToStorage(state.addresses);
     },

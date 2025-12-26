@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,9 @@ import {
   ActivityIndicator,
   Modal,
   TextInput as RNTextInput,
+  KeyboardAvoidingView,
+  Platform,
+  StatusBar,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -94,6 +97,11 @@ export default function CheckoutScreen({ navigation }: Props) {
   // Pay for Me modal state
   const [showPayForMeModal, setShowPayForMeModal] = useState(false);
   const [payForMeEmail, setPayForMeEmail] = useState('');
+  
+  // Ref to track if payment verification is in progress (prevents duplicate calls)
+  const isVerifyingPaymentRef = useRef(false);
+  // Store order data in ref as backup (state can be lost during re-renders)
+  const pendingOrderDataRef = useRef<any>(null);
   const [payForMeName, setPayForMeName] = useState('');
   const [payForMePhone, setPayForMePhone] = useState('');
   const [payForMeLink, setPayForMeLink] = useState('');
@@ -102,6 +110,14 @@ export default function CheckoutScreen({ navigation }: Props) {
   // Time slot modal state
   const [showTimeSlotModal, setShowTimeSlotModal] = useState(false);
   const [payLinkGenerated, setPayLinkGenerated] = useState(false);
+  
+  // Pay for Me polling state
+  const [payForMeStatus, setPayForMeStatus] = useState<'pending' | 'paid' | 'creating_order' | 'completed' | 'failed'>('pending');
+  const [isPollingPayment, setIsPollingPayment] = useState(false);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Address validation error state
+  const [addressError, setAddressError] = useState(false);
 
   // Fetch wallet balance on screen focus
   useFocusEffect(
@@ -121,8 +137,55 @@ export default function CheckoutScreen({ navigation }: Props) {
     }, [])
   );
 
-  // Calculate delivery pricing dynamically
-  const estimatedDistanceKm = 5.2;
+  // Calculate distance using Haversine formula
+  const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+    const R = 6371; // Earth's radius in km
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLng = ((lng2 - lng1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLng / 2) *
+        Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
+  // Calculate delivery distance based on buyer address and farmer pickup location
+  const estimatedDistanceKm = useMemo(() => {
+    // Get buyer's delivery coordinates
+    const buyerLat = selectedAddress?.lat || user?.latitude;
+    const buyerLng = selectedAddress?.lng || user?.longitude;
+    
+    if (!buyerLat || !buyerLng || items.length === 0) {
+      return 5; // Default fallback
+    }
+    
+    // Calculate average distance to all farmers in cart
+    let totalDistance = 0;
+    let validProducts = 0;
+    
+    items.forEach(item => {
+      const product = item.product;
+      const farmerLat = product?.pickupLat;
+      const farmerLng = product?.pickupLng;
+      
+      if (farmerLat && farmerLng) {
+        totalDistance += calculateDistance(buyerLat, buyerLng, farmerLat, farmerLng);
+        validProducts++;
+      }
+    });
+    
+    if (validProducts > 0) {
+      // Use the maximum distance (furthest farmer) for delivery pricing
+      // This ensures the delivery fee covers the full route
+      const avgDistance = totalDistance / validProducts;
+      return Math.round(avgDistance * 10) / 10; // Round to 1 decimal
+    }
+    
+    return 5; // Default fallback if no coordinates available
+  }, [selectedAddress, user, items]);
   
   const deliveryPricing = useMemo(() => {
     return calculateDeliveryPrice({
@@ -187,7 +250,12 @@ export default function CheckoutScreen({ navigation }: Props) {
   const createOrderMutation = useMutation({
     mutationFn: orderService.createOrder,
     onSuccess: (response) => {
-      console.log('Order created successfully:', response);
+      console.log('[Checkout] Order created successfully:', response);
+      // Reset refs
+      isVerifyingPaymentRef.current = false;
+      pendingOrderDataRef.current = null;
+      setPendingOrderData(null);
+      
       if (response.success) {
         dispatch(clearCart());
         // Navigate to Order Confirmation screen with order details
@@ -202,8 +270,11 @@ export default function CheckoutScreen({ navigation }: Props) {
       }
     },
     onError: (error: any) => {
-      console.log('Order creation error:', error);
-      console.log('Error response:', error?.response?.data);
+      console.log('[Checkout] Order creation error:', error);
+      console.log('[Checkout] Error response:', error?.response?.data);
+      // Reset refs so user can retry
+      isVerifyingPaymentRef.current = false;
+      
       const errorMessage = error?.response?.data?.message || error?.message || 'Failed to create order. Please try again.';
       Alert.alert(
         'Order Failed',
@@ -231,8 +302,25 @@ export default function CheckoutScreen({ navigation }: Props) {
   const canAffordWithWallet = walletBalance ? walletBalance.available >= finalTotal : false;
 
   const handlePlaceOrder = async () => {
+    // Reset error state
+    setAddressError(false);
+    
     if (items.length === 0) {
       Alert.alert('Cart is empty', 'Add items to your cart first');
+      return;
+    }
+
+    // Validate address
+    if (!selectedAddress && !user?.address) {
+      setAddressError(true);
+      Alert.alert(
+        'No Delivery Address',
+        'Please add a delivery address before placing your order.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Add Address', onPress: () => setShowAddressPicker(true) }
+        ]
+      );
       return;
     }
 
@@ -272,25 +360,17 @@ export default function CheckoutScreen({ navigation }: Props) {
       try {
         setIsProcessingPayment(true);
         
-        const orderId = 'order-' + Date.now();
-        const paymentResult = await walletService.payWithWallet({
-          amount: finalTotal,
-          orderId,
-          description: `Order #${orderId}`,
-        });
-
-        if (paymentResult.status !== 'completed') {
-          Alert.alert('Payment Failed', 'Failed to process wallet payment');
-          return;
-        }
+        // Backend now handles wallet deduction during order creation
+        // Just create the order with paymentMethod: 'wallet'
+        console.log('[Checkout] Creating order with wallet payment');
 
         createOrderMutation.mutate({
           deliveryAddress: {
             address: selectedAddress ? `${selectedAddress.addressLine1}${selectedAddress.addressLine2 ? ', ' + selectedAddress.addressLine2 : ''}` : user?.address || 'Unknown address',
             city: selectedAddress?.city || user?.city || 'Unknown city',
             state: selectedAddress?.state || user?.state || 'Unknown state',
-            lat: 6.5244,
-            lng: 3.3792,
+            lat: selectedAddress?.lat || user?.latitude || 6.5244,
+            lng: selectedAddress?.lng || user?.longitude || 3.3792,
           },
           discountCode: promoApplied ? promoCode : undefined,
           paymentMethod: 'wallet',
@@ -332,8 +412,8 @@ export default function CheckoutScreen({ navigation }: Props) {
           address: selectedAddress ? `${selectedAddress.addressLine1}${selectedAddress.addressLine2 ? ', ' + selectedAddress.addressLine2 : ''}` : user?.address || 'Unknown address',
           city: selectedAddress?.city || user?.city || 'Unknown city',
           state: selectedAddress?.state || user?.state || 'Unknown state',
-          lat: 6.5244,
-          lng: 3.3792,
+          lat: selectedAddress?.lat || user?.latitude || 6.5244,
+          lng: selectedAddress?.lng || user?.longitude || 3.3792,
         },
         discountCode: promoApplied ? promoCode : undefined,
         paymentMethod: 'card',
@@ -350,7 +430,9 @@ export default function CheckoutScreen({ navigation }: Props) {
           message: giftMessage || undefined,
         } : undefined,
       };
+      // Store in both state and ref (ref is backup in case state is lost)
       setPendingOrderData(orderData);
+      pendingOrderDataRef.current = orderData;
       
       // Initialize Paystack payment
       const result = await paymentService.initializePaystackPayment({
@@ -379,8 +461,8 @@ export default function CheckoutScreen({ navigation }: Props) {
     
     if (!url) return;
     
-    console.log('WebView URL:', url);
-    console.log('WebView Title:', title);
+    console.log('[Checkout] WebView URL:', url);
+    console.log('[Checkout] WebView Title:', title);
     
     // Check for success in page title (Paystack shows "Transaction Successful" or similar)
     if (title && (
@@ -388,6 +470,7 @@ export default function CheckoutScreen({ navigation }: Props) {
       title.toLowerCase().includes('approved') ||
       title.toLowerCase().includes('completed')
     )) {
+      console.log('[Checkout] Success detected via title, triggering verification');
       setShowPaymentModal(false);
       setPaymentUrl('');
       verifyPaymentAndCreateOrder(paymentReference);
@@ -400,6 +483,7 @@ export default function CheckoutScreen({ navigation }: Props) {
       url.includes('trxref=') || 
       url.includes('reference=')
     ) {
+      console.log('[Checkout] Callback URL detected, triggering verification');
       setShowPaymentModal(false);
       setPaymentUrl('');
       verifyPaymentAndCreateOrder(paymentReference);
@@ -469,38 +553,53 @@ export default function CheckoutScreen({ navigation }: Props) {
 
   // Verify payment and create order
   const verifyPaymentAndCreateOrder = async (reference: string) => {
+    // Prevent duplicate calls
+    if (isVerifyingPaymentRef.current) {
+      console.log('[Checkout] Already verifying payment, skipping duplicate call');
+      return;
+    }
+    
+    isVerifyingPaymentRef.current = true;
+    
     try {
       setIsProcessingPayment(true);
+      console.log('[Checkout] Starting payment verification for reference:', reference);
       
       // Verify payment with Paystack
       const verifyResult = await paymentService.verifyPaystackPayment(reference);
       
-      console.log('Payment verification result:', verifyResult);
+      console.log('[Checkout] Payment verification result:', verifyResult);
       
       if (verifyResult.status === 'success') {
         // Payment successful, create order
-        if (pendingOrderData) {
-          console.log('Creating order with data:', {
-            ...pendingOrderData,
+        // Use ref as backup if state was lost
+        const orderData = pendingOrderData || pendingOrderDataRef.current;
+        
+        if (orderData) {
+          console.log('[Checkout] Creating order with data:', {
+            ...orderData,
             paymentReference: reference,
           });
           createOrderMutation.mutate({
-            ...pendingOrderData,
+            ...orderData,
             paymentReference: reference,
           });
         } else {
-          console.log('No pending order data!');
+          console.log('[Checkout] ERROR: No pending order data in state or ref!');
           Alert.alert('Error', 'Order data was lost. Please try again.');
+          isVerifyingPaymentRef.current = false;
         }
       } else {
+        console.log('[Checkout] Payment verification returned non-success status:', verifyResult.status);
         Alert.alert('Payment Failed', 'Your payment could not be verified. Please try again.');
+        isVerifyingPaymentRef.current = false;
       }
     } catch (error: any) {
-      console.log('Payment verification error:', error);
+      console.log('[Checkout] Payment verification error:', error);
       Alert.alert('Error', error?.message || 'Failed to verify payment. Please contact support.');
+      isVerifyingPaymentRef.current = false;
     } finally {
       setIsProcessingPayment(false);
-      setPendingOrderData(null);
     }
   };
 
@@ -554,6 +653,7 @@ export default function CheckoutScreen({ navigation }: Props) {
 
     try {
       setIsGeneratingPayLink(true);
+      setPayForMeStatus('pending');
       
       const result = await paymentService.generatePayForMeLink({
         amount: finalTotal,
@@ -567,6 +667,8 @@ export default function CheckoutScreen({ navigation }: Props) {
         setPayForMeLink(result.paymentLink);
         setPaymentReference(result.reference);
         setPayLinkGenerated(true);
+        // Start polling for payment status
+        startPaymentPolling(result.reference);
       } else {
         Alert.alert('Error', 'Failed to generate payment link. Please try again.');
       }
@@ -577,6 +679,93 @@ export default function CheckoutScreen({ navigation }: Props) {
       setIsGeneratingPayLink(false);
     }
   };
+
+  // Start polling for Pay for Me payment status
+  const startPaymentPolling = (reference: string) => {
+    console.log('[PayForMe] Starting payment polling for reference:', reference);
+    setIsPollingPayment(true);
+    
+    // Poll every 5 seconds
+    pollingIntervalRef.current = setInterval(async () => {
+      try {
+        const result = await paymentService.checkPayForMeStatus(reference);
+        console.log('[PayForMe] Poll result:', result);
+        
+        if (result.status === 'success') {
+          console.log('[PayForMe] Payment successful! Creating order...');
+          stopPaymentPolling();
+          setPayForMeStatus('paid');
+          // Payment confirmed - create order
+          await createPayForMeOrder(reference);
+        }
+      } catch (error) {
+        console.log('[PayForMe] Polling error:', error);
+      }
+    }, 5000);
+  };
+
+  // Stop polling
+  const stopPaymentPolling = () => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+    setIsPollingPayment(false);
+  };
+
+  // Create order after Pay for Me payment is confirmed
+  const createPayForMeOrder = async (reference: string) => {
+    try {
+      setPayForMeStatus('creating_order');
+      console.log('[PayForMe] Creating order with reference:', reference);
+      
+      createOrderMutation.mutate({
+        deliveryAddress: {
+          address: selectedAddress ? `${selectedAddress.addressLine1}${selectedAddress.addressLine2 ? ', ' + selectedAddress.addressLine2 : ''}` : user?.address || 'Unknown address',
+          city: selectedAddress?.city || user?.city || 'Unknown city',
+          state: selectedAddress?.state || user?.state || 'Unknown state',
+          lat: selectedAddress?.lat || user?.latitude || 6.5244,
+          lng: selectedAddress?.lng || user?.longitude || 3.3792,
+        },
+        discountCode: promoApplied ? promoCode : undefined,
+        paymentMethod: 'card',
+        paymentReference: reference,
+        deliveryType,
+        scheduledDeliveryTime: getScheduledDeliveryTime(),
+        notes: orderNotes || undefined,
+        riderNote: riderNote || undefined,
+        farmerMessage: farmerMessage || undefined,
+        items: items.map(item => ({ productId: item.productId, quantity: item.quantity })),
+        isGift: isGift || undefined,
+        giftDetails: isGift ? {
+          recipientName: giftRecipientName,
+          recipientPhone: giftRecipientPhone,
+          message: giftMessage || undefined,
+        } : undefined,
+      }, {
+        onSuccess: () => {
+          console.log('[PayForMe] Order created successfully!');
+          setPayForMeStatus('completed');
+        },
+        onError: (error: any) => {
+          console.error('[PayForMe] Order creation failed:', error);
+          setPayForMeStatus('failed');
+        },
+      });
+    } catch (error) {
+      console.error('[PayForMe] Order creation error:', error);
+      setPayForMeStatus('failed');
+    }
+  };
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, []);
 
   // Share Pay for Me link
   const handleSharePayForMeLink = async () => {
@@ -614,12 +803,17 @@ export default function CheckoutScreen({ navigation }: Props) {
 
   // Close Pay for Me modal
   const handleClosePayForMeModal = () => {
-    if (payLinkGenerated) {
+    if (payForMeStatus === 'creating_order' || payForMeStatus === 'completed') {
+      // Don't allow closing while order is being created or just completed
+      return;
+    }
+    
+    if (payLinkGenerated && payForMeStatus === 'pending') {
       Alert.alert(
-        'Payment Link Created',
-        'A payment link has been generated. Make sure to share it before closing.',
+        'Stop Waiting for Payment?',
+        'We\'re waiting for the payment. If you close, you\'ll need to generate a new link later.',
         [
-          { text: 'Keep Open', style: 'cancel' },
+          { text: 'Keep Waiting', style: 'cancel' },
           { 
             text: 'Close Anyway', 
             style: 'destructive',
@@ -627,18 +821,27 @@ export default function CheckoutScreen({ navigation }: Props) {
           },
         ]
       );
+    } else if (payForMeStatus === 'paid') {
+      Alert.alert(
+        'Payment Received!',
+        'The payment was successful. Please wait while we create your order.',
+        [{ text: 'OK', style: 'cancel' }]
+      );
     } else {
       resetPayForMeState();
     }
   };
 
   const resetPayForMeState = () => {
+    stopPaymentPolling();
     setShowPayForMeModal(false);
     setPayForMeName('');
     setPayForMeEmail('');
     setPayForMePhone('');
     setPayForMeLink('');
     setPayLinkGenerated(false);
+    setPayForMeStatus('pending');
+    setPaymentReference('');
   };
 
   return (
@@ -657,26 +860,54 @@ export default function CheckoutScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={false}
       >
         {/* Delivery Address */}
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>DELIVERY ADDRESS</Text>
-        <View style={[styles.insetCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+        <Text style={[styles.sectionTitle, { color: addressError ? '#EF4444' : colors.textSecondary }]}>DELIVERY ADDRESS</Text>
+        <View style={[
+          styles.insetCard, 
+          { backgroundColor: isDark ? colors.card : '#FFFFFF' },
+          addressError && { borderWidth: 2, borderColor: '#EF4444' }
+        ]}>
           <TouchableOpacity 
             style={styles.addressRow}
-            onPress={() => setShowAddressPicker(true)}
+            onPress={() => {
+              setAddressError(false);
+              setShowAddressPicker(true);
+            }}
             activeOpacity={0.7}
           >
-            <View style={[styles.addressIconContainer, { backgroundColor: isDark ? 'rgba(0, 122, 255, 0.15)' : '#E5F1FF' }]}>
-              <Ionicons name="location" size={20} color={colors.primary} />
+            <View style={[styles.addressIconContainer, { backgroundColor: addressError ? '#FEE2E2' : (isDark ? 'rgba(0, 122, 255, 0.15)' : '#E5F1FF') }]}>
+              <Ionicons name="location" size={20} color={addressError ? '#EF4444' : colors.primary} />
             </View>
             <View style={styles.addressDetails}>
-              <Text style={[styles.addressLabel, { color: colors.text }]}>
-                {selectedAddress ? selectedAddress.addressLine1 : 'No address saved'}
+              <Text 
+                style={[styles.addressLabel, { color: addressError ? '#EF4444' : colors.text }]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {selectedAddress 
+                  ? selectedAddress.addressLine1 
+                  : (user?.address || 'No address saved')}
               </Text>
-              <Text style={[styles.addressText, { color: colors.textSecondary }]}>
-                {selectedAddress ? `${selectedAddress.city}, ${selectedAddress.state}` : 'Tap to add address'}
+              <Text 
+                style={[styles.addressText, { color: addressError ? '#EF4444' : colors.textSecondary }]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {selectedAddress 
+                  ? `${selectedAddress.city}, ${selectedAddress.state}` 
+                  : (user?.address ? `${user?.city || ''}, ${user?.state || ''}` : 'Tap to add address')}
               </Text>
             </View>
-            <Text style={[styles.changeText, { color: colors.primary }]}>Change</Text>
+            <Text style={[styles.changeText, { color: addressError ? '#EF4444' : colors.primary }]}>
+              {(selectedAddress || user?.address) ? 'Change' : 'Add'}
+            </Text>
           </TouchableOpacity>
+          {addressError && (
+            <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
+              <Text style={{ color: '#EF4444', fontSize: 13, fontWeight: '500' }}>
+                ⚠️ Please add a delivery address to continue
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Send as Gift Option */}
@@ -1116,15 +1347,16 @@ export default function CheckoutScreen({ navigation }: Props) {
       <Modal
         visible={showPaymentModal}
         animationType="slide"
-        presentationStyle="pageSheet"
+        presentationStyle="fullScreen"
         onRequestClose={handleClosePaymentModal}
       >
-        <View style={[styles.paymentModalContainer, { backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
-          <View style={[styles.paymentModalHeader, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        <View style={[styles.paymentModalContainer, { backgroundColor: '#FFFFFF', paddingTop: insets.top }]}>
+          <View style={[styles.paymentModalHeader, { backgroundColor: '#FFFFFF' }]}>
             <TouchableOpacity onPress={handleClosePaymentModal} style={styles.paymentModalCloseBtn}>
-              <Ionicons name="close" size={24} color={colors.text} />
+              <Ionicons name="close" size={24} color="#1F2937" />
             </TouchableOpacity>
-            <Text style={[styles.paymentModalTitle, { color: colors.text }]}>Complete Payment</Text>
+            <Text style={[styles.paymentModalTitle, { color: '#1F2937' }]}>Complete Payment</Text>
             <View style={styles.placeholder} />
           </View>
           
@@ -1175,7 +1407,11 @@ export default function CheckoutScreen({ navigation }: Props) {
         transparent
         onRequestClose={handleClosePayForMeModal}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView 
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        >
           <View style={[styles.payForMeModalContent, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>Pay for Me</Text>
@@ -1257,47 +1493,128 @@ export default function CheckoutScreen({ navigation }: Props) {
               </ScrollView>
             ) : (
               <View style={styles.payForMeSuccess}>
-                <View style={[styles.payForMeSuccessIcon, { backgroundColor: '#E8F5E9' }]}>
-                  <Ionicons name="checkmark-circle" size={48} color="#43A047" />
-                </View>
-                <Text style={[styles.payForMeSuccessTitle, { color: colors.text }]}>Payment Link Ready!</Text>
-                <Text style={[styles.payForMeSuccessDesc, { color: colors.textSecondary }]}>
-                  Share this link with {payForMeName} to complete the payment.
-                </Text>
+                {/* Status-based UI */}
+                {payForMeStatus === 'pending' && (
+                  <>
+                    <View style={[styles.payForMeSuccessIcon, { backgroundColor: '#E5F1FF' }]}>
+                      <Ionicons name="link-outline" size={48} color={colors.primary} />
+                    </View>
+                    <Text style={[styles.payForMeSuccessTitle, { color: colors.text }]}>Payment Link Ready!</Text>
+                    <Text style={[styles.payForMeSuccessDesc, { color: colors.textSecondary }]}>
+                      Share this link with {payForMeName} to complete the payment.
+                    </Text>
 
-                <View style={[styles.payForMeLinkBox, { backgroundColor: isDark ? colors.surface : '#F2F2F7' }]}>
-                  <Text style={[styles.payForMeLinkText, { color: colors.text }]} numberOfLines={2}>
-                    {payForMeLink}
-                  </Text>
-                </View>
+                    <View style={[styles.payForMeLinkBox, { backgroundColor: isDark ? colors.surface : '#F2F2F7' }]}>
+                      <Text style={[styles.payForMeLinkText, { color: colors.text }]} numberOfLines={2}>
+                        {payForMeLink}
+                      </Text>
+                    </View>
 
-                <View style={styles.payForMeActions}>
-                  <TouchableOpacity 
-                    style={[styles.payForMeActionBtn, { backgroundColor: colors.primary }]}
-                    onPress={handleSharePayForMeLink}
-                  >
-                    <Ionicons name="share-outline" size={20} color="#FFFFFF" />
-                    <Text style={styles.payForMeActionBtnText}>Share Link</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.payForMeActionBtn, { backgroundColor: isDark ? colors.surface : '#F2F2F7' }]}
-                    onPress={handleCopyPayForMeLink}
-                  >
-                    <Ionicons name="copy-outline" size={20} color={colors.text} />
-                    <Text style={[styles.payForMeActionBtnText, { color: colors.text }]}>Copy</Text>
-                  </TouchableOpacity>
-                </View>
+                    <View style={styles.payForMeActions}>
+                      <TouchableOpacity 
+                        style={[styles.payForMeActionBtn, { backgroundColor: colors.primary }]}
+                        onPress={handleSharePayForMeLink}
+                      >
+                        <Ionicons name="share-outline" size={20} color="#FFFFFF" />
+                        <Text style={styles.payForMeActionBtnText}>Share Link</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity 
+                        style={[styles.payForMeActionBtn, { backgroundColor: isDark ? colors.surface : '#F2F2F7' }]}
+                        onPress={handleCopyPayForMeLink}
+                      >
+                        <Ionicons name="copy-outline" size={20} color={colors.text} />
+                        <Text style={[styles.payForMeActionBtnText, { color: colors.text }]}>Copy</Text>
+                      </TouchableOpacity>
+                    </View>
 
-                <TouchableOpacity 
-                  style={styles.payForMeDoneBtn}
-                  onPress={resetPayForMeState}
-                >
-                  <Text style={[styles.payForMeDoneBtnText, { color: colors.primary }]}>Done</Text>
-                </TouchableOpacity>
+                    {/* Polling status indicator */}
+                    <View style={[styles.payForMePollingCard, { backgroundColor: isDark ? 'rgba(0, 122, 255, 0.1)' : '#E5F1FF' }]}>
+                      <ActivityIndicator size="small" color={colors.primary} />
+                      <Text style={[styles.payForMePollingText, { color: colors.primary }]}>
+                        Waiting for payment from {payForMeName}...
+                      </Text>
+                    </View>
+                  </>
+                )}
+
+                {payForMeStatus === 'paid' && (
+                  <>
+                    <View style={[styles.payForMeSuccessIcon, { backgroundColor: '#E8F5E9' }]}>
+                      <Ionicons name="checkmark-circle" size={48} color="#43A047" />
+                    </View>
+                    <Text style={[styles.payForMeSuccessTitle, { color: colors.text }]}>Payment Received! 🎉</Text>
+                    <Text style={[styles.payForMeSuccessDesc, { color: colors.textSecondary }]}>
+                      {payForMeName} has paid ₦{finalTotal.toLocaleString()}. Creating your order...
+                    </Text>
+                    <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 20 }} />
+                  </>
+                )}
+
+                {payForMeStatus === 'creating_order' && (
+                  <>
+                    <View style={[styles.payForMeSuccessIcon, { backgroundColor: '#E5F1FF' }]}>
+                      <ActivityIndicator size="large" color={colors.primary} />
+                    </View>
+                    <Text style={[styles.payForMeSuccessTitle, { color: colors.text }]}>Creating Your Order...</Text>
+                    <Text style={[styles.payForMeSuccessDesc, { color: colors.textSecondary }]}>
+                      Please wait while we process your order.
+                    </Text>
+                  </>
+                )}
+
+                {payForMeStatus === 'completed' && (
+                  <>
+                    <View style={[styles.payForMeSuccessIcon, { backgroundColor: '#E8F5E9' }]}>
+                      <Ionicons name="bag-check" size={48} color="#43A047" />
+                    </View>
+                    <Text style={[styles.payForMeSuccessTitle, { color: colors.text }]}>Order Placed! 🎉</Text>
+                    <Text style={[styles.payForMeSuccessDesc, { color: colors.textSecondary }]}>
+                      Your order has been placed successfully. Thank {payForMeName} for paying!
+                    </Text>
+                    <Button
+                      title="View Orders"
+                      onPress={() => {
+                        resetPayForMeState();
+                        navigation.navigate('Orders' as any);
+                      }}
+                      fullWidth
+                      style={{ marginTop: 20 }}
+                    />
+                  </>
+                )}
+
+                {payForMeStatus === 'failed' && (
+                  <>
+                    <View style={[styles.payForMeSuccessIcon, { backgroundColor: '#FFEBEE' }]}>
+                      <Ionicons name="alert-circle" size={48} color="#EF4444" />
+                    </View>
+                    <Text style={[styles.payForMeSuccessTitle, { color: colors.text }]}>Order Failed</Text>
+                    <Text style={[styles.payForMeSuccessDesc, { color: colors.textSecondary }]}>
+                      There was a problem creating your order. Please try again.
+                    </Text>
+                    <Button
+                      title="Try Again"
+                      onPress={() => {
+                        setPayForMeStatus('pending');
+                        if (paymentReference) {
+                          createPayForMeOrder(paymentReference);
+                        }
+                      }}
+                      fullWidth
+                      style={{ marginTop: 20 }}
+                    />
+                    <TouchableOpacity 
+                      style={[styles.payForMeDoneBtn, { marginTop: 12 }]}
+                      onPress={resetPayForMeState}
+                    >
+                      <Text style={[styles.payForMeDoneBtnText, { color: colors.textSecondary }]}>Cancel</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
               </View>
             )}
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Time Slot Selection Modal */}
@@ -1518,15 +1835,27 @@ export default function CheckoutScreen({ navigation }: Props) {
                           </View>
                         )}
                       </View>
-                      <Text style={[styles.addressOptionLine1, { color: colors.text }]}>
+                      <Text 
+                        style={[styles.addressOptionLine1, { color: colors.text }]}
+                        numberOfLines={2}
+                        ellipsizeMode="tail"
+                      >
                         {address.addressLine1}
                       </Text>
                       {address.addressLine2 && (
-                        <Text style={[styles.addressOptionLine2, { color: colors.textSecondary }]}>
+                        <Text 
+                          style={[styles.addressOptionLine2, { color: colors.textSecondary }]}
+                          numberOfLines={1}
+                          ellipsizeMode="tail"
+                        >
                           {address.addressLine2}
                         </Text>
                       )}
-                      <Text style={[styles.addressOptionCity, { color: colors.textSecondary }]}>
+                      <Text 
+                        style={[styles.addressOptionCity, { color: colors.textSecondary }]}
+                        numberOfLines={1}
+                        ellipsizeMode="tail"
+                      >
                         {address.city}, {address.state}
                       </Text>
                     </View>
@@ -1613,6 +1942,7 @@ const styles = StyleSheet.create({
   addressDetails: {
     flex: 1,
     marginLeft: 12,
+    marginRight: 8,
   },
   addressLabel: {
     fontSize: 15,
@@ -2291,6 +2621,19 @@ const styles = StyleSheet.create({
   payForMeDoneBtnText: {
     fontSize: 15,
     fontFamily: FONTS.semiBold,
+  },
+  payForMePollingCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 16,
+    gap: 12,
+  },
+  payForMePollingText: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: FONTS.medium,
   },
   // Farmer Message Styles
   farmerMessageHeader: {

@@ -1,4 +1,5 @@
 import apiClient from './apiClient';
+import { offlineCacheService } from './offlineCacheService';
 import { Product } from '../types';
 
 export interface FavoritesResponse {
@@ -33,12 +34,36 @@ const extractData = <T>(response: any): T => {
 export const favoritesService = {
   /**
    * Get all favorite products with pagination
+   * Uses offline cache when network unavailable
    */
   getFavorites: async (page = 1, limit = 20): Promise<FavoritesResponse> => {
-    const response = await apiClient.get<any>('/favorites', {
-      params: { page, limit },
-    });
-    return extractData<FavoritesResponse>(response);
+    try {
+      const response = await apiClient.get<any>('/favorites', {
+        params: { page, limit },
+      });
+      const data = extractData<FavoritesResponse>(response);
+      
+      // Cache favorites for offline use
+      if (page === 1) {
+        await offlineCacheService.cacheFavorites(data.items);
+      }
+      
+      return data;
+    } catch (error) {
+      // Try cached favorites
+      const cachedFavorites = await offlineCacheService.getCachedFavorites();
+      if (cachedFavorites && cachedFavorites.length > 0) {
+        console.log('Using cached favorites due to network error');
+        return {
+          items: cachedFavorites,
+          total: cachedFavorites.length,
+          page: 1,
+          limit: cachedFavorites.length,
+          totalPages: 1,
+        };
+      }
+      throw error;
+    }
   },
 
   /**
@@ -87,8 +112,19 @@ export const favoritesService = {
 
   /**
    * Add a product to favorites
+   * Queues action offline if network unavailable
    */
   addFavorite: async (productId: string): Promise<void> => {
+    const isOnline = offlineCacheService.getIsOnline();
+    
+    if (!isOnline) {
+      await offlineCacheService.addPendingAction({
+        type: 'ADD_FAVORITE',
+        payload: { productId },
+      });
+      return;
+    }
+    
     await apiClient.post('/favorites', { productId });
   },
 
@@ -104,8 +140,19 @@ export const favoritesService = {
 
   /**
    * Remove a product from favorites
+   * Queues action offline if network unavailable
    */
   removeFavorite: async (productId: string): Promise<void> => {
+    const isOnline = offlineCacheService.getIsOnline();
+    
+    if (!isOnline) {
+      await offlineCacheService.addPendingAction({
+        type: 'REMOVE_FAVORITE',
+        payload: { productId },
+      });
+      return;
+    }
+    
     await apiClient.delete(`/favorites/${productId}`);
   },
 

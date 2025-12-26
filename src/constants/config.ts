@@ -1,19 +1,39 @@
-// Enable mock mode for development without a backend
-export const MOCK_MODE = false; // Backend is now available
+/**
+ * Mock mode configuration
+ * 
+ * When MOCK_MODE is true:
+ * - Authentication uses hardcoded test credentials
+ * - OTP verification accepts "123456" as valid code
+ * - 2FA verification accepts "123456" as valid code
+ * - Useful for development/testing without backend
+ * 
+ * In production, MOCK_MODE should always be false.
+ * 
+ * SECURITY: This is enforced - MOCK_MODE will always be false
+ * when __DEV__ is false (production builds)
+ */
+const _MOCK_MODE_DEV = false; // Set to true only for local development
+export const MOCK_MODE = __DEV__ ? _MOCK_MODE_DEV : false;
 
-// Use your machine's IP for mobile device/emulator access
-// For iOS Simulator, localhost works. For Android emulator, use 10.0.2.2
-// For real devices, use your machine's IP address
-const DEV_API_HOST = '192.168.0.138'; // Your local network IP - change if needed
+// Validate MOCK_MODE is never true in production
+if (!__DEV__ && MOCK_MODE) {
+  console.error('CRITICAL SECURITY ERROR: MOCK_MODE cannot be true in production!');
+  throw new Error('MOCK_MODE must be false in production builds');
+}
+
+// API Configuration
+// In development, use environment variable or fallback to localhost
+// In production, always use the production API URL
+const DEV_API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+const PROD_API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.handwork.com/api/v1';
+
+const DEV_WS_URL = process.env.EXPO_PUBLIC_WS_URL || 'http://localhost:3001';
+const PROD_WS_URL = process.env.EXPO_PUBLIC_WS_URL || 'https://api.handwork.com';
 
 export const API_CONFIG = {
-  BASE_URL: __DEV__ 
-    ? `http://${DEV_API_HOST}:3001/api/v1` 
-    : 'https://api.handwork.com/api/v1',
+  BASE_URL: __DEV__ ? DEV_API_URL : PROD_API_URL,
   TIMEOUT: 30000,
-  WS_URL: __DEV__
-    ? `ws://${DEV_API_HOST}:3001`
-    : 'wss://api.handwork.com',
+  WS_URL: __DEV__ ? DEV_WS_URL : PROD_WS_URL,
 };
 
 export const MAP_CONFIG = {

@@ -19,11 +19,14 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Location from 'expo-location';
 import { COLORS, SPACING, FONT_SIZES, FONTS } from '../../constants/theme';
 import { useAppSelector, useAppDispatch } from '../../store';
 import { updateUser } from '../../store/slices/authSlice';
 import { useTheme } from '../../context/ThemeContext';
 import { authService } from '../../services/authService';
+import apiClient from '../../services/apiClient';
 
 interface EditField {
   key: string;
@@ -193,6 +196,23 @@ export default function EditProfileScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingField, setEditingField] = useState<EditField | null>(null);
 
+  // Sync local state with user prop when it changes (e.g., profile refresh from server)
+  useEffect(() => {
+    if (user) {
+      // Only update if user has an avatar and local avatar is different
+      if (user.avatar && user.avatar !== avatar && !avatar?.startsWith('file://')) {
+        setAvatar(user.avatar);
+      }
+      // Sync other fields too
+      if (user.name && user.name !== name) setName(user.name);
+      if (user.email && user.email !== email) setEmail(user.email);
+      if (user.phone && user.phone !== phone) setPhone(user.phone);
+      if (user.address && user.address !== address) setAddress(user.address);
+      if (user.city && user.city !== city) setCity(user.city);
+      if (user.state && user.state !== state) setState(user.state);
+    }
+  }, [user?.avatar, user?.name, user?.email, user?.phone, user?.address, user?.city, user?.state]);
+
   // OTP countdown timer
   useEffect(() => {
     if (otpCountdown > 0) {
@@ -296,6 +316,34 @@ export default function EditProfileScreen() {
     },
   ];
 
+  // Address fields - shown for farmers (farm address) and riders (delivery base)
+  const addressFields: EditField[] = user?.role === 'farmer' || user?.role === 'rider' ? [
+    {
+      key: 'address',
+      label: user?.role === 'farmer' ? 'Farm Address' : 'Base Address',
+      value: address,
+      icon: 'location',
+      iconColor: '#FF9500',
+      placeholder: user?.role === 'farmer' ? 'Enter your farm address' : 'Enter your base address',
+    },
+    {
+      key: 'city',
+      label: 'City',
+      value: city,
+      icon: 'business',
+      iconColor: '#5856D6',
+      placeholder: 'Enter city',
+    },
+    {
+      key: 'state',
+      label: 'State',
+      value: state,
+      icon: 'map',
+      iconColor: '#007AFF',
+      placeholder: 'Enter state',
+    },
+  ] : [];
+
   const handleFieldPress = (field: EditField) => {
     setEditingField(field);
     setModalVisible(true);
@@ -325,10 +373,13 @@ export default function EditProfileScreen() {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.8,
+      quality: 0.7,
+      exif: false,
+      base64: false,
     });
 
     if (!result.canceled && result.assets[0]) {
+      console.log('Selected image:', JSON.stringify(result.assets[0]));
       setAvatar(result.assets[0].uri);
     }
   };
@@ -343,10 +394,13 @@ export default function EditProfileScreen() {
     const result = await ImagePicker.launchCameraAsync({
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.8,
+      quality: 0.7,
+      exif: false,
+      base64: false,
     });
 
     if (!result.canceled && result.assets[0]) {
+      console.log('Captured image:', JSON.stringify(result.assets[0]));
       setAvatar(result.assets[0].uri);
     }
   };
@@ -372,31 +426,133 @@ export default function EditProfileScreen() {
 
     setIsLoading(true);
     try {
-      const updateData = {
+      let avatarUrl = avatar;
+
+      // If avatar is a local file URI, upload it first
+      if (avatar && avatar.startsWith('file://')) {
+        try {
+          console.log('Uploading avatar from:', avatar);
+          
+          // Get file info to check size
+          const fileInfo = await FileSystem.getInfoAsync(avatar);
+          console.log('File info:', JSON.stringify(fileInfo));
+          
+          if (!fileInfo.exists) {
+            throw new Error('Image file not found');
+          }
+          
+          let base64: string;
+          
+          // Read file as base64 with fallback
+          if (FileSystem.EncodingType?.Base64) {
+            base64 = await FileSystem.readAsStringAsync(avatar, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+          } else {
+            // Fallback using fetch and FileReader
+            const response = await fetch(avatar);
+            const blob = await response.blob();
+            base64 = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => {
+                const result = reader.result as string;
+                resolve(result.split(',')[1] || result);
+              };
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+            });
+          }
+          
+          console.log('Base64 length:', base64.length);
+          
+          // Detect MIME type from file extension or default to jpeg
+          const extension = avatar.split('.').pop()?.toLowerCase() || 'jpg';
+          let mimeType = 'image/jpeg';
+          if (extension === 'png') mimeType = 'image/png';
+          else if (extension === 'gif') mimeType = 'image/gif';
+          else if (extension === 'webp') mimeType = 'image/webp';
+          else if (extension === 'heic' || extension === 'heif') mimeType = 'image/jpeg'; // Will be converted by expo
+          
+          console.log('MIME type:', mimeType, 'Extension:', extension);
+          
+          // Upload to server
+          const uploadResponse = await apiClient.post<{ success: boolean; data: { url: string; filename: string; size: number } }>('/uploads/image', {
+            base64: `data:${mimeType};base64,${base64}`,
+            folder: 'avatars',
+          });
+          
+          console.log('Upload response:', JSON.stringify(uploadResponse));
+          
+          // Backend wraps responses with { success: true, data: {...} }
+          avatarUrl = uploadResponse?.data?.url || uploadResponse?.url || (uploadResponse as any)?.url;
+          
+          console.log('Avatar URL:', avatarUrl);
+          
+          if (!avatarUrl) {
+            throw new Error('No URL in upload response');
+          }
+        } catch (uploadError: any) {
+          console.error('Avatar upload error:', uploadError);
+          console.error('Error details:', JSON.stringify(uploadError.response?.data || uploadError.message));
+          Alert.alert('Warning', `Failed to upload profile picture: ${uploadError.response?.data?.message || uploadError.message || 'Unknown error'}`);
+          avatarUrl = user?.avatar; // Keep existing avatar
+        }
+      }
+
+      const updateData: any = {
         name: name.trim(),
-        email: email.trim(),
-        phone: phone.trim(),
-        address: address.trim(),
-        city: city.trim(),
-        state: state.trim(),
-        avatar: avatar || undefined,
       };
+      
+      // Only include fields that have values
+      if (email.trim()) updateData.email = email.trim();
+      if (address.trim()) updateData.address = address.trim();
+      if (city.trim()) updateData.city = city.trim();
+      if (state.trim()) updateData.state = state.trim();
+      if (avatarUrl) updateData.avatar = avatarUrl;
+
+      // Geocode address to get coordinates for farmers and riders
+      if ((user?.role === 'farmer' || user?.role === 'rider') && (address.trim() || city.trim() || state.trim())) {
+        try {
+          const fullAddress = [address.trim(), city.trim(), state.trim(), 'Nigeria'].filter(Boolean).join(', ');
+          console.log('Geocoding address:', fullAddress);
+          
+          const geocodeResults = await Location.geocodeAsync(fullAddress);
+          if (geocodeResults.length > 0) {
+            const { latitude, longitude } = geocodeResults[0];
+            updateData.latitude = latitude;
+            updateData.longitude = longitude;
+            console.log('Geocoded coordinates:', { latitude, longitude });
+          } else {
+            console.log('No geocode results found for address');
+          }
+        } catch (geocodeError) {
+          console.error('Geocoding error:', geocodeError);
+          // Continue without coordinates - don't block the save
+        }
+      }
+
+      console.log('Updating profile with:', JSON.stringify(updateData));
 
       // Call backend API to update profile
       const response = await authService.updateProfile(updateData);
       
+      console.log('Profile update response:', JSON.stringify(response));
+      
       if (response.success) {
-        // Update local Redux state
-        dispatch(updateUser(updateData));
+        // Update local Redux state with the server response data (which includes avatar URL)
+        // If server returns full user data, use it; otherwise use our update data
+        const updatedUserData = response.data || updateData;
+        dispatch(updateUser(updatedUserData));
         
         Alert.alert('Success', 'Profile updated successfully', [
           { text: 'OK', onPress: () => navigation.goBack() }
         ]);
       } else {
-        throw new Error('Failed to update profile');
+        throw new Error(response.message || 'Failed to update profile');
       }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to update profile. Please try again.');
+    } catch (error: any) {
+      console.error('Profile update error:', error);
+      Alert.alert('Error', error.message || 'Failed to update profile. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -514,6 +670,20 @@ export default function EditProfileScreen() {
             renderFieldItem(field, index === personalFields.length - 1)
           )}
         </View>
+
+        {/* Address Information - for farmers and riders */}
+        {addressFields.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                {user?.role === 'farmer' ? 'Farm Location' : 'Base Location'}
+              </Text>
+            </View>
+            {addressFields.map((field, index) =>
+              renderFieldItem(field, index === addressFields.length - 1)
+            )}
+          </View>
+        )}
 
         {/* Account Info */}
         <View style={styles.section}>

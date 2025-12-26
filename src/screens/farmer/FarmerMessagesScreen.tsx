@@ -19,7 +19,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useTheme } from '../../context/ThemeContext';
 import { COLORS, SPACING, FONT_SIZES, SHADOWS, FONTS } from '../../constants/theme';
-import { chatService, Conversation as ApiConversation } from '../../services/chatService';
+import { chatService, Conversation as ApiConversation, ChatMessage } from '../../services/chatService';
 import { useAppSelector } from '../../store';
 import { 
   EmptyMessagesIllustration, 
@@ -167,9 +167,17 @@ export default function FarmerMessagesScreen() {
         };
       });
       
+      // Deduplicate conversations by id
+      const uniqueConversations = transformedConversations.reduce((acc: Conversation[], conv) => {
+        if (!acc.find(existing => existing.id === conv.id)) {
+          acc.push(conv);
+        }
+        return acc;
+      }, []);
+      
       // Filter out archived conversations and set them separately
-      const activeConversations = transformedConversations.filter(c => !archivedIds.has(c.id));
-      const archived = transformedConversations.filter(c => archivedIds.has(c.id));
+      const activeConversations = uniqueConversations.filter(c => !archivedIds.has(c.id));
+      const archived = uniqueConversations.filter(c => archivedIds.has(c.id));
       
       setConversations(activeConversations);
       setArchivedConversations(archived);
@@ -185,6 +193,60 @@ export default function FarmerMessagesScreen() {
   useEffect(() => {
     fetchConversations();
   }, [fetchConversations]);
+
+  // Subscribe to real-time conversation updates (new messages)
+  useEffect(() => {
+    const handleConversationUpdate = (data: { conversationId: string; lastMessage: ChatMessage }) => {
+      console.log('[FarmerMessagesScreen] Conversation update received:', data);
+      
+      // Update the conversation in the list with the new last message
+      setConversations(prev => {
+        const existingIndex = prev.findIndex(c => c.id === data.conversationId);
+        if (existingIndex !== -1) {
+          const updated = [...prev];
+          const isFromCurrentUser = data.lastMessage.senderId === currentUser?.id;
+          updated[existingIndex] = {
+            ...updated[existingIndex],
+            lastMessage: data.lastMessage.text,
+            lastMessageTime: new Date(data.lastMessage.createdAt),
+            // Only increment unread if message is from someone else
+            unreadCount: isFromCurrentUser 
+              ? updated[existingIndex].unreadCount 
+              : updated[existingIndex].unreadCount + 1,
+          };
+          return updated;
+        }
+        // If conversation not found, refetch all conversations
+        fetchConversations();
+        return prev;
+      });
+      
+      // Also update archived conversations if needed
+      setArchivedConversations(prev => {
+        const existingIndex = prev.findIndex(c => c.id === data.conversationId);
+        if (existingIndex !== -1) {
+          const updated = [...prev];
+          const isFromCurrentUser = data.lastMessage.senderId === currentUser?.id;
+          updated[existingIndex] = {
+            ...updated[existingIndex],
+            lastMessage: data.lastMessage.text,
+            lastMessageTime: new Date(data.lastMessage.createdAt),
+            unreadCount: isFromCurrentUser 
+              ? updated[existingIndex].unreadCount 
+              : updated[existingIndex].unreadCount + 1,
+          };
+          return updated;
+        }
+        return prev;
+      });
+    };
+
+    chatService.subscribeToConversationUpdates(handleConversationUpdate);
+    
+    return () => {
+      chatService.unsubscribeFromConversationUpdates(handleConversationUpdate);
+    };
+  }, [currentUser?.id, fetchConversations]);
 
   // Subscribe to typing indicators for all conversations
   useEffect(() => {
@@ -224,10 +286,13 @@ export default function FarmerMessagesScreen() {
     return b.lastMessageTime.getTime() - a.lastMessageTime.getTime();
   });
 
-  const filteredConversations = sortedConversations.filter(conv =>
-    conv.buyerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    conv.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredConversations = sortedConversations.filter(conv => {
+    if (!conv) return false;
+    const buyerName = (conv.buyerName || '').toLowerCase();
+    const lastMessage = (conv.lastMessage || '').toLowerCase();
+    const query = searchQuery.toLowerCase();
+    return buyerName.includes(query) || lastMessage.includes(query);
+  });
 
   const formatTime = (date: Date) => {
     const now = new Date();
@@ -250,6 +315,7 @@ export default function FarmerMessagesScreen() {
 
   const handleConversationPress = (conversation: Conversation) => {
     (navigation as any).navigate('BuyerChat', {
+      conversationId: conversation.id,
       buyerId: conversation.buyerId,
       buyerName: conversation.buyerName,
       buyerPhone: conversation.buyerPhone,
@@ -409,9 +475,11 @@ export default function FarmerMessagesScreen() {
     );
   };
 
-  const totalUnread = conversations.reduce((sum, conv) => sum + conv.unreadCount, 0);
+  const totalUnread = conversations.reduce((sum, conv) => sum + (conv?.unreadCount || 0), 0);
 
   const renderConversation = ({ item }: { item: Conversation }) => {
+    if (!item || !item.id) return null;
+    
     const isPinned = pinnedConversations.has(item.id);
     const isTyping = typingUsers[item.id];
     
@@ -615,11 +683,10 @@ export default function FarmerMessagesScreen() {
         <View style={styles.headerTop}>
           {showArchived ? (
             <TouchableOpacity
-              style={styles.backToMessages}
+              style={styles.backButton}
               onPress={() => setShowArchived(false)}
             >
-              <Ionicons name="chevron-back" size={24} color="#34C759" />
-              <Text style={[styles.backText, { color: '#34C759' }]}>Back</Text>
+              <Ionicons name="chevron-back" size={28} color={colors.text} />
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
@@ -680,7 +747,7 @@ export default function FarmerMessagesScreen() {
         /* Conversations List */
         <FlatList
           data={filteredConversations}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item, index) => item?.id || `conv-${index}`}
           renderItem={renderConversation}
           contentContainerStyle={[
             styles.listContent,

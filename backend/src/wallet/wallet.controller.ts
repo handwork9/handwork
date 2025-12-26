@@ -82,18 +82,23 @@ export class WalletController {
     @Query('category') category?: TransactionCategory,
   ) {
     let ownerId = user.id;
-    let ownerType = WalletOwnerType.FARMER;
+    let ownerType: WalletOwnerType;
 
-    // For riders, use the rider entity ID as ownerId
+    // Determine ownerType based on user role
     if (user.role === 'rider') {
       ownerType = WalletOwnerType.RIDER;
       const riderId = await this.walletService.getRiderIdByUserId(user.id);
       if (riderId) {
         ownerId = riderId;
       }
+    } else if (user.role === 'farmer') {
+      ownerType = WalletOwnerType.FARMER;
+    } else {
+      // Buyers and other users
+      ownerType = WalletOwnerType.BUYER;
     }
 
-    console.log(`[WalletController] getTransactions - userId: ${user.id}, ownerId: ${ownerId}, ownerType: ${ownerType}`);
+    console.log(`[WalletController] getTransactions - userId: ${user.id}, ownerId: ${ownerId}, ownerType: ${ownerType}, role: ${user.role}`);
 
     return this.walletService.getTransactionHistory(
       ownerId,
@@ -167,9 +172,17 @@ export class WalletController {
       await this.pinService.verifyPin(user.id, body.pin);
     }
 
+    // Normalize phone number to +234 format
+    let normalizedPhone = body.recipientPhone;
+    if (normalizedPhone.startsWith('0')) {
+      normalizedPhone = '+234' + normalizedPhone.substring(1);
+    } else if (normalizedPhone.startsWith('234') && !normalizedPhone.startsWith('+')) {
+      normalizedPhone = '+' + normalizedPhone;
+    }
+
     return this.walletService.transferToUser(
       user.id,
-      body.recipientPhone,
+      normalizedPhone,
       body.amount,
     );
   }
@@ -235,5 +248,15 @@ export class WalletController {
       duration: 'monthly',
       paymentMethod: 'wallet',
     });
+  }
+
+  @Get('recent-recipients')
+  @ApiOperation({ summary: 'Get recent transfer recipients' })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  async getRecentRecipients(
+    @CurrentUser() user: User,
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+  ) {
+    return this.walletService.getRecentTransferRecipients(user.id, limit);
   }
 }

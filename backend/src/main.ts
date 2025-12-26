@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe, VersioningType } from '@nestjs/common';
+import { ValidationPipe, VersioningType, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { IoAdapter } from '@nestjs/platform-socket.io';
@@ -7,8 +7,17 @@ import helmet from 'helmet';
 import * as bodyParser from 'body-parser';
 import { AppModule } from './app.module';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { initSentry } from './common/utils/sentry';
+import { validateEnv } from './config/env.validation';
 
 async function bootstrap() {
+  // Validate environment variables before starting
+  validateEnv();
+  
+  // Initialize Sentry for error tracking (before app creation)
+  initSentry();
+  
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
@@ -16,8 +25,16 @@ async function bootstrap() {
   app.use(bodyParser.json({ limit: '50mb' }));
   app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
-  // Security
-  app.use(helmet());
+  // Security - configure helmet to allow cross-origin image loading
+  app.use(helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        imgSrc: ["'self'", 'data:', 'blob:', '*'],
+      },
+    },
+  }));
 
   // CORS - Allow all origins in development for mobile app access
   const isDev = configService.get('NODE_ENV') !== 'production';
@@ -32,6 +49,9 @@ async function bootstrap() {
   // Global Response Interceptor
   app.useGlobalInterceptors(new ResponseInterceptor());
 
+  // Global Exception Filter (catches all unhandled errors)
+  app.useGlobalFilters(new AllExceptionsFilter());
+
   // Validation
   app.useGlobalPipes(
     new ValidationPipe({
@@ -40,6 +60,14 @@ async function bootstrap() {
       transform: true,
       transformOptions: {
         enableImplicitConversion: true,
+      },
+      exceptionFactory: (errors) => {
+        const messages = errors.map((error) => {
+          const constraints = error.constraints ? Object.values(error.constraints) : [];
+          return `${error.property}: ${constraints.join(', ')}`;
+        });
+        console.error('Validation errors:', messages);
+        return new BadRequestException(messages);
       },
     }),
   );
@@ -86,7 +114,7 @@ async function bootstrap() {
     });
   }
 
-  const port = configService.get('PORT', 3000);
+  const port = configService.get('PORT', 3001);
   await app.listen(port);
 
   console.log(`🚀 Handwork API running on: http://localhost:${port}`);
