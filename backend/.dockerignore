@@ -1,0 +1,18 @@
+# Docker ignore - don't copy these to container
+node_modules
+dist
+.git
+.gitignore
+.env
+.env.*
+*.md
+test
+coverage
+.docker
+uploads/temp
+uploads/avatars
+uploads/products
+uploads/chat
+uploads/delivery-proof
+uploads/disputes
+uploads/support
