@@ -25,10 +25,10 @@ if (!__DEV__ && MOCK_MODE) {
 // In development, use environment variable or fallback to localhost
 // In production, always use the production API URL
 const DEV_API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
-const PROD_API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.handwork.com/api/v1';
+const PROD_API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://handwork-api-production.up.railway.app/api/v1';
 
 const DEV_WS_URL = process.env.EXPO_PUBLIC_WS_URL || 'http://localhost:3001';
-const PROD_WS_URL = process.env.EXPO_PUBLIC_WS_URL || 'https://api.handwork.com';
+const PROD_WS_URL = process.env.EXPO_PUBLIC_WS_URL || 'https://handwork-api-production.up.railway.app';
 
 export const API_CONFIG = {
   BASE_URL: __DEV__ ? DEV_API_URL : PROD_API_URL,
