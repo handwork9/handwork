@@ -18,7 +18,7 @@ const ENV_VARS: EnvVar[] = [
   // Database
   { name: 'DATABASE_HOST', required: true, production: true, description: 'PostgreSQL host' },
   { name: 'DATABASE_PORT', required: false, production: false, description: 'PostgreSQL port (default: 5432)' },
-  { name: 'DATABASE_USER', required: true, production: true, description: 'PostgreSQL username' },
+  { name: 'DATABASE_USERNAME', required: true, production: true, description: 'PostgreSQL username' },
   { name: 'DATABASE_PASSWORD', required: true, production: true, description: 'PostgreSQL password' },
   { name: 'DATABASE_NAME', required: true, production: true, description: 'PostgreSQL database name' },
   
@@ -30,27 +30,27 @@ const ENV_VARS: EnvVar[] = [
   { name: 'REDIS_HOST', required: false, production: true, description: 'Redis host' },
   { name: 'REDIS_PORT', required: false, production: false, description: 'Redis port (default: 6379)' },
   
-  // External Services (Production)
-  { name: 'STRIPE_SECRET_KEY', required: false, production: true, description: 'Stripe secret key' },
-  { name: 'PAYSTACK_SECRET_KEY', required: false, production: true, description: 'Paystack secret key' },
-  { name: 'TWILIO_ACCOUNT_SID', required: false, production: true, description: 'Twilio account SID' },
-  { name: 'TWILIO_AUTH_TOKEN', required: false, production: true, description: 'Twilio auth token' },
-  { name: 'TWILIO_PHONE_NUMBER', required: false, production: true, description: 'Twilio phone number' },
+  // External Services (Production) - Optional, logged as warnings
+  { name: 'STRIPE_SECRET_KEY', required: false, production: false, description: 'Stripe secret key' },
+  { name: 'PAYSTACK_SECRET_KEY', required: false, production: false, description: 'Paystack secret key' },
+  { name: 'TWILIO_ACCOUNT_SID', required: false, production: false, description: 'Twilio account SID' },
+  { name: 'TWILIO_AUTH_TOKEN', required: false, production: false, description: 'Twilio auth token' },
+  { name: 'TWILIO_PHONE_NUMBER', required: false, production: false, description: 'Twilio phone number' },
   
-  // Email
-  { name: 'SMTP_HOST', required: false, production: true, description: 'SMTP host' },
-  { name: 'SMTP_USER', required: false, production: true, description: 'SMTP username' },
-  { name: 'SMTP_PASSWORD', required: false, production: true, description: 'SMTP password' },
+  // Email - Optional
+  { name: 'SMTP_HOST', required: false, production: false, description: 'SMTP host' },
+  { name: 'SMTP_USER', required: false, production: false, description: 'SMTP username' },
+  { name: 'SMTP_PASSWORD', required: false, production: false, description: 'SMTP password' },
   
-  // Firebase/Expo Push
-  { name: 'FIREBASE_PROJECT_ID', required: false, production: true, description: 'Firebase project ID' },
+  // Firebase/Expo Push - Optional
+  { name: 'FIREBASE_PROJECT_ID', required: false, production: false, description: 'Firebase project ID' },
   
-  // Sentry
-  { name: 'SENTRY_DSN', required: false, production: true, description: 'Sentry DSN for error tracking' },
+  // Sentry - Optional
+  { name: 'SENTRY_DSN', required: false, production: false, description: 'Sentry DSN for error tracking' },
   
-  // App Config
-  { name: 'FRONTEND_URL', required: false, production: true, description: 'Frontend URL for CORS' },
-  { name: 'API_URL', required: false, production: true, description: 'API URL' },
+  // App Config - Optional
+  { name: 'FRONTEND_URL', required: false, production: false, description: 'Frontend URL for CORS' },
+  { name: 'API_URL', required: false, production: false, description: 'API URL' },
 ];
 
 /**
