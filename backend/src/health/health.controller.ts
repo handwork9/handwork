@@ -21,34 +21,19 @@ export class HealthController {
 
   @Get()
   @Public()
-  @HealthCheck()
   @ApiOperation({ summary: 'Health check endpoint' })
   @ApiResponse({
     status: 200,
     description: 'Service is healthy',
   })
-  @ApiResponse({
-    status: 503,
-    description: 'Service is unhealthy',
-  })
   check() {
-    return this.health.check([
-      // Database health - increased timeout for cloud databases
-      () => this.db.pingCheck('database', { timeout: 5000 }),
-
-      // Memory health (heap should not exceed 300MB)
-      () => this.memory.checkHeap('memory_heap', 300 * 1024 * 1024),
-
-      // RSS memory (should not exceed 500MB)
-      () => this.memory.checkRSS('memory_rss', 500 * 1024 * 1024),
-
-      // Disk health disabled for development (was causing false positives on macOS)
-      // () =>
-      //   this.disk.checkStorage('disk', {
-      //     path: '/',
-      //     thresholdPercent: 0.01,
-      //   }),
-    ]);
+    // Simple health check - just return OK if app is running
+    // Full health check available at /health/ready
+    return { 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      service: 'handwork-api'
+    };
   }
 
   @Get('live')
