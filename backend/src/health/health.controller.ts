@@ -33,8 +33,8 @@ export class HealthController {
   })
   check() {
     return this.health.check([
-      // Database health
-      () => this.db.pingCheck('database'),
+      // Database health - increased timeout for cloud databases
+      () => this.db.pingCheck('database', { timeout: 5000 }),
 
       // Memory health (heap should not exceed 300MB)
       () => this.memory.checkHeap('memory_heap', 300 * 1024 * 1024),
