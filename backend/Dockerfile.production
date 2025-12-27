@@ -1,6 +1,9 @@
 # Simple Dockerfile for NestJS
 FROM node:20-alpine
 
+# Install build dependencies for bcrypt and other native modules
+RUN apk add --no-cache python3 make g++ 
+
 WORKDIR /app
 
 # Copy package files
@@ -21,5 +24,5 @@ RUN npm prune --production
 # Expose port
 EXPOSE 3001
 
-# Start with error output
-CMD ["sh", "-c", "echo 'Starting app...' && node dist/main.js 2>&1"]
+# Start the app
+CMD ["node", "dist/main.js"]
