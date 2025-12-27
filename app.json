@@ -39,15 +39,16 @@
       "expo-web-browser",
       [
         "@rnmapbox/maps",
-        {}
-      ],
-      [
-        "@sentry/react-native/expo",
         {
-          "organization": "your-sentry-org",
-          "project": "handwork-mobile"
+          "RNMapboxMapsDownloadToken": "sk.eyJ1IjoiYnVsbGlvbjkiLCJhIjoiY21qZm1yZmFuMG5wYjNmcXQ2bmk1YXVhYSJ9.tZz9qFO1O67n7kbqM8VnYA"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "0034f809-6dbd-4373-be3a-a1a6eba75576"
+      }
+    },
+    "owner": "bullion9"
   }
 }
