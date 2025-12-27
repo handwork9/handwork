@@ -24,5 +24,5 @@ RUN npm prune --production
 # Expose port
 EXPOSE 3001
 
-# Start the app - main.js is in dist/src/ due to project structure
+# Start the app
 CMD ["node", "dist/src/main.js"]
