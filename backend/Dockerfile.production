@@ -18,6 +18,9 @@ COPY . .
 # Build the application
 RUN npm run build
 
+# Create symlink so dist/main.js works
+RUN ln -s /app/dist/src/main.js /app/dist/main.js
+
 # Remove dev dependencies
 RUN npm prune --production
 
@@ -25,4 +28,4 @@ RUN npm prune --production
 EXPOSE 3001
 
 # Start the app
-CMD ["node", "dist/src/main.js"]
+CMD ["node", "dist/main.js"]
