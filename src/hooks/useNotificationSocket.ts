@@ -34,8 +34,10 @@ export function useNotificationSocket(
       return;
     }
 
-    // Connect to notifications namespace on port 3003
-    const wsUrl = API_CONFIG.WS_URL.replace(/:300[01]/, ':3003');
+    // Connect to notifications namespace
+    const wsUrl = API_CONFIG.WS_URL
+      .replace('ws://', 'http://')
+      .replace('wss://', 'https://');
     const notificationsUrl = `${wsUrl}/notifications`;
     
     console.log('[NotificationSocket] Connecting to:', notificationsUrl);

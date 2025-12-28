@@ -5,11 +5,9 @@ import { create } from 'zustand';
 import Cookies from 'js-cookie';
 import { useNotificationStore } from './notificationStore';
 
-// Support socket runs on port 3003 - extract base URL and use correct port
+// Support socket URL - use the same base URL
 const getSocketUrl = () => {
-  const baseUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001';
-  // Replace any port with 3003 for support socket
-  return baseUrl.replace(/:\d+/, ':3003');
+  return process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001';
 };
 const SUPPORT_SOCKET_URL = getSocketUrl();
 
