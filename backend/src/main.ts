@@ -11,6 +11,8 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { initSentry } from './common/utils/sentry';
 import { validateEnv } from './config/env.validation';
 
+// WebSocket gateways run on same port as HTTP server (required for Railway/cloud deployment)
+
 async function bootstrap() {
   // Validate environment variables before starting
   validateEnv();
