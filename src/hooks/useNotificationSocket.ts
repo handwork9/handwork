@@ -30,6 +30,11 @@ export function useNotificationSocket(
   callbackRef.current = onNotification;
 
   useEffect(() => {
+    // Temporarily disabled - waiting for Railway deployment
+    // TODO: Re-enable once backend WebSocket gateways are deployed
+    console.log('[NotificationSocket] Disabled - waiting for backend deployment');
+    return;
+    
     if (!isAuthenticated || !user?.id || !accessToken) {
       return;
     }

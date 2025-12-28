@@ -80,6 +80,11 @@ export const MessageBannerProvider: React.FC<MessageBannerProviderProps> = ({
 
   // Listen for incoming messages via dedicated socket connection
   useEffect(() => {
+    // Temporarily disabled - waiting for Railway deployment
+    // TODO: Re-enable once backend WebSocket gateways are deployed
+    console.log('[MessageBanner] Disabled - waiting for backend deployment');
+    return;
+
     if (!isAuthenticated || !user?.id || !accessToken) return;
 
     console.log('[MessageBanner] Setting up socket connection for notifications');

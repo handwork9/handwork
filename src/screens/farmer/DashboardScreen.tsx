@@ -13,7 +13,7 @@ import {
   Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
@@ -335,6 +335,8 @@ export default function DashboardScreen() {
       page: 1,
       limit: 50, // Fetch more orders for accurate pending/processing counts
     }),
+    refetchOnWindowFocus: true,
+    staleTime: 0, // Always refetch
   });
 
   // Fetch products
@@ -348,6 +350,8 @@ export default function DashboardScreen() {
       page: 1,
       limit: 10,
     }),
+    refetchOnWindowFocus: true,
+    staleTime: 0, // Always refetch
   });
 
   // Fetch earnings summary
@@ -358,34 +362,40 @@ export default function DashboardScreen() {
   } = useQuery({
     queryKey: ['farmer-earnings'],
     queryFn: () => withdrawalService.getEarningsSummary(),
+    refetchOnWindowFocus: true,
+    staleTime: 0, // Always refetch
   });
 
   // Fetch peak hours
   const { data: peakHoursData, refetch: refetchPeakHours } = useQuery({
     queryKey: ['farmer-peak-hours'],
     queryFn: () => farmerAnalyticsService.getPeakHours(),
-    staleTime: 30 * 60 * 1000, // 30 minutes cache
+    staleTime: 5 * 60 * 1000, // 5 minutes cache
+    refetchOnWindowFocus: true,
   });
 
   // Fetch revenue goal
   const { data: revenueGoalData, refetch: refetchGoal } = useQuery({
     queryKey: ['farmer-revenue-goal'],
     queryFn: () => farmerAnalyticsService.getRevenueGoal(),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 1 * 60 * 1000, // 1 minute cache
+    refetchOnWindowFocus: true,
   });
 
   // Fetch top products
   const { data: topProductsData, refetch: refetchTopProducts } = useQuery({
     queryKey: ['farmer-top-products-dashboard'],
     queryFn: () => farmerAnalyticsService.getTopProducts(3),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 1 * 60 * 1000, // 1 minute cache
+    refetchOnWindowFocus: true,
   });
 
   // Fetch dashboard stats for trends
   const { data: dashboardData, refetch: refetchDashboard } = useQuery({
     queryKey: ['farmer-dashboard-stats'],
     queryFn: () => farmerAnalyticsService.getDashboard(),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 1 * 60 * 1000, // 1 minute cache
+    refetchOnWindowFocus: true,
   });
 
   const onRefresh = useCallback(async () => {
@@ -401,6 +411,20 @@ export default function DashboardScreen() {
     ]);
     setRefreshing(false);
   }, [refetchOrders, refetchProducts, refetchEarnings, refetchPeakHours, refetchGoal, refetchTopProducts, refetchDashboard]);
+
+  // Refetch data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      // Refetch all data when screen gains focus
+      refetchOrders();
+      refetchProducts();
+      refetchEarnings();
+      refetchPeakHours();
+      refetchGoal();
+      refetchTopProducts();
+      refetchDashboard();
+    }, [refetchOrders, refetchProducts, refetchEarnings, refetchPeakHours, refetchGoal, refetchTopProducts, refetchDashboard])
+  );
 
   // De-duplicate orders and products by id to prevent key conflicts
   const rawOrders = (ordersData?.orders || []).filter((o: any) => o != null && o.id != null);
