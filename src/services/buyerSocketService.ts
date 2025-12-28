@@ -23,22 +23,18 @@ class BuyerSocketService {
       return;
     }
 
-    // Connect to the dispatch namespace on port 3002 for order tracking
+    // Connect to the dispatch namespace for order tracking
     // Use WS_URL if available, otherwise construct from BASE_URL
     let socketUrl: string;
     if (API_CONFIG.WS_URL) {
-      // WS_URL is like "http://192.168.0.195:3001"
-      // Replace port with 3002 for dispatch gateway
       socketUrl = API_CONFIG.WS_URL
         .replace('ws://', 'http://')
-        .replace('wss://', 'https://')
-        .replace(/:30\d{2}/, ':3002') + '/dispatch';
+        .replace('wss://', 'https://') + '/dispatch';
     } else {
       // Fallback: construct from BASE_URL
       const baseUrl = API_CONFIG.BASE_URL
         .replace('/api/v1', '')
-        .replace('/api', '')
-        .replace(/:30\d{2}/, ':3002');
+        .replace('/api', '');
       socketUrl = `${baseUrl}/dispatch`;
     }
     

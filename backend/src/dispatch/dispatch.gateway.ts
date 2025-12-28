@@ -24,7 +24,7 @@ interface RiderResponseCallback {
   callback: (accepted: boolean) => void;
 }
 
-@WebSocketGateway(3002, {
+@WebSocketGateway({
   namespace: '/dispatch',
   cors: {
     origin: process.env.NODE_ENV === 'production' 

@@ -18,7 +18,7 @@ interface AuthenticatedSocket extends Socket {
 }
 
 @Injectable()
-@WebSocketGateway(3003, {
+@WebSocketGateway({
   namespace: '/disputes',
   cors: {
     origin: process.env.NODE_ENV === 'production' 

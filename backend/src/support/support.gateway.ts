@@ -11,7 +11,7 @@ import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
 import { SupportTicket } from '../database/entities';
 
-@WebSocketGateway(3003, {
+@WebSocketGateway({
   namespace: '/support',
   cors: {
     origin: process.env.NODE_ENV === 'production' 

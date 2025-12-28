@@ -56,14 +56,13 @@ class SupportService {
   private currentTicketId: string | null = null;
 
   /**
-   * Get the WebSocket URL for support (port 3003)
+   * Get the WebSocket URL for support
    */
   private getSupportWsUrl(): string {
-    // Convert WS URL to HTTP for socket.io and change port to 3003
+    // Convert WS URL to HTTP for socket.io
     const baseUrl = API_CONFIG.WS_URL
       .replace('ws://', 'http://')
-      .replace('wss://', 'https://')
-      .replace(/:30\d{2}/, ':3003');
+      .replace('wss://', 'https://');
     return `${baseUrl}/support`;
   }
 

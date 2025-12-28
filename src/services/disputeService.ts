@@ -97,8 +97,7 @@ class DisputeService {
   private getDisputeWsUrl(): string {
     const baseUrl = API_CONFIG.WS_URL
       .replace('ws://', 'http://')
-      .replace('wss://', 'https://')
-      .replace(/:30\d{2}/, ':3003');
+      .replace('wss://', 'https://');
     return `${baseUrl}/disputes`;
   }
 

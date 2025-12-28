@@ -8,7 +8,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
 
-@WebSocketGateway(3003, {
+@WebSocketGateway({
   namespace: '/notifications',
   cors: {
     origin: process.env.NODE_ENV === 'production' 
