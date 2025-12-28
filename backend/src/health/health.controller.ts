@@ -8,6 +8,7 @@ import {
 } from '@nestjs/terminus';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Public } from '../common/decorators/public.decorator';
+import { ConfigService } from '@nestjs/config';
 
 @ApiTags('Health')
 @Controller('health')
@@ -17,6 +18,7 @@ export class HealthController {
     private readonly db: TypeOrmHealthIndicator,
     private readonly memory: MemoryHealthIndicator,
     private readonly disk: DiskHealthIndicator,
+    private readonly configService: ConfigService,
   ) {}
 
   @Get()
@@ -63,5 +65,21 @@ export class HealthController {
     return this.health.check([
       () => this.db.pingCheck('database'),
     ]);
+  }
+
+  @Get('smtp')
+  @Public()
+  @ApiOperation({ summary: 'Check SMTP configuration status' })
+  smtp() {
+    const smtpHost = this.configService.get<string>('SMTP_HOST');
+    const smtpUser = this.configService.get<string>('SMTP_USER');
+    const smtpPass = this.configService.get<string>('SMTP_PASS');
+    
+    return {
+      configured: !!(smtpHost && smtpUser && smtpPass),
+      host: smtpHost ? 'set' : 'missing',
+      user: smtpUser ? smtpUser.substring(0, 5) + '***' : 'missing',
+      pass: smtpPass ? 'set (hidden)' : 'missing',
+    };
   }
 }
