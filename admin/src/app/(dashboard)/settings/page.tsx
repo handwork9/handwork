@@ -809,9 +809,9 @@ export default function SettingsPage() {
             activeKey={activeTab}
             onChange={setActiveTab}
             items={tabItems}
-            tabPlacement="left"
+            tabPosition="left"
             style={{ minHeight: 600 }}
-            destroyOnHidden={false}
+            destroyInactiveTabPane={false}
           />
         </Card>
       </div>

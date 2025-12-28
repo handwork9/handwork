@@ -1,20 +1,9 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "admin/package.json",
-      "use": "@vercel/next"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/admin/$1"
-    }
-  ],
+  "framework": "nextjs",
   "env": {
-    "NEXT_PUBLIC_API_URL": "https://api.handwork.com/api/v1",
-    "NEXT_PUBLIC_BACKEND_URL": "https://api.handwork.com",
-    "NEXT_PUBLIC_SOCKET_URL": "https://api.handwork.com"
+    "NEXT_PUBLIC_API_URL": "https://handwork-api-production.up.railway.app/api/v1",
+    "NEXT_PUBLIC_BACKEND_URL": "https://handwork-api-production.up.railway.app",
+    "NEXT_PUBLIC_SOCKET_URL": "https://handwork-api-production.up.railway.app"
   }
 }

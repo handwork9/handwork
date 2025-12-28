@@ -46,6 +46,19 @@ async function bootstrap() {
   // API Prefix
   app.setGlobalPrefix(configService.get('API_PREFIX', 'api/v1'));
 
+  // Root endpoint (outside of API prefix)
+  const httpAdapter = app.getHttpAdapter();
+  httpAdapter.get('/', (req: any, res: any) => {
+    res.json({
+      service: 'Handwork API',
+      status: 'running',
+      version: '1.0.0',
+      documentation: '/docs',
+      health: '/api/v1/health',
+      timestamp: new Date().toISOString(),
+    });
+  });
+
   // Global Response Interceptor
   app.useGlobalInterceptors(new ResponseInterceptor());
 

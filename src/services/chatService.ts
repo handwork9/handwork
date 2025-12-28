@@ -58,13 +58,12 @@ type MessageHandler = (message: ChatMessage) => void;
 type TypingHandler = (data: { conversationId: string; userId: string; isTyping: boolean }) => void;
 type ConversationUpdateHandler = (data: { conversationId: string; lastMessage: ChatMessage }) => void;
 
-// Get the WebSocket URL for chat (port 3002 with /chat namespace)
+// Get the WebSocket URL for chat
 const getChatWsUrl = () => {
-  // Convert WS URL to HTTP for socket.io and change port to 3002
+  // Use the same base URL - the backend handles /chat namespace on the same port
   const baseUrl = API_CONFIG.WS_URL
     .replace('ws://', 'http://')
-    .replace('wss://', 'https://')
-    .replace(/:30\d{2}/, ':3002');
+    .replace('wss://', 'https://');
   return `${baseUrl}/chat`;
 };
 

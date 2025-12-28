@@ -13,7 +13,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Conversation } from '../database/entities';
 
-@WebSocketGateway(3002, {
+@WebSocketGateway({
   namespace: '/chat',
   cors: {
     origin: process.env.NODE_ENV === 'production' 

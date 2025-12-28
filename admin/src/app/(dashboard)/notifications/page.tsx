@@ -123,15 +123,11 @@ export default function NotificationsPage() {
     
     if (status === 'done' || originFileObj) {
       try {
-        // Convert file to base64
-        const toBase64 = (file: Blob) => new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-        const base64 = await toBase64(originFileObj as Blob);
-        const response = await adminApi.uploadNotificationImage({ base64, folder: 'notifications' });
+        // Create FormData for upload
+        const formData = new FormData();
+        formData.append('file', originFileObj as Blob);
+        formData.append('folder', 'notifications');
+        const response = await adminApi.uploadNotificationImage(formData);
         const imageUrl = response.data.url || response.data.data?.url;
         form.setFieldValue('imageUrl', imageUrl);
         message.success('Image uploaded successfully');
@@ -167,15 +163,11 @@ export default function NotificationsPage() {
     
     if (status === 'done' || originFileObj) {
       try {
-        // Convert file to base64
-        const toBase64 = (file: Blob) => new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-        const base64 = await toBase64(originFileObj as Blob);
-        const response = await adminApi.uploadNotificationImage({ base64, folder: 'notifications' });
+        // Create FormData for upload
+        const formData = new FormData();
+        formData.append('file', originFileObj as Blob);
+        formData.append('folder', 'notifications');
+        const response = await adminApi.uploadNotificationImage(formData);
         const imageUrl = response.data.url || response.data.data?.url;
         individualForm.setFieldValue('imageUrl', imageUrl);
         message.success('Image uploaded successfully');

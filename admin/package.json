@@ -21,6 +21,7 @@
     "react-dom": "19.2.1",
     "react-native-maps": "1.20.1",
     "recharts": "^3.5.1",
+    "socket.io-client": "^4.8.3",
     "zustand": "^5.0.9"
   },
   "devDependencies": {
