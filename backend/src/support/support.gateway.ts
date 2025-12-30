@@ -6,6 +6,7 @@ import {
   ConnectedSocket,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  OnGatewayInit,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
@@ -20,7 +21,7 @@ import { SupportTicket } from '../database/entities';
     credentials: true,
   },
 })
-export class SupportGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class SupportGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
@@ -29,6 +30,10 @@ export class SupportGateway implements OnGatewayConnection, OnGatewayDisconnect 
   private readonly socketToUser = new Map<string, string>(); // socketId -> userId
   private readonly adminSockets = new Set<string>(); // Set of admin socketIds
   private readonly ticketRooms = new Map<string, Set<string>>(); // ticketId -> Set of socketIds
+
+  afterInit(server: Server): void {
+    this.logger.log('Support WebSocket Gateway initialized on namespace /support');
+  }
 
   handleConnection(client: Socket): void {
     this.logger.log(`Support client connected: ${client.id}`);
