@@ -440,6 +440,48 @@ const LiveChatScreen: React.FC = () => {
     };
   }, [ticket?.id, transformMessage]);
 
+  // Polling fallback when socket is not connected
+  useEffect(() => {
+    if (!ticket?.id) return;
+    
+    // Only poll if socket is not connected
+    if (supportService.isSocketConnected()) {
+      console.log('[LiveChat] Socket connected, skipping polling');
+      return;
+    }
+
+    console.log('[LiveChat] Socket not connected, starting polling for messages');
+    
+    const pollMessages = async () => {
+      try {
+        const newMessages = await supportService.getMessages(ticket.id);
+        if (newMessages.length > 0) {
+          setMessages(prev => {
+            const existingIds = new Set(prev.map(m => m.id));
+            const uniqueNew = newMessages
+              .filter((m: SupportMessage) => !existingIds.has(m.id))
+              .map(transformMessage);
+            
+            if (uniqueNew.length > 0) {
+              console.log('[LiveChat] Polling found', uniqueNew.length, 'new messages');
+              return [...prev, ...uniqueNew];
+            }
+            return prev;
+          });
+        }
+      } catch (error) {
+        console.error('[LiveChat] Polling error:', error);
+      }
+    };
+
+    // Poll every 5 seconds
+    const pollInterval = setInterval(pollMessages, 5000);
+
+    return () => {
+      clearInterval(pollInterval);
+    };
+  }, [ticket?.id, transformMessage]);
+
   const handleAttachmentPress = () => {
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(

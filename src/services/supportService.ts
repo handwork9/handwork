@@ -199,7 +199,12 @@ class SupportService {
     initialMessage?: string;
   }): Promise<{ ticket: SupportTicket; messages: SupportMessage[] }> {
     try {
-      await this.connect();
+      // Try to connect to WebSocket (non-blocking - continue even if it fails)
+      try {
+        await this.connect();
+      } catch (socketError) {
+        console.warn('[Support] Socket connection failed, continuing with REST API only:', socketError);
+      }
 
       const response = await apiClient.post<{
         success: boolean;
@@ -214,12 +219,12 @@ class SupportService {
       const ticket = response.data.ticket;
       this.currentTicketId = ticket.id;
 
-      // Join the ticket room
+      // Join the ticket room if socket is connected
       console.log('[Support] Joining ticket room:', ticket.id, 'Socket connected:', this.socket?.connected);
       if (this.socket?.connected) {
         this.socket.emit('support:join', { ticketId: ticket.id });
       } else {
-        console.warn('[Support] Socket not connected when trying to join room');
+        console.warn('[Support] Socket not connected - real-time updates disabled');
       }
 
       // Get existing messages
@@ -243,7 +248,12 @@ class SupportService {
    */
   async getActiveChat(): Promise<{ ticket: SupportTicket; messages: SupportMessage[] } | null> {
     try {
-      await this.connect();
+      // Try to connect to WebSocket (non-blocking - continue even if it fails)
+      try {
+        await this.connect();
+      } catch (socketError) {
+        console.warn('[Support] Socket connection failed, continuing with REST API only:', socketError);
+      }
 
       const response = await apiClient.get<{
         success: boolean;
@@ -253,12 +263,12 @@ class SupportService {
       const { ticket, messages } = response.data;
       this.currentTicketId = ticket.id;
 
-      // Join the ticket room
+      // Join the ticket room if socket is connected
       console.log('[Support] Joining ticket room:', ticket.id, 'Socket connected:', this.socket?.connected);
       if (this.socket?.connected) {
         this.socket.emit('support:join', { ticketId: ticket.id });
       } else {
-        console.warn('[Support] Socket not connected when trying to join room');
+        console.warn('[Support] Socket not connected - real-time updates disabled');
       }
 
       return { ticket, messages };
@@ -466,6 +476,30 @@ class SupportService {
     }>(`/support/reports/my?${params.toString()}`);
 
     return response.data.data;
+  }
+
+  /**
+   * Check if socket is connected
+   */
+  isSocketConnected(): boolean {
+    return this.socket?.connected || false;
+  }
+
+  /**
+   * Get messages for a ticket (polling fallback)
+   */
+  async getMessages(ticketId: string): Promise<SupportMessage[]> {
+    try {
+      const response = await apiClient.get<{
+        success: boolean;
+        data: { messages: SupportMessage[] };
+      }>(`/support/chat/${ticketId}/messages`);
+
+      return response.data.messages || [];
+    } catch (error) {
+      console.error('[Support] Failed to get messages:', error);
+      return [];
+    }
   }
 
   /**
