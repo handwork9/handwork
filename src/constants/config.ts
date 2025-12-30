@@ -22,7 +22,7 @@ if (!__DEV__ && MOCK_MODE) {
 }
 
 // API Configuration
-// Always use production API for now (deployed on Railway)
+// Always use production API (deployed on Railway)
 const API_URL = 'https://handwork-api-production.up.railway.app/api/v1';
 const WS_URL = 'https://handwork-api-production.up.railway.app';
 
