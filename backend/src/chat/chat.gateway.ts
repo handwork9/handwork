@@ -13,8 +13,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Conversation } from '../database/entities';
 
+// Use default namespace - namespaces have deployment issues
+// All events are already prefixed with 'chat:' so no conflicts
 @WebSocketGateway({
-  namespace: '/chat',
   cors: {
     origin: process.env.NODE_ENV === 'production' 
       ? [process.env.FRONTEND_URL || 'https://handwork.com', process.env.ADMIN_URL || 'https://admin.handwork.com']

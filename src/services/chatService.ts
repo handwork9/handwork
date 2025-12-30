@@ -60,11 +60,12 @@ type ConversationUpdateHandler = (data: { conversationId: string; lastMessage: C
 
 // Get the WebSocket URL for chat
 const getChatWsUrl = () => {
-  // Use the same base URL - the backend handles /chat namespace on the same port
+  // Use base URL without namespace - namespaces have deployment issues
+  // Events are already prefixed with 'chat:' so no conflicts
   const baseUrl = API_CONFIG.WS_URL
     .replace('ws://', 'http://')
     .replace('wss://', 'https://');
-  return `${baseUrl}/chat`;
+  return baseUrl;
 };
 
 class ChatService {

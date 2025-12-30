@@ -12,8 +12,9 @@ import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
 import { SupportTicket } from '../database/entities';
 
+// Use default namespace (no namespace) - namespaces have deployment issues
+// All events are already prefixed with 'support:' so no conflicts
 @WebSocketGateway({
-  namespace: '/support',
   cors: {
     origin: process.env.NODE_ENV === 'production' 
       ? [process.env.FRONTEND_URL || 'https://handwork.com', process.env.ADMIN_URL || 'https://admin.handwork.com']
@@ -32,7 +33,7 @@ export class SupportGateway implements OnGatewayInit, OnGatewayConnection, OnGat
   private readonly ticketRooms = new Map<string, Set<string>>(); // ticketId -> Set of socketIds
 
   afterInit(server: Server): void {
-    this.logger.log('Support WebSocket Gateway initialized on namespace /support');
+    this.logger.log('Support WebSocket Gateway initialized (default namespace)');
   }
 
   handleConnection(client: Socket): void {

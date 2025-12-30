@@ -59,11 +59,12 @@ class SupportService {
    * Get the WebSocket URL for support
    */
   private getSupportWsUrl(): string {
-    // Convert WS URL to HTTP for socket.io
+    // Use base URL without namespace - namespaces have deployment issues
+    // Events are already prefixed with 'support:' so no conflicts
     const baseUrl = API_CONFIG.WS_URL
       .replace('ws://', 'http://')
       .replace('wss://', 'https://');
-    return `${baseUrl}/support`;
+    return baseUrl;
   }
 
   /**
