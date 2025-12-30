@@ -19,6 +19,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { walletService } from '../../services/walletService';
+import billsService, { BillType } from '../../services/billsService';
 
 const { width } = Dimensions.get('window');
 
@@ -299,19 +300,66 @@ export default function PayBillScreen() {
     const paymentAmount = parseInt(amount);
     
     try {
-      // Call actual wallet payment API - backend debits wallet first
-      const result = await walletService.payWithWallet({
-        amount: paymentAmount,
-        description: `${selectedCategory?.name} bill - ${selectedProvider?.name}`,
-      });
+      let result;
       
-      if (result.status === 'completed') {
+      // Map category to Paystack bill type
+      const categoryToBillType: Record<string, BillType> = {
+        'airtime': BillType.AIRTIME,
+        'data': BillType.DATA,
+        'electricity': BillType.ELECTRICITY,
+        'cable': BillType.TV,
+        'internet': BillType.INTERNET,
+      };
+      
+      const billType = categoryToBillType[selectedCategory?.id || ''];
+      
+      // For airtime, use the quick buy endpoint
+      if (billType === BillType.AIRTIME) {
+        result = await billsService.buyAirtime({
+          phoneNumber: phoneNumber,
+          amount: paymentAmount,
+          provider: selectedProvider?.id || 'mtn',
+        });
+      } else {
+        // For other bills, use the generic pay bill endpoint
+        // Map local provider IDs to Paystack biller codes
+        const providerBillerCodes: Record<string, { billerCode: string; itemCode: string }> = {
+          // Electricity providers
+          'ekedc': { billerCode: 'BIL113', itemCode: 'UNI_EA' },
+          'ikedc': { billerCode: 'BIL114', itemCode: 'UNI_IA' },
+          'aedc': { billerCode: 'BIL115', itemCode: 'UNI_AA' },
+          'phedc': { billerCode: 'BIL116', itemCode: 'UNI_PA' },
+          // Cable TV providers
+          'dstv': { billerCode: 'BIL121', itemCode: 'CB_DSTV' },
+          'gotv': { billerCode: 'BIL122', itemCode: 'CB_GOTV' },
+          'startimes': { billerCode: 'BIL123', itemCode: 'CB_STAR' },
+          // Data providers
+          'mtn': { billerCode: 'BIL099', itemCode: 'MD099' },
+          'airtel': { billerCode: 'BIL100', itemCode: 'MD100' },
+          'glo': { billerCode: 'BIL102', itemCode: 'MD102' },
+          '9mobile': { billerCode: 'BIL103', itemCode: 'MD103' },
+        };
+        
+        const providerInfo = providerBillerCodes[selectedProvider?.id || ''];
+        const customerId = selectedCategory?.id === 'data' ? phoneNumber : accountNumber;
+        
+        result = await billsService.payBill({
+          type: billType,
+          billerCode: providerInfo?.billerCode || 'BIL099',
+          itemCode: providerInfo?.itemCode || 'AT099',
+          customerId: customerId,
+          amount: paymentAmount,
+          customerName: customerId,
+        });
+      }
+      
+      if (result.success) {
         // Update local wallet balance after successful payment
-        setWalletBalance(prev => prev - paymentAmount);
+        setWalletBalance(result.newBalance || (walletBalance - paymentAmount));
         
         // Create new transaction record for UI
         const newBill: RecentBill = {
-          id: result.id || Date.now().toString(),
+          id: result.reference || Date.now().toString(),
           category: selectedCategory?.name || '',
           provider: selectedProvider?.name || '',
           accountNumber: selectedCategory?.id === 'airtime' || selectedCategory?.id === 'data' 
@@ -327,7 +375,7 @@ export default function PayBillScreen() {
         
         Alert.alert(
           'Payment Successful! 🎉',
-          `You have successfully paid ₦${paymentAmount.toLocaleString()} to ${selectedProvider?.name}.\n\nReference: ${result.reference}\nNew Balance: ₦${(walletBalance - paymentAmount).toLocaleString()}`,
+          `You have successfully paid ₦${paymentAmount.toLocaleString()} to ${selectedProvider?.name}.\n\nReference: ${result.reference}\nNew Balance: ₦${(result.newBalance ?? 0).toLocaleString()}`,
           [
             { text: 'Done', onPress: () => {
               setShowPaymentModal(false);
@@ -336,7 +384,7 @@ export default function PayBillScreen() {
           ]
         );
       } else {
-        Alert.alert('Payment Pending', 'Your payment is being processed. You will be notified once completed.');
+        Alert.alert('Payment Failed', result.message || 'Payment failed. Please try again.');
       }
     } catch (error: any) {
       const errorMessage = error?.response?.data?.message || error?.message || 'Payment failed. Please try again.';

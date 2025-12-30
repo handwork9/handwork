@@ -16,6 +16,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import { useAppSelector } from '../../store';
 import { SPACING, FONT_SIZES, COLORS, BORDER_RADIUS, FONTS } from '../../constants/theme';
 import { WalletHeroIllustration } from '../../assets/illustrations/stats';
 import { walletService } from '../../services/walletService';
@@ -39,11 +40,15 @@ export default function WalletScreen() {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
+  const { user } = useAppSelector((state) => state.auth);
   const [balance, setBalance] = useState(0);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingBalance, setIsLoadingBalance] = useState(true);
   const scrollY = useRef(new Animated.Value(0)).current;
+
+  // Check if user is a buyer (buyers should not withdraw, only pay bills)
+  const isBuyer = user?.role === 'buyer';
 
   // Dynamic styles based on theme
   const dynamicStyles = useMemo(() => ({
@@ -109,7 +114,10 @@ export default function WalletScreen() {
 
   const quickActions = [
     { icon: 'add-circle' as const, mcIcon: 'plus-circle-outline', label: 'Top Up', screen: 'TopUp', color: '#34C759' },
-    { icon: 'arrow-down-circle' as const, mcIcon: 'bank-transfer-out', label: 'Withdraw', screen: 'Withdraw', color: '#FF9500' },
+    // Show PayBills for buyers, Withdraw for farmers/riders
+    isBuyer
+      ? { icon: 'receipt' as const, mcIcon: 'receipt', label: 'Pay Bills', screen: 'PayBill', color: '#FF9500' }
+      : { icon: 'arrow-down-circle' as const, mcIcon: 'bank-transfer-out', label: 'Withdraw', screen: 'Withdraw', color: '#FF9500' },
     { icon: 'time' as const, mcIcon: 'history', label: 'History', screen: 'TransactionHistory', color: '#5856D6' },
   ];
 
