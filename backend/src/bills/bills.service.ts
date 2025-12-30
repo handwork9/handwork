@@ -6,50 +6,72 @@ import axios, { AxiosInstance } from 'axios';
 import { WalletTransaction, TransactionType, TransactionCategory, WalletOwnerType, User } from '../database/entities';
 import { BillType, PayBillDto, ValidateCustomerDto } from './dto';
 
-interface PaystackBiller {
-  id: number;
-  biller_code: string;
+// VTpass service IDs mapping
+const VTPASS_SERVICE_IDS: Record<BillType, string[]> = {
+  [BillType.AIRTIME]: ['mtn', 'glo', 'airtel', 'etisalat'],
+  [BillType.DATA]: ['mtn-data', 'glo-data', 'airtel-data', 'etisalat-data'],
+  [BillType.ELECTRICITY]: ['ikeja-electric', 'eko-electric', 'kano-electric', 'portharcourt-electric', 'jos-electric', 'ibadan-electric', 'kaduna-electric', 'abuja-electric', 'enugu-electric', 'benin-electric', 'yola-electric'],
+  [BillType.TV]: ['dstv', 'gotv', 'startimes'],
+  [BillType.INTERNET]: ['smile-direct', 'spectranet'],
+};
+
+// Static billers list (these are fixed VTpass service IDs)
+const BILLERS_LIST: Record<BillType, Array<{ code: string; name: string; shortName: string }>> = {
+  [BillType.AIRTIME]: [
+    { code: 'mtn', name: 'MTN Nigeria', shortName: 'MTN' },
+    { code: 'glo', name: 'Glo Nigeria', shortName: 'GLO' },
+    { code: 'airtel', name: 'Airtel Nigeria', shortName: 'Airtel' },
+    { code: 'etisalat', name: '9mobile Nigeria', shortName: '9mobile' },
+  ],
+  [BillType.DATA]: [
+    { code: 'mtn-data', name: 'MTN Data', shortName: 'MTN' },
+    { code: 'glo-data', name: 'Glo Data', shortName: 'GLO' },
+    { code: 'airtel-data', name: 'Airtel Data', shortName: 'Airtel' },
+    { code: 'etisalat-data', name: '9mobile Data', shortName: '9mobile' },
+  ],
+  [BillType.ELECTRICITY]: [
+    { code: 'ikeja-electric', name: 'Ikeja Electric', shortName: 'IKEDC' },
+    { code: 'eko-electric', name: 'Eko Electric', shortName: 'EKEDC' },
+    { code: 'abuja-electric', name: 'Abuja Electric', shortName: 'AEDC' },
+    { code: 'kano-electric', name: 'Kano Electric', shortName: 'KEDCO' },
+    { code: 'portharcourt-electric', name: 'Port Harcourt Electric', shortName: 'PHED' },
+    { code: 'ibadan-electric', name: 'Ibadan Electric', shortName: 'IBEDC' },
+    { code: 'kaduna-electric', name: 'Kaduna Electric', shortName: 'KAEDCO' },
+    { code: 'jos-electric', name: 'Jos Electric', shortName: 'JED' },
+    { code: 'enugu-electric', name: 'Enugu Electric', shortName: 'EEDC' },
+    { code: 'benin-electric', name: 'Benin Electric', shortName: 'BEDC' },
+  ],
+  [BillType.TV]: [
+    { code: 'dstv', name: 'DSTV', shortName: 'DSTV' },
+    { code: 'gotv', name: 'GOtv', shortName: 'GOtv' },
+    { code: 'startimes', name: 'StarTimes', shortName: 'StarTimes' },
+  ],
+  [BillType.INTERNET]: [
+    { code: 'smile-direct', name: 'Smile', shortName: 'Smile' },
+    { code: 'spectranet', name: 'Spectranet', shortName: 'Spectranet' },
+  ],
+};
+
+interface VTpassVariation {
+  variation_code: string;
   name: string;
-  default_commission: number;
-  date_added: string;
-  country: string;
-  is_airtime: boolean;
-  biller_name: string;
-  item_code: string;
-  short_name: string;
-  fee: number;
-  commission_on_fee: boolean;
+  variation_amount: string;
+  fixedPrice: string;
 }
 
-interface PaystackBillerItem {
-  id: number;
-  biller_code: string;
-  name: string;
-  amount: number;
-  biller_name: string;
-  item_code: string;
-  short_name: string;
-  fee: number;
-}
-
-interface BillPaymentResponse {
-  status: boolean;
-  message: string;
-  data: {
-    reference: string;
-    amount: number;
-    fee: number;
-    currency: string;
-    transaction_date: string;
-    integration: number;
-  };
+interface VTpassResponse {
+  code: string;
+  response_description: string;
+  content?: any;
 }
 
 @Injectable()
 export class BillsService {
   private readonly logger = new Logger(BillsService.name);
-  private paystackClient: AxiosInstance;
-  private readonly paystackSecretKey: string;
+  private vtpassClient: AxiosInstance;
+  private readonly vtpassApiKey: string;
+  private readonly vtpassSecretKey: string;
+  private readonly isProduction: boolean;
 
   constructor(
     private configService: ConfigService,
@@ -59,106 +81,70 @@ export class BillsService {
     @InjectRepository(User)
     private userRepository: Repository<User>,
   ) {
-    this.paystackSecretKey = this.configService.get<string>('PAYSTACK_SECRET_KEY') || '';
+    this.vtpassApiKey = this.configService.get<string>('VTPASS_API_KEY') || '';
+    this.vtpassSecretKey = this.configService.get<string>('VTPASS_SECRET_KEY') || '';
+    this.isProduction = this.configService.get<string>('NODE_ENV') === 'production';
     
-    this.paystackClient = axios.create({
-      baseURL: 'https://api.paystack.co',
+    const baseURL = this.isProduction 
+      ? 'https://vtpass.com/api' 
+      : 'https://sandbox.vtpass.com/api';
+
+    this.vtpassClient = axios.create({
+      baseURL,
       headers: {
-        Authorization: `Bearer ${this.paystackSecretKey}`,
+        'api-key': this.vtpassApiKey,
+        'secret-key': this.vtpassSecretKey,
         'Content-Type': 'application/json',
       },
     });
+
+    this.logger.log(`VTpass client initialized for ${this.isProduction ? 'production' : 'sandbox'}`);
   }
 
   /**
-   * Get list of billers by type
+   * Get list of billers by type (returns static list)
    */
   async getBillers(type: BillType): Promise<any[]> {
-    try {
-      // Map our bill types to Paystack's categories
-      const typeMapping: Record<BillType, string[]> = {
-        [BillType.AIRTIME]: ['airtime'],
-        [BillType.DATA]: ['data_bundle'],
-        [BillType.ELECTRICITY]: ['electricity', 'power'],
-        [BillType.TV]: ['cable', 'tv'],
-        [BillType.INTERNET]: ['internet'],
-      };
-
-      const response = await this.paystackClient.get('/bill/list');
-      
-      if (!response.data.status) {
-        throw new BadRequestException('Failed to fetch billers');
-      }
-
-      const billers = response.data.data as PaystackBiller[];
-      const searchTerms = typeMapping[type] || [];
-
-      // Filter billers based on type
-      const filteredBillers = billers.filter((biller) => {
-        const billerNameLower = biller.biller_name?.toLowerCase() || '';
-        const shortNameLower = biller.short_name?.toLowerCase() || '';
-        const nameLower = biller.name?.toLowerCase() || '';
-        
-        // For airtime, check is_airtime flag
-        if (type === BillType.AIRTIME && biller.is_airtime) {
-          return true;
-        }
-
-        // For other types, check if any search term matches
-        return searchTerms.some((term) => 
-          billerNameLower.includes(term) || 
-          shortNameLower.includes(term) ||
-          nameLower.includes(term)
-        );
-      });
-
-      // Group by biller_code and return unique billers
-      const uniqueBillers = new Map<string, any>();
-      for (const biller of filteredBillers) {
-        if (!uniqueBillers.has(biller.biller_code)) {
-          uniqueBillers.set(biller.biller_code, {
-            code: biller.biller_code,
-            name: biller.biller_name || biller.name,
-            shortName: biller.short_name,
-            type: type,
-          });
-        }
-      }
-
-      return Array.from(uniqueBillers.values());
-    } catch (error) {
-      this.logger.error('Failed to get billers:', error.response?.data || error.message);
-      throw new BadRequestException(error.response?.data?.message || 'Failed to fetch billers');
-    }
+    const billers = BILLERS_LIST[type] || [];
+    return billers.map((biller) => ({
+      ...biller,
+      type,
+    }));
   }
 
   /**
-   * Get packages/items for a specific biller
+   * Get packages/variations for a specific service (biller)
    */
-  async getBillerPackages(billerCode: string): Promise<any[]> {
+  async getBillerPackages(serviceId: string): Promise<any[]> {
     try {
-      const response = await this.paystackClient.get('/bill/list');
-      
-      if (!response.data.status) {
-        throw new BadRequestException('Failed to fetch biller packages');
+      // Airtime doesn't have variations - it's variable amount
+      if (['mtn', 'glo', 'airtel', 'etisalat'].includes(serviceId)) {
+        return [];
       }
 
-      const allItems = response.data.data as PaystackBillerItem[];
-      const packages = allItems
-        .filter((item) => item.biller_code === billerCode)
-        .map((item) => ({
-          code: item.item_code,
-          name: item.name,
-          amount: item.amount, // Amount in kobo for fixed-price items, 0 for variable
-          fee: item.fee,
-          billerCode: item.biller_code,
-          billerName: item.biller_name,
-        }));
+      const response = await this.vtpassClient.get<VTpassResponse>(
+        `/service-variations?serviceID=${serviceId}`
+      );
 
-      return packages;
+      if (response.data.code !== '000' && response.data.response_description !== '000') {
+        this.logger.warn(`VTpass variations response: ${JSON.stringify(response.data)}`);
+        return [];
+      }
+
+      const variations = response.data.content?.variations || [];
+      
+      return variations.map((v: VTpassVariation) => ({
+        code: v.variation_code,
+        name: v.name,
+        amount: parseFloat(v.variation_amount) * 100, // Convert to kobo for consistency
+        fee: 0,
+        billerCode: serviceId,
+        billerName: response.data.content?.ServiceName || serviceId,
+        fixedPrice: v.fixedPrice === 'Yes',
+      }));
     } catch (error) {
-      this.logger.error('Failed to get biller packages:', error.response?.data || error.message);
-      throw new BadRequestException(error.response?.data?.message || 'Failed to fetch packages');
+      this.logger.error(`Failed to get variations for ${serviceId}:`, error.response?.data || error.message);
+      return [];
     }
   }
 
@@ -167,30 +153,28 @@ export class BillsService {
    */
   async validateCustomer(dto: ValidateCustomerDto): Promise<any> {
     try {
-      const response = await this.paystackClient.get('/bill/validate', {
-        params: {
-          code: dto.billerCode,
-          customer: dto.customerId,
-          item_code: dto.itemCode,
-        },
+      const response = await this.vtpassClient.post<VTpassResponse>('/merchant-verify', {
+        serviceID: dto.billerCode,
+        billersCode: dto.customerId,
+        type: dto.itemCode, // For electricity: prepaid/postpaid
       });
 
-      if (!response.data.status) {
-        throw new BadRequestException('Customer validation failed');
+      if (response.data.code !== '000') {
+        throw new BadRequestException(response.data.content?.error || 'Customer validation failed');
       }
 
       return {
         valid: true,
-        customerName: response.data.data.name || response.data.data.customer_name,
-        address: response.data.data.address,
-        outstandingAmount: response.data.data.outstanding_amount,
-        customerNumber: response.data.data.customer_id || dto.customerId,
+        customerName: response.data.content?.Customer_Name || response.data.content?.name,
+        address: response.data.content?.Address,
+        outstandingAmount: response.data.content?.Balance,
+        customerNumber: dto.customerId,
       };
     } catch (error) {
       this.logger.error('Customer validation failed:', error.response?.data || error.message);
       
-      // For airtime/data, validation might not be needed
-      if (error.response?.status === 400) {
+      // For phone-based services, validation might not be needed
+      if (['mtn', 'glo', 'airtel', 'etisalat', 'mtn-data', 'glo-data', 'airtel-data', 'etisalat-data'].includes(dto.billerCode)) {
         return {
           valid: true,
           customerName: null,
@@ -199,9 +183,18 @@ export class BillsService {
       }
       
       throw new BadRequestException(
-        error.response?.data?.message || 'Customer validation failed'
+        error.response?.data?.content?.error || error.message || 'Customer validation failed'
       );
     }
+  }
+
+  /**
+   * Generate unique request ID for VTpass
+   */
+  private generateRequestId(): string {
+    const timestamp = Date.now().toString();
+    const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+    return `${timestamp}${random}`;
   }
 
   /**
@@ -223,39 +216,61 @@ export class BillsService {
       }
 
       const walletBalance = Number(user.walletBalance) || 0;
-      const amountInKobo = Math.round(dto.amount * 100);
       
-      // Get the fee for this transaction
-      const packages = await this.getBillerPackages(dto.billerCode);
-      const selectedPackage = packages.find((p) => p.code === dto.itemCode);
-      const fee = selectedPackage?.fee || 0;
-      const totalAmount = dto.amount + (fee / 100); // Fee is in kobo
-
-      if (walletBalance < totalAmount) {
+      if (walletBalance < dto.amount) {
         throw new BadRequestException(
-          `Insufficient wallet balance. You have ₦${walletBalance.toFixed(2)} but need ₦${totalAmount.toFixed(2)}`
+          `Insufficient wallet balance. You have ₦${walletBalance.toFixed(2)} but need ₦${dto.amount.toFixed(2)}`
         );
       }
 
-      // Generate unique reference
-      const reference = `BILL-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      // Generate unique request ID
+      const requestId = this.generateRequestId();
 
-      // Make payment via Paystack
-      const paymentResponse = await this.paystackClient.post<BillPaymentResponse>('/bill/charge', {
-        customer: dto.customerId,
-        amount: amountInKobo,
-        item_code: dto.itemCode,
-        reference: reference,
-      });
+      // Prepare VTpass request based on bill type
+      let vtpassPayload: any = {
+        request_id: requestId,
+        serviceID: dto.billerCode,
+        amount: dto.amount,
+        phone: dto.customerId,
+      };
 
-      if (!paymentResponse.data.status) {
-        throw new BadRequestException('Bill payment failed');
+      // Add variation_code for data, TV, etc.
+      if (dto.itemCode && dto.type !== BillType.AIRTIME) {
+        vtpassPayload.variation_code = dto.itemCode;
       }
 
-      const paymentData = paymentResponse.data.data;
+      // For electricity, use billersCode instead of phone
+      if (dto.type === BillType.ELECTRICITY) {
+        vtpassPayload.billersCode = dto.customerId;
+        delete vtpassPayload.phone;
+      }
+
+      // For TV, use billersCode (smartcard number)
+      if (dto.type === BillType.TV) {
+        vtpassPayload.billersCode = dto.customerId;
+        delete vtpassPayload.phone;
+      }
+
+      this.logger.log(`VTpass payment request: ${JSON.stringify(vtpassPayload)}`);
+
+      // Make payment via VTpass
+      const paymentResponse = await this.vtpassClient.post<VTpassResponse>('/pay', vtpassPayload);
+
+      this.logger.log(`VTpass payment response: ${JSON.stringify(paymentResponse.data)}`);
+
+      // Check response
+      const responseCode = paymentResponse.data.code;
+      if (responseCode !== '000') {
+        const errorMessage = paymentResponse.data.content?.errors || 
+                            paymentResponse.data.response_description ||
+                            'Payment failed';
+        throw new BadRequestException(errorMessage);
+      }
+
+      const paymentData = paymentResponse.data.content;
 
       // Deduct from wallet
-      const newBalance = walletBalance - totalAmount;
+      const newBalance = walletBalance - dto.amount;
       await queryRunner.manager.update(User, userId, {
         walletBalance: newBalance,
       });
@@ -265,10 +280,10 @@ export class BillsService {
         ownerId: userId,
         ownerType: WalletOwnerType.BUYER,
         type: TransactionType.DEBIT,
-        amount: totalAmount,
+        amount: dto.amount,
         balanceBefore: walletBalance,
         balanceAfter: newBalance,
-        reference: paymentData.reference,
+        reference: requestId,
         description: `Bill Payment - ${dto.type}: ${dto.customerName || dto.customerId}`,
         category: TransactionCategory.BILL_PAYMENT,
         metadata: {
@@ -277,25 +292,28 @@ export class BillsService {
           itemCode: dto.itemCode,
           customerId: dto.customerId,
           customerName: dto.customerName,
-          paystackReference: paymentData.reference,
-          fee: fee,
-          transactionDate: paymentData.transaction_date,
+          vtpassRequestId: requestId,
+          vtpassTransactionId: paymentData?.transactionId,
+          token: paymentData?.token, // For electricity prepaid
+          units: paymentData?.units, // For electricity
         },
       });
 
       await queryRunner.manager.save(transaction);
       await queryRunner.commitTransaction();
 
-      this.logger.log(`Bill payment successful for user ${userId}: ${reference}`);
+      this.logger.log(`Bill payment successful for user ${userId}: ${requestId}`);
 
       return {
         success: true,
-        reference: paymentData.reference,
-        amount: totalAmount,
-        fee: fee / 100,
+        reference: requestId,
+        amount: dto.amount,
+        fee: 0,
         newBalance: newBalance,
         message: 'Bill payment successful',
-        transactionDate: paymentData.transaction_date,
+        transactionDate: new Date().toISOString(),
+        token: paymentData?.token, // For prepaid electricity
+        units: paymentData?.units,
       };
     } catch (error) {
       await queryRunner.rollbackTransaction();
@@ -306,7 +324,10 @@ export class BillsService {
       }
       
       throw new BadRequestException(
-        error.response?.data?.message || 'Bill payment failed. Please try again.'
+        error.response?.data?.response_description || 
+        error.response?.data?.content?.errors ||
+        error.message ||
+        'Bill payment failed. Please try again.'
       );
     } finally {
       await queryRunner.release();
@@ -337,7 +358,7 @@ export class BillsService {
         reference: tx.reference,
         customerId: (tx.metadata as any)?.customerId,
         customerName: (tx.metadata as any)?.customerName,
-        status: 'completed', // All saved transactions are completed
+        status: 'completed',
         createdAt: tx.createdAt,
       })),
       total,
@@ -351,24 +372,24 @@ export class BillsService {
    * Quick buy airtime
    */
   async buyAirtime(userId: string, phoneNumber: string, amount: number, provider: string): Promise<any> {
-    // Map provider to Paystack biller codes
-    const providerMap: Record<string, { billerCode: string; itemCode: string }> = {
-      mtn: { billerCode: 'BIL099', itemCode: 'AT099' },
-      airtel: { billerCode: 'BIL100', itemCode: 'AT100' },
-      glo: { billerCode: 'BIL102', itemCode: 'AT102' },
-      '9mobile': { billerCode: 'BIL103', itemCode: 'AT103' },
-      etisalat: { billerCode: 'BIL103', itemCode: 'AT103' }, // Alias for 9mobile
+    // Map provider to VTpass service IDs
+    const providerMap: Record<string, string> = {
+      mtn: 'mtn',
+      airtel: 'airtel',
+      glo: 'glo',
+      '9mobile': 'etisalat',
+      etisalat: 'etisalat',
     };
 
-    const providerInfo = providerMap[provider.toLowerCase()];
-    if (!providerInfo) {
+    const serviceId = providerMap[provider.toLowerCase()];
+    if (!serviceId) {
       throw new BadRequestException('Invalid network provider');
     }
 
     return this.payBill(userId, {
       type: BillType.AIRTIME,
-      billerCode: providerInfo.billerCode,
-      itemCode: providerInfo.itemCode,
+      billerCode: serviceId,
+      itemCode: '', // Airtime doesn't need variation
       customerId: phoneNumber,
       amount,
       customerName: phoneNumber,
