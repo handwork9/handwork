@@ -26,12 +26,11 @@ interface AuthenticatedRequest extends Request {
 }
 
 @ApiTags('Bills')
-@ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
 @Controller('bills')
 export class BillsController {
   constructor(private readonly billsService: BillsService) {}
 
+  // Public endpoints - no auth required for listing billers/packages
   @Get('billers')
   @ApiOperation({ summary: 'Get list of billers by type' })
   @ApiQuery({ name: 'type', enum: BillType, required: true })
@@ -56,7 +55,10 @@ export class BillsController {
     return this.billsService.validateCustomer(dto);
   }
 
+  // Protected endpoints - require authentication
   @Post('pay')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Pay a bill using wallet balance' })
   @ApiResponse({ status: 200, description: 'Bill paid successfully' })
   @ApiResponse({ status: 400, description: 'Payment failed' })
@@ -65,6 +67,8 @@ export class BillsController {
   }
 
   @Post('airtime')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Quick buy airtime' })
   @ApiResponse({ status: 200, description: 'Airtime purchased successfully' })
   @ApiResponse({ status: 400, description: 'Purchase failed' })
@@ -78,6 +82,8 @@ export class BillsController {
   }
 
   @Post('data')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Buy data bundle' })
   @ApiResponse({ status: 200, description: 'Data purchased successfully' })
   @ApiResponse({ status: 400, description: 'Purchase failed' })
@@ -93,6 +99,8 @@ export class BillsController {
   }
 
   @Get('history')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get bill payment history' })
   @ApiQuery({ name: 'page', type: Number, required: false })
   @ApiQuery({ name: 'limit', type: Number, required: false })
@@ -105,6 +113,7 @@ export class BillsController {
     return this.billsService.getBillHistory(req.user.id, page || 1, limit || 20);
   }
 
+  // Public endpoints - bill types and providers
   @Get('types')
   @ApiOperation({ summary: 'Get available bill types' })
   @ApiResponse({ status: 200, description: 'Bill types retrieved successfully' })
