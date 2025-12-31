@@ -79,9 +79,9 @@ import { ShoppingListsModule } from './shopping-lists/shopping-lists.module';
         database: configService.get('database.name'),
         ssl: configService.get('database.ssl') ? { rejectUnauthorized: false } : false,
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        migrations: [__dirname + '/database/migrations/*{.ts,.js}'],
-        migrationsRun: true, // Automatically run migrations on startup
-        synchronize: configService.get('NODE_ENV') === 'development',
+        // Temporarily enable synchronize to create new tables (coupons, shopping_lists, etc.)
+        // TODO: Disable this after tables are created and use migrations instead
+        synchronize: true,
         logging: configService.get('NODE_ENV') === 'development',
       }),
       inject: [ConfigService],
