@@ -7,8 +7,9 @@ import {
   UseGuards,
   Req,
   Request,
+  Param,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiParam } from '@nestjs/swagger';
 import { BillsService } from './bills.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { 
@@ -19,6 +20,13 @@ import {
   PayBillDto,
   BuyAirtimeDto,
   BuyDataDto,
+  PayElectricityDto,
+  PayTvDto,
+  FundBettingDto,
+  PayInternetDto,
+  GetBillHistoryDto,
+  CalculateFeeDto,
+  QueryTransactionDto,
 } from './dto';
 
 interface AuthenticatedRequest extends Request {
@@ -73,12 +81,7 @@ export class BillsController {
   @ApiResponse({ status: 200, description: 'Airtime purchased successfully' })
   @ApiResponse({ status: 400, description: 'Purchase failed' })
   async buyAirtime(@Req() req: AuthenticatedRequest, @Body() dto: BuyAirtimeDto) {
-    return this.billsService.buyAirtime(
-      req.user.id,
-      dto.phoneNumber,
-      dto.amount,
-      dto.provider,
-    );
+    return this.billsService.buyAirtime(req.user.id, dto);
   }
 
   @Post('data')
@@ -102,40 +105,80 @@ export class BillsController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get bill payment history' })
-  @ApiQuery({ name: 'page', type: Number, required: false })
-  @ApiQuery({ name: 'limit', type: Number, required: false })
   @ApiResponse({ status: 200, description: 'Bill history retrieved successfully' })
   async getBillHistory(
     @Req() req: AuthenticatedRequest,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
+    @Query() dto: GetBillHistoryDto,
   ) {
-    return this.billsService.getBillHistory(req.user.id, page || 1, limit || 20);
+    return this.billsService.getBillHistory(req.user.id, dto);
+  }
+
+  // New specialized endpoints
+  @Post('electricity')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Pay electricity bill' })
+  @ApiResponse({ status: 200, description: 'Electricity bill paid successfully' })
+  async payElectricity(@Req() req: AuthenticatedRequest, @Body() dto: PayElectricityDto) {
+    return this.billsService.payElectricity(req.user.id, dto);
+  }
+
+  @Post('tv')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Pay TV subscription' })
+  @ApiResponse({ status: 200, description: 'TV subscription paid successfully' })
+  async payTv(@Req() req: AuthenticatedRequest, @Body() dto: PayTvDto) {
+    return this.billsService.payTv(req.user.id, dto);
+  }
+
+  @Post('betting')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Fund betting account' })
+  @ApiResponse({ status: 200, description: 'Betting account funded successfully' })
+  async fundBetting(@Req() req: AuthenticatedRequest, @Body() dto: FundBettingDto) {
+    return this.billsService.fundBetting(req.user.id, dto);
+  }
+
+  @Post('internet')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Pay internet subscription' })
+  @ApiResponse({ status: 200, description: 'Internet subscription paid successfully' })
+  async payInternet(@Req() req: AuthenticatedRequest, @Body() dto: PayInternetDto) {
+    return this.billsService.payInternet(req.user.id, dto);
+  }
+
+  @Get('fee')
+  @ApiOperation({ summary: 'Calculate fee for a bill payment' })
+  @ApiResponse({ status: 200, description: 'Fee calculated successfully' })
+  async calculateFee(@Query() dto: CalculateFeeDto) {
+    return this.billsService.getFeeCalculation(dto);
+  }
+
+  @Get('transaction/:reference')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Query transaction status' })
+  @ApiParam({ name: 'reference', description: 'Transaction reference' })
+  @ApiResponse({ status: 200, description: 'Transaction status retrieved' })
+  async queryTransaction(@Param('reference') reference: string) {
+    return this.billsService.queryTransaction(reference);
   }
 
   // Public endpoints - bill types and providers
   @Get('types')
-  @ApiOperation({ summary: 'Get available bill types' })
+  @ApiOperation({ summary: 'Get available bill types with details' })
   @ApiResponse({ status: 200, description: 'Bill types retrieved successfully' })
-  getBillTypes() {
-    return [
-      { type: BillType.AIRTIME, name: 'Airtime', icon: 'phone' },
-      { type: BillType.DATA, name: 'Data', icon: 'wifi' },
-      { type: BillType.ELECTRICITY, name: 'Electricity', icon: 'flash' },
-      { type: BillType.TV, name: 'TV/Cable', icon: 'tv' },
-      { type: BillType.INTERNET, name: 'Internet', icon: 'globe' },
-    ];
+  async getBillTypes() {
+    return this.billsService.getBillTypes();
   }
 
   @Get('providers')
   @ApiOperation({ summary: 'Get network providers for airtime/data' })
   @ApiResponse({ status: 200, description: 'Providers retrieved successfully' })
   getNetworkProviders() {
-    return [
-      { code: 'mtn', name: 'MTN', color: '#FFCC00' },
-      { code: 'airtel', name: 'Airtel', color: '#FF0000' },
-      { code: 'glo', name: 'Glo', color: '#00A651' },
-      { code: '9mobile', name: '9mobile', color: '#006B4F' },
-    ];
+    return this.billsService.getNetworkProviders();
   }
 }
