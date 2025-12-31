@@ -519,19 +519,20 @@ export const adminApi = {
   getCoupon: (id: string) => api.get(`/coupons/admin/${id}`),
   createCoupon: (data: {
     code: string;
+    name: string;
     description?: string;
-    discountType: 'percentage' | 'fixed';
-    discountValue: number;
-    minimumOrderAmount?: number;
-    maximumDiscount?: number;
+    type: 'percentage' | 'fixed_amount' | 'free_delivery';
+    value: number;
+    minOrderAmount?: number;
+    maxDiscountAmount?: number;
     usageLimit?: number;
     usageLimitPerUser?: number;
-    startDate?: string;
-    endDate?: string;
-    isActive?: boolean;
+    startDate: string;
+    endDate: string;
+    firstOrderOnly?: boolean;
+    newUsersOnly?: boolean;
     applicableCategories?: string[];
-    applicableProducts?: string[];
-    type?: 'general' | 'first_order' | 'referral' | 'loyalty' | 'seasonal' | 'flash';
+    applicableProductIds?: string[];
   }) => api.post('/coupons', data),
   updateCoupon: (id: string, data: Record<string, unknown>) =>
     api.patch(`/coupons/admin/${id}`, data),

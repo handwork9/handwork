@@ -52,20 +52,22 @@ const { RangePicker } = DatePicker;
 interface Coupon {
   id: string;
   code: string;
+  name: string;
   description?: string;
-  discountType: 'percentage' | 'fixed';
-  discountValue: number;
-  minimumOrderAmount?: number;
-  maximumDiscount?: number;
+  type: 'percentage' | 'fixed_amount' | 'free_delivery';
+  value: number;
+  minOrderAmount?: number;
+  maxDiscountAmount?: number;
   usageLimit?: number;
   usageLimitPerUser?: number;
   usageCount: number;
   startDate?: string;
   endDate?: string;
-  isActive: boolean;
-  type: 'general' | 'first_order' | 'referral' | 'loyalty' | 'seasonal' | 'flash';
+  status: 'active' | 'expired' | 'disabled';
+  firstOrderOnly?: boolean;
+  newUsersOnly?: boolean;
   applicableCategories?: string[];
-  applicableProducts?: string[];
+  applicableProductIds?: string[];
   createdAt: string;
 }
 
@@ -87,17 +89,15 @@ interface CouponUsage {
 
 // Color mappings
 const typeColors: Record<string, string> = {
-  general: 'blue',
-  first_order: 'green',
-  referral: 'purple',
-  loyalty: 'gold',
-  seasonal: 'orange',
-  flash: 'red',
+  percentage: 'cyan',
+  fixed_amount: 'green',
+  free_delivery: 'purple',
 };
 
-const discountTypeColors: Record<string, string> = {
-  percentage: 'cyan',
-  fixed: 'green',
+const statusColors: Record<string, string> = {
+  active: 'green',
+  expired: 'red',
+  disabled: 'default',
 };
 
 export default function CouponsPage() {
@@ -184,11 +184,24 @@ export default function CouponsPage() {
 
   const handleCreateOrUpdate = async (values: Record<string, any>) => {
     const dateRange = values.dateRange as [any, any] | undefined;
-    const { dateRange: _, ...rest } = values;
+    
+    // Map form fields to backend DTO
     const data = {
-      ...rest,
+      code: values.code,
+      name: values.name || values.code, // Use code as name if not provided
+      description: values.description,
+      type: values.type, // percentage, fixed_amount, free_delivery
+      value: values.value,
+      minOrderAmount: values.minOrderAmount,
+      maxDiscountAmount: values.maxDiscountAmount,
+      usageLimit: values.usageLimit,
+      usageLimitPerUser: values.usageLimitPerUser,
       startDate: dateRange?.[0]?.toISOString(),
       endDate: dateRange?.[1]?.toISOString(),
+      firstOrderOnly: values.firstOrderOnly,
+      newUsersOnly: values.newUsersOnly,
+      applicableCategories: values.applicableCategories,
+      applicableProductIds: values.applicableProductIds,
     };
 
     if (editingCoupon) {
@@ -251,7 +264,7 @@ export default function CouponsPage() {
       key: 'type',
       render: (type: string) => (
         <Tag color={typeColors[type] || 'default'}>
-          {type?.replace('_', ' ').toUpperCase()}
+          {type === 'percentage' ? 'Percentage' : type === 'fixed_amount' ? 'Fixed Amount' : 'Free Delivery'}
         </Tag>
       ),
     },
@@ -260,20 +273,22 @@ export default function CouponsPage() {
       key: 'discount',
       render: (_, record) => (
         <Space>
-          <Tag color={discountTypeColors[record.discountType]}>
-            {record.discountType === 'percentage' ? (
+          <Tag color={typeColors[record.type]}>
+            {record.type === 'percentage' ? (
               <>
-                <PercentageOutlined /> {record.discountValue}%
+                <PercentageOutlined /> {record.value}%
+              </>
+            ) : record.type === 'fixed_amount' ? (
+              <>
+                <DollarOutlined /> ₦{Number(record.value).toLocaleString()}
               </>
             ) : (
-              <>
-                <DollarOutlined /> ₦{record.discountValue.toLocaleString()}
-              </>
+              'Free Delivery'
             )}
           </Tag>
-          {record.maximumDiscount && (
+          {record.maxDiscountAmount && (
             <Text type="secondary" style={{ fontSize: 12 }}>
-              (max ₦{record.maximumDiscount.toLocaleString()})
+              (max ₦{Number(record.maxDiscountAmount).toLocaleString()})
             </Text>
           )}
         </Space>
@@ -281,10 +296,10 @@ export default function CouponsPage() {
     },
     {
       title: 'Min Order',
-      dataIndex: 'minimumOrderAmount',
-      key: 'minimumOrderAmount',
+      dataIndex: 'minOrderAmount',
+      key: 'minOrderAmount',
       render: (amount?: number) =>
-        amount ? `₦${amount.toLocaleString()}` : '-',
+        amount ? `₦${Number(amount).toLocaleString()}` : '-',
     },
     {
       title: 'Usage',
@@ -333,14 +348,14 @@ export default function CouponsPage() {
     },
     {
       title: 'Status',
-      dataIndex: 'isActive',
-      key: 'isActive',
-      render: (isActive: boolean) => (
+      dataIndex: 'status',
+      key: 'status',
+      render: (status: string) => (
         <Tag
-          icon={isActive ? <CheckCircleOutlined /> : <CloseCircleOutlined />}
-          color={isActive ? 'success' : 'default'}
+          icon={status === 'active' ? <CheckCircleOutlined /> : <CloseCircleOutlined />}
+          color={statusColors[status] || 'default'}
         >
-          {isActive ? 'Active' : 'Inactive'}
+          {status?.charAt(0).toUpperCase() + status?.slice(1)}
         </Tag>
       ),
     },
@@ -571,9 +586,7 @@ export default function CouponsPage() {
           layout="vertical"
           onFinish={handleCreateOrUpdate}
           initialValues={{
-            discountType: 'percentage',
-            type: 'general',
-            isActive: true,
+            type: 'percentage',
             usageLimitPerUser: 1,
           }}
         >
@@ -591,17 +604,12 @@ export default function CouponsPage() {
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="type" label="Type">
-                <Select
-                  options={[
-                    { label: 'General', value: 'general' },
-                    { label: 'First Order', value: 'first_order' },
-                    { label: 'Referral', value: 'referral' },
-                    { label: 'Loyalty', value: 'loyalty' },
-                    { label: 'Seasonal', value: 'seasonal' },
-                    { label: 'Flash Sale', value: 'flash' },
-                  ]}
-                />
+              <Form.Item
+                name="name"
+                label="Coupon Name"
+                rules={[{ required: true, message: 'Please enter coupon name' }]}
+              >
+                <Input placeholder="Summer Sale Discount" />
               </Form.Item>
             </Col>
           </Row>
@@ -613,27 +621,28 @@ export default function CouponsPage() {
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item
-                name="discountType"
+                name="type"
                 label="Discount Type"
                 rules={[{ required: true }]}
               >
                 <Select
                   options={[
                     { label: 'Percentage (%)', value: 'percentage' },
-                    { label: 'Fixed Amount (₦)', value: 'fixed' },
+                    { label: 'Fixed Amount (₦)', value: 'fixed_amount' },
+                    { label: 'Free Delivery', value: 'free_delivery' },
                   ]}
                 />
               </Form.Item>
             </Col>
             <Col span={12}>
               <Form.Item
-                name="discountValue"
+                name="value"
                 label="Discount Value"
                 rules={[{ required: true, message: 'Please enter discount value' }]}
               >
                 <InputNumber
                   min={0}
-                  max={couponForm.getFieldValue('discountType') === 'percentage' ? 100 : undefined}
+                  max={couponForm.getFieldValue('type') === 'percentage' ? 100 : undefined}
                   style={{ width: '100%' }}
                   placeholder="10"
                 />
@@ -643,7 +652,7 @@ export default function CouponsPage() {
 
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="minimumOrderAmount" label="Minimum Order Amount">
+              <Form.Item name="minOrderAmount" label="Minimum Order Amount">
                 <InputNumber
                   min={0}
                   style={{ width: '100%' }}
@@ -654,7 +663,7 @@ export default function CouponsPage() {
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="maximumDiscount" label="Maximum Discount">
+              <Form.Item name="maxDiscountAmount" label="Maximum Discount">
                 <InputNumber
                   min={0}
                   style={{ width: '100%' }}
@@ -679,13 +688,26 @@ export default function CouponsPage() {
             </Col>
           </Row>
 
-          <Form.Item name="dateRange" label="Validity Period">
+          <Form.Item 
+            name="dateRange" 
+            label="Validity Period"
+            rules={[{ required: true, message: 'Please select validity period' }]}
+          >
             <RangePicker style={{ width: '100%' }} showTime />
           </Form.Item>
 
-          <Form.Item name="isActive" label="Active" valuePropName="checked">
-            <Switch />
-          </Form.Item>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="firstOrderOnly" label="First Order Only" valuePropName="checked">
+                <Switch />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="newUsersOnly" label="New Users Only" valuePropName="checked">
+                <Switch />
+              </Form.Item>
+            </Col>
+          </Row>
 
           <Form.Item style={{ marginBottom: 0 }}>
             <Space>
