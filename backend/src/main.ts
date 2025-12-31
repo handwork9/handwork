@@ -38,10 +38,18 @@ async function bootstrap() {
     },
   }));
 
-  // CORS - Allow all origins in development for mobile app access
+  // CORS - Allow frontend origins
   const isDev = configService.get('NODE_ENV') !== 'production';
+  const allowedOrigins = [
+    configService.get('FRONTEND_URL', 'https://handwork.com'),
+    'https://admin-rouge-beta-53.vercel.app',
+    'https://handwork-admin.vercel.app',
+    'http://localhost:3000',
+    'http://localhost:3002',
+  ].filter(Boolean);
+  
   app.enableCors({
-    origin: isDev ? true : configService.get('FRONTEND_URL', 'https://handwork.com'),
+    origin: isDev ? true : allowedOrigins,
     credentials: true,
   });
 
