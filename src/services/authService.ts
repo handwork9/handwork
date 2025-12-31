@@ -291,9 +291,13 @@ export const authService = {
       };
     }
     try {
-      const user = await apiClient.put<User>('/users/profile', data);
-      return { success: true, data: user };
+      console.log('[AuthService] Updating profile with:', JSON.stringify(data));
+      const response = await apiClient.put<{ success: boolean; data: User }>('/users/profile', data);
+      console.log('[AuthService] Profile update response:', JSON.stringify(response));
+      // Response is already wrapped by backend interceptor: { success: true, data: User }
+      return { success: true, data: response.data || response as any };
     } catch (error: any) {
+      console.error('[AuthService] Profile update error:', error);
       return { 
         success: false, 
         message: error?.response?.data?.message || error?.message || 'Failed to update profile' 
