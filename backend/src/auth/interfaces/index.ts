@@ -1,4 +1,5 @@
 import { UserRole } from '../../common/enums';
+import { User } from '../../database/entities/user.entity';
 
 export interface JwtPayload {
   sub: string; // user id
@@ -15,5 +16,5 @@ export interface AuthTokens {
 }
 
 export interface AuthenticatedRequest extends Request {
-  user: JwtPayload;
+  user: User;
 }

@@ -553,6 +553,11 @@ export type BuyerStackParamList = {
   PaymentDetail: { payment: any };
   TransactionHistory: { transactions: any[] };
   TransactionDetail: { transaction: any };
+  SubscriptionBox: undefined;
+  GroupBuying: undefined;
+  GroupBuyDetail: { groupBuyId: string };
+  CreateGroupBuy: undefined;
+  ShoppingLists: undefined;
   Withdraw: { bankAccountId?: string } | undefined;
   WithdrawalHistory: undefined;
   BankAccounts: undefined;

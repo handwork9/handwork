@@ -44,6 +44,10 @@ import { FarmersModule } from './farmers/farmers.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { DisputeModule } from './disputes/dispute.module';
 import { BillsModule } from './bills/bills.module';
+import { SubscriptionBoxesModule } from './subscription-boxes/subscription-boxes.module';
+import { GroupBuyingModule } from './group-buying/group-buying.module';
+import { CouponsModule } from './coupons/coupons.module';
+import { ShoppingListsModule } from './shopping-lists/shopping-lists.module';
 
 @Module({
   imports: [
@@ -152,6 +156,10 @@ import { BillsModule } from './bills/bills.module';
     UploadsModule,
     DisputeModule,
     BillsModule,
+    SubscriptionBoxesModule,
+    GroupBuyingModule,
+    CouponsModule,
+    ShoppingListsModule,
   ],
 })
 export class AppModule {}

@@ -26,12 +26,14 @@ export enum TransactionCategory {
   PROMOTION = 'promotion',
   PURCHASE = 'purchase',
   BILL_PAYMENT = 'bill_payment',
+  GROUP_BUY = 'group_buy',
 }
 
 export enum WalletOwnerType {
   FARMER = 'farmer',
   RIDER = 'rider',
   BUYER = 'buyer',
+  USER = 'user',
 }
 
 @Entity('wallet_transactions')

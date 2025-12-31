@@ -36,6 +36,8 @@ import {
   qualifiesForFreeDelivery,
 } from '../../services/deliveryPricingService';
 import { useTheme } from '../../context/ThemeContext';
+import CouponInput from '../../components/cart/CouponInput';
+import { Coupon, CouponValidationResult } from '../../services/couponService';
 
 type Props = NativeStackScreenProps<BuyerStackParamList, 'Checkout'>;
 
@@ -70,8 +72,8 @@ export default function CheckoutScreen({ navigation }: Props) {
   
   const [deliveryType, setDeliveryType] = useState<DeliveryType>('ASAP');
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string | null>(null);
-  const [promoCode, setPromoCode] = useState('');
-  const [promoApplied, setPromoApplied] = useState(false);
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+  const [couponDiscount, setCouponDiscount] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card');
   const [walletBalance, setWalletBalance] = useState<WalletBalance | null>(null);
   const [isLoadingWallet, setIsLoadingWallet] = useState(true);
@@ -239,13 +241,38 @@ export default function CheckoutScreen({ navigation }: Props) {
     return slots;
   }, []);
 
-  const deliveryFee = deliveryPricing.deliveryFee;
+  const deliveryFee = appliedCoupon?.type === 'free_delivery' ? 0 : deliveryPricing.deliveryFee;
   const serviceFee = Math.round(total * 0.02); // 2% service fee
-  const discount = promoApplied ? 500 : 0;
+  const discount = couponDiscount;
   const finalTotal = total + deliveryFee + serviceFee - discount;
   
-  const hasFreeDelivery = qualifiesForFreeDelivery(total);
+  const hasFreeDelivery = qualifiesForFreeDelivery(total) || appliedCoupon?.type === 'free_delivery';
   const amountForFreeDelivery = getAmountForFreeDelivery(total);
+
+  // Prepare cart items for coupon validation
+  const cartItemsForCoupon = useMemo(() => {
+    return items.map(item => ({
+      productId: item.productId,
+      price: Number(item.product.price),
+      quantity: item.quantity,
+      category: item.product.category?.name || item.product.category,
+    }));
+  }, [items]);
+
+  // Handle coupon application
+  const handleApplyCoupon = (result: CouponValidationResult) => {
+    if (result.coupon) {
+      setAppliedCoupon(result.coupon);
+      setCouponDiscount(result.discountAmount);
+      Alert.alert('Coupon Applied!', `You saved ₦${result.discountAmount.toLocaleString()}`);
+    }
+  };
+
+  // Handle coupon removal
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponDiscount(0);
+  };
 
   const createOrderMutation = useMutation({
     mutationFn: orderService.createOrder,
@@ -282,15 +309,6 @@ export default function CheckoutScreen({ navigation }: Props) {
       );
     },
   });
-
-  const handleApplyPromo = () => {
-    if (promoCode.toLowerCase() === 'fresh10') {
-      setPromoApplied(true);
-      Alert.alert('Promo applied!', 'You saved ₦500');
-    } else {
-      Alert.alert('Invalid code', 'This promo code is not valid');
-    }
-  };
 
   // Get the ISO date for the selected time slot
   const getScheduledDeliveryTime = () => {
@@ -372,7 +390,8 @@ export default function CheckoutScreen({ navigation }: Props) {
             lat: selectedAddress?.lat || user?.latitude || 6.5244,
             lng: selectedAddress?.lng || user?.longitude || 3.3792,
           },
-          discountCode: promoApplied ? promoCode : undefined,
+          discountCode: appliedCoupon?.code || undefined,
+          discountAmount: couponDiscount || undefined,
           paymentMethod: 'wallet',
           deliveryType,
           scheduledDeliveryTime: getScheduledDeliveryTime(),
@@ -415,7 +434,8 @@ export default function CheckoutScreen({ navigation }: Props) {
           lat: selectedAddress?.lat || user?.latitude || 6.5244,
           lng: selectedAddress?.lng || user?.longitude || 3.3792,
         },
-        discountCode: promoApplied ? promoCode : undefined,
+        discountCode: appliedCoupon?.code || undefined,
+        discountAmount: couponDiscount || undefined,
         paymentMethod: 'card',
         deliveryType,
         scheduledDeliveryTime: getScheduledDeliveryTime(),
@@ -727,7 +747,8 @@ export default function CheckoutScreen({ navigation }: Props) {
           lat: selectedAddress?.lat || user?.latitude || 6.5244,
           lng: selectedAddress?.lng || user?.longitude || 3.3792,
         },
-        discountCode: promoApplied ? promoCode : undefined,
+        discountCode: appliedCoupon?.code || undefined,
+        discountAmount: couponDiscount || undefined,
         paymentMethod: 'card',
         paymentReference: reference,
         deliveryType,
@@ -757,7 +778,6 @@ export default function CheckoutScreen({ navigation }: Props) {
       setPayForMeStatus('failed');
     }
   };
-
   // Cleanup polling on unmount
   useEffect(() => {
     return () => {
@@ -1170,26 +1190,16 @@ export default function CheckoutScreen({ navigation }: Props) {
           </TouchableOpacity>
         )}
 
-        {/* Promo Code */}
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>PROMO CODE</Text>
-        <View style={[styles.insetCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', padding: 12 }]}>
-          <View style={styles.promoContainer}>
-            <TextInput
-              placeholder="Enter promo code"
-              value={promoCode}
-              onChangeText={setPromoCode}
-              containerStyle={styles.promoInput}
-              disabled={promoApplied}
-            />
-            <Button
-              title={promoApplied ? 'Applied' : 'Apply'}
-              variant="outline"
-              size="medium"
-              onPress={handleApplyPromo}
-              disabled={promoApplied || !promoCode}
-            />
-          </View>
-        </View>
+        {/* Coupon Code */}
+        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>COUPON CODE</Text>
+        <CouponInput
+          subtotal={total}
+          deliveryFee={deliveryPricing.deliveryFee}
+          cartItems={cartItemsForCoupon}
+          onApplyCoupon={handleApplyCoupon}
+          onRemoveCoupon={handleRemoveCoupon}
+          appliedCoupon={appliedCoupon}
+        />
 
         {/* Message for Farmer */}
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>MESSAGE FOR FARMER</Text>
@@ -1294,9 +1304,14 @@ export default function CheckoutScreen({ navigation }: Props) {
               </Text>
             </View>
           )}
-          {promoApplied && (
+          {appliedCoupon && discount > 0 && (
             <View style={[styles.summaryRow, styles.summaryRowBorder, { borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60, 60, 67, 0.12)' }]}>
-              <Text style={[styles.summaryLabel, { color: '#34C759' }]}>Discount</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="pricetag" size={14} color="#34C759" style={{ marginRight: 4 }} />
+                <Text style={[styles.summaryLabel, { color: '#34C759' }]}>
+                  Coupon ({appliedCoupon.code})
+                </Text>
+              </View>
               <Text style={[styles.summaryValue, { color: '#34C759' }]}>-₦{discount.toLocaleString()}</Text>
             </View>
           )}

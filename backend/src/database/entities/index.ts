@@ -33,3 +33,5 @@ export * from './account-deletion-request.entity';
 export * from './admin-invite.entity';
 export * from './dispute.entity';
 export * from './bill-payment.entity';
+export * from './subscription-box.entity';
+export * from './group-buy.entity';

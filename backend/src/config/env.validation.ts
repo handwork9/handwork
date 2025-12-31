@@ -38,9 +38,13 @@ const ENV_VARS: EnvVar[] = [
   { name: 'TWILIO_PHONE_NUMBER', required: false, production: false, description: 'Twilio phone number' },
   
   // Email - Optional
-  { name: 'SMTP_HOST', required: false, production: false, description: 'SMTP host' },
-  { name: 'SMTP_USER', required: false, production: false, description: 'SMTP username' },
-  { name: 'SMTP_PASSWORD', required: false, production: false, description: 'SMTP password' },
+  { name: 'SMTP_HOST', required: false, production: false, description: 'SMTP host (optional for Gmail)' },
+  { name: 'SMTP_PORT', required: false, production: false, description: 'SMTP port (default: 587)' },
+  { name: 'SMTP_USER', required: false, production: false, description: 'SMTP username/email' },
+  { name: 'SMTP_PASS', required: false, production: false, description: 'SMTP password (Gmail: use app password)' },
+  { name: 'SMTP_PASSWORD', required: false, production: false, description: 'SMTP password (alias for SMTP_PASS)' },
+  { name: 'SMTP_FROM_EMAIL', required: false, production: false, description: 'From email address' },
+  { name: 'SMTP_FROM_NAME', required: false, production: false, description: 'From name' },
   
   // Firebase/Expo Push - Optional
   { name: 'FIREBASE_PROJECT_ID', required: false, production: false, description: 'Firebase project ID' },

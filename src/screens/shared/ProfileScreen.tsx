@@ -500,6 +500,30 @@ export default function ProfileScreen() {
       },
     ];
 
+    // Subscription Box - only for buyers
+    if (user?.role === 'buyer') {
+      items.push({
+        icon: 'cube',
+        label: 'Subscription Box',
+        subtitle: 'Weekly farm produce delivery',
+        action: () => (navigation as any).navigate('SubscriptionBox'),
+        iconColor: '#8B5CF6',
+        iconBg: '#EDE9FE',
+      });
+    }
+
+    // Group Buying - only for buyers
+    if (user?.role === 'buyer') {
+      items.push({
+        icon: 'people-circle',
+        label: 'Group Buying',
+        subtitle: 'Buy together, save more',
+        action: () => (navigation as any).navigate('GroupBuying'),
+        iconColor: '#EC4899',
+        iconBg: '#FCE7F3',
+      });
+    }
+
     // Favorites is only for buyers (riders deliver, farmers sell)
     if (user?.role === 'buyer') {
       items.push({

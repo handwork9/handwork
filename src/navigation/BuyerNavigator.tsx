@@ -84,6 +84,11 @@ import NotificationSettingsScreen from '../screens/shared/NotificationSettingsSc
 import AppearanceScreen from '../screens/shared/AppearanceScreen';
 import DeleteAccountScreen from '../screens/shared/DeleteAccountScreen';
 import VideoCallScreen from '../screens/shared/VideoCallScreen';
+import SubscriptionBoxScreen from '../screens/buyer/SubscriptionBoxScreen';
+import GroupBuyingScreen from '../screens/buyer/GroupBuyingScreen';
+import CreateGroupBuyScreen from '../screens/buyer/CreateGroupBuyScreen';
+import GroupBuyDetailScreen from '../screens/buyer/GroupBuyDetailScreen';
+import ShoppingListsScreen from '../screens/buyer/ShoppingListsScreen';
 
 const Tab = createBottomTabNavigator<BuyerTabParamList>();
 const Stack = createNativeStackNavigator<BuyerStackParamList>();
@@ -558,6 +563,31 @@ export function BuyerNavigator() {
           presentation: 'fullScreenModal',
           animation: 'fade',
         }}
+      />
+      <Stack.Screen
+        name="SubscriptionBox"
+        component={SubscriptionBoxScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="GroupBuying"
+        component={GroupBuyingScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="CreateGroupBuy"
+        component={CreateGroupBuyScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="GroupBuyDetail"
+        component={GroupBuyDetailScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="ShoppingLists"
+        component={ShoppingListsScreen}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );

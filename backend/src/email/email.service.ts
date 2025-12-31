@@ -24,21 +24,39 @@ export class EmailService {
     this.fromName = this.configService.get<string>('SMTP_FROM_NAME') || 'Handwork';
 
     const smtpHost = this.configService.get<string>('SMTP_HOST');
-    const smtpPort = this.configService.get<number>('SMTP_PORT');
+    const smtpPort = this.configService.get<number>('SMTP_PORT') || 587;
     const smtpUser = this.configService.get<string>('SMTP_USER');
-    const smtpPass = this.configService.get<string>('SMTP_PASS');
+    // Check both SMTP_PASS and SMTP_PASSWORD for compatibility
+    const smtpPass = this.configService.get<string>('SMTP_PASS') || this.configService.get<string>('SMTP_PASSWORD');
 
-    if (smtpHost && smtpUser && smtpPass) {
-      this.transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: smtpUser,
-          pass: smtpPass,
-        },
-      });
-      this.logger.log('Email service initialized with Gmail');
+    this.logger.log(`Email config - Host: ${smtpHost || 'not set'}, User: ${smtpUser || 'not set'}, Pass: ${smtpPass ? '****' : 'not set'}`);
+
+    if (smtpUser && smtpPass) {
+      // If host is gmail or not specified, use Gmail service
+      if (!smtpHost || smtpHost.includes('gmail')) {
+        this.transporter = nodemailer.createTransport({
+          service: 'gmail',
+          auth: {
+            user: smtpUser,
+            pass: smtpPass,
+          },
+        });
+        this.logger.log('Email service initialized with Gmail');
+      } else {
+        // Use custom SMTP server
+        this.transporter = nodemailer.createTransport({
+          host: smtpHost,
+          port: smtpPort,
+          secure: smtpPort === 465,
+          auth: {
+            user: smtpUser,
+            pass: smtpPass,
+          },
+        });
+        this.logger.log(`Email service initialized with custom SMTP: ${smtpHost}:${smtpPort}`);
+      }
     } else {
-      this.logger.warn('Email service not configured - emails will be logged only');
+      this.logger.warn('Email service not configured - SMTP_USER and SMTP_PASS/SMTP_PASSWORD are required');
     }
   }
 
