@@ -27,6 +27,9 @@ import {
   WalletOutlined,
   MailOutlined,
   SafetyOutlined,
+  TagOutlined,
+  UnorderedListOutlined,
+  InboxOutlined,
 } from '@ant-design/icons';
 import { useAuthStore, hasPermission, PERMISSIONS } from '@/store/auth';
 import { useSocketStore } from '@/lib/socket';
@@ -166,6 +169,33 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           icon: <ShopOutlined />,
           label: 'Products',
           disabled: !hasPermission(user, PERMISSIONS.VIEW_PRODUCTS),
+        },
+      ],
+    },
+    {
+      key: 'marketing',
+      icon: <GiftOutlined />,
+      label: 'Marketing',
+      children: [
+        {
+          key: '/coupons',
+          icon: <TagOutlined />,
+          label: 'Coupons',
+        },
+        {
+          key: '/group-buying',
+          icon: <TeamOutlined />,
+          label: 'Group Buying',
+        },
+        {
+          key: '/subscription-boxes',
+          icon: <InboxOutlined />,
+          label: 'Subscription Boxes',
+        },
+        {
+          key: '/shopping-lists',
+          icon: <UnorderedListOutlined />,
+          label: 'Shopping Lists',
         },
       ],
     },

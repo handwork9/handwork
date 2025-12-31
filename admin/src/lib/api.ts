@@ -508,6 +508,74 @@ export const adminApi = {
     api.patch(`/admin/team/${memberId}`, data),
   removeTeamMember: (memberId: string) =>
     api.delete(`/admin/team/${memberId}`),
+
+  // Coupons Management
+  getCoupons: (params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    type?: string;
+  }) => api.get('/coupons/admin/all', { params }),
+  getCoupon: (id: string) => api.get(`/coupons/admin/${id}`),
+  createCoupon: (data: {
+    code: string;
+    description?: string;
+    discountType: 'percentage' | 'fixed';
+    discountValue: number;
+    minimumOrderAmount?: number;
+    maximumDiscount?: number;
+    usageLimit?: number;
+    usageLimitPerUser?: number;
+    startDate?: string;
+    endDate?: string;
+    isActive?: boolean;
+    applicableCategories?: string[];
+    applicableProducts?: string[];
+    type?: 'general' | 'first_order' | 'referral' | 'loyalty' | 'seasonal' | 'flash';
+  }) => api.post('/coupons', data),
+  updateCoupon: (id: string, data: Record<string, unknown>) =>
+    api.patch(`/coupons/admin/${id}`, data),
+  deleteCoupon: (id: string) => api.delete(`/coupons/admin/${id}`),
+  getCouponUsage: (id: string) => api.get(`/coupons/admin/${id}/usage`),
+
+  // Group Buying Management
+  getGroupBuyingSessions: (params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+  }) => api.get('/group-buying', { params }),
+  getGroupBuyingSession: (id: string) => api.get(`/group-buying/${id}`),
+  getGroupBuyingStats: () => api.get('/group-buying/admin/stats'),
+
+  // Subscription Boxes Management
+  getSubscriptionBoxTemplates: (params?: {
+    page?: number;
+    limit?: number;
+    isActive?: boolean;
+  }) => api.get('/subscription-boxes/templates', { params }),
+  getSubscriptionBoxTemplate: (id: string) => api.get(`/subscription-boxes/templates/${id}`),
+  createSubscriptionBoxTemplate: (data: {
+    name: string;
+    description: string;
+    price: number;
+    frequency: 'weekly' | 'bi-weekly' | 'monthly';
+    contents?: string;
+    imageUrl?: string;
+    category?: string;
+    isActive?: boolean;
+  }) => api.post('/subscription-boxes/templates', data),
+  updateSubscriptionBoxTemplate: (id: string, data: Record<string, unknown>) =>
+    api.patch(`/subscription-boxes/templates/${id}`, data),
+  deleteSubscriptionBoxTemplate: (id: string) => api.delete(`/subscription-boxes/templates/${id}`),
+  getSubscriptionBoxSubscriptions: (params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+  }) => api.get('/subscription-boxes/admin/subscriptions', { params }),
+  getSubscriptionBoxStats: () => api.get('/subscription-boxes/admin/stats'),
+
+  // Shopping Lists (Read Only for Admin)
+  getShoppingListsStats: () => api.get('/shopping-lists/admin/stats'),
 };
 
 // Sessions API
