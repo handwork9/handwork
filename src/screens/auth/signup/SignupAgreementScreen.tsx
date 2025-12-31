@@ -9,6 +9,7 @@ import {
   ScrollView,
   Alert,
   Linking,
+  TextInput,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -79,6 +80,7 @@ export default function SignupAgreementScreen({ navigation, route }: Props) {
     marketing: false,
     age: false,
   });
+  const [referralCode, setReferralCode] = useState('');
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
   const progressAnim = useRef(new Animated.Value(0)).current;
@@ -137,6 +139,8 @@ export default function SignupAgreementScreen({ navigation, route }: Props) {
       address,
       latitude,
       longitude,
+      referralCode: referralCode.trim() || undefined,
+      marketingConsent: agreements.marketing,
     };
 
     // Navigate to role-specific screens
@@ -323,6 +327,39 @@ export default function SignupAgreementScreen({ navigation, route }: Props) {
             {Object.values(agreements).every(v => v) ? 'Deselect All' : 'Accept All'}
           </Text>
         </TouchableOpacity>
+
+        {/* Referral Code Section */}
+        <View style={styles.referralSection}>
+          <Text style={[styles.sectionTitle, { color: colors.text, marginTop: SPACING.lg }]}>
+            Have a referral code? (Optional)
+          </Text>
+          <View style={[
+            styles.referralInputContainer,
+            { 
+              backgroundColor: isDark ? colors.card : '#FFFFFF',
+              borderColor: isDark ? '#374151' : '#E5E7EB',
+            }
+          ]}>
+            <Ionicons name="gift-outline" size={20} color={COLORS.primary} style={styles.referralIcon} />
+            <TextInput
+              style={[styles.referralInput, { color: colors.text }]}
+              placeholder="Enter invite/referral code"
+              placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
+              value={referralCode}
+              onChangeText={setReferralCode}
+              autoCapitalize="characters"
+              maxLength={12}
+            />
+            {referralCode.length > 0 && (
+              <TouchableOpacity onPress={() => setReferralCode('')}>
+                <Ionicons name="close-circle" size={20} color={isDark ? '#6B7280' : '#9CA3AF'} />
+              </TouchableOpacity>
+            )}
+          </View>
+          <Text style={[styles.referralHint, { color: isDark ? '#6B7280' : '#9CA3AF' }]}>
+            Got a code from a friend? Enter it to get rewards!
+          </Text>
+        </View>
       </ScrollView>
 
       <View style={[styles.bottomContainer, { paddingBottom: insets.bottom + SPACING.lg }]}>
@@ -496,6 +533,32 @@ const styles = StyleSheet.create({
   acceptAllText: {
     fontSize: FONT_SIZES.sm,
     fontFamily: FONTS.semiBold,
+  },
+  referralSection: {
+    marginTop: SPACING.md,
+  },
+  referralInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+  },
+  referralIcon: {
+    marginRight: SPACING.sm,
+  },
+  referralInput: {
+    flex: 1,
+    fontSize: FONT_SIZES.md,
+    fontFamily: FONTS.medium,
+    paddingVertical: 8,
+  },
+  referralHint: {
+    fontSize: FONT_SIZES.xs,
+    fontFamily: FONTS.regular,
+    marginTop: SPACING.xs,
+    marginLeft: SPACING.xs,
   },
   bottomContainer: {
     paddingHorizontal: SPACING.lg,

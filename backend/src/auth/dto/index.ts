@@ -205,6 +205,12 @@ export class SignupDto {
   @IsString()
   @IsOptional()
   cardExpiry?: string;
+
+  // ===== REFERRAL CODE =====
+  @ApiProperty({ example: 'ABC123XY', required: false, description: 'Referral/invite code from another user' })
+  @IsString()
+  @IsOptional()
+  referralCode?: string;
 }
 
 export class LoginDto {

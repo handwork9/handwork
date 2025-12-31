@@ -22,6 +22,7 @@ import { OtpService } from './otp.service';
 import { EmailService } from '../email/email.service';
 import { PaystackService } from '../payments/paystack.service';
 import { SessionsService } from './sessions.service';
+import { ReferralsService } from '../referrals/referrals.service';
 import { DeviceType } from '../database/entities/session.entity';
 import { SignupDto, LoginDto, RefreshTokenDto, VerifyOtpDto, TwoFactorLoginDto, GoogleLoginDto, VerifyEmailOtpDto, VerifyPhoneOtpDto } from './dto';
 import { JwtPayload, AuthTokens } from './interfaces';
@@ -66,6 +67,8 @@ export class AuthService {
     @Inject(forwardRef(() => PaystackService))
     private readonly paystackService: PaystackService,
     private readonly sessionsService: SessionsService,
+    @Inject(forwardRef(() => ReferralsService))
+    private readonly referralsService: ReferralsService,
   ) {
     // Initialize Google OAuth client
     const googleClientId = this.configService.get<string>('GOOGLE_CLIENT_ID');
@@ -119,6 +122,13 @@ export class AuthService {
       await this.createRiderProfile(user.id, dto);
     } else if (dto.role === UserRole.FARMER) {
       await this.createFarmerProfile(user.id, dto);
+    }
+
+    // Apply referral code if provided (async, don't block response)
+    if (dto.referralCode) {
+      this.referralsService.applyReferralCode(user.id, dto.referralCode).catch((err) => {
+        this.logger.error(`Failed to apply referral code ${dto.referralCode} for user ${user.id}: ${err.message}`);
+      });
     }
 
     // Setup Paystack customer and DVA for wallet top-up (async, don't block response)

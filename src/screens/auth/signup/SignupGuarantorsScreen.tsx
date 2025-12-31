@@ -231,6 +231,8 @@ export default function SignupGuarantorsScreen({ navigation, route }: Props) {
         longitude: params.longitude,
         nationality: params.nationality,
         nationalityCode: params.nationalityCode,
+        referralCode: params.referralCode,
+        marketingConsent: params.marketingConsent,
         // Rider specific
         bikeModel: params.bikeModel,
         plateNumber: params.plateNumber,

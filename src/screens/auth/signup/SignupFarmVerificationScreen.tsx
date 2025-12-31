@@ -201,6 +201,8 @@ export default function SignupFarmVerificationScreen({ navigation, route }: Prop
         longitude: params.longitude,
         nationality: params.nationality,
         nationalityCode: params.nationalityCode,
+        referralCode: params.referralCode,
+        marketingConsent: params.marketingConsent,
         // Farmer specific
         farmName: params.farmName,
         farmType: params.farmType,

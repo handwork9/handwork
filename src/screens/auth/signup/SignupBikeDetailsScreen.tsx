@@ -119,6 +119,8 @@ export default function SignupBikeDetailsScreen({ navigation, route }: Props) {
     address,
     latitude,
     longitude,
+    referralCode,
+    marketingConsent,
   } = route.params;
 
   const [bikeModel, setBikeModel] = useState('');
@@ -231,6 +233,8 @@ export default function SignupBikeDetailsScreen({ navigation, route }: Props) {
       plateNumber: plateNumber.trim().toUpperCase(),
       bikeColor: bikeColor.trim(),
       driversLicense,
+      referralCode,
+      marketingConsent,
     });
   };
 

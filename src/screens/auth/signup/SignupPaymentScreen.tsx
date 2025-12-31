@@ -426,6 +426,8 @@ export default function SignupPaymentScreen({ navigation, route }: Props) {
         longitude: params.longitude,
         nationality: params.nationality,
         nationalityCode: params.nationalityCode,
+        referralCode: params.referralCode,
+        marketingConsent: params.marketingConsent,
       };
 
       // Add payment details if provided

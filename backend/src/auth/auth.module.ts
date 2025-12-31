@@ -23,6 +23,7 @@ import { FarmerProfile } from '../database/entities/farmer-profile.entity';
 import { UsersModule } from '../users/users.module';
 import { EmailModule } from '../email/email.module';
 import { PaymentsModule } from '../payments/payments.module';
+import { ReferralsModule } from '../referrals/referrals.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { PaymentsModule } from '../payments/payments.module';
     UsersModule,
     EmailModule,
     forwardRef(() => PaymentsModule),
+    forwardRef(() => ReferralsModule),
   ],
   controllers: [AuthController, SessionsController, PinController],
   providers: [AuthService, OtpService, TwoFactorService, PinService, SessionsService, JwtStrategy, JwtRefreshStrategy, LocalStrategy],
