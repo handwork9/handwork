@@ -10,6 +10,8 @@
 import { io, Socket } from 'socket.io-client';
 import { API_CONFIG } from '../constants/config';
 import { store } from '../store';
+import { setTokens } from '../store/slices/authSlice';
+import axios from 'axios';
 
 // Lazy-load WebRTC modules to avoid crashes in Expo Go
 let RTCPeerConnection: any;
@@ -103,7 +105,7 @@ class VideoCallService {
   /**
    * Connect to video call WebSocket
    */
-  connect(): void {
+  async connect(): Promise<void> {
     if (this.socket?.connected) return;
 
     const authState = store.getState().auth;
@@ -112,13 +114,43 @@ class VideoCallService {
       return;
     }
 
+    // Try to refresh token if it might be expired (refresh proactively)
+    let token = authState.accessToken;
+    if (authState.refreshToken) {
+      try {
+        // Check if token might be expired by decoding it
+        const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+        const expiresAt = tokenPayload.exp * 1000;
+        const now = Date.now();
+        
+        // If token expires within 5 minutes, refresh it
+        if (expiresAt - now < 5 * 60 * 1000) {
+          console.log('[VideoCall] Token expiring soon, refreshing...');
+          const response = await axios.post(`${API_CONFIG.BASE_URL}/auth/refresh`, {
+            refreshToken: authState.refreshToken,
+          });
+          
+          if (response.data?.data?.accessToken) {
+            const { accessToken, refreshToken: newRefreshToken } = response.data.data;
+            token = accessToken;
+            // Update tokens in store
+            store.dispatch(setTokens({ accessToken, refreshToken: newRefreshToken }));
+            console.log('[VideoCall] Token refreshed successfully');
+          }
+        }
+      } catch (error) {
+        console.warn('[VideoCall] Token refresh check failed:', error);
+        // Continue with existing token
+      }
+    }
+
     // Socket.io uses HTTP for handshake, then upgrades to WebSocket
     const baseUrl = API_CONFIG.BASE_URL.replace('/api/v1', '');
     
     console.log('[VideoCall] Connecting to:', `${baseUrl}/video-call`);
     
     this.socket = io(`${baseUrl}/video-call`, {
-      auth: { token: authState.accessToken },
+      auth: { token },
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 5,
@@ -252,8 +284,8 @@ class VideoCallService {
     }
 
     if (!this.socket?.connected) {
-      this.connect();
-      // Wait for connection
+      await this.connect();
+      // Wait for connection to establish
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
 

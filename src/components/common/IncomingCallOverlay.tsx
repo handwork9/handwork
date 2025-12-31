@@ -30,8 +30,10 @@ export default function IncomingCallOverlay() {
   const pulseAnim = React.useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    // Connect to video call service
-    videoCallService.connect();
+    // Connect to video call service (async)
+    videoCallService.connect().catch(err => {
+      console.warn('[IncomingCallOverlay] Failed to connect:', err);
+    });
 
     // Listen for incoming calls
     const unsubscribeIncoming = videoCallService.onIncomingCall((data) => {
