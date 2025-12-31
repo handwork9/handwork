@@ -182,13 +182,14 @@ export default function CouponsPage() {
     },
   });
 
-  const handleCreateOrUpdate = async (values: Record<string, unknown>) => {
+  const handleCreateOrUpdate = async (values: Record<string, any>) => {
+    const dateRange = values.dateRange as [any, any] | undefined;
+    const { dateRange: _, ...rest } = values;
     const data = {
-      ...values,
-      startDate: values.dateRange?.[0]?.toISOString(),
-      endDate: values.dateRange?.[1]?.toISOString(),
+      ...rest,
+      startDate: dateRange?.[0]?.toISOString(),
+      endDate: dateRange?.[1]?.toISOString(),
     };
-    delete data.dateRange;
 
     if (editingCoupon) {
       updateMutation.mutate({ id: editingCoupon.id, data });
@@ -647,7 +648,7 @@ export default function CouponsPage() {
                   min={0}
                   style={{ width: '100%' }}
                   formatter={(value) => `₦ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                  parser={(value) => value!.replace(/₦\s?|(,*)/g, '')}
+                  parser={(value) => Number(value!.replace(/₦\s?|(,*)/g, '')) as any}
                   placeholder="1000"
                 />
               </Form.Item>
@@ -658,7 +659,7 @@ export default function CouponsPage() {
                   min={0}
                   style={{ width: '100%' }}
                   formatter={(value) => `₦ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                  parser={(value) => value!.replace(/₦\s?|(,*)/g, '')}
+                  parser={(value) => Number(value!.replace(/₦\s?|(,*)/g, '')) as any}
                   placeholder="5000"
                 />
               </Form.Item>

@@ -357,7 +357,7 @@ export default function GroupBuyingScreen() {
       ? groupBuys.filter(
           (g) =>
             g.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            g.product.name.toLowerCase().includes(searchQuery.toLowerCase())
+            (g.product?.name || g.product?.title || '').toLowerCase().includes(searchQuery.toLowerCase())
         )
       : groupBuys;
 

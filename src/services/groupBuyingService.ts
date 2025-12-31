@@ -127,53 +127,62 @@ export interface QueryGroupBuysParams {
   offset?: number;
 }
 
+// Helper to unwrap API response
+function unwrap<T>(response: any): T {
+  if (response && response.success !== undefined && response.data !== undefined) {
+    return response.data;
+  }
+  return response;
+}
+
 export const groupBuyingService = {
   // Get discount tiers
   async getTiers(): Promise<GroupBuyTier[]> {
-    const response = await apiClient.get('/group-buying/tiers');
-    return response.data.data;
+    const response = await apiClient.get<any>('/group-buying/tiers');
+    return unwrap<GroupBuyTier[]>(response);
   },
 
   // Create a new group buy
   async create(data: CreateGroupBuyData): Promise<GroupBuy> {
-    const response = await apiClient.post('/group-buying', data);
-    return response.data.data;
+    const response = await apiClient.post<any>('/group-buying', data);
+    return unwrap<GroupBuy>(response);
   },
 
   // Get all active group buys
   async getAll(params?: QueryGroupBuysParams): Promise<{ groupBuys: GroupBuy[]; total: number }> {
-    const response = await apiClient.get('/group-buying', { params });
-    return { groupBuys: response.data.data, total: response.data.total };
+    const response = await apiClient.get<any>('/group-buying', { params });
+    const unwrapped = unwrap<any>(response);
+    return { groupBuys: unwrapped.data || unwrapped, total: unwrapped.total || 0 };
   },
 
   // Get my group buys
   async getMyGroupBuys(): Promise<{ organized: GroupBuy[]; joined: GroupBuy[] }> {
-    const response = await apiClient.get('/group-buying/my');
-    return response.data.data;
+    const response = await apiClient.get<any>('/group-buying/my');
+    return unwrap<{ organized: GroupBuy[]; joined: GroupBuy[] }>(response);
   },
 
   // Get group buy by ID
   async getById(id: string): Promise<GroupBuy> {
-    const response = await apiClient.get(`/group-buying/${id}`);
-    return response.data.data;
+    const response = await apiClient.get<any>(`/group-buying/${id}`);
+    return unwrap<GroupBuy>(response);
   },
 
   // Get group buy by share code
   async getByShareCode(shareCode: string): Promise<GroupBuy> {
-    const response = await apiClient.get(`/group-buying/code/${shareCode}`);
-    return response.data.data;
+    const response = await apiClient.get<any>(`/group-buying/code/${shareCode}`);
+    return unwrap<GroupBuy>(response);
   },
 
   // Update group buy
   async update(id: string, data: UpdateGroupBuyData): Promise<GroupBuy> {
-    const response = await apiClient.put(`/group-buying/${id}`, data);
-    return response.data.data;
+    const response = await apiClient.put<any>(`/group-buying/${id}`, data);
+    return unwrap<GroupBuy>(response);
   },
 
   // Join a group buy
   async join(id: string, data?: JoinGroupBuyData): Promise<GroupBuyParticipant> {
-    const response = await apiClient.post(`/group-buying/${id}/join`, data || {});
-    return response.data.data;
+    const response = await apiClient.post<any>(`/group-buying/${id}/join`, data || {});
+    return unwrap<GroupBuyParticipant>(response);
   },
 
   // Leave a group buy
@@ -183,23 +192,23 @@ export const groupBuyingService = {
 
   // Pay for group buy
   async pay(id: string, paymentReference: string, amount: number): Promise<GroupBuyParticipant> {
-    const response = await apiClient.post(`/group-buying/${id}/pay`, {
+    const response = await apiClient.post<any>(`/group-buying/${id}/pay`, {
       paymentReference,
       amount,
     });
-    return response.data.data;
+    return unwrap<GroupBuyParticipant>(response);
   },
 
   // Cancel group buy (organizer only)
   async cancel(id: string): Promise<GroupBuy> {
-    const response = await apiClient.delete(`/group-buying/${id}`);
-    return response.data.data;
+    const response = await apiClient.delete<any>(`/group-buying/${id}`);
+    return unwrap<GroupBuy>(response);
   },
 
   // Get participants
   async getParticipants(id: string): Promise<GroupBuyParticipant[]> {
-    const response = await apiClient.get(`/group-buying/${id}/participants`);
-    return response.data.data;
+    const response = await apiClient.get<any>(`/group-buying/${id}/participants`);
+    return unwrap<GroupBuyParticipant[]>(response);
   },
 
   // Helper: Format price with currency

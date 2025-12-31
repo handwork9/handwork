@@ -465,7 +465,7 @@ export class GroupBuyingService {
     for (const groupBuy of endedGroupBuys) {
       try {
         const paidParticipants = groupBuy.participants.filter(
-          (p) => p.status === GroupBuyParticipantStatus.PAID,
+          (p: GroupBuyParticipant) => p.status === GroupBuyParticipantStatus.PAID,
         );
 
         if (paidParticipants.length >= groupBuy.minParticipants) {

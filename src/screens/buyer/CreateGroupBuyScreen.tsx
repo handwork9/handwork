@@ -85,7 +85,7 @@ export default function CreateGroupBuyScreen() {
     setIsSearching(true);
     try {
       const response = await productService.getProducts({ searchQuery: query, limit: 10 });
-      setSearchResults(response.products || []);
+      setSearchResults((response.products || []) as Product[]);
     } catch (error) {
       console.error('Search error:', error);
     } finally {

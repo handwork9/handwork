@@ -615,7 +615,7 @@ export default function SubscriptionBoxesPage() {
                   min={0}
                   style={{ width: '100%' }}
                   formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                  parser={(value) => value!.replace(/,/g, '')}
+                  parser={(value) => Number(value!.replace(/,/g, '')) as any}
                   placeholder="5000"
                 />
               </Form.Item>

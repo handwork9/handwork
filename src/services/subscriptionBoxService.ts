@@ -114,10 +114,12 @@ export interface UpdateSubscriptionBoxRequest {
   autoRenew?: boolean;
 }
 
-interface ApiResponse<T> {
-  success: boolean;
-  message?: string;
-  data: T;
+// Helper to unwrap API response
+function unwrap<T>(response: any): T {
+  if (response && response.success !== undefined && response.data !== undefined) {
+    return response.data;
+  }
+  return response;
 }
 
 // Subscription Box Service
@@ -126,40 +128,32 @@ const subscriptionBoxService = {
    * Get pricing information
    */
   getPricing: async (): Promise<BoxPricing> => {
-    const response = await apiClient.get<BoxPricing>('/subscription-boxes/pricing');
-    return response.data;
+    const response = await apiClient.get<any>('/subscription-boxes/pricing');
+    return unwrap<BoxPricing>(response);
   },
 
   /**
    * Get user's current subscription
    */
   getMySubscription: async (): Promise<SubscriptionBoxWithDeliveries | null> => {
-    const response = await apiClient.get<ApiResponse<SubscriptionBoxWithDeliveries | null>>(
-      '/subscription-boxes/my-subscription'
-    );
-    return response.data.data;
+    const response = await apiClient.get<any>('/subscription-boxes/my-subscription');
+    return unwrap<SubscriptionBoxWithDeliveries | null>(response);
   },
 
   /**
    * Create a new subscription
    */
   create: async (data: CreateSubscriptionBoxRequest): Promise<SubscriptionBox> => {
-    const response = await apiClient.post<ApiResponse<SubscriptionBox>>(
-      '/subscription-boxes',
-      data
-    );
-    return response.data.data;
+    const response = await apiClient.post<any>('/subscription-boxes', data);
+    return unwrap<SubscriptionBox>(response);
   },
 
   /**
    * Update subscription
    */
   update: async (id: string, data: UpdateSubscriptionBoxRequest): Promise<SubscriptionBox> => {
-    const response = await apiClient.put<ApiResponse<SubscriptionBox>>(
-      `/subscription-boxes/${id}`,
-      data
-    );
-    return response.data.data;
+    const response = await apiClient.put<any>(`/subscription-boxes/${id}`, data);
+    return unwrap<SubscriptionBox>(response);
   },
 
   /**
@@ -173,10 +167,8 @@ const subscriptionBoxService = {
    * Resume subscription
    */
   resume: async (id: string): Promise<SubscriptionBox> => {
-    const response = await apiClient.post<ApiResponse<SubscriptionBox>>(
-      `/subscription-boxes/${id}/resume`
-    );
-    return response.data.data;
+    const response = await apiClient.post<any>(`/subscription-boxes/${id}/resume`);
+    return unwrap<SubscriptionBox>(response);
   },
 
   /**
@@ -190,10 +182,8 @@ const subscriptionBoxService = {
    * Get delivery details
    */
   getDeliveryDetails: async (deliveryId: string): Promise<SubscriptionBoxDelivery> => {
-    const response = await apiClient.get<ApiResponse<SubscriptionBoxDelivery>>(
-      `/subscription-boxes/deliveries/${deliveryId}`
-    );
-    return response.data.data;
+    const response = await apiClient.get<any>(`/subscription-boxes/deliveries/${deliveryId}`);
+    return unwrap<SubscriptionBoxDelivery>(response);
   },
 
   /**
