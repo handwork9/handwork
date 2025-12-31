@@ -42,7 +42,7 @@ export class CouponsController {
     @Query('status') status?: CouponStatus,
     @Query('type') type?: CouponType,
   ) {
-    return this.couponsService.findAll({ status, type });
+    return this.couponsService.findAll({ status }, type);
   }
 
   @Get('admin/:id')

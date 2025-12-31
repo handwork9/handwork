@@ -62,11 +62,15 @@ export class CouponsService {
     status?: CouponStatus;
     page?: number;
     limit?: number;
-  }): Promise<{ coupons: Coupon[]; total: number }> {
+  }, type?: CouponType): Promise<{ coupons: Coupon[]; total: number }> {
     const query = this.couponRepository.createQueryBuilder('coupon');
 
     if (options?.status) {
       query.andWhere('coupon.status = :status', { status: options.status });
+    }
+
+    if (type) {
+      query.andWhere('coupon.type = :type', { type });
     }
 
     const total = await query.getCount();
@@ -328,7 +332,7 @@ export class CouponsService {
       take: 100,
     });
 
-    const totalDiscount = usages.reduce((sum, u) => sum + Number(u.discountAmount), 0);
+    const totalDiscount = usages.reduce((sum, u) => sum + Number(u.discountApplied), 0);
 
     return {
       coupon,
