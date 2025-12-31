@@ -49,7 +49,21 @@ async function bootstrap() {
   ].filter(Boolean);
   
   app.enableCors({
-    origin: isDev ? true : allowedOrigins,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl)
+      if (!origin) {
+        return callback(null, true);
+      }
+      // Allow Vercel preview deployments
+      if (origin.includes('.vercel.app') || origin.includes('vercel.app')) {
+        return callback(null, true);
+      }
+      // Allow configured origins
+      if (isDev || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      callback(null, false);
+    },
     credentials: true,
   });
 
