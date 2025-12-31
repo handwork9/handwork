@@ -1,4 +1,4 @@
-import { Controller, Get, Put, Post, Delete, Body, UseGuards, Param, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Put, Post, Delete, Body, UseGuards, Param, HttpCode, HttpStatus, Logger } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { UsersService, BuyerPremiumDto } from './users.service';
 import { UpdateUserDto, UpdateDeviceTokenDto, UpdateLocationDto, ApplyAsFarmerDto, RequestAccountDeletionDto } from './dto';
@@ -11,6 +11,8 @@ import { User } from '../database/entities/user.entity';
 @UseGuards(JwtAuthGuard)
 @Controller('users')
 export class UsersController {
+  private readonly logger = new Logger(UsersController.name);
+  
   constructor(private readonly usersService: UsersService) {}
 
   @Get('profile')
@@ -22,7 +24,9 @@ export class UsersController {
   @Put('profile')
   @ApiOperation({ summary: 'Update current user profile' })
   async updateProfile(@CurrentUser('id') userId: string, @Body() dto: UpdateUserDto) {
+    this.logger.log(`Updating profile for user ${userId} with data: ${JSON.stringify(dto)}`);
     const user = await this.usersService.update(userId, dto);
+    this.logger.log(`Profile updated successfully for user ${userId}, avatar: ${user.avatar}`);
     return this.sanitizeUser(user);
   }
 

@@ -77,9 +77,12 @@ export class UsersService {
   }
 
   async update(id: string, dto: UpdateUserDto): Promise<User> {
+    this.logger.log(`Updating user ${id} with: ${JSON.stringify(dto)}`);
     const user = await this.findById(id);
     Object.assign(user, dto);
-    return this.userRepository.save(user);
+    const saved = await this.userRepository.save(user);
+    this.logger.log(`User ${id} updated, avatar is now: ${saved.avatar}`);
+    return saved;
   }
 
   async updateDeviceToken(userId: string, token: string): Promise<void> {
