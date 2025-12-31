@@ -44,24 +44,36 @@ export interface ShoppingListStatistics {
 }
 
 class ShoppingListService {
+  // Helper to unwrap API response
+  private unwrap<T>(response: any): T {
+    if (response && response.success !== undefined && response.data !== undefined) {
+      return response.data;
+    }
+    return response;
+  }
+
   // Get all shopping lists
   async getAll(): Promise<ShoppingList[]> {
-    return apiClient.get<ShoppingList[]>('/shopping-lists');
+    const response = await apiClient.get<any>('/shopping-lists');
+    return this.unwrap<ShoppingList[]>(response);
   }
 
   // Get or create default shopping list
   async getOrCreateDefault(): Promise<ShoppingList> {
-    return apiClient.get<ShoppingList>('/shopping-lists/default');
+    const response = await apiClient.get<any>('/shopping-lists/default');
+    return this.unwrap<ShoppingList>(response);
   }
 
   // Get a specific shopping list
   async getById(id: string): Promise<ShoppingList> {
-    return apiClient.get<ShoppingList>(`/shopping-lists/${id}`);
+    const response = await apiClient.get<any>(`/shopping-lists/${id}`);
+    return this.unwrap<ShoppingList>(response);
   }
 
   // Get shared list by share code
   async getByShareCode(shareCode: string): Promise<ShoppingList> {
-    return apiClient.get<ShoppingList>(`/shopping-lists/shared/${shareCode}`);
+    const response = await apiClient.get<any>(`/shopping-lists/shared/${shareCode}`);
+    return this.unwrap<ShoppingList>(response);
   }
 
   // Create a new shopping list
@@ -71,7 +83,8 @@ class ShoppingListService {
     isDefault?: boolean;
     visibility?: 'private' | 'shared';
   }): Promise<ShoppingList> {
-    return apiClient.post<ShoppingList>('/shopping-lists', data);
+    const response = await apiClient.post<any>('/shopping-lists', data);
+    return this.unwrap<ShoppingList>(response);
   }
 
   // Update a shopping list
@@ -84,7 +97,8 @@ class ShoppingListService {
       visibility?: 'private' | 'shared';
     }
   ): Promise<ShoppingList> {
-    return apiClient.patch<ShoppingList>(`/shopping-lists/${id}`, data);
+    const response = await apiClient.patch<any>(`/shopping-lists/${id}`, data);
+    return this.unwrap<ShoppingList>(response);
   }
 
   // Delete a shopping list
@@ -94,12 +108,14 @@ class ShoppingListService {
 
   // Duplicate a shopping list
   async duplicate(id: string, newName?: string): Promise<ShoppingList> {
-    return apiClient.post<ShoppingList>(`/shopping-lists/${id}/duplicate`, { name: newName });
+    const response = await apiClient.post<any>(`/shopping-lists/${id}/duplicate`, { name: newName });
+    return this.unwrap<ShoppingList>(response);
   }
 
   // Get list statistics
   async getStatistics(id: string): Promise<ShoppingListStatistics> {
-    return apiClient.get<ShoppingListStatistics>(`/shopping-lists/${id}/statistics`);
+    const response = await apiClient.get<any>(`/shopping-lists/${id}/statistics`);
+    return this.unwrap<ShoppingListStatistics>(response);
   }
 
   // Add item to shopping list
@@ -111,7 +127,8 @@ class ShoppingListService {
       notes?: string;
     }
   ): Promise<ShoppingListItem> {
-    return apiClient.post<ShoppingListItem>(`/shopping-lists/${listId}/items`, data);
+    const response = await apiClient.post<any>(`/shopping-lists/${listId}/items`, data);
+    return this.unwrap<ShoppingListItem>(response);
   }
 
   // Add multiple items
@@ -119,7 +136,8 @@ class ShoppingListService {
     listId: string,
     items: { productId: string; quantity?: number; notes?: string }[]
   ): Promise<ShoppingListItem[]> {
-    return apiClient.post<ShoppingListItem[]>(`/shopping-lists/${listId}/items/bulk`, { items });
+    const response = await apiClient.post<any>(`/shopping-lists/${listId}/items/bulk`, { items });
+    return this.unwrap<ShoppingListItem[]>(response);
   }
 
   // Update item
@@ -132,7 +150,8 @@ class ShoppingListService {
       isPurchased?: boolean;
     }
   ): Promise<ShoppingListItem> {
-    return apiClient.patch<ShoppingListItem>(`/shopping-lists/${listId}/items/${itemId}`, data);
+    const response = await apiClient.patch<any>(`/shopping-lists/${listId}/items/${itemId}`, data);
+    return this.unwrap<ShoppingListItem>(response);
   }
 
   // Remove item
@@ -165,9 +184,10 @@ class ShoppingListService {
     listId: string,
     orderItems: { productId: string; quantity: number }[]
   ): Promise<ShoppingListItem[]> {
-    return apiClient.post<ShoppingListItem[]>(`/shopping-lists/${listId}/from-order`, {
+    const response = await apiClient.post<any>(`/shopping-lists/${listId}/from-order`, {
       items: orderItems,
     });
+    return this.unwrap<ShoppingListItem[]>(response);
   }
 
   // Quick add to default list
