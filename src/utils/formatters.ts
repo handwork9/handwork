@@ -6,7 +6,7 @@ import { API_CONFIG } from '../constants/config';
 
 /**
  * Fix image URL to use current API host
- * This handles IP changes during development and supports S3 URLs
+ * This handles IP changes during development and supports cloud storage URLs
  * @param url - The image URL to fix
  * @returns Fixed URL with current host or null if invalid
  */
@@ -22,6 +22,16 @@ export const fixImageUrl = (url: string | null | undefined): string | null => {
   // Reject URLs that are clearly malformed
   if (cleanUrl.includes('undefined') || cleanUrl.includes('null') || cleanUrl.includes('[object')) {
     return null;
+  }
+  
+  // Cloudinary URLs are already valid, just return them as-is
+  if (cleanUrl.includes('cloudinary.com') || cleanUrl.includes('res.cloudinary.com')) {
+    try {
+      new URL(cleanUrl); // Validate it parses correctly
+      return cleanUrl;
+    } catch {
+      return null;
+    }
   }
   
   // S3 URLs are already valid, just return them as-is

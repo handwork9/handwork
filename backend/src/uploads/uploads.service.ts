@@ -5,15 +5,13 @@ import { Request } from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import * as AWS from 'aws-sdk';
+import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
 
 @Injectable({ scope: Scope.REQUEST })
 export class UploadsService {
   private readonly logger = new Logger(UploadsService.name);
   private readonly uploadDir: string;
-  private readonly s3: AWS.S3 | null;
-  private readonly s3Bucket: string;
-  private readonly useS3: boolean;
+  private readonly useCloudinary: boolean;
 
   constructor(
     private readonly configService: ConfigService,
@@ -22,25 +20,24 @@ export class UploadsService {
     // Get upload directory from env or use default (for local fallback)
     this.uploadDir = this.configService.get<string>('UPLOAD_DIR') || path.join(process.cwd(), 'uploads');
     
-    // Initialize S3 if credentials are configured
-    const awsAccessKeyId = this.configService.get<string>('services.aws.accessKeyId');
-    const awsSecretAccessKey = this.configService.get<string>('services.aws.secretAccessKey');
-    const awsRegion = this.configService.get<string>('services.aws.region') || 'us-east-1';
-    this.s3Bucket = this.configService.get<string>('services.aws.s3Bucket') || 'handwork-uploads';
+    // Initialize Cloudinary if credentials are configured
+    const cloudName = this.configService.get<string>('CLOUDINARY_CLOUD_NAME');
+    const apiKey = this.configService.get<string>('CLOUDINARY_API_KEY');
+    const apiSecret = this.configService.get<string>('CLOUDINARY_API_SECRET');
     
-    // Use S3 if credentials are provided
-    this.useS3 = !!(awsAccessKeyId && awsSecretAccessKey);
+    // Use Cloudinary if credentials are provided
+    this.useCloudinary = !!(cloudName && apiKey && apiSecret);
     
-    if (this.useS3) {
-      this.s3 = new AWS.S3({
-        accessKeyId: awsAccessKeyId,
-        secretAccessKey: awsSecretAccessKey,
-        region: awsRegion,
+    if (this.useCloudinary) {
+      cloudinary.config({
+        cloud_name: cloudName,
+        api_key: apiKey,
+        api_secret: apiSecret,
+        secure: true,
       });
-      this.logger.log('S3 storage initialized - uploads will be stored in S3');
+      this.logger.log('Cloudinary storage initialized - uploads will be stored in cloud');
     } else {
-      this.s3 = null;
-      this.logger.log('S3 not configured - using local storage (not recommended for production)');
+      this.logger.log('Cloudinary not configured - using local storage (not recommended for production)');
       
       // Ensure local upload directories exist
       this.ensureDirectoryExists(this.uploadDir);
@@ -55,30 +52,23 @@ export class UploadsService {
   }
 
   /**
-   * Get the base URL for uploads based on storage type
+   * Get the base URL for local uploads
    */
-  private getBaseUrl(folder: string = 'products'): string {
-    if (this.useS3) {
-      // Return S3 URL
-      return \`https://\${this.s3Bucket}.s3.amazonaws.com\`;
-    }
-    
-    // Check for configured base URL first (for production with CDN)
+  private getLocalBaseUrl(): string {
     const configuredUrl = this.configService.get<string>('UPLOAD_BASE_URL');
     if (configuredUrl) {
       return configuredUrl;
     }
 
-    // Build URL from request host (works for both localhost and IP access)
     const protocol = this.request.protocol || 'http';
     const host = this.request.get('host') || 'localhost:3000';
-    return \`\${protocol}://\${host}/uploads\`;
+    return `${protocol}://${host}/uploads`;
   }
 
   private ensureDirectoryExists(dir: string): void {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
-      this.logger.log(\`Created upload directory: \${dir}\`);
+      this.logger.log(`Created upload directory: ${dir}`);
     }
   }
 
@@ -86,7 +76,6 @@ export class UploadsService {
    * Parse base64 data URI and extract mime type and data
    */
   private parseBase64(base64String: string): { mimeType: string; data: string; extension: string } {
-    // Check if it's a data URI
     const dataUriMatch = base64String.match(/^data:([^;]+);base64,(.+)$/);
     
     if (dataUriMatch) {
@@ -96,7 +85,6 @@ export class UploadsService {
       return { mimeType, data, extension };
     }
     
-    // If no data URI prefix, assume it's raw base64 JPEG
     return { 
       mimeType: 'image/jpeg', 
       data: base64String, 
@@ -131,7 +119,6 @@ export class UploadsService {
       'data:image/heif',
     ];
 
-    // If it has a data URI prefix, validate it
     if (base64String.startsWith('data:')) {
       const isValid = validPrefixes.some(prefix => base64String.startsWith(prefix));
       if (!isValid) {
@@ -139,49 +126,41 @@ export class UploadsService {
       }
     }
 
-    // Check if the base64 string is too large (limit to ~5MB of base64 which is ~3.75MB file)
-    const maxBase64Length = 5 * 1024 * 1024 * 1.37; // ~5MB file in base64
+    const maxBase64Length = 5 * 1024 * 1024 * 1.37;
     if (base64String.length > maxBase64Length) {
       throw new BadRequestException('Image is too large. Maximum size is 5MB');
     }
   }
 
   /**
-   * Upload to S3
+   * Upload to Cloudinary
    */
-  private async uploadToS3(
-    buffer: Buffer, 
-    filename: string, 
-    folder: string, 
-    mimeType: string
+  private async uploadToCloudinary(
+    base64String: string, 
+    folder: string
   ): Promise<{ url: string; filename: string; size: number }> {
-    if (!this.s3) {
-      throw new BadRequestException('S3 is not configured');
-    }
-
-    const key = \`\${folder}/\${filename}\`;
+    const publicId = `${folder}/${uuidv4()}`;
     
-    const params: AWS.S3.PutObjectRequest = {
-      Bucket: this.s3Bucket,
-      Key: key,
-      Body: buffer,
-      ContentType: mimeType,
-      ACL: 'public-read', // Make the file publicly accessible
-      CacheControl: 'max-age=31536000', // Cache for 1 year
-    };
-
     try {
-      await this.s3.upload(params).promise();
-      const url = \`https://\${this.s3Bucket}.s3.amazonaws.com/\${key}\`;
-      this.logger.log(\`Uploaded to S3: \${url} (\${buffer.length} bytes)\`);
+      const result: UploadApiResponse = await cloudinary.uploader.upload(base64String, {
+        public_id: publicId,
+        folder: 'handwork',
+        resource_type: 'image',
+        transformation: [
+          { quality: 'auto:good' },
+          { fetch_format: 'auto' },
+        ],
+      });
+      
+      this.logger.log(`Uploaded to Cloudinary: ${result.secure_url} (${result.bytes} bytes)`);
       
       return {
-        url,
-        filename,
-        size: buffer.length,
+        url: result.secure_url,
+        filename: result.public_id,
+        size: result.bytes,
       };
     } catch (error) {
-      this.logger.error(\`S3 upload failed: \${error.message}\`);
+      this.logger.error(`Cloudinary upload failed: ${error.message}`);
       throw new BadRequestException('Failed to upload image to cloud storage');
     }
   }
@@ -197,44 +176,42 @@ export class UploadsService {
     const folderPath = path.join(this.uploadDir, folder);
     const filePath = path.join(folderPath, filename);
 
-    // Ensure folder exists
     this.ensureDirectoryExists(folderPath);
 
     try {
       await fs.promises.writeFile(filePath, buffer);
-      this.logger.log(\`Uploaded locally: \${filename} (\${buffer.length} bytes)\`);
+      this.logger.log(`Uploaded locally: ${filename} (${buffer.length} bytes)`);
       
-      const baseUrl = this.getBaseUrl(folder);
+      const baseUrl = this.getLocalBaseUrl();
       return {
-        url: \`\${baseUrl}/\${folder}/\${filename}\`,
+        url: `${baseUrl}/${folder}/${filename}`,
         filename,
         size: buffer.length,
       };
     } catch (error) {
-      this.logger.error(\`Local upload failed: \${error.message}\`);
+      this.logger.error(`Local upload failed: ${error.message}`);
       throw new BadRequestException('Failed to save image');
     }
   }
 
   /**
    * Upload a base64 encoded image
-   * Uses S3 in production, local storage in development
+   * Uses Cloudinary in production, local storage in development
    */
   async uploadBase64Image(base64String: string, folder: string = 'products'): Promise<{ url: string; filename: string; size: number }> {
     this.validateImageBase64(base64String);
     
-    const { data, extension, mimeType } = this.parseBase64(base64String);
-    
-    // Generate unique filename
-    const filename = \`\${uuidv4()}.\${extension}\`;
-    
-    // Decode base64 to buffer
-    const buffer = Buffer.from(data, 'base64');
-    
-    // Upload to S3 or local based on configuration
-    if (this.useS3) {
-      return this.uploadToS3(buffer, filename, folder, mimeType);
+    // Upload to Cloudinary or local based on configuration
+    if (this.useCloudinary) {
+      // Cloudinary accepts the full data URI
+      const dataUri = base64String.startsWith('data:') 
+        ? base64String 
+        : `data:image/jpeg;base64,${base64String}`;
+      return this.uploadToCloudinary(dataUri, folder);
     } else {
+      const { data, extension } = this.parseBase64(base64String);
+      const filename = `${uuidv4()}.${extension}`;
+      const buffer = Buffer.from(data, 'base64');
       return this.uploadToLocal(buffer, filename, folder);
     }
   }
@@ -253,7 +230,7 @@ export class UploadsService {
           const result = await this.uploadBase64Image(image, folder);
           return result.url;
         } catch (error) {
-          this.logger.warn(\`Failed to upload one image: \${error.message}\`);
+          this.logger.warn(`Failed to upload one image: ${error.message}`);
           return null;
         }
       })
@@ -272,18 +249,16 @@ export class UploadsService {
    */
   async deleteFile(url: string): Promise<boolean> {
     try {
-      if (this.useS3 && url.includes('.s3.amazonaws.com')) {
-        // Delete from S3
-        const urlObj = new URL(url);
-        const key = urlObj.pathname.substring(1); // Remove leading slash
-        
-        await this.s3!.deleteObject({
-          Bucket: this.s3Bucket,
-          Key: key,
-        }).promise();
-        
-        this.logger.log(\`Deleted from S3: \${key}\`);
-        return true;
+      if (this.useCloudinary && url.includes('cloudinary.com')) {
+        // Extract public_id from Cloudinary URL
+        const match = url.match(/\/handwork\/([^.]+)/);
+        if (match) {
+          const publicId = `handwork/${match[1]}`;
+          await cloudinary.uploader.destroy(publicId);
+          this.logger.log(`Deleted from Cloudinary: ${publicId}`);
+          return true;
+        }
+        return false;
       } else {
         // Delete from local storage
         const urlPath = new URL(url).pathname;
@@ -291,30 +266,30 @@ export class UploadsService {
         
         if (fs.existsSync(filePath)) {
           await fs.promises.unlink(filePath);
-          this.logger.log(\`Deleted file: \${filePath}\`);
+          this.logger.log(`Deleted file: ${filePath}`);
           return true;
         }
         return false;
       }
     } catch (error) {
-      this.logger.error(\`Failed to delete file: \${error.message}\`);
+      this.logger.error(`Failed to delete file: ${error.message}`);
       return false;
     }
   }
 
   /**
-   * Check if using S3 storage
+   * Check if using cloud storage
    */
-  isUsingS3(): boolean {
-    return this.useS3;
+  isUsingCloudStorage(): boolean {
+    return this.useCloudinary;
   }
 
   /**
    * Get storage info for debugging
    */
-  getStorageInfo(): { type: 'S3' | 'Local'; bucket?: string; uploadDir?: string } {
-    if (this.useS3) {
-      return { type: 'S3', bucket: this.s3Bucket };
+  getStorageInfo(): { type: 'Cloudinary' | 'Local'; uploadDir?: string } {
+    if (this.useCloudinary) {
+      return { type: 'Cloudinary' };
     }
     return { type: 'Local', uploadDir: this.uploadDir };
   }
