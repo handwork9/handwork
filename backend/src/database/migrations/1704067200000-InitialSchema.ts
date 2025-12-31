@@ -98,7 +98,7 @@ export class InitialSchema1704067200000 implements MigrationInterface {
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "products" (
         "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        "farmer_id" UUID NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+        "user_id" UUID NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
         "name" VARCHAR(255) NOT NULL,
         "description" TEXT,
         "price" DECIMAL(12, 2) NOT NULL,
