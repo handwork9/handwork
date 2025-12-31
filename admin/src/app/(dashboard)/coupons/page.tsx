@@ -249,7 +249,7 @@ export default function CouponsPage() {
   // Calculate stats from coupons data
   const coupons = couponsData?.coupons || couponsData?.data || [];
   const totalCoupons = couponsData?.total || coupons.length;
-  const activeCoupons = coupons.filter((c: Coupon) => c.isActive).length;
+  const activeCoupons = coupons.filter((c: Coupon) => c.status === 'active').length;
   const totalUsage = coupons.reduce((acc: number, c: Coupon) => acc + (c.usageCount || 0), 0);
 
   const columns: ColumnsType<Coupon> = [
