@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Post } from '@nestjs/common';
+import { Controller, Get, Query, Post } from '@nestjs/common';
 import {
   HealthCheck,
   HealthCheckService,
@@ -89,10 +89,10 @@ export class HealthController {
     };
   }
 
-  @Post('setup-admin/:email/:secret')
+  @Post('setup-admin')
   @Public()
   @ApiOperation({ summary: 'One-time setup to create admin user' })
-  async setupAdmin(@Param('email') email: string, @Param('secret') secret: string) {
+  async setupAdmin(@Query('email') email: string, @Query('secret') secret: string) {
     // Security: require a secret to prevent abuse
     const setupSecret = this.configService.get<string>('SETUP_SECRET') || 'handwork-setup-2024';
     if (secret !== setupSecret) {
