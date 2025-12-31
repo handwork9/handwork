@@ -56,12 +56,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const { connect: connectSupport, disconnect: disconnectSupport } = useSupportSocketStore();
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotificationStore();
 
-  // Skip auth check for development
-  // useEffect(() => {
-  //   if (!isLoading && !isAuthenticated) {
-  //     router.push('/login');
-  //   }
-  // }, [isAuthenticated, isLoading, router]);
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!isAuthenticated && pathname !== '/login') {
+      router.push('/login');
+    }
+  }, [isAuthenticated, pathname, router]);
 
   useEffect(() => {
     if (isAuthenticated) {
