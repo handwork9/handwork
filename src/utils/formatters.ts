@@ -6,7 +6,7 @@ import { API_CONFIG } from '../constants/config';
 
 /**
  * Fix image URL to use current API host
- * This handles IP changes during development
+ * This handles IP changes during development and supports S3 URLs
  * @param url - The image URL to fix
  * @returns Fixed URL with current host or null if invalid
  */
@@ -22,6 +22,16 @@ export const fixImageUrl = (url: string | null | undefined): string | null => {
   // Reject URLs that are clearly malformed
   if (cleanUrl.includes('undefined') || cleanUrl.includes('null') || cleanUrl.includes('[object')) {
     return null;
+  }
+  
+  // S3 URLs are already valid, just return them as-is
+  if (cleanUrl.includes('.s3.amazonaws.com') || cleanUrl.includes('s3.amazonaws.com')) {
+    try {
+      new URL(cleanUrl); // Validate it parses correctly
+      return cleanUrl;
+    } catch {
+      return null;
+    }
   }
   
   // If it's already a valid http/https URL with /uploads/, rewrite the host

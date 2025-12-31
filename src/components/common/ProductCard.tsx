@@ -1,5 +1,5 @@
-import React, { useMemo, useCallback } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import React, { useMemo, useCallback, useState } from 'react';
+import { View, Text, Image, StyleSheet, TouchableOpacity, Animated, ImageErrorEventData, NativeSyntheticEvent } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Product } from '../../types';
@@ -9,6 +9,8 @@ import { triggerHaptic, triggerSuccessHaptic } from '../../utils/haptics';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { toggleFavorite, selectFavoriteIds } from '../../store/slices/favoritesSlice';
 import { getFirstValidImageUrl } from '../../utils/formatters';
+
+const PLACEHOLDER_IMAGE = 'https://placehold.co/300x300/E8F5E9/4CAF50/png?text=Product';
 
 interface ProductCardProps {
   product: Product;
@@ -21,6 +23,15 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
   const { colors, isDark, getFontSize, getFontWeight } = useTheme();
   const dispatch = useAppDispatch();
   const favoriteIds = useAppSelector(selectFavoriteIds);
+  
+  // Track image loading errors
+  const [imageError, setImageError] = useState(false);
+  
+  // Handle image loading error - fallback to placeholder
+  const handleImageError = useCallback((e: NativeSyntheticEvent<ImageErrorEventData>) => {
+    console.log('Image load error:', e.nativeEvent.error);
+    setImageError(true);
+  }, []);
   
   // Early return if product is invalid
   if (!product || !product.id) {
@@ -69,13 +80,17 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
   }), [colors, isDark]);
   
   // Safely get the first image or use placeholder - validate URI and fix host
-  const getValidImageUri = () => {
+  const getValidImageUri = useCallback(() => {
+    // If there was an error loading the image, use placeholder
+    if (imageError) {
+      return PLACEHOLDER_IMAGE;
+    }
     const fixedUri = getFirstValidImageUrl(product.images);
     if (fixedUri) {
       return fixedUri;
     }
-    return 'https://placehold.co/300x300/E8F5E9/4CAF50/png';
-  };
+    return PLACEHOLDER_IMAGE;
+  }, [product.images, imageError]);
   const productImage = getValidImageUri();
   
   if (variant === 'horizontal') {
@@ -93,6 +108,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
         <Image
           source={{ uri: productImage }}
           style={styles.horizontalImage}
+          onError={handleImageError}
         />
         <View style={styles.horizontalContent}>
           <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
@@ -134,6 +150,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
         <Image
           source={{ uri: productImage }}
           style={styles.compactImage}
+          onError={handleImageError}
         />
         <Text style={[styles.compactTitle, { color: colors.text }]} numberOfLines={2}>
           {product.title}
@@ -159,6 +176,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
         <Image
           source={{ uri: productImage }}
           style={styles.featuredImage}
+          onError={handleImageError}
         />
         <LinearGradient
           colors={['transparent', 'rgba(0,0,0,0.8)']}
@@ -214,6 +232,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
           <Image
             source={{ uri: productImage }}
             style={styles.minimalImage}
+            onError={handleImageError}
           />
         </View>
         <View style={styles.minimalContent}>
@@ -251,7 +270,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
           
           <View style={styles.eggsImageContainer}>
             <View style={styles.eggsImageNest}>
-              <Image source={{ uri: productImage }} style={styles.eggsImage} />
+              <Image source={{ uri: productImage }} style={styles.eggsImage} onError={handleImageError} />
             </View>
             <View style={styles.eggsFreshBadge}>
               <Ionicons name="sunny" size={10} color="#B8956A" />
@@ -315,7 +334,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
           
           <View style={styles.honeyImageContainer}>
             <View style={styles.honeyImageJar}>
-              <Image source={{ uri: productImage }} style={styles.honeyImage} />
+              <Image source={{ uri: productImage }} style={styles.honeyImage} onError={handleImageError} />
             </View>
             <View style={styles.honeyPureBadge}>
               <Ionicons name="checkmark-circle" size={10} color="#FFFFFF" />
@@ -388,7 +407,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
           
           <View style={styles.herbsImageContainer}>
             <View style={styles.herbsImageFrame}>
-              <Image source={{ uri: productImage }} style={styles.herbsImage} />
+              <Image source={{ uri: productImage }} style={styles.herbsImage} onError={handleImageError} />
             </View>
             <View style={styles.herbsAromaBadge}>
               <Ionicons name="sparkles" size={10} color="#5A8A6A" />
@@ -453,7 +472,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
           
           <View style={styles.tubersImageContainer}>
             <View style={styles.tubersImageFrame}>
-              <Image source={{ uri: productImage }} style={styles.tubersImage} />
+              <Image source={{ uri: productImage }} style={styles.tubersImage} onError={handleImageError} />
             </View>
             <View style={styles.tubersHarvestBadge}>
               <Ionicons name="nutrition" size={10} color="#9A7AB4" />
@@ -529,7 +548,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
           
           <View style={styles.promotedImageContainer}>
             <View style={styles.promotedImageFrame}>
-              <Image source={{ uri: productImage }} style={styles.promotedImage} />
+              <Image source={{ uri: productImage }} style={styles.promotedImage} onError={handleImageError} />
               {/* Boost indicator */}
               <View style={styles.promotedBoostBadge}>
                 <Ionicons name="trending-up" size={12} color="#FFFFFF" />
@@ -586,7 +605,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
       >
         {/* Full-width Image Section */}
         <View style={[styles.dairyImageContainer, { backgroundColor: isDark ? colors.surface : '#F2F6FA' }]}>
-          <Image source={{ uri: productImage }} style={styles.dairyImage} />
+          <Image source={{ uri: productImage }} style={styles.dairyImage} onError={handleImageError} />
           
           {/* Favorite Button */}
           <TouchableOpacity 
@@ -666,7 +685,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
       >
         {/* Full-width Image Section */}
         <View style={[styles.dairyImageContainer, { backgroundColor: isDark ? colors.surface : '#F2F6FA' }]}>
-          <Image source={{ uri: productImage }} style={styles.dairyImage} />
+          <Image source={{ uri: productImage }} style={styles.dairyImage} onError={handleImageError} />
           
           {/* Favorite Button */}
           <TouchableOpacity 
@@ -745,7 +764,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
       >
         {/* Image Section */}
         <View style={[styles.recommendedImageContainer, { backgroundColor: isDark ? colors.surface : '#F8F9FA' }]}>
-          <Image source={{ uri: productImage }} style={styles.recommendedImage} />
+          <Image source={{ uri: productImage }} style={styles.recommendedImage} onError={handleImageError} />
           
           {/* Favorite Button */}
           <TouchableOpacity 
@@ -857,7 +876,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
           
           <View style={styles.nutsImageContainer}>
             <View style={styles.nutsImageBowl}>
-              <Image source={{ uri: productImage }} style={styles.nutsImage} />
+              <Image source={{ uri: productImage }} style={styles.nutsImage} onError={handleImageError} />
             </View>
             <View style={styles.nutsCrunchyBadge}>
               <Ionicons name="flash" size={10} color="#92400E" />
@@ -925,7 +944,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
           
           <View style={styles.othersImageContainer}>
             <View style={styles.othersImageFrame}>
-              <Image source={{ uri: productImage }} style={styles.othersImage} />
+              <Image source={{ uri: productImage }} style={styles.othersImage} onError={handleImageError} />
             </View>
             <View style={styles.othersMiscBadge}>
               <Ionicons name="cube" size={10} color="#6B7280" />
@@ -1004,7 +1023,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
           
           <View style={styles.seedsImageContainer}>
             <View style={styles.seedsImagePot}>
-              <Image source={{ uri: productImage }} style={styles.seedsImage} />
+              <Image source={{ uri: productImage }} style={styles.seedsImage} onError={handleImageError} />
             </View>
             <View style={styles.seedsPlantBadge}>
               <Ionicons name="leaf" size={10} color="#047857" />
@@ -1070,7 +1089,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
           
           <View style={styles.processedImageContainer}>
             <View style={styles.processedImageBox}>
-              <Image source={{ uri: productImage }} style={styles.processedImage} />
+              <Image source={{ uri: productImage }} style={styles.processedImage} onError={handleImageError} />
             </View>
             <View style={styles.processedReadyBadge}>
               <Ionicons name="checkmark-circle" size={10} color="#7C3AED" />
@@ -1136,7 +1155,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
           
           <View style={styles.legumesImageContainer}>
             <View style={styles.legumesImageFrame}>
-              <Image source={{ uri: productImage }} style={styles.legumesImage} />
+              <Image source={{ uri: productImage }} style={styles.legumesImage} onError={handleImageError} />
             </View>
             <View style={styles.legumesProteinBadge}>
               <Ionicons name="fitness" size={10} color="#92400E" />
@@ -1203,7 +1222,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
           
           <View style={styles.oilsImageContainer}>
             <View style={styles.oilsBottleFrame}>
-              <Image source={{ uri: productImage }} style={styles.oilsImage} />
+              <Image source={{ uri: productImage }} style={styles.oilsImage} onError={handleImageError} />
             </View>
             <View style={styles.oilsPurityBadge}>
               <Ionicons name="shield-checkmark" size={10} color="#B45309" />
@@ -1273,7 +1292,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
           
           <View style={styles.seafoodImageContainer}>
             <View style={styles.seafoodImageFrame}>
-              <Image source={{ uri: productImage }} style={styles.seafoodImage} />
+              <Image source={{ uri: productImage }} style={styles.seafoodImage} onError={handleImageError} />
             </View>
             <View style={styles.seafoodFreshBadge}>
               <Ionicons name="water" size={10} color="#0369A1" />
@@ -1337,7 +1356,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
           
           <View style={styles.meatImageContainer}>
             <View style={styles.meatImageFrame}>
-              <Image source={{ uri: productImage }} style={styles.meatImage} />
+              <Image source={{ uri: productImage }} style={styles.meatImage} onError={handleImageError} />
               <View style={styles.meatCutBadge}>
                 <Ionicons name="cut" size={10} color="#991B1B" />
                 <Text style={styles.meatCutText}>Premium</Text>
@@ -1395,7 +1414,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
           <View style={styles.livestockFenceRail} />
           
           <View style={styles.livestockImageSection}>
-            <Image source={{ uri: productImage }} style={styles.livestockImage} />
+            <Image source={{ uri: productImage }} style={styles.livestockImage} onError={handleImageError} />
             <LinearGradient
               colors={['transparent', 'rgba(120,53,15,0.7)']}
               style={styles.livestockImageOverlay}
@@ -1464,7 +1483,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
           
           <View style={styles.beveragesImageContainer}>
             <View style={styles.beveragesImageGlass}>
-              <Image source={{ uri: productImage }} style={styles.beveragesImage} />
+              <Image source={{ uri: productImage }} style={styles.beveragesImage} onError={handleImageError} />
             </View>
             <View style={styles.beveragesRefreshBadge}>
               <Ionicons name="water" size={10} color="#B47A8A" />
@@ -1532,7 +1551,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
           
           <View style={styles.poultryImageContainer}>
             <View style={styles.poultryImageFrame}>
-              <Image source={{ uri: productImage }} style={styles.poultryImage} />
+              <Image source={{ uri: productImage }} style={styles.poultryImage} onError={handleImageError} />
             </View>
             <View style={styles.poultryFreshBadge}>
               <Ionicons name="checkmark-circle" size={10} color="#C4635A" />
@@ -1599,6 +1618,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
               <Image
                 source={{ uri: productImage }}
                 style={styles.fruitImage}
+                onError={handleImageError}
               />
             </View>
             <View style={styles.fruitSeasonBadge}>
@@ -1687,6 +1707,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
               <Image
                 source={{ uri: productImage }}
                 style={styles.grainImage}
+                onError={handleImageError}
               />
             </View>
             <View style={styles.grainHarvestBadge}>
@@ -1751,7 +1772,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
       >
         {/* Full-width Image Section */}
         <View style={[styles.dairyImageContainer, { backgroundColor: isDark ? colors.surface : '#F2F6FA' }]}>
-          <Image source={{ uri: productImage }} style={styles.dairyImage} />
+          <Image source={{ uri: productImage }} style={styles.dairyImage} onError={handleImageError} />
           
           {/* Favorite Button */}
           <TouchableOpacity 
@@ -1831,6 +1852,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
         <Image
           source={{ uri: productImage }}
           style={styles.wideImage}
+          onError={handleImageError}
         />
         <View style={styles.wideContent}>
           <View style={styles.wideBadgeRow}>
@@ -1902,6 +1924,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
           <Image
             source={{ uri: productImage }}
             style={styles.tallImage}
+            onError={handleImageError}
           />
           <TouchableOpacity 
             style={styles.tallFavorite}
@@ -1948,6 +1971,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
         <Image
           source={{ uri: productImage }}
           style={[styles.image, dynamicStyles.image]}
+          onError={handleImageError}
         />
         {/* Favorite Button */}
         <TouchableOpacity 
