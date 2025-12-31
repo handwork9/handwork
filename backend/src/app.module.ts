@@ -70,22 +70,26 @@ import { ShoppingListsModule } from './shopping-lists/shopping-lists.module';
     // Database
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        host: configService.get('database.host'),
-        port: configService.get('database.port'),
-        username: configService.get('database.username'),
-        password: configService.get('database.password'),
-        database: configService.get('database.name'),
-        ssl: configService.get('database.ssl') ? { rejectUnauthorized: false } : false,
-        entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        // Disable synchronize - tables should already exist
-        synchronize: false,
-        logging: configService.get('NODE_ENV') === 'development',
-        retryAttempts: 10,
-        retryDelay: 5000,
-        connectTimeoutMS: 30000,
-      }),
+      useFactory: (configService: ConfigService) => {
+        const host = configService.get('database.host');
+        const port = configService.get('database.port');
+        console.log(`[Database] Connecting to ${host}:${port}`);
+        return {
+          type: 'postgres',
+          host,
+          port,
+          username: configService.get('database.username'),
+          password: configService.get('database.password'),
+          database: configService.get('database.name'),
+          ssl: configService.get('database.ssl') ? { rejectUnauthorized: false } : false,
+          entities: [__dirname + '/**/*.entity{.ts,.js}'],
+          // Disable synchronize - tables should already exist
+          synchronize: false,
+          logging: configService.get('NODE_ENV') === 'development',
+          retryAttempts: 15,
+          retryDelay: 3000,
+        };
+      },
       inject: [ConfigService],
     }),
 
