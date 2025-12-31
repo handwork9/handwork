@@ -112,11 +112,16 @@ export default function SubscriptionBoxesPage() {
   const { data: templatesData, isLoading: templatesLoading, refetch: refetchTemplates } = useQuery({
     queryKey: ['subscriptionBoxTemplates', page, pageSize],
     queryFn: async () => {
-      const response = await adminApi.getSubscriptionBoxTemplates({
-        page,
-        limit: pageSize,
-      });
-      return response.data;
+      try {
+        const response = await adminApi.getSubscriptionBoxTemplates({
+          page,
+          limit: pageSize,
+        });
+        return response.data?.data || response.data;
+      } catch (error) {
+        console.error('Failed to fetch templates:', error);
+        return { templates: [], total: 0 };
+      }
     },
     enabled: activeTab === 'templates',
   });
@@ -124,12 +129,17 @@ export default function SubscriptionBoxesPage() {
   const { data: subscriptionsData, isLoading: subscriptionsLoading, refetch: refetchSubscriptions } = useQuery({
     queryKey: ['boxSubscriptions', page, pageSize, statusFilter],
     queryFn: async () => {
-      const response = await adminApi.getSubscriptionBoxSubscriptions({
-        page,
-        limit: pageSize,
-        status: statusFilter,
-      });
-      return response.data;
+      try {
+        const response = await adminApi.getSubscriptionBoxSubscriptions({
+          page,
+          limit: pageSize,
+          status: statusFilter,
+        });
+        return response.data?.data || response.data;
+      } catch (error) {
+        console.error('Failed to fetch subscriptions:', error);
+        return { subscriptions: [], total: 0 };
+      }
     },
     enabled: activeTab === 'subscriptions',
   });
