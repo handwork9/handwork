@@ -15,7 +15,7 @@ import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
 import { AuthService } from './auth.service';
 import { TwoFactorService } from './two-factor.service';
-import { SignupDto, LoginDto, RefreshTokenDto, RequestOtpDto, VerifyOtpDto, ChangePasswordDto, TwoFactorCodeDto, TwoFactorLoginDto, ForgotPasswordDto, ResetPasswordDto, GoogleLoginDto } from './dto';
+import { SignupDto, LoginDto, RefreshTokenDto, RequestOtpDto, VerifyOtpDto, ChangePasswordDto, TwoFactorCodeDto, TwoFactorLoginDto, ForgotPasswordDto, ResetPasswordDto, GoogleLoginDto, RequestEmailOtpDto, RequestPhoneOtpDto, VerifyEmailOtpDto, VerifyPhoneOtpDto } from './dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser, Public } from '../common/decorators';
 import { User } from '../database/entities/user.entity';
@@ -112,6 +112,69 @@ export class AuthController {
       ...tokens,
     };
   }
+
+  // ==================== Email OTP (Login/Signup) ====================
+
+  @Public()
+  @Post('otp/email/request')
+  @Throttle({ default: { limit: 3, ttl: 60000 } }) // 3 OTP requests per minute
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Request OTP for email verification (login/signup)' })
+  @ApiResponse({ status: 200, description: 'OTP sent to email successfully' })
+  async requestEmailOtp(@Body() dto: RequestEmailOtpDto) {
+    return this.authService.requestEmailOtp(dto.email, dto.purpose);
+  }
+
+  @Public()
+  @Post('otp/email/verify')
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 verification attempts per minute
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify email OTP and login/signup' })
+  @ApiResponse({ status: 200, description: 'OTP verified successfully or 2FA required' })
+  @ApiResponse({ status: 400, description: 'Invalid or expired OTP' })
+  async verifyEmailOtp(@Body() dto: VerifyEmailOtpDto, @Req() req: Request, @Ip() ip: string) {
+    const deviceInfo = this.getDeviceInfo(req, ip);
+    const result = await this.authService.verifyEmailOtp(dto, deviceInfo);
+    
+    // Check if 2FA is required
+    if ('requiresTwoFactor' in result && result.requiresTwoFactor) {
+      return result;
+    }
+    
+    // Normal login response
+    const { user, tokens } = result as { user: any; tokens: any };
+    return {
+      user: this.sanitizeUser(user),
+      ...tokens,
+    };
+  }
+
+  // ==================== Phone OTP (Profile Phone Verification) ====================
+
+  @UseGuards(JwtAuthGuard)
+  @Post('otp/phone/request')
+  @Throttle({ default: { limit: 3, ttl: 60000 } }) // 3 OTP requests per minute
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Request SMS OTP for phone number verification (profile update)' })
+  @ApiResponse({ status: 200, description: 'OTP sent to phone via SMS' })
+  async requestPhoneOtp(@Body() dto: RequestPhoneOtpDto, @CurrentUser('id') userId: string) {
+    return this.authService.requestPhoneOtp(dto.phone, userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('otp/phone/verify')
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 verification attempts per minute
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Verify phone SMS OTP (profile update)' })
+  @ApiResponse({ status: 200, description: 'Phone number verified successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid or expired OTP' })
+  async verifyPhoneOtp(@Body() dto: VerifyPhoneOtpDto, @CurrentUser('id') userId: string) {
+    return this.authService.verifyPhoneOtp(dto, userId);
+  }
+
+  // ==================== Legacy Phone OTP (Backward Compatibility) ====================
 
   @Public()
   @Post('otp/request')

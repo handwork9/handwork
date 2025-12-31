@@ -449,6 +449,42 @@ export class CustomerValidationResponseDto {
   accountStatus?: string;
 }
 
+// BillReceiptDto must be defined BEFORE BillPaymentResponseDto since it's used as a type
+export class BillReceiptDto {
+  @ApiProperty()
+  receiptNumber: string;
+
+  @ApiProperty()
+  billerName: string;
+
+  @ApiProperty()
+  customerId: string;
+
+  @ApiPropertyOptional()
+  customerName?: string;
+
+  @ApiProperty()
+  amount: number;
+
+  @ApiProperty()
+  fee: number;
+
+  @ApiProperty()
+  totalAmount: number;
+
+  @ApiPropertyOptional()
+  token?: string;
+
+  @ApiPropertyOptional()
+  units?: number;
+
+  @ApiProperty()
+  transactionDate: string;
+
+  @ApiPropertyOptional()
+  additionalInfo?: Record<string, string>;
+}
+
 export class BillPaymentResponseDto {
   @ApiProperty()
   success: boolean;
@@ -493,41 +529,6 @@ export class BillPaymentResponseDto {
 
   @ApiPropertyOptional()
   receipt?: BillReceiptDto;
-}
-
-export class BillReceiptDto {
-  @ApiProperty()
-  receiptNumber: string;
-
-  @ApiProperty()
-  billerName: string;
-
-  @ApiProperty()
-  customerId: string;
-
-  @ApiPropertyOptional()
-  customerName?: string;
-
-  @ApiProperty()
-  amount: number;
-
-  @ApiProperty()
-  fee: number;
-
-  @ApiProperty()
-  totalAmount: number;
-
-  @ApiPropertyOptional()
-  token?: string;
-
-  @ApiPropertyOptional()
-  units?: number;
-
-  @ApiProperty()
-  transactionDate: string;
-
-  @ApiPropertyOptional()
-  additionalInfo?: Record<string, string>;
 }
 
 export class BillHistoryItemDto {

@@ -371,4 +371,109 @@ export const authService = {
     }
     return apiClient.post('/auth/otp/verify', { otpId, code });
   },
+
+  // ==================== Email OTP Methods (Login/Signup) ====================
+
+  /**
+   * Request OTP via email for login/signup
+   */
+  async requestEmailOTP(email: string, purpose: 'login' | 'signup' = 'login'): Promise<ApiResponse<{ otpId: string; expiresIn: number; message: string }>> {
+    if (MOCK_MODE) {
+      await delay(500);
+      console.log(`[MOCK] Email OTP sent to ${email}: 123456 (purpose: ${purpose})`);
+      return {
+        success: true,
+        data: { 
+          otpId: 'mock_email_otp_id_' + Date.now(),
+          expiresIn: 600,
+          message: `Verification code sent to ${email}`,
+        },
+      };
+    }
+    return apiClient.post('/auth/otp/email/request', { email, purpose });
+  },
+
+  /**
+   * Verify email OTP and login/signup
+   */
+  async verifyEmailOTP(otpId: string, code: string, email: string): Promise<ApiResponse<LoginResponse>> {
+    if (MOCK_MODE) {
+      await delay(500);
+      const isValid = code === '123456';
+      if (!isValid) {
+        return {
+          success: false,
+          data: {} as LoginResponse,
+          message: 'Invalid verification code',
+        };
+      }
+      const mockUser: User = {
+        id: 'user_mock_1',
+        name: email.split('@')[0],
+        email: email,
+        phone: '',
+        role: 'buyer',
+        state: 'Lagos',
+        city: 'Ikeja',
+        rating: 4.8,
+        isEmailVerified: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      return {
+        success: true,
+        data: {
+          user: mockUser,
+          ...mockTokens,
+          requiresTwoFactor: false,
+        },
+      };
+    }
+    return apiClient.post('/auth/otp/email/verify', { otpId, code, email });
+  },
+
+  // ==================== Phone OTP Methods (Profile Verification) ====================
+
+  /**
+   * Request SMS OTP for phone verification (profile update)
+   * Requires authentication
+   */
+  async requestPhoneOTP(phone: string): Promise<ApiResponse<{ otpId: string; expiresIn: number; message: string }>> {
+    if (MOCK_MODE) {
+      await delay(500);
+      console.log(`[MOCK] Phone OTP sent to ${phone}: 123456`);
+      return {
+        success: true,
+        data: { 
+          otpId: 'mock_phone_otp_id_' + Date.now(),
+          expiresIn: 600,
+          message: `Verification code sent to ${phone}`,
+        },
+      };
+    }
+    return apiClient.post('/auth/otp/phone/request', { phone });
+  },
+
+  /**
+   * Verify phone SMS OTP and update profile
+   * Requires authentication
+   */
+  async verifyPhoneOTP(otpId: string, code: string): Promise<ApiResponse<{ success: boolean; message: string; phone?: string }>> {
+    if (MOCK_MODE) {
+      await delay(500);
+      const isValid = code === '123456';
+      if (!isValid) {
+        return {
+          success: false,
+          data: { success: false, message: 'Invalid verification code' },
+          message: 'Invalid verification code',
+        };
+      }
+      return {
+        success: true,
+        data: { success: true, message: 'Phone number verified successfully', phone: '+234xxxxxxxxxx' },
+      };
+    }
+    return apiClient.post('/auth/otp/phone/verify', { otpId, code });
+  },
 };

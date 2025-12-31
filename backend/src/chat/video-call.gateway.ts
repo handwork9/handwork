@@ -11,6 +11,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../database/entities';
@@ -55,6 +56,7 @@ export class VideoCallGateway implements OnGatewayInit, OnGatewayConnection, OnG
 
   constructor(
     private jwtService: JwtService,
+    private configService: ConfigService,
     @InjectRepository(User)
     private userRepository: Repository<User>,
   ) {}
@@ -73,7 +75,9 @@ export class VideoCallGateway implements OnGatewayInit, OnGatewayConnection, OnG
         throw new UnauthorizedException('No token provided');
       }
 
-      const payload = this.jwtService.verify(token);
+      const payload = this.jwtService.verify(token, {
+        secret: this.configService.get<string>('jwt.accessSecret'),
+      });
       this.logger.log(`Token verified for user: ${payload.sub}`);
       client.userId = payload.sub;
 

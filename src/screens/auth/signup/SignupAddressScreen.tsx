@@ -21,6 +21,7 @@ import * as Location from 'expo-location';
 import { AuthStackParamList } from '../../../types';
 import { COLORS, SPACING, FONT_SIZES, FONTS } from '../../../constants/theme';
 import { useTheme } from '../../../context/ThemeContext';
+import { MAP_CONFIG } from '../../../constants/config';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'SignupAddress'>;
 
@@ -158,7 +159,7 @@ export default function SignupAddressScreen({ navigation, route }: Props) {
     }
   }, [state]);
 
-  // Simulated Google Places search (in production, use actual Google Places API)
+  // Google Places Autocomplete API search
   const handleSearchAddress = async (query: string) => {
     setSearchQuery(query);
     
@@ -169,45 +170,160 @@ export default function SignupAddressScreen({ navigation, route }: Props) {
 
     setIsSearching(true);
     
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 500));
+    try {
+      const apiKey = MAP_CONFIG.GOOGLE_MAPS_API_KEY;
+      
+      if (!apiKey) {
+        console.warn('[SignupAddress] Google Maps API key not configured, using location-based search');
+        // Fallback to location-based results when no API key
+        await fallbackLocalSearch(query);
+        return;
+      }
+
+      // Build location bias for Nigeria
+      const locationBias = latitude && longitude 
+        ? `&location=${latitude},${longitude}&radius=50000`
+        : '&location=9.0820,8.6753&radius=500000'; // Center of Nigeria
+
+      const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&key=${apiKey}&components=country:ng${locationBias}&types=address`;
+      
+      console.log('[SignupAddress] Fetching places...');
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      if (data.status === 'OK' && data.predictions) {
+        const results: PlacePrediction[] = data.predictions.map((prediction: any) => ({
+          place_id: prediction.place_id,
+          description: prediction.description,
+          structured_formatting: {
+            main_text: prediction.structured_formatting?.main_text || prediction.description.split(',')[0],
+            secondary_text: prediction.structured_formatting?.secondary_text || prediction.description.split(',').slice(1).join(','),
+          },
+        }));
+        setSearchResults(results);
+      } else if (data.status === 'ZERO_RESULTS') {
+        setSearchResults([]);
+      } else {
+        console.warn('[SignupAddress] Places API error:', data.status, data.error_message);
+        // Fallback to local search
+        await fallbackLocalSearch(query);
+      }
+    } catch (error) {
+      console.error('[SignupAddress] Error searching address:', error);
+      // Fallback to local search on error
+      await fallbackLocalSearch(query);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Fallback search using Nigerian states/cities data
+  const fallbackLocalSearch = async (query: string) => {
+    const lowerQuery = query.toLowerCase();
+    const results: PlacePrediction[] = [];
     
-    // Mock search results - In production, replace with actual Google Places API call
-    const mockResults: PlacePrediction[] = [
-      {
-        place_id: '1',
+    // Search through Nigerian states and cities
+    for (const [stateName, cities] of Object.entries(NIGERIAN_STATES)) {
+      // Check if query matches state
+      if (stateName.toLowerCase().includes(lowerQuery)) {
+        results.push({
+          place_id: `state_${stateName}`,
+          description: `${stateName} State, Nigeria`,
+          structured_formatting: {
+            main_text: stateName,
+            secondary_text: 'Nigeria',
+          },
+        });
+      }
+      
+      // Check if query matches cities in this state
+      for (const cityName of cities) {
+        if (cityName.toLowerCase().includes(lowerQuery)) {
+          results.push({
+            place_id: `city_${stateName}_${cityName}`,
+            description: `${cityName}, ${stateName}, Nigeria`,
+            structured_formatting: {
+              main_text: cityName,
+              secondary_text: `${stateName}, Nigeria`,
+            },
+          });
+        }
+      }
+      
+      if (results.length >= 5) break;
+    }
+    
+    // Add generic address suggestions if query looks like a street
+    if (results.length < 3 && query.length >= 3) {
+      results.push({
+        place_id: `custom_${Date.now()}`,
         description: `${query}, Lagos, Nigeria`,
         structured_formatting: {
           main_text: query,
           secondary_text: 'Lagos, Nigeria',
         },
-      },
-      {
-        place_id: '2',
-        description: `${query} Street, Ikeja, Lagos, Nigeria`,
-        structured_formatting: {
-          main_text: `${query} Street`,
-          secondary_text: 'Ikeja, Lagos, Nigeria',
-        },
-      },
-      {
-        place_id: '3',
-        description: `${query} Close, Lekki, Lagos, Nigeria`,
-        structured_formatting: {
-          main_text: `${query} Close`,
-          secondary_text: 'Lekki, Lagos, Nigeria',
-        },
-      },
-    ];
+      });
+    }
     
-    setSearchResults(mockResults);
-    setIsSearching(false);
+    setSearchResults(results.slice(0, 5));
   };
 
-  const handleSelectPlace = (place: PlacePrediction) => {
+  const handleSelectPlace = async (place: PlacePrediction) => {
     setSelectedPlace(place);
     setSearchQuery(place.description);
     setSearchResults([]);
+    
+    // Try to extract state and city from the place description
+    const addressParts = place.description.split(',').map(part => part.trim());
+    
+    // Try to get place details for coordinates if API key is available
+    if (MAP_CONFIG.GOOGLE_MAPS_API_KEY && !place.place_id.startsWith('state_') && !place.place_id.startsWith('city_') && !place.place_id.startsWith('custom_')) {
+      try {
+        const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place.place_id}&fields=geometry,address_components&key=${MAP_CONFIG.GOOGLE_MAPS_API_KEY}`;
+        const response = await fetch(detailsUrl);
+        const data = await response.json();
+        
+        if (data.status === 'OK' && data.result) {
+          // Extract coordinates
+          if (data.result.geometry?.location) {
+            setLatitude(data.result.geometry.location.lat);
+            setLongitude(data.result.geometry.location.lng);
+            console.log('[SignupAddress] Got place coordinates:', data.result.geometry.location);
+          }
+          
+          // Extract state and city from address components
+          if (data.result.address_components) {
+            for (const component of data.result.address_components) {
+              if (component.types.includes('administrative_area_level_1')) {
+                // This is the state
+                const stateName = component.long_name.replace(' State', '');
+                if (NIGERIAN_STATES[stateName]) {
+                  setState(stateName);
+                }
+              }
+              if (component.types.includes('locality') || component.types.includes('administrative_area_level_2')) {
+                // This is the city
+                setCity(component.long_name);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.log('[SignupAddress] Error getting place details:', error);
+      }
+    } else {
+      // Extract from local search results
+      if (place.place_id.startsWith('state_')) {
+        const stateName = place.place_id.replace('state_', '');
+        setState(stateName);
+      } else if (place.place_id.startsWith('city_')) {
+        const parts = place.place_id.replace('city_', '').split('_');
+        if (parts.length >= 2) {
+          setState(parts[0]);
+          setCity(parts[1]);
+        }
+      }
+    }
   };
 
   const handleContinue = () => {
@@ -236,6 +352,29 @@ export default function SignupAddressScreen({ navigation, route }: Props) {
       ? `${streetAddress}, ${city}, ${state}` 
       : (selectedPlace?.description || searchQuery);
 
+    // Use extracted state/city or try to parse from address
+    let finalState = state;
+    let finalCity = city;
+    
+    if (addressMode === 'search' && selectedPlace) {
+      // Try to extract from address if not already set
+      if (!finalState || !finalCity) {
+        const addressParts = selectedPlace.description.split(',').map(p => p.trim());
+        // Try to find Nigerian state in address parts
+        for (const part of addressParts) {
+          const cleanPart = part.replace(' State', '').replace(' state', '');
+          if (NIGERIAN_STATES[cleanPart]) {
+            finalState = cleanPart;
+            break;
+          }
+        }
+        // Use first part as city if not found
+        if (!finalCity && addressParts.length > 1) {
+          finalCity = addressParts[0];
+        }
+      }
+    }
+
     navigation.navigate('SignupAgreement', {
       role,
       email,
@@ -245,8 +384,8 @@ export default function SignupAddressScreen({ navigation, route }: Props) {
       lastName,
       nationality,
       nationalityCode,
-      state: addressMode === 'manual' ? state : 'Lagos', // Default for search mode
-      city: addressMode === 'manual' ? city : 'Lagos',
+      state: finalState || 'Lagos',
+      city: finalCity || 'Lagos',
       address: fullAddress,
       latitude,
       longitude,

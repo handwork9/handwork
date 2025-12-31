@@ -10,6 +10,7 @@ import { Conversation, Message, User } from '../database/entities';
 
 @Module({
   imports: [
+    ConfigModule,
     TypeOrmModule.forFeature([Conversation, Message, User]),
     JwtModule.registerAsync({
       imports: [ConfigModule],

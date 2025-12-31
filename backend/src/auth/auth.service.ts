@@ -23,7 +23,7 @@ import { EmailService } from '../email/email.service';
 import { PaystackService } from '../payments/paystack.service';
 import { SessionsService } from './sessions.service';
 import { DeviceType } from '../database/entities/session.entity';
-import { SignupDto, LoginDto, RefreshTokenDto, VerifyOtpDto, TwoFactorLoginDto, GoogleLoginDto } from './dto';
+import { SignupDto, LoginDto, RefreshTokenDto, VerifyOtpDto, TwoFactorLoginDto, GoogleLoginDto, VerifyEmailOtpDto, VerifyPhoneOtpDto } from './dto';
 import { JwtPayload, AuthTokens } from './interfaces';
 import { UserRole, VehicleType } from '../common/enums';
 import { BCRYPT_ROUNDS } from '../common/config/security.config';
@@ -593,6 +593,201 @@ export class AuthService {
     
     // Already in correct format or unknown
     return phone.startsWith('+') ? phone : '+' + cleaned;
+  }
+
+  // ==================== Email OTP Methods (Login/Signup) ====================
+
+  /**
+   * Request OTP via email for login/signup
+   */
+  async requestEmailOtp(email: string, purpose: 'login' | 'signup' = 'login'): Promise<{ otpId: string; expiresIn: number; message: string }> {
+    const normalizedEmail = email.toLowerCase().trim();
+    
+    // Find user by email
+    const existingUser = await this.userRepository.findOne({
+      where: { email: normalizedEmail },
+    });
+
+    // For login, user must exist
+    if (purpose === 'login' && !existingUser) {
+      // Don't reveal if user exists - return success anyway for security
+      this.logger.warn(`Email OTP requested for non-existent user: ${normalizedEmail}`);
+      return {
+        otpId: 'not-found',
+        expiresIn: 600,
+        message: 'If an account exists with this email, you will receive a verification code',
+      };
+    }
+
+    // For signup, user should not exist
+    if (purpose === 'signup' && existingUser) {
+      throw new ConflictException('An account with this email already exists. Please login instead.');
+    }
+
+    // Create email OTP
+    const otpPurpose = purpose === 'login' ? 'LOGIN' : 'SIGNUP';
+    const otp = await this.otpService.createEmailOtp(normalizedEmail, otpPurpose as any);
+
+    return {
+      otpId: otp.otpId,
+      expiresIn: otp.expiresIn,
+      message: `Verification code sent to ${normalizedEmail}`,
+    };
+  }
+
+  /**
+   * Verify email OTP and login/create user
+   */
+  async verifyEmailOtp(dto: VerifyEmailOtpDto, deviceInfo?: { ip?: string; userAgent?: string; location?: string }): Promise<LoginResponse> {
+    const normalizedEmail = dto.email.toLowerCase().trim();
+
+    // Handle fake OTP ID (from security measure above)
+    if (dto.otpId === 'not-found') {
+      throw new BadRequestException('Invalid or expired verification code');
+    }
+
+    // Verify the OTP
+    const isValid = await this.otpService.verifyOtp(dto.otpId, dto.code);
+    if (!isValid) {
+      throw new BadRequestException('Invalid or expired verification code');
+    }
+
+    // Get email from OTP record
+    const otpEmail = await this.otpService.getEmailByOtpId(dto.otpId);
+    if (!otpEmail || otpEmail.toLowerCase() !== normalizedEmail) {
+      throw new BadRequestException('Email does not match verification code');
+    }
+
+    // Find or create user
+    let user = await this.userRepository.findOne({
+      where: { email: normalizedEmail },
+    });
+
+    const isNewUser = !user;
+
+    if (!user) {
+      // Create new user with email only
+      this.logger.log(`Creating new user for email: ${normalizedEmail}`);
+      user = this.userRepository.create({
+        email: normalizedEmail,
+        name: normalizedEmail.split('@')[0],
+        password: await bcrypt.hash(Math.random().toString(36) + Math.random().toString(36), BCRYPT_ROUNDS),
+        isEmailVerified: true,
+      });
+      await this.userRepository.save(user);
+
+      // Send welcome email (async)
+      this.emailService.sendWelcomeEmail(user, deviceInfo).catch((err) => {
+        this.logger.error('Failed to send welcome email:', err);
+      });
+    } else {
+      // Mark email as verified
+      user.isEmailVerified = true;
+      await this.userRepository.save(user);
+
+      // Check if 2FA is enabled
+      if (user.isTwoFactorEnabled) {
+        const tempToken = await this.generateTempToken(user);
+        return {
+          requiresTwoFactor: true,
+          tempToken,
+          message: 'Two-factor authentication required',
+        };
+      }
+    }
+
+    // Generate tokens
+    const tokens = await this.generateTokens(user);
+    await this.updateRefreshToken(user.id, tokens.refreshToken);
+
+    // Create session for tracking active devices
+    const parsedDevice = this.parseDeviceInfo(deviceInfo?.userAgent);
+    const session = await this.sessionsService.createSession({
+      userId: user.id,
+      deviceName: parsedDevice.deviceName,
+      deviceType: parsedDevice.deviceType,
+      os: parsedDevice.os,
+      osVersion: parsedDevice.osVersion,
+      ip: deviceInfo?.ip,
+      location: deviceInfo?.location,
+      refreshToken: tokens.refreshToken,
+    });
+
+    // Add session ID to access token
+    const tokensWithSession = await this.generateTokensWithSession(user, session.id);
+
+    // Send login notification for existing users
+    if (!isNewUser) {
+      this.emailService.sendLoginNotification(user, deviceInfo).catch((err) => {
+        this.logger.error('Failed to send login notification:', err);
+      });
+    }
+
+    return { user, tokens: tokensWithSession, requiresTwoFactor: false };
+  }
+
+  // ==================== Phone OTP Methods (Profile Phone Verification) ====================
+
+  /**
+   * Request SMS OTP for phone verification (profile update)
+   */
+  async requestPhoneOtp(phone: string, userId: string): Promise<{ otpId: string; expiresIn: number; message: string }> {
+    const normalizedPhone = this.normalizePhoneNumber(phone);
+
+    // Check if phone is already in use by another user
+    const existingUser = await this.userRepository.findOne({
+      where: { phone: normalizedPhone },
+    });
+
+    if (existingUser && existingUser.id !== userId) {
+      throw new ConflictException('This phone number is already registered to another account');
+    }
+
+    // Create phone OTP via SMS (Twilio)
+    const otp = await this.otpService.createPhoneOtp(normalizedPhone);
+
+    return {
+      otpId: otp.otpId,
+      expiresIn: otp.expiresIn,
+      message: `Verification code sent to ${normalizedPhone}`,
+    };
+  }
+
+  /**
+   * Verify phone SMS OTP and update user's phone number
+   */
+  async verifyPhoneOtp(dto: VerifyPhoneOtpDto, userId: string): Promise<{ success: boolean; message: string; phone?: string }> {
+    // Verify the OTP
+    const isValid = await this.otpService.verifyOtp(dto.otpId, dto.code);
+    if (!isValid) {
+      throw new BadRequestException('Invalid or expired verification code');
+    }
+
+    // Get phone from OTP record
+    const phone = await this.otpService.getPhoneByOtpId(dto.otpId);
+    if (!phone) {
+      throw new BadRequestException('Verification code not found');
+    }
+
+    const normalizedPhone = this.normalizePhoneNumber(phone);
+
+    // Update user's phone number
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    user.phone = normalizedPhone;
+    user.isPhoneVerified = true;
+    await this.userRepository.save(user);
+
+    this.logger.log(`Phone number ${normalizedPhone} verified for user ${userId}`);
+
+    return {
+      success: true,
+      message: 'Phone number verified successfully',
+      phone: normalizedPhone,
+    };
   }
 
   /**

@@ -245,7 +245,64 @@ export class RequestOtpDto {
   phone: string;
 }
 
+// Email OTP for login/signup
+export class RequestEmailOtpDto {
+  @ApiProperty({ example: 'john@example.com', description: 'Email address to send OTP to' })
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
+
+  @ApiProperty({ 
+    example: 'login', 
+    description: 'Purpose of OTP: login, signup',
+    enum: ['login', 'signup'],
+    required: false 
+  })
+  @IsString()
+  @IsOptional()
+  purpose?: 'login' | 'signup';
+}
+
+// Phone OTP for profile verification (uses Twilio SMS)
+export class RequestPhoneOtpDto {
+  @ApiProperty({ example: '+2348012345678', description: 'Phone number to send SMS OTP to' })
+  @IsString()
+  @Matches(/^\+?[0-9]{10,15}$/, { message: 'Invalid phone number format' })
+  phone: string;
+}
+
 export class VerifyOtpDto {
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  otpId: string;
+
+  @ApiProperty({ example: '123456' })
+  @IsString()
+  @Matches(/^[0-9]{6}$/, { message: 'OTP must be 6 digits' })
+  code: string;
+}
+
+// Verify email OTP and login
+export class VerifyEmailOtpDto {
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  otpId: string;
+
+  @ApiProperty({ example: '123456' })
+  @IsString()
+  @Matches(/^[0-9]{6}$/, { message: 'OTP must be 6 digits' })
+  code: string;
+
+  @ApiProperty({ example: 'john@example.com' })
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
+}
+
+// Verify phone OTP (for profile)
+export class VerifyPhoneOtpDto {
   @ApiProperty()
   @IsString()
   @IsNotEmpty()

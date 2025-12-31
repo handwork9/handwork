@@ -1243,6 +1243,54 @@ export class EmailService {
   }
 
   /**
+   * Send generic verification code email (for login, signup, etc.)
+   */
+  async sendVerificationCodeEmail(
+    email: string,
+    code: string,
+    options: {
+      subject: string;
+      title: string;
+      description: string;
+      expiresInMinutes?: number;
+    }
+  ): Promise<boolean> {
+    const { subject, title, description, expiresInMinutes = 10 } = options;
+
+    const content = `
+      <p class="greeting">Hello,</p>
+      <h1 class="main-title"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" style="vertical-align: middle; margin-right: 8px;"><circle cx="12" cy="12" r="10" fill="#16a34a"/><path d="M12 7v5l3 3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>${title}</h1>
+      <p class="subtitle">${description}</p>
+      
+      <div style="text-align: center; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); padding: 32px; border-radius: 12px; margin: 24px 0; border: 2px dashed #86efac;">
+        <p style="margin: 0 0 8px; font-size: 12px; color: #16a34a; text-transform: uppercase; letter-spacing: 2px; font-weight: 600;">Your Code</p>
+        <p style="margin: 0; font-size: 42px; font-weight: 800; color: #166534; letter-spacing: 12px; font-family: monospace;">${code}</p>
+      </div>
+
+      <div class="highlight-box warning">
+        <strong><svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="vertical-align: middle; margin-right: 4px;"><circle cx="12" cy="12" r="10" stroke="#d97706" stroke-width="2"/><path d="M12 6v6l4 2" stroke="#d97706" stroke-width="2" stroke-linecap="round"/></svg>Code expires in ${expiresInMinutes} minutes</strong><br>
+        <span style="color: #92400e;">Enter this code in the app to continue. Do not share it with anyone.</span>
+      </div>
+
+      <div class="highlight-box" style="background: #f3f4f6; border-left-color: #9ca3af; margin-top: 16px;">
+        <strong>Security Tip:</strong><br>
+        <span style="color: #4b5563;">Handwork will never call or text asking for your verification code. If someone asks for it, it's a scam.</span>
+      </div>
+      
+      <p style="color: #6b7280; font-size: 13px; margin-top: 24px; text-align: center;">If you didn't request this code, please ignore this email.</p>
+    `;
+
+    const html = this.wrapInTemplate(content, title);
+
+    return this.sendEmail({
+      to: email,
+      subject,
+      html,
+      text: `Your Handwork verification code is: ${code}. This code expires in ${expiresInMinutes} minutes. Do not share this code with anyone.`,
+    });
+  }
+
+  /**
    * Send password changed confirmation email
    */
   async sendPasswordChangedEmail(user: User): Promise<boolean> {
