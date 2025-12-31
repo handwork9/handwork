@@ -143,16 +143,21 @@ export default function CouponsPage() {
 
   // Mutations
   const createMutation = useMutation({
-    mutationFn: (data: Parameters<typeof adminApi.createCoupon>[0]) =>
-      adminApi.createCoupon(data),
+    mutationFn: (data: Parameters<typeof adminApi.createCoupon>[0]) => {
+      console.log('Creating coupon with data:', data);
+      return adminApi.createCoupon(data);
+    },
     onSuccess: () => {
       message.success('Coupon created successfully');
       setCouponModalOpen(false);
       couponForm.resetFields();
       queryClient.invalidateQueries({ queryKey: ['coupons'] });
     },
-    onError: (error: AxiosError<{ message: string }>) => {
-      message.error(error.response?.data?.message || 'Failed to create coupon');
+    onError: (error: AxiosError<{ message: string | string[] }>) => {
+      console.error('Create coupon error:', error.response?.data);
+      const errorMsg = error.response?.data?.message;
+      const displayMsg = Array.isArray(errorMsg) ? errorMsg.join(', ') : errorMsg || 'Failed to create coupon';
+      message.error(displayMsg);
     },
   });
 
@@ -185,24 +190,32 @@ export default function CouponsPage() {
   const handleCreateOrUpdate = async (values: Record<string, any>) => {
     const dateRange = values.dateRange as [any, any] | undefined;
     
+    if (!dateRange || !dateRange[0] || !dateRange[1]) {
+      message.error('Please select a validity period');
+      return;
+    }
+    
     // Map form fields to backend DTO
     const data = {
-      code: values.code,
-      name: values.name || values.code, // Use code as name if not provided
+      code: values.code?.toUpperCase(),
+      name: values.name || values.code,
       description: values.description,
-      type: values.type, // percentage, fixed_amount, free_delivery
-      value: values.value,
-      minOrderAmount: values.minOrderAmount,
-      maxDiscountAmount: values.maxDiscountAmount,
-      usageLimit: values.usageLimit,
-      usageLimitPerUser: values.usageLimitPerUser,
-      startDate: dateRange?.[0]?.toISOString(),
-      endDate: dateRange?.[1]?.toISOString(),
-      firstOrderOnly: values.firstOrderOnly,
-      newUsersOnly: values.newUsersOnly,
+      type: values.type,
+      value: Number(values.value),
+      minOrderAmount: values.minOrderAmount ? Number(values.minOrderAmount) : undefined,
+      maxDiscountAmount: values.maxDiscountAmount ? Number(values.maxDiscountAmount) : undefined,
+      usageLimit: values.usageLimit ? Number(values.usageLimit) : undefined,
+      usageLimitPerUser: values.usageLimitPerUser ? Number(values.usageLimitPerUser) : undefined,
+      startDate: dateRange[0].toISOString(),
+      endDate: dateRange[1].toISOString(),
+      firstOrderOnly: values.firstOrderOnly || false,
+      newUsersOnly: values.newUsersOnly || false,
       applicableCategories: values.applicableCategories,
       applicableProductIds: values.applicableProductIds,
     };
+
+    console.log('Form values:', values);
+    console.log('Sending data:', data);
 
     if (editingCoupon) {
       updateMutation.mutate({ id: editingCoupon.id, data });
