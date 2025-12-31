@@ -500,6 +500,30 @@ export default function ProfileScreen() {
       },
     ];
 
+    // Coupons - only for buyers
+    if (user?.role === 'buyer') {
+      items.push({
+        icon: 'pricetag',
+        label: 'My Coupons',
+        subtitle: 'View available discounts',
+        action: () => (navigation as any).navigate('Coupons'),
+        iconColor: '#3B82F6',
+        iconBg: '#DBEAFE',
+      });
+    }
+
+    // Shopping Lists - only for buyers
+    if (user?.role === 'buyer') {
+      items.push({
+        icon: 'list',
+        label: 'Shopping Lists',
+        subtitle: 'Plan your grocery shopping',
+        action: () => (navigation as any).navigate('ShoppingLists'),
+        iconColor: '#10B981',
+        iconBg: '#D1FAE5',
+      });
+    }
+
     // Subscription Box - only for buyers
     if (user?.role === 'buyer') {
       items.push({

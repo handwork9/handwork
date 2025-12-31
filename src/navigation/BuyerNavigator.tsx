@@ -89,6 +89,7 @@ import GroupBuyingScreen from '../screens/buyer/GroupBuyingScreen';
 import CreateGroupBuyScreen from '../screens/buyer/CreateGroupBuyScreen';
 import GroupBuyDetailScreen from '../screens/buyer/GroupBuyDetailScreen';
 import ShoppingListsScreen from '../screens/buyer/ShoppingListsScreen';
+import CouponsScreen from '../screens/buyer/CouponsScreen';
 
 const Tab = createBottomTabNavigator<BuyerTabParamList>();
 const Stack = createNativeStackNavigator<BuyerStackParamList>();
@@ -587,6 +588,11 @@ export function BuyerNavigator() {
       <Stack.Screen
         name="ShoppingLists"
         component={ShoppingListsScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Coupons"
+        component={CouponsScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

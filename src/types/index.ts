@@ -558,6 +558,7 @@ export type BuyerStackParamList = {
   GroupBuyDetail: { groupBuyId: string };
   CreateGroupBuy: undefined;
   ShoppingLists: undefined;
+  Coupons: undefined;
   Withdraw: { bankAccountId?: string } | undefined;
   WithdrawalHistory: undefined;
   BankAccounts: undefined;
