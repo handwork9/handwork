@@ -15,3 +15,4 @@ import { WalletTransaction, User } from '../database/entities';
   exports: [BillsService],
 })
 export class BillsModule {}
+// Bills module v2 - Tue Dec 30 17:32:02 PST 2025
