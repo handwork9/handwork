@@ -127,7 +127,8 @@ export default function CouponsPage() {
         status: statusFilter,
         type: typeFilter,
       });
-      return response.data;
+      // API returns {success: true, data: {coupons: [], total: 0}}
+      return response.data?.data || response.data;
     },
   });
 
@@ -136,7 +137,7 @@ export default function CouponsPage() {
     queryFn: async () => {
       if (!selectedCouponId) return null;
       const response = await adminApi.getCouponUsage(selectedCouponId);
-      return response.data;
+      return response.data?.data || response.data;
     },
     enabled: !!selectedCouponId,
   });
