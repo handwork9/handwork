@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Layout, Menu, Avatar, Dropdown, Badge, message, Empty, Typography, ConfigProvider, Button } from 'antd';
 import {
@@ -51,17 +51,24 @@ interface AdminLayoutProps {
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, isAuthenticated, logout, _hasHydrated } = useAuthStore();
+  const { user, isAuthenticated, logout } = useAuthStore();
   const { connect, disconnect, isConnected, recentOrders } = useSocketStore();
   const { connect: connectSupport, disconnect: disconnectSupport } = useSupportSocketStore();
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotificationStore();
-
-  // Redirect to login if not authenticated (only after hydration is complete)
+  
+  // Track if component has mounted (client-side)
+  const [hasMounted, setHasMounted] = useState(false);
+  
   useEffect(() => {
-    if (_hasHydrated && !isAuthenticated && pathname !== '/login') {
+    setHasMounted(true);
+  }, []);
+
+  // Redirect to login if not authenticated (only after component mounts on client)
+  useEffect(() => {
+    if (hasMounted && !isAuthenticated && pathname !== '/login') {
       router.push('/login');
     }
-  }, [isAuthenticated, pathname, router, _hasHydrated]);
+  }, [isAuthenticated, pathname, router, hasMounted]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -464,7 +471,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       }}
     >
     {/* Show loading while hydrating auth state */}
-    {!_hasHydrated ? (
+    {!hasMounted ? (
       <div style={{ 
         height: '100vh', 
         display: 'flex', 
