@@ -7,6 +7,7 @@ export enum BillType {
   ELECTRICITY = 'electricity',
   TV = 'tv',
   INTERNET = 'internet',
+  BETTING = 'betting',
 }
 
 export class GetBillersDto {

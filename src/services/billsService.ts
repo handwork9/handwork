@@ -6,6 +6,7 @@ export enum BillType {
   ELECTRICITY = 'electricity',
   TV = 'tv',
   INTERNET = 'internet',
+  BETTING = 'betting',
 }
 
 // Helper function to extract data from API response

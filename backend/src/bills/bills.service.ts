@@ -13,6 +13,7 @@ const VTPASS_SERVICE_IDS: Record<BillType, string[]> = {
   [BillType.ELECTRICITY]: ['ikeja-electric', 'eko-electric', 'kano-electric', 'portharcourt-electric', 'jos-electric', 'ibadan-electric', 'kaduna-electric', 'abuja-electric', 'enugu-electric', 'benin-electric', 'yola-electric'],
   [BillType.TV]: ['dstv', 'gotv', 'startimes'],
   [BillType.INTERNET]: ['smile-direct', 'spectranet'],
+  [BillType.BETTING]: ['bet9ja', 'betking', 'sportybet', '1xbet', 'betway', 'nairabet', 'merrybet', 'betland', 'cloudbet', 'supabet'],
 };
 
 // Static billers list (these are fixed VTpass service IDs)
@@ -49,6 +50,17 @@ const BILLERS_LIST: Record<BillType, Array<{ code: string; name: string; shortNa
   [BillType.INTERNET]: [
     { code: 'smile-direct', name: 'Smile', shortName: 'Smile' },
     { code: 'spectranet', name: 'Spectranet', shortName: 'Spectranet' },
+  ],
+  [BillType.BETTING]: [
+    { code: 'bet9ja', name: 'Bet9ja', shortName: 'Bet9ja' },
+    { code: 'betking', name: 'BetKing', shortName: 'BetKing' },
+    { code: 'sportybet', name: 'SportyBet', shortName: 'SportyBet' },
+    { code: '1xbet', name: '1xBet', shortName: '1xBet' },
+    { code: 'betway', name: 'Betway', shortName: 'Betway' },
+    { code: 'nairabet', name: 'NairaBet', shortName: 'NairaBet' },
+    { code: 'merrybet', name: 'MerryBet', shortName: 'MerryBet' },
+    { code: 'betland', name: 'BetLand', shortName: 'BetLand' },
+    { code: 'supabet', name: 'SupaBet', shortName: 'SupaBet' },
   ],
 };
 

@@ -29,6 +29,7 @@ import {
   ElectricityIllustration,
   TvIllustration,
   InternetIllustration,
+  BettingIllustration,
   BillsHeroIllustration,
 } from '../../assets/illustrations/bills';
 import {
@@ -90,6 +91,13 @@ const BILL_CATEGORIES: BillCategory[] = [
     description: 'Pay internet bills',
     Illustration: InternetIllustration,
     color: '#5856D6',
+  },
+  {
+    id: BillType.BETTING,
+    name: 'Betting',
+    description: 'Fund betting wallets',
+    Illustration: BettingIllustration,
+    color: '#FF2D55',
   },
 ];
 
@@ -632,6 +640,8 @@ export default function PayBillScreen() {
                 <Text style={[styles.formLabel, { color: dynamicStyles.textSecondary }]}>
                   {selectedCategory?.id === BillType.AIRTIME || selectedCategory?.id === BillType.DATA 
                     ? 'PHONE NUMBER' 
+                    : selectedCategory?.id === BillType.BETTING
+                    ? 'USER ID'
                     : 'METER/SMARTCARD NUMBER'}
                 </Text>
                 <View style={[styles.inputContainer, { backgroundColor: dynamicStyles.groupBg }]}>
@@ -639,7 +649,11 @@ export default function PayBillScreen() {
                     style={[styles.input, { color: dynamicStyles.text }]}
                     value={selectedCategory?.id === BillType.AIRTIME || selectedCategory?.id === BillType.DATA ? phoneNumber : accountNumber}
                     onChangeText={selectedCategory?.id === BillType.AIRTIME || selectedCategory?.id === BillType.DATA ? setPhoneNumber : setAccountNumber}
-                    placeholder={selectedCategory?.id === BillType.AIRTIME || selectedCategory?.id === BillType.DATA ? 'Enter phone number' : 'Enter meter/smartcard number'}
+                    placeholder={selectedCategory?.id === BillType.AIRTIME || selectedCategory?.id === BillType.DATA 
+                      ? 'Enter phone number' 
+                      : selectedCategory?.id === BillType.BETTING
+                      ? 'Enter your betting user ID'
+                      : 'Enter meter/smartcard number'}
                     placeholderTextColor={dynamicStyles.textSecondary}
                     keyboardType={selectedCategory?.id === BillType.AIRTIME || selectedCategory?.id === BillType.DATA ? 'phone-pad' : 'default'}
                     maxLength={selectedCategory?.id === BillType.AIRTIME || selectedCategory?.id === BillType.DATA ? 11 : 20}
@@ -648,8 +662,8 @@ export default function PayBillScreen() {
               </View>
             )}
 
-            {/* Data Plans / Packages (for non-airtime categories) */}
-            {selectedBiller && selectedCategory?.id !== BillType.AIRTIME && (
+            {/* Data Plans / Packages (for non-airtime and non-betting categories) */}
+            {selectedBiller && selectedCategory?.id !== BillType.AIRTIME && selectedCategory?.id !== BillType.BETTING && (
               <View style={styles.formSection}>
                 <Text style={[styles.formLabel, { color: dynamicStyles.textSecondary }]}>
                   {selectedCategory?.id === BillType.DATA ? 'SELECT DATA PLAN' : 
@@ -682,8 +696,8 @@ export default function PayBillScreen() {
               </View>
             )}
 
-            {/* Amount - Only for Airtime (manual entry with quick amounts) */}
-            {selectedBiller && selectedCategory?.id === BillType.AIRTIME && (
+            {/* Amount - For Airtime and Betting (manual entry with quick amounts) */}
+            {selectedBiller && (selectedCategory?.id === BillType.AIRTIME || selectedCategory?.id === BillType.BETTING) && (
               <>
                 <View style={styles.formSection}>
                   <Text style={[styles.formLabel, { color: dynamicStyles.textSecondary }]}>
