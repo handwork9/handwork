@@ -17,11 +17,13 @@ export interface AuthState {
   user: AdminUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  _hasHydrated: boolean;
   login: (user: AdminUser, token: string) => void;
   logout: () => void;
   setLoading: (loading: boolean) => void;
   setAuth: (user: AdminUser, token: string, refreshToken?: string) => void;
   checkAuth: () => void;
+  setHasHydrated: (state: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -30,6 +32,7 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       isAuthenticated: false,
       isLoading: false,
+      _hasHydrated: false,
       login: (user, token) => {
         Cookies.set('admin_token', token, { expires: 7 });
         set({ user, isAuthenticated: true, isLoading: false });
@@ -50,10 +53,14 @@ export const useAuthStore = create<AuthState>()(
       checkAuth: () => {
         // This is now handled by persist rehydration
       },
+      setHasHydrated: (state) => set({ _hasHydrated: state }),
     }),
     {
       name: 'admin-auth',
       partialize: (state) => ({ user: state.user, isAuthenticated: state.isAuthenticated }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
     }
   )
 );

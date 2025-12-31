@@ -51,17 +51,17 @@ interface AdminLayoutProps {
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, isAuthenticated, logout } = useAuthStore();
+  const { user, isAuthenticated, logout, _hasHydrated } = useAuthStore();
   const { connect, disconnect, isConnected, recentOrders } = useSocketStore();
   const { connect: connectSupport, disconnect: disconnectSupport } = useSupportSocketStore();
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotificationStore();
 
-  // Redirect to login if not authenticated
+  // Redirect to login if not authenticated (only after hydration is complete)
   useEffect(() => {
-    if (!isAuthenticated && pathname !== '/login') {
+    if (_hasHydrated && !isAuthenticated && pathname !== '/login') {
       router.push('/login');
     }
-  }, [isAuthenticated, pathname, router]);
+  }, [isAuthenticated, pathname, router, _hasHydrated]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -463,6 +463,28 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         },
       }}
     >
+    {/* Show loading while hydrating auth state */}
+    {!_hasHydrated ? (
+      <div style={{ 
+        height: '100vh', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        background: '#f8fafc'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div className="ant-spin ant-spin-lg ant-spin-spinning">
+            <span className="ant-spin-dot ant-spin-dot-spin">
+              <i className="ant-spin-dot-item"></i>
+              <i className="ant-spin-dot-item"></i>
+              <i className="ant-spin-dot-item"></i>
+              <i className="ant-spin-dot-item"></i>
+            </span>
+          </div>
+          <p style={{ marginTop: 16, color: '#6b7280' }}>Loading...</p>
+        </div>
+      </div>
+    ) : (
     <Layout className="min-h-screen">
       <Sider
         theme="light"
@@ -631,6 +653,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </Content>
       </Layout>
     </Layout>
+    )}
     </ConfigProvider>
   );
 }
