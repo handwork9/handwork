@@ -83,6 +83,9 @@ import { ShoppingListsModule } from './shopping-lists/shopping-lists.module';
         // TODO: Disable this after tables are created and use migrations instead
         synchronize: true,
         logging: configService.get('NODE_ENV') === 'development',
+        retryAttempts: 10,
+        retryDelay: 5000,
+        connectTimeoutMS: 30000,
       }),
       inject: [ConfigService],
     }),
