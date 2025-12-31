@@ -210,9 +210,9 @@ export default function CouponsScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? colors.background : '#F5F5F5', paddingTop: insets.top }]}>
+    <View style={[styles.container, { backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: isDark ? colors.background : '#FFFFFF' }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
@@ -259,20 +259,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
   },
   backButton: {
-    padding: SPACING.xs,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: FONT_SIZES.lg,
+    fontSize: 17,
     fontFamily: FONTS.semiBold,
   },
   headerRight: {
-    width: 32,
+    width: 40,
   },
   infoBanner: {
     flexDirection: 'row',
