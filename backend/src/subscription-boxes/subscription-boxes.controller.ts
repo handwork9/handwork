@@ -149,4 +149,52 @@ export class SubscriptionBoxesController {
   getStats() {
     return this.subscriptionBoxesService.getStats();
   }
+
+  // ==================== TEMPLATE ADMIN ENDPOINTS ====================
+
+  @Get('templates')
+  @ApiOperation({ summary: 'Get all subscription box templates' })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  @ApiQuery({ name: 'isActive', required: false })
+  getTemplates(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+    @Query('isActive') isActive?: boolean,
+  ) {
+    return this.subscriptionBoxesService.getTemplates({ page, limit, isActive });
+  }
+
+  @Get('templates/:id')
+  @ApiOperation({ summary: 'Get a subscription box template by ID' })
+  getTemplate(@Param('id') id: string) {
+    return this.subscriptionBoxesService.getTemplate(id);
+  }
+
+  @Post('templates')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Create a subscription box template (Admin)' })
+  createTemplate(@Body() data: Record<string, unknown>) {
+    return this.subscriptionBoxesService.createTemplate(data);
+  }
+
+  @Patch('templates/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update a subscription box template (Admin)' })
+  updateTemplate(@Param('id') id: string, @Body() data: Record<string, unknown>) {
+    return this.subscriptionBoxesService.updateTemplate(id, data);
+  }
+
+  @Delete('templates/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Delete a subscription box template (Admin)' })
+  deleteTemplate(@Param('id') id: string) {
+    return this.subscriptionBoxesService.deleteTemplate(id);
+  }
 }

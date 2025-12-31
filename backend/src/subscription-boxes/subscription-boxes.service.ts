@@ -15,6 +15,7 @@ import {
   BoxSize,
   BOX_PRICING,
 } from '../database/entities/subscription-box.entity';
+import { SubscriptionBoxTemplate } from '../database/entities/subscription-box-template.entity';
 import { Product } from '../database/entities/product.entity';
 import { User } from '../database/entities/user.entity';
 import { WalletService, DebitWalletDto } from '../wallet/wallet.service';
@@ -41,6 +42,8 @@ export class SubscriptionBoxesService {
     private readonly productRepository: Repository<Product>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(SubscriptionBoxTemplate)
+    private readonly templateRepository: Repository<SubscriptionBoxTemplate>,
     private readonly walletService: WalletService,
     private readonly notificationsService: NotificationsService,
     private readonly notificationsGateway: NotificationsGateway,
@@ -788,6 +791,99 @@ export class SubscriptionBoxesService {
         cancelled,
         estimatedMonthlyRevenue: monthlyRevenue,
       },
+    };
+  }
+
+  // ==================== TEMPLATE METHODS ====================
+
+  /**
+   * Get all templates
+   */
+  async getTemplates(options: { page?: number; limit?: number; isActive?: boolean }) {
+    const page = options.page || 1;
+    const limit = options.limit || 10;
+    const skip = (page - 1) * limit;
+
+    const where: Record<string, unknown> = {};
+    if (options.isActive !== undefined) {
+      where.isActive = options.isActive;
+    }
+
+    const [templates, total] = await this.templateRepository.findAndCount({
+      where,
+      order: { createdAt: 'DESC' },
+      skip,
+      take: limit,
+    });
+
+    return {
+      success: true,
+      data: {
+        templates,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  /**
+   * Get template by ID
+   */
+  async getTemplate(id: string) {
+    const template = await this.templateRepository.findOne({ where: { id } });
+    if (!template) {
+      throw new NotFoundException('Template not found');
+    }
+    return {
+      success: true,
+      data: template,
+    };
+  }
+
+  /**
+   * Create a new template (admin)
+   */
+  async createTemplate(data: Partial<SubscriptionBoxTemplate>) {
+    const template = this.templateRepository.create(data);
+    await this.templateRepository.save(template);
+    return {
+      success: true,
+      message: 'Template created successfully',
+      data: template,
+    };
+  }
+
+  /**
+   * Update a template (admin)
+   */
+  async updateTemplate(id: string, data: Partial<SubscriptionBoxTemplate>) {
+    const template = await this.templateRepository.findOne({ where: { id } });
+    if (!template) {
+      throw new NotFoundException('Template not found');
+    }
+    Object.assign(template, data);
+    await this.templateRepository.save(template);
+    return {
+      success: true,
+      message: 'Template updated successfully',
+      data: template,
+    };
+  }
+
+  /**
+   * Delete a template (admin)
+   */
+  async deleteTemplate(id: string) {
+    const template = await this.templateRepository.findOne({ where: { id } });
+    if (!template) {
+      throw new NotFoundException('Template not found');
+    }
+    await this.templateRepository.remove(template);
+    return {
+      success: true,
+      message: 'Template deleted successfully',
     };
   }
 }

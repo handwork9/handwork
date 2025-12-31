@@ -34,4 +34,5 @@ export * from './admin-invite.entity';
 export * from './dispute.entity';
 export * from './bill-payment.entity';
 export * from './subscription-box.entity';
+export * from './subscription-box-template.entity';
 export * from './group-buy.entity';
