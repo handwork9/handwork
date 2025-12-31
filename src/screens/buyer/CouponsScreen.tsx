@@ -66,7 +66,12 @@ export default function CouponsScreen() {
     queryKey: ['availableCoupons'],
     queryFn: async () => {
       const response = await couponService.getAvailableCoupons();
-      return response.coupons || response.data || response || [];
+      // Handle different response formats
+      if (Array.isArray(response)) return response;
+      if (response && typeof response === 'object') {
+        return (response as any).coupons || (response as any).data || [];
+      }
+      return [];
     },
   });
 
@@ -237,9 +242,9 @@ export default function CouponsScreen() {
         />
       ) : (
         <EmptyState
-          icon="pricetag-outline"
+          icon={<Ionicons name="pricetag-outline" size={48} color="#9CA3AF" />}
           title="No Coupons Available"
-          message="Check back later for exclusive deals and discounts!"
+          description="Check back later for exclusive deals and discounts!"
         />
       )}
     </View>
@@ -368,7 +373,7 @@ const styles = StyleSheet.create({
   },
   codeText: {
     fontSize: FONT_SIZES.md,
-    fontFamily: FONTS.mono || FONTS.semiBold,
+    fontFamily: FONTS.semiBold,
     letterSpacing: 1,
     textAlign: 'center',
   },
