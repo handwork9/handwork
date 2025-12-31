@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Param, Post } from '@nestjs/common';
 import {
   HealthCheck,
   HealthCheckService,
@@ -9,6 +9,10 @@ import {
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Public } from '../common/decorators/public.decorator';
 import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { User } from '../database/entities';
+import { UserRole } from '../common/enums';
 
 @ApiTags('Health')
 @Controller('health')
@@ -19,6 +23,8 @@ export class HealthController {
     private readonly memory: MemoryHealthIndicator,
     private readonly disk: DiskHealthIndicator,
     private readonly configService: ConfigService,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
   ) {}
 
   @Get()
@@ -80,6 +86,31 @@ export class HealthController {
       host: smtpHost ? 'set' : 'missing',
       user: smtpUser ? smtpUser.substring(0, 5) + '***' : 'missing',
       pass: smtpPass ? 'set (hidden)' : 'missing',
+    };
+  }
+
+  @Post('setup-admin/:email/:secret')
+  @Public()
+  @ApiOperation({ summary: 'One-time setup to create admin user' })
+  async setupAdmin(@Param('email') email: string, @Param('secret') secret: string) {
+    // Security: require a secret to prevent abuse
+    const setupSecret = this.configService.get<string>('SETUP_SECRET') || 'handwork-setup-2024';
+    if (secret !== setupSecret) {
+      return { error: 'Invalid secret' };
+    }
+
+    const user = await this.userRepository.findOne({ where: { email } });
+    if (!user) {
+      return { error: 'User not found' };
+    }
+
+    user.role = UserRole.SUPERADMIN;
+    await this.userRepository.save(user);
+
+    return { 
+      success: true, 
+      message: `User ${email} promoted to superadmin`,
+      role: user.role 
     };
   }
 }
