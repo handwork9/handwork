@@ -263,7 +263,7 @@ export class InitialSchema1704067200000 implements MigrationInterface {
       CREATE INDEX IF NOT EXISTS "idx_users_phone" ON "users"("phone");
       CREATE INDEX IF NOT EXISTS "idx_users_role" ON "users"("role");
 
-      CREATE INDEX IF NOT EXISTS "idx_products_farmer" ON "products"("farmer_id");
+      CREATE INDEX IF NOT EXISTS "idx_products_user" ON "products"("user_id");
       CREATE INDEX IF NOT EXISTS "idx_products_category" ON "products"("category");
       CREATE INDEX IF NOT EXISTS "idx_products_state" ON "products"("state");
       CREATE INDEX IF NOT EXISTS "idx_products_available" ON "products"("is_available");
