@@ -168,13 +168,20 @@ export class SocialService {
     });
     const likedPostIds = new Set(likes.map(l => l.postId));
 
-    const postsWithLikeStatus = posts.map(post => ({
+    // Get saved status for each post
+    const savedPosts = await this.savedPostRepository.find({
+      where: { userId, postId: In(postIds) },
+    });
+    const savedPostIds = new Set(savedPosts.map(s => s.postId));
+
+    const postsWithStatus = posts.map(post => ({
       ...post,
       isLiked: likedPostIds.has(post.id),
+      isSaved: savedPostIds.has(post.id),
     }));
 
     return {
-      posts: postsWithLikeStatus,
+      posts: postsWithStatus,
       total,
       hasMore: offset + posts.length < total,
     };
@@ -189,21 +196,30 @@ export class SocialService {
       take: limit,
     });
 
-    let postsWithLikeStatus = posts;
+    let postsWithStatus = posts as any[];
     if (userId) {
       const postIds = posts.map(p => p.id);
+      
+      // Get like status
       const likes = await this.likeRepository.find({
         where: { userId, postId: In(postIds) },
       });
       const likedPostIds = new Set(likes.map(l => l.postId));
 
-      postsWithLikeStatus = posts.map(post => ({
+      // Get saved status
+      const savedPosts = await this.savedPostRepository.find({
+        where: { userId, postId: In(postIds) },
+      });
+      const savedPostIds = new Set(savedPosts.map(s => s.postId));
+
+      postsWithStatus = posts.map(post => ({
         ...post,
         isLiked: likedPostIds.has(post.id),
-      })) as any;
+        isSaved: savedPostIds.has(post.id),
+      }));
     }
 
-    return { posts: postsWithLikeStatus, total };
+    return { posts: postsWithStatus, total };
   }
 
   // ==================== LIKES ====================
