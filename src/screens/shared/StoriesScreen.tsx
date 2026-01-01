@@ -185,20 +185,17 @@ const StoriesScreen = () => {
   const route = useRoute<RouteProp<{ params: StoriesRouteParams }, 'params'>>();
   
   // Get params safely - they might be undefined if navigating directly
-  const routeStories = route.params?.stories;
-  const initialIndex = route.params?.initialIndex ?? 0;
+  const initialFarmerIndex = route.params?.initialIndex ?? route.params?.initialFarmerIndex ?? 0;
 
-  // Fetch stories if not provided via route params
-  const { data: fetchedStories, isLoading } = useQuery({
-    queryKey: ['stories-all'],
+  // Always fetch stories - use same query key as SocialFeedScreen
+  const { data: fetchedStories, isLoading, error } = useQuery({
+    queryKey: ['stories'],
     queryFn: () => socialService.getStories(),
-    enabled: !routeStories, // Only fetch if no stories provided
   });
 
-  // Use route stories if provided, otherwise use fetched stories
-  const stories = routeStories || fetchedStories || [];
+  const stories = fetchedStories || [];
 
-  const [currentFarmerIndex, setCurrentFarmerIndex] = useState(initialIndex);
+  const [currentFarmerIndex, setCurrentFarmerIndex] = useState(initialFarmerIndex);
   const [currentStoryIndex, setCurrentStoryIndex] = useState(0);
   const [progress, setProgress] = useState(0);
   

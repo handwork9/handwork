@@ -538,27 +538,26 @@ export class SocialService {
   async getStories(userId: string): Promise<any[]> {
     const now = new Date();
 
-    // Get followed farmers' stories
+    // Get followed farmers for sorting priority
     const follows = await this.followRepository.find({
       where: { userId },
       select: ['farmerId'],
     });
+    const followedFarmerIds = new Set(follows.map(f => f.farmerId));
 
-    const followedFarmerIds = follows.map(f => f.farmerId);
-
-    if (followedFarmerIds.length === 0) {
-      return [];
-    }
-
+    // Get ALL active stories (not just from followed farmers)
     const stories = await this.storyRepository.find({
       where: {
-        farmerId: In(followedFarmerIds),
         isActive: true,
         expiresAt: MoreThan(now),
       },
       relations: ['farmer', 'farmer.user'],
       order: { createdAt: 'DESC' },
     });
+
+    if (stories.length === 0) {
+      return [];
+    }
 
     // Get viewed stories
     const storyIds = stories.map(s => s.id);
@@ -576,6 +575,7 @@ export class SocialService {
           farmer: story.farmer,
           stories: [],
           hasUnviewed: false,
+          isFollowed: followedFarmerIds.has(farmerId),
         };
       }
       const isViewed = viewedStoryIds.has(story.id);
@@ -585,8 +585,12 @@ export class SocialService {
       }
     });
 
-    // Sort: unviewed first
+    // Sort: followed farmers first, then unviewed first, then by recent
     return Object.values(farmerStories).sort((a: any, b: any) => {
+      // Followed farmers first
+      if (a.isFollowed && !b.isFollowed) return -1;
+      if (!a.isFollowed && b.isFollowed) return 1;
+      // Then unviewed first
       if (a.hasUnviewed && !b.hasUnviewed) return -1;
       if (!a.hasUnviewed && b.hasUnviewed) return 1;
       return 0;
