@@ -36,10 +36,11 @@ export default function GroupBuyingScreen() {
   const [searchQuery, setSearchQuery] = useState('');
 
   // Fetch discount tiers
-  const { data: tiers = [] } = useQuery<GroupBuyTier[]>({
+  const { data: tiersData } = useQuery<GroupBuyTier[]>({
     queryKey: ['groupBuyTiers'],
     queryFn: groupBuyingService.getTiers,
   });
+  const tiers = Array.isArray(tiersData) ? tiersData : [];
 
   // Fetch all active group buys
   const {
@@ -320,7 +321,7 @@ export default function GroupBuyingScreen() {
         More buyers = bigger discounts!
       </Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tierScroll}>
-        {tiers.map((tier, index) => (
+        {tiers && tiers.length > 0 ? tiers.map((tier, index) => (
           <View
             key={index}
             style={[styles.tierCard, { backgroundColor: colors.surface }]}
@@ -338,7 +339,13 @@ export default function GroupBuyingScreen() {
               {tier.discount}% OFF
             </Text>
           </View>
-        ))}
+        )) : (
+          <View style={[styles.tierCard, { backgroundColor: colors.surface }]}>
+            <Ionicons name="people" size={20} color={COLORS.primary} style={styles.tierIcon} />
+            <Text style={[styles.tierParticipants, { color: colors.text }]}>5+ buyers</Text>
+            <Text style={[styles.tierDiscount, { color: '#10B981' }]}>10% OFF</Text>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -469,7 +476,7 @@ export default function GroupBuyingScreen() {
                   { backgroundColor: groupBuyingService.getStatusColor(item.status) },
                 ]}
               >
-                <Text style={styles.statusText}>{item.status.toUpperCase()}</Text>
+                <Text style={styles.statusText}>{item.status?.toUpperCase() || 'OPEN'}</Text>
               </View>
             </View>
             <View style={styles.cardContent}>

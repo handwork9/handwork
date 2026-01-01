@@ -48,6 +48,11 @@ import { SubscriptionBoxesModule } from './subscription-boxes/subscription-boxes
 import { GroupBuyingModule } from './group-buying/group-buying.module';
 import { CouponsModule } from './coupons/coupons.module';
 import { ShoppingListsModule } from './shopping-lists/shopping-lists.module';
+import { FlashSalesModule } from './flash-sales/flash-sales.module';
+import { BadgesModule } from './badges/badges.module';
+import { LeaderboardModule } from './leaderboard/leaderboard.module';
+import { ChatbotModule } from './chatbot/chatbot.module';
+import { SocialModule } from './social/social.module';
 
 @Module({
   imports: [
@@ -71,20 +76,37 @@ import { ShoppingListsModule } from './shopping-lists/shopping-lists.module';
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => {
-        const host = configService.get('database.host');
-        const port = configService.get('database.port');
+        const databaseUrl = configService.get<string>('DATABASE_URL');
+        
+        // Use DATABASE_URL if available (for Neon and other external databases)
+        if (databaseUrl) {
+          console.log(`[Database] Connecting via DATABASE_URL`);
+          return {
+            type: 'postgres',
+            url: databaseUrl,
+            ssl: { rejectUnauthorized: false },
+            entities: [__dirname + '/**/*.entity{.ts,.js}'],
+            synchronize: true,
+            logging: configService.get('NODE_ENV') === 'development',
+            retryAttempts: 15,
+            retryDelay: 3000,
+          };
+        }
+        
+        // Fallback to individual parameters
+        const host = configService.get<string>('database.host');
+        const port = configService.get<number>('database.port');
         console.log(`[Database] Connecting to ${host}:${port}`);
         return {
           type: 'postgres',
           host,
           port,
-          username: configService.get('database.username'),
-          password: configService.get('database.password'),
-          database: configService.get('database.name'),
+          username: configService.get<string>('database.username'),
+          password: configService.get<string>('database.password'),
+          database: configService.get<string>('database.name'),
           ssl: configService.get('database.ssl') ? { rejectUnauthorized: false } : false,
           entities: [__dirname + '/**/*.entity{.ts,.js}'],
-          // Disable synchronize - tables should already exist
-          synchronize: false,
+          synchronize: true,
           logging: configService.get('NODE_ENV') === 'development',
           retryAttempts: 15,
           retryDelay: 3000,
@@ -168,6 +190,11 @@ import { ShoppingListsModule } from './shopping-lists/shopping-lists.module';
     GroupBuyingModule,
     CouponsModule,
     ShoppingListsModule,
+    FlashSalesModule,
+    BadgesModule,
+    LeaderboardModule,
+    ChatbotModule,
+    SocialModule,
   ],
 })
 export class AppModule {}

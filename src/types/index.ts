@@ -592,6 +592,10 @@ export type BuyerStackParamList = {
     callType?: 'video' | 'audio'; 
     isIncoming?: boolean;
   };
+  // Social Features
+  SocialFeed: undefined;
+  Stories: { initialFarmerIndex?: number };
+  LiveStreams: undefined;
 };
 
 export type FarmerTabParamList = {
@@ -670,6 +674,12 @@ export type FarmerStackParamList = {
     callType?: 'video' | 'audio'; 
     isIncoming?: boolean;
   };
+  // Social Features
+  SocialFeed: undefined;
+  CreatePost: undefined;
+  Stories: { initialFarmerIndex?: number };
+  LiveStreams: undefined;
+  GoLive: undefined;
 };
 
 export type RiderTabParamList = {

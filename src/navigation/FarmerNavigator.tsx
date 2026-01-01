@@ -80,6 +80,13 @@ import AppearanceScreen from '../screens/shared/AppearanceScreen';
 import DeleteAccountScreen from '../screens/shared/DeleteAccountScreen';
 import VideoCallScreen from '../screens/shared/VideoCallScreen';
 
+// Social Feature Screens
+import SocialFeedScreen from '../screens/shared/SocialFeedScreen';
+import CreatePostScreen from '../screens/farmer/CreatePostScreen';
+import StoriesScreen from '../screens/shared/StoriesScreen';
+import LiveStreamsScreen from '../screens/shared/LiveStreamsScreen';
+import GoLiveScreen from '../screens/farmer/GoLiveScreen';
+
 const Tab = createBottomTabNavigator<FarmerTabParamList>();
 const Stack = createNativeStackNavigator<FarmerStackParamList>();
 
@@ -535,6 +542,36 @@ export function FarmerNavigator() {
       <Stack.Screen
         name="FarmerDisputeDetail"
         component={FarmerDisputeDetailScreen}
+        options={{ headerShown: false }}
+      />
+      {/* Social Feature Screens */}
+      <Stack.Screen
+        name="SocialFeed"
+        component={SocialFeedScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="CreatePost"
+        component={CreatePostScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Stories"
+        component={StoriesScreen}
+        options={{ 
+          headerShown: false,
+          presentation: 'fullScreenModal',
+          animation: 'fade',
+        }}
+      />
+      <Stack.Screen
+        name="LiveStreams"
+        component={LiveStreamsScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="GoLive"
+        component={GoLiveScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

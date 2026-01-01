@@ -37,7 +37,13 @@
     },
     "plugins": [
       "expo-web-browser",
-      "@sentry/react-native"
+      [
+        "@sentry/react-native/expo",
+        {
+          "organization": "handwork",
+          "project": "handwork"
+        }
+      ]
     ],
     "extra": {
       "eas": {

@@ -116,6 +116,29 @@ export class Product {
   @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
   bulkDiscountPercent: number;
 
+  // Pre-order fields
+  @Column({ default: false })
+  @Index()
+  isPreOrder: boolean;
+
+  @Column({ type: 'timestamp', nullable: true })
+  preOrderStartDate: Date | null;
+
+  @Column({ type: 'timestamp', nullable: true })
+  preOrderEndDate: Date | null;
+
+  @Column({ type: 'timestamp', nullable: true })
+  expectedAvailableDate: Date | null;
+
+  @Column({ type: 'int', nullable: true })
+  preOrderMaxQuantity: number;
+
+  @Column({ type: 'int', default: 0 })
+  preOrderCount: number;
+
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
+  preOrderDiscountPercent: number;
+
   @Column('uuid')
   farmerId: string;
 

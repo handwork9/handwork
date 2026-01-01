@@ -103,6 +103,9 @@ export class FarmerProfile {
   @Column({ type: 'int', default: 0 })
   totalReviews: number;
 
+  @Column({ type: 'int', default: 0 })
+  followerCount: number;
+
   // Revenue Goal
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0, nullable: true })
   revenueGoal: number;

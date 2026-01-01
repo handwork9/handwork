@@ -503,6 +503,17 @@ export default function HomeScreen() {
             style={[styles.headerIconButton, { backgroundColor: isDark ? '#2C2C2E' : '#F5F5F5' }]}
             onPress={() => {
               triggerHaptic();
+              navigation.navigate('SocialFeed');
+            }}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="people-outline" size={26} color={colors.text} />
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.headerIconButton, { backgroundColor: isDark ? '#2C2C2E' : '#F5F5F5' }]}
+            onPress={() => {
+              triggerHaptic();
               navigation.navigate('NearbyFarmersMap');
             }}
             activeOpacity={0.7}

@@ -91,6 +91,11 @@ import GroupBuyDetailScreen from '../screens/buyer/GroupBuyDetailScreen';
 import ShoppingListsScreen from '../screens/buyer/ShoppingListsScreen';
 import CouponsScreen from '../screens/buyer/CouponsScreen';
 
+// Social Feature Screens
+import SocialFeedScreen from '../screens/shared/SocialFeedScreen';
+import StoriesScreen from '../screens/shared/StoriesScreen';
+import LiveStreamsScreen from '../screens/shared/LiveStreamsScreen';
+
 const Tab = createBottomTabNavigator<BuyerTabParamList>();
 const Stack = createNativeStackNavigator<BuyerStackParamList>();
 
@@ -593,6 +598,26 @@ export function BuyerNavigator() {
       <Stack.Screen
         name="Coupons"
         component={CouponsScreen}
+        options={{ headerShown: false }}
+      />
+      {/* Social Feature Screens */}
+      <Stack.Screen
+        name="SocialFeed"
+        component={SocialFeedScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Stories"
+        component={StoriesScreen}
+        options={{ 
+          headerShown: false,
+          presentation: 'fullScreenModal',
+          animation: 'fade',
+        }}
+      />
+      <Stack.Screen
+        name="LiveStreams"
+        component={LiveStreamsScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

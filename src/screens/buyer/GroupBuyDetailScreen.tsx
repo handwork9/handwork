@@ -239,7 +239,7 @@ export default function GroupBuyDetailScreen() {
 
         {/* Status Badge */}
         <View style={[styles.statusBadge, { backgroundColor: getStatusColor(groupBuy.status) }]}>
-          <Text style={styles.statusText}>{groupBuy.status.toUpperCase()}</Text>
+          <Text style={styles.statusText}>{groupBuy.status?.toUpperCase() || 'OPEN'}</Text>
         </View>
 
         {/* Main Info Card */}

@@ -25,6 +25,8 @@ export interface OrderItem {
   subtotal: number;
   farmerId: string;
   farmerName: string;
+  specialRequest?: string; // Customer special request for this item
+  image?: string;
 }
 
 export interface DeliveryAddress {

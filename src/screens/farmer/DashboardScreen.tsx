@@ -521,20 +521,36 @@ export default function DashboardScreen() {
         </View>
         <View style={styles.headerRow}>
           <Text style={[styles.fixedHeaderTitle, { color: colors.text }]}>{t('farmer.dashboard')}</Text>
-          <TouchableOpacity
-            style={[styles.notificationButton, { backgroundColor: isDark ? '#2C2C2E' : '#DEDEE0' }]}
-            onPress={() => navigation.navigate('Notifications')}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="notifications-outline" size={28} color={colors.text} />
-            {unreadOrdersCount > 0 && (
-              <View style={styles.notificationBadge}>
-                <Text style={styles.notificationBadgeText}>
-                  {unreadOrdersCount > 9 ? '9+' : unreadOrdersCount}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacity
+              style={[styles.notificationButton, { backgroundColor: isDark ? '#2C2C2E' : '#DEDEE0' }]}
+              onPress={() => navigation.navigate('SocialFeed')}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="people-outline" size={26} color={colors.text} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.notificationButton, { backgroundColor: isDark ? '#2C2C2E' : '#DEDEE0' }]}
+              onPress={() => navigation.navigate('GoLive')}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="videocam-outline" size={26} color={COLORS.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.notificationButton, { backgroundColor: isDark ? '#2C2C2E' : '#DEDEE0' }]}
+              onPress={() => navigation.navigate('Notifications')}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="notifications-outline" size={28} color={colors.text} />
+              {unreadOrdersCount > 0 && (
+                <View style={styles.notificationBadge}>
+                  <Text style={styles.notificationBadgeText}>
+                    {unreadOrdersCount > 9 ? '9+' : unreadOrdersCount}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 

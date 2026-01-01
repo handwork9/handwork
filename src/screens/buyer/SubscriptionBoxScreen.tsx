@@ -251,12 +251,12 @@ export default function SubscriptionBoxScreen() {
             <Ionicons name="cube" size={32} color="#FFF" />
             <View style={styles.statusBadge}>
               <Text style={styles.statusBadgeText}>
-                {subscription.status.toUpperCase()}
+                {subscription.status?.toUpperCase() || 'ACTIVE'}
               </Text>
             </View>
           </View>
           <Text style={styles.statusTitle}>
-            {subscription.size.charAt(0).toUpperCase() + subscription.size.slice(1)} Box
+            {(subscription.size?.charAt(0)?.toUpperCase() || '') + (subscription.size?.slice(1) || '')} Box
           </Text>
           <Text style={styles.statusSubtitle}>
             {subscriptionBoxService.getTypeLabel(subscription.type)} delivery
@@ -421,7 +421,7 @@ export default function SubscriptionBoxScreen() {
             >
               <View style={styles.sizeInfo}>
                 <Text style={[styles.sizeName, { color: colors.text }]}>
-                  {size.charAt(0).toUpperCase() + size.slice(1)}
+                  {(size?.charAt(0)?.toUpperCase() || '') + (size?.slice(1) || '')}
                 </Text>
                 <Text style={[styles.sizeDescription, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
                   {subscriptionBoxService.getSizeDescription(size)}
@@ -574,7 +574,7 @@ export default function SubscriptionBoxScreen() {
         <View style={[styles.summaryCard, { backgroundColor: isDark ? colors.card : '#FFF' }]}>
           <View style={styles.summaryRow}>
             <Text style={[styles.summaryLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-              {subscriptionBoxService.getTypeLabel(selectedType)} • {selectedSize.charAt(0).toUpperCase() + selectedSize.slice(1)} Box
+              {subscriptionBoxService.getTypeLabel(selectedType)} • {(selectedSize?.charAt(0)?.toUpperCase() || '') + (selectedSize?.slice(1) || '')} Box
             </Text>
             <Text style={[styles.summaryPrice, { color: colors.text }]}>
               {subscriptionBoxService.formatPrice(getPrice())}
