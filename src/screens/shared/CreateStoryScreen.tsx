@@ -96,18 +96,17 @@ const CreateStoryScreen = () => {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [9, 16],
-      quality: 0.8,
-      videoMaxDuration: 15,
+      quality: 0.7,
     });
 
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
       setMediaUri(asset.uri);
-      setMediaType(asset.type === 'video' ? 'video' : 'image');
-      setStoryType(asset.type === 'video' ? 'video' : 'image');
+      setMediaType('image');
+      setStoryType('image');
     }
   };
 
@@ -120,18 +119,17 @@ const CreateStoryScreen = () => {
     }
 
     const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [9, 16],
-      quality: 0.8,
-      videoMaxDuration: 15,
+      quality: 0.7,
     });
 
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
       setMediaUri(asset.uri);
-      setMediaType(asset.type === 'video' ? 'video' : 'image');
-      setStoryType(asset.type === 'video' ? 'video' : 'image');
+      setMediaType('image');
+      setStoryType('image');
     }
   };
 
@@ -179,27 +177,42 @@ const CreateStoryScreen = () => {
       let thumbnailUrl: string | undefined;
 
       // Upload media if needed
-      if (mediaUri && (storyType === 'image' || storyType === 'video')) {
-        // Convert file URI to base64
-        const base64 = await FileSystem.readAsStringAsync(mediaUri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        
-        // Get file extension for proper MIME type
-        const extension = mediaUri.split('.').pop()?.toLowerCase() || 'jpg';
-        const mimeType = storyType === 'video' 
-          ? `video/${extension === 'mov' ? 'quicktime' : extension}` 
-          : `image/${extension === 'jpg' ? 'jpeg' : extension}`;
-        
-        const base64Data = `data:${mimeType};base64,${base64}`;
-        
-        const uploadResult = await uploadService.uploadImage(base64Data, 'stories');
-        if (uploadResult.success && uploadResult.data) {
-          uploadedMediaUrl = uploadResult.data.url;
-          thumbnailUrl = uploadResult.data.url; // Use same URL for thumbnail
-        } else {
-          throw new Error(uploadResult.error || 'Failed to upload media');
+      if (mediaUri && storyType === 'image') {
+        // Only support image uploads for now (videos require different handling)
+        try {
+          // Convert file URI to base64
+          const base64 = await FileSystem.readAsStringAsync(mediaUri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          
+          if (!base64) {
+            throw new Error('Failed to read image file');
+          }
+          
+          // Get file extension for proper MIME type
+          const extension = mediaUri.split('.').pop()?.toLowerCase() || 'jpg';
+          const mimeType = `image/${extension === 'jpg' ? 'jpeg' : extension}`;
+          
+          const base64Data = `data:${mimeType};base64,${base64}`;
+          
+          console.log('[CreateStory] Uploading image, size:', Math.round(base64Data.length / 1024), 'KB');
+          
+          const uploadResult = await uploadService.uploadImage(base64Data, 'stories');
+          if (uploadResult.success && uploadResult.data) {
+            uploadedMediaUrl = uploadResult.data.url;
+            thumbnailUrl = uploadResult.data.url; // Use same URL for thumbnail
+          } else {
+            throw new Error(uploadResult.error || 'Failed to upload image');
+          }
+        } catch (readError: any) {
+          console.error('[CreateStory] File read/upload error:', readError);
+          throw new Error(readError?.message || 'Failed to process image');
         }
+      } else if (mediaUri && storyType === 'video') {
+        // For videos, just use the local URI for now (video upload requires different handling)
+        Alert.alert('Coming Soon', 'Video stories will be available soon. Please use an image for now.');
+        setIsUploading(false);
+        return;
       }
 
       // Prepare story data
@@ -229,6 +242,7 @@ const CreateStoryScreen = () => {
       // Create story
       await createStoryMutation.mutateAsync(storyData);
     } catch (error: any) {
+      console.error('[CreateStory] Error:', error);
       Alert.alert('Error', error?.message || 'Failed to upload story');
     } finally {
       setIsUploading(false);
