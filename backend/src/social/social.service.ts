@@ -347,10 +347,12 @@ export class SocialService {
         // Group replies by parent comment
         replies.forEach(reply => {
           const parentId = reply.parentCommentId;
-          if (!repliesMap.has(parentId)) {
-            repliesMap.set(parentId, []);
+          if (parentId) {
+            if (!repliesMap.has(parentId)) {
+              repliesMap.set(parentId, []);
+            }
+            repliesMap.get(parentId)!.push(reply);
           }
-          repliesMap.get(parentId)!.push(reply);
         });
       }
       
