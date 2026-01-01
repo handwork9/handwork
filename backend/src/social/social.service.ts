@@ -291,12 +291,13 @@ export class SocialService {
   }
 
   async getPostComments(postId: string, page: number | string = 1, limit: number | string = 20): Promise<{ comments: PostComment[]; total: number }> {
+    // V2: Using query builder to select specific fields and avoid entity relation issues
     try {
       // Ensure page and limit are numbers
       const pageNum = Number(page) || 1;
       const limitNum = Number(limit) || 20;
       
-      console.log('Getting comments for post:', postId, 'page:', pageNum, 'limit:', limitNum);
+      console.log('[V2] Getting comments for post:', postId, 'page:', pageNum, 'limit:', limitNum);
       
       // Use query builder to select only needed user fields
       const [comments, total] = await this.commentRepository

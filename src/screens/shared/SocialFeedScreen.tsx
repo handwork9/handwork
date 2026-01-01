@@ -97,24 +97,47 @@ const CommentsModal = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
-  const { data: commentsData, isLoading, refetch } = useQuery({
+  const { data: commentsData, isLoading, refetch, error } = useQuery({
     queryKey: ['post-comments', post?.id],
-    queryFn: () => post ? socialService.getPostComments(post.id) : Promise.resolve({ comments: [], total: 0 }),
+    queryFn: async () => {
+      if (!post) return { comments: [], total: 0 };
+      console.log('Fetching comments for post:', post.id);
+      try {
+        const result = await socialService.getPostComments(post.id);
+        console.log('Comments fetched:', JSON.stringify(result, null, 2));
+        return result;
+      } catch (err: any) {
+        console.error('Error fetching comments:', err?.message, err?.response?.data);
+        Alert.alert('Fetch Error', err?.message || 'Failed to fetch comments');
+        throw err;
+      }
+    },
     enabled: visible && !!post,
   });
+
+  // Log any react-query error
+  if (error) {
+    console.error('React Query Error:', error);
+  }
+  console.log('CommentsData:', commentsData);
 
   const handleSubmitComment = async () => {
     if (!commentText.trim() || !post || isSubmitting) return;
 
+    console.log('Submitting comment for post:', post.id, 'content:', commentText.trim());
     setIsSubmitting(true);
     try {
-      await socialService.createComment(post.id, commentText.trim());
+      const result = await socialService.createComment(post.id, commentText.trim());
+      console.log('Comment created successfully:', result);
       setCommentText('');
       refetch();
       onCommentAdded();
     } catch (error: any) {
-      console.error('Comment error:', error?.response?.data || error?.message || error);
-      Alert.alert('Error', error?.response?.data?.message || 'Failed to post comment. Please try again.');
+      console.error('Comment error full:', JSON.stringify(error, null, 2));
+      console.error('Comment error response:', error?.response?.data);
+      console.error('Comment error message:', error?.message);
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to post comment. Please try again.';
+      Alert.alert('Error', errorMessage);
     } finally {
       setIsSubmitting(false);
     }
