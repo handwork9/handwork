@@ -128,14 +128,14 @@ const CommentsModal = ({
         ) : (
           <View style={[styles.commentAvatar, styles.commentAvatarPlaceholder]}>
             <Text style={styles.commentAvatarText}>
-              {item.user.firstName.charAt(0).toUpperCase()}
+              {item.user.name?.charAt(0).toUpperCase() || 'U'}
             </Text>
           </View>
         )}
         <View style={styles.commentContent}>
           <View style={styles.commentTextRow}>
             <Text style={[styles.commentUserName, { color: colors.text }]}>
-              {item.user.firstName} {item.user.lastName}
+              {item.user.name}
             </Text>
             <Text style={[styles.commentText, { color: colors.text }]}>
               {item.content}

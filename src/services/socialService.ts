@@ -37,8 +37,7 @@ export interface PostComment {
   userId: string;
   user: {
     id: string;
-    firstName: string;
-    lastName: string;
+    name: string;
     avatar?: string;
   };
   postId: string;

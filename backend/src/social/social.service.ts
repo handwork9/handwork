@@ -286,7 +286,7 @@ export class SocialService {
   async getPostComments(postId: string, page = 1, limit = 20): Promise<{ comments: PostComment[]; total: number }> {
     const [comments, total] = await this.commentRepository.findAndCount({
       where: { postId, parentCommentId: IsNull() }, // Only top-level comments
-      relations: ['user', 'replies', 'replies.user'],
+      relations: ['user'],
       order: { createdAt: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,
