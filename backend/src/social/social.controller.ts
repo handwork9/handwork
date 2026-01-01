@@ -134,6 +134,14 @@ export class SocialController {
     return this.socialService.getPostComments(id, page, limit);
   }
 
+  @Post('comments/:id/like')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Like a comment' })
+  @ApiResponse({ status: 200, description: 'Comment liked successfully' })
+  async likeComment(@Request() req: AuthenticatedRequest, @Param('id', ParseUUIDPipe) id: string) {
+    return this.socialService.likeComment(req.user.id, id);
+  }
+
   @Delete('comments/:id')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)

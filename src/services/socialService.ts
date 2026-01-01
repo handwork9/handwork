@@ -44,6 +44,8 @@ export interface PostComment {
   content: string;
   parentCommentId?: string;
   replies?: PostComment[];
+  likeCount?: number;
+  isLiked?: boolean;
   createdAt: string;
 }
 
@@ -216,6 +218,11 @@ class SocialService {
   async getPostComments(postId: string, page = 1, limit = 20): Promise<{ comments: PostComment[]; total: number }> {
     const response = await apiClient.get<ApiResponse<{ comments: PostComment[]; total: number }>>(`/social/posts/${postId}/comments`, { params: { page, limit } });
     return response.data || response as unknown as { comments: PostComment[]; total: number };
+  }
+
+  async likeComment(commentId: string): Promise<{ liked: boolean; likeCount: number }> {
+    const response = await apiClient.post<ApiResponse<{ liked: boolean; likeCount: number }>>(`/social/comments/${commentId}/like`);
+    return response.data || response as unknown as { liked: boolean; likeCount: number };
   }
 
   async deleteComment(commentId: string): Promise<void> {

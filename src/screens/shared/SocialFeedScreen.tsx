@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -80,7 +80,7 @@ const StoryCircle = ({
   );
 };
 
-// Comments Modal Component
+// Comments Modal Component - Instagram Style
 const CommentsModal = ({
   visible,
   onClose,
@@ -95,82 +95,183 @@ const CommentsModal = ({
   const { colors, isDark } = useTheme();
   const [commentText, setCommentText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<PostComment | null>(null);
+  const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set());
+  const [likedComments, setLikedComments] = useState<Set<string>>(new Set());
   const inputRef = useRef<TextInput>(null);
 
-  const { data: commentsData, isLoading, refetch, error } = useQuery({
+  const { data: commentsData, isLoading, refetch } = useQuery({
     queryKey: ['post-comments', post?.id],
     queryFn: async () => {
       if (!post) return { comments: [], total: 0 };
-      console.log('Fetching comments for post:', post.id);
-      try {
-        const result = await socialService.getPostComments(post.id);
-        console.log('Comments fetched:', JSON.stringify(result, null, 2));
-        return result;
-      } catch (err: any) {
-        console.error('Error fetching comments:', err?.message, err?.response?.data);
-        Alert.alert('Fetch Error', err?.message || 'Failed to fetch comments');
-        throw err;
-      }
+      const result = await socialService.getPostComments(post.id);
+      return result;
     },
     enabled: visible && !!post,
   });
 
-  // Log any react-query error
-  if (error) {
-    console.error('React Query Error:', error);
-  }
-  console.log('CommentsData:', commentsData);
+  // Reset reply state when modal closes
+  useEffect(() => {
+    if (!visible) {
+      setReplyingTo(null);
+      setCommentText('');
+    }
+  }, [visible]);
 
   const handleSubmitComment = async () => {
     if (!commentText.trim() || !post || isSubmitting) return;
 
-    console.log('Submitting comment for post:', post.id, 'content:', commentText.trim());
     setIsSubmitting(true);
     try {
-      const result = await socialService.createComment(post.id, commentText.trim());
-      console.log('Comment created successfully:', result);
+      await socialService.createComment(post.id, commentText.trim(), replyingTo?.id);
       setCommentText('');
+      setReplyingTo(null);
       refetch();
       onCommentAdded();
     } catch (error: any) {
-      console.error('Comment error full:', JSON.stringify(error, null, 2));
-      console.error('Comment error response:', error?.response?.data);
-      console.error('Comment error message:', error?.message);
-      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to post comment. Please try again.';
-      Alert.alert('Error', errorMessage);
+      Alert.alert('Error', error?.message || 'Failed to post comment');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const renderComment = ({ item }: { item: PostComment }) => (
-    <View style={[styles.commentItem, { borderBottomColor: isDark ? '#333' : '#eee' }]}>
-      <View style={styles.commentHeader}>
-        {item.user.avatar ? (
-          <Image source={{ uri: item.user.avatar }} style={styles.commentAvatar} />
-        ) : (
-          <View style={[styles.commentAvatar, styles.commentAvatarPlaceholder]}>
-            <Text style={styles.commentAvatarText}>
-              {item.user.name?.charAt(0).toUpperCase() || 'U'}
-            </Text>
+  const handleReply = (comment: PostComment) => {
+    setReplyingTo(comment);
+    setCommentText(`@${comment.user.name} `);
+    inputRef.current?.focus();
+  };
+
+  const handleLikeComment = async (commentId: string) => {
+    // Toggle like state locally for instant feedback
+    setLikedComments(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(commentId)) {
+        newSet.delete(commentId);
+      } else {
+        newSet.add(commentId);
+      }
+      return newSet;
+    });
+    
+    try {
+      await socialService.likeComment(commentId);
+      refetch();
+    } catch (error) {
+      // Revert on error
+      setLikedComments(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(commentId)) {
+          newSet.delete(commentId);
+        } else {
+          newSet.add(commentId);
+        }
+        return newSet;
+      });
+    }
+  };
+
+  const toggleReplies = (commentId: string) => {
+    setExpandedReplies(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(commentId)) {
+        newSet.delete(commentId);
+      } else {
+        newSet.add(commentId);
+      }
+      return newSet;
+    });
+  };
+
+  const cancelReply = () => {
+    setReplyingTo(null);
+    setCommentText('');
+  };
+
+  const CommentItem = ({ item, isReply = false }: { item: PostComment; isReply?: boolean }) => {
+    const isLiked = likedComments.has(item.id) || (item as any).isLiked;
+    const hasReplies = item.replies && item.replies.length > 0;
+    const showReplies = expandedReplies.has(item.id);
+
+    return (
+      <View style={[styles.commentItem, isReply && styles.replyItem]}>
+        <View style={styles.commentRow}>
+          {/* Avatar */}
+          {item.user.avatar ? (
+            <Image source={{ uri: item.user.avatar }} style={[styles.commentAvatar, isReply && styles.replyAvatar]} />
+          ) : (
+            <View style={[styles.commentAvatar, styles.commentAvatarPlaceholder, isReply && styles.replyAvatar]}>
+              <Text style={[styles.commentAvatarText, isReply && { fontSize: 10 }]}>
+                {item.user.name?.charAt(0).toUpperCase() || 'U'}
+              </Text>
+            </View>
+          )}
+
+          {/* Comment Content */}
+          <View style={styles.commentContentContainer}>
+            <View style={styles.commentBubble}>
+              <Text style={[styles.commentUserName, { color: colors.text }]}>
+                {item.user.name}
+              </Text>
+              <Text style={[styles.commentText, { color: colors.text }]}>
+                {item.content}
+              </Text>
+            </View>
+            
+            {/* Comment Actions */}
+            <View style={styles.commentActions}>
+              <Text style={[styles.commentTime, { color: colors.textSecondary }]}>
+                {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
+              </Text>
+              {(item.likeCount || 0) > 0 && (
+                <Text style={[styles.commentLikeCount, { color: colors.textSecondary }]}>
+                  {item.likeCount} {item.likeCount === 1 ? 'like' : 'likes'}
+                </Text>
+              )}
+              <TouchableOpacity onPress={() => handleReply(item)}>
+                <Text style={[styles.commentActionText, { color: colors.textSecondary }]}>
+                  Reply
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* View Replies Button */}
+            {hasReplies && !isReply && (
+              <TouchableOpacity 
+                style={styles.viewRepliesBtn}
+                onPress={() => toggleReplies(item.id)}
+              >
+                <View style={[styles.repliesLine, { backgroundColor: colors.textSecondary }]} />
+                <Text style={[styles.viewRepliesText, { color: colors.textSecondary }]}>
+                  {showReplies ? 'Hide replies' : `View ${item.replies!.length} ${item.replies!.length === 1 ? 'reply' : 'replies'}`}
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Nested Replies */}
+            {showReplies && hasReplies && (
+              <View style={styles.repliesContainer}>
+                {item.replies!.map(reply => (
+                  <CommentItem key={reply.id} item={reply} isReply={true} />
+                ))}
+              </View>
+            )}
           </View>
-        )}
-        <View style={styles.commentContent}>
-          <View style={styles.commentTextRow}>
-            <Text style={[styles.commentUserName, { color: colors.text }]}>
-              {item.user.name}
-            </Text>
-            <Text style={[styles.commentText, { color: colors.text }]}>
-              {item.content}
-            </Text>
-          </View>
-          <Text style={[styles.commentTime, { color: colors.textSecondary }]}>
-            {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
-          </Text>
+
+          {/* Like Button */}
+          <TouchableOpacity 
+            style={styles.commentLikeBtn}
+            onPress={() => handleLikeComment(item.id)}
+          >
+            <Ionicons 
+              name={isLiked ? 'heart' : 'heart-outline'} 
+              size={isReply ? 14 : 16} 
+              color={isLiked ? '#E74C3C' : colors.textSecondary} 
+            />
+          </TouchableOpacity>
         </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <Modal
@@ -203,7 +304,7 @@ const CommentsModal = ({
             <FlatList
               data={commentsData?.comments || []}
               keyExtractor={(item) => item.id}
-              renderItem={renderComment}
+              renderItem={({ item }) => <CommentItem item={item} />}
               contentContainerStyle={styles.commentsList}
               ListEmptyComponent={
                 <View style={styles.noCommentsContainer}>
@@ -216,12 +317,24 @@ const CommentsModal = ({
             />
           )}
 
+          {/* Reply indicator */}
+          {replyingTo && (
+            <View style={[styles.replyIndicator, { backgroundColor: isDark ? '#222' : '#f0f0f0' }]}>
+              <Text style={[styles.replyIndicatorText, { color: colors.textSecondary }]}>
+                Replying to <Text style={{ fontWeight: '600', color: colors.text }}>{replyingTo.user.name}</Text>
+              </Text>
+              <TouchableOpacity onPress={cancelReply}>
+                <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+          )}
+
           {/* Input */}
           <View style={[styles.commentInputContainer, { backgroundColor: colors.card, borderTopColor: isDark ? '#333' : '#eee' }]}>
             <TextInput
               ref={inputRef}
               style={[styles.commentInput, { color: colors.text, backgroundColor: isDark ? '#222' : '#f5f5f5' }]}
-              placeholder="Add a comment..."
+              placeholder={replyingTo ? `Reply to ${replyingTo.user.name}...` : "Add a comment..."}
               placeholderTextColor={colors.textSecondary}
               value={commentText}
               onChangeText={setCommentText}
@@ -363,6 +476,7 @@ const PostCard = ({
   onLike, 
   onComment, 
   onShare,
+  onSave,
   onProfilePress,
   onMorePress,
 }: { 
@@ -370,6 +484,7 @@ const PostCard = ({
   onLike: () => void;
   onComment: () => void;
   onShare: () => void;
+  onSave: () => void;
   onProfilePress: () => void;
   onMorePress: () => void;
 }) => {
@@ -507,7 +622,7 @@ const PostCard = ({
             <Ionicons name="paper-plane-outline" size={24} color={colors.text} />
           </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.actionBtn}>
+        <TouchableOpacity style={styles.actionBtn} onPress={onSave}>
           <Ionicons name="bookmark-outline" size={24} color={colors.text} />
         </TouchableOpacity>
       </View>
@@ -652,12 +767,17 @@ const SocialFeedScreen = () => {
     );
   };
 
+  const handleSavePost = (post: SocialPost) => {
+    Alert.alert('Coming Soon', 'Save posts feature will be available soon!');
+  };
+
   const renderPost = ({ item }: { item: SocialPost }) => (
     <PostCard
       post={item}
       onLike={() => likeMutation.mutate(item.id)}
       onComment={() => handleOpenComments(item)}
       onShare={() => handleShare(item)}
+      onSave={() => handleSavePost(item)}
       onProfilePress={() => navigation.navigate('FarmerProfile', { farmerId: item.farmerId })}
       onMorePress={() => handleOpenOptions(item)}
     />
@@ -1021,20 +1141,27 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.md,
   },
   commentItem: {
-    flexDirection: 'row',
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm,
-    borderBottomWidth: 1,
   },
-  commentHeader: {
+  replyItem: {
+    paddingLeft: 0,
+    paddingTop: SPACING.xs,
+  },
+  commentRow: {
     flexDirection: 'row',
-    flex: 1,
+    alignItems: 'flex-start',
   },
   commentAvatar: {
     width: 36,
     height: 36,
     borderRadius: 18,
     marginRight: SPACING.sm,
+  },
+  replyAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
   },
   commentAvatarPlaceholder: {
     backgroundColor: COLORS.primary,
@@ -1046,26 +1173,69 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.bold,
     fontSize: 14,
   },
-  commentContent: {
+  commentContentContainer: {
     flex: 1,
   },
-  commentTextRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  commentBubble: {
+    flex: 1,
   },
   commentUserName: {
     fontFamily: FONTS.semiBold,
     fontSize: FONT_SIZES.sm,
-    marginRight: SPACING.xs,
+    marginBottom: 2,
   },
   commentText: {
     fontSize: FONT_SIZES.sm,
-    flex: 1,
     lineHeight: 20,
+  },
+  commentActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+    gap: 12,
   },
   commentTime: {
     fontSize: FONT_SIZES.xs,
-    marginTop: 4,
+  },
+  commentLikeCount: {
+    fontSize: FONT_SIZES.xs,
+    fontFamily: FONTS.semiBold,
+  },
+  commentActionText: {
+    fontSize: FONT_SIZES.xs,
+    fontFamily: FONTS.semiBold,
+  },
+  commentLikeBtn: {
+    padding: SPACING.xs,
+    marginLeft: SPACING.sm,
+  },
+  viewRepliesBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: SPACING.sm,
+  },
+  repliesLine: {
+    width: 24,
+    height: 1,
+    marginRight: SPACING.sm,
+  },
+  viewRepliesText: {
+    fontSize: FONT_SIZES.xs,
+    fontFamily: FONTS.semiBold,
+  },
+  repliesContainer: {
+    marginTop: SPACING.xs,
+    marginLeft: SPACING.md,
+  },
+  replyIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+  },
+  replyIndicatorText: {
+    fontSize: FONT_SIZES.sm,
   },
   noCommentsContainer: {
     alignItems: 'center',
