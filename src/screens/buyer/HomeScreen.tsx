@@ -36,6 +36,7 @@ import { PRODUCT_CATEGORIES } from '../../constants/config';
 import { useTheme } from '../../context/ThemeContext';
 import { triggerHaptic, triggerSelectionHaptic, triggerSuccessHaptic } from '../../utils/haptics';
 import { getFirstValidImageUrl } from '../../utils/formatters';
+import FloatingSocialMenu from '../../components/common/FloatingSocialMenu';
 // Category illustrations
 import VegetablesIllustration from '../../assets/illustrations/categories/VegetablesIllustration';
 import FruitsIllustration from '../../assets/illustrations/categories/FruitsIllustration';
@@ -499,17 +500,6 @@ export default function HomeScreen() {
         </View>
         
         <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={[styles.headerIconButton, { backgroundColor: isDark ? '#2C2C2E' : '#F5F5F5' }]}
-            onPress={() => {
-              triggerHaptic();
-              navigation.navigate('SocialFeed');
-            }}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="people-outline" size={26} color={colors.text} />
-          </TouchableOpacity>
-          
           <TouchableOpacity
             style={[styles.headerIconButton, { backgroundColor: isDark ? '#2C2C2E' : '#F5F5F5' }]}
             onPress={() => {
@@ -1873,6 +1863,7 @@ export default function HomeScreen() {
         }
       />
       {renderPreviewModal()}
+      <FloatingSocialMenu isFarmer={false} />
     </View>
   );
 }

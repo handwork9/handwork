@@ -7,6 +7,7 @@ export { default as DocumentUpload } from './DocumentUpload';
 export { default as MessageBanner } from './MessageBanner';
 export { default as LiveSupportBanner } from './LiveSupportBanner';
 export { default as LiveSupportFAB } from './LiveSupportFAB';
+export { default as FloatingSocialMenu } from './FloatingSocialMenu';
 export { TouchableHaptic } from './TouchableHaptic';
 export { default as CategoryIllustration } from './CategoryIllustration';
 export { default as SubcategoryIllustration } from './SubcategoryIllustration';

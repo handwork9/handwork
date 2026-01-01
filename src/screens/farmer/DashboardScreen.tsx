@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, FONTS } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
 import { LoadingState, OrderCard } from '../../components/common';
+import FloatingSocialMenu from '../../components/common/FloatingSocialMenu';
 import { formatNumber, formatCurrency } from '../../utils/formatters';
 import { orderService } from '../../services/orderService';
 import { productService } from '../../services/productService';
@@ -522,20 +523,6 @@ export default function DashboardScreen() {
         <View style={styles.headerRow}>
           <Text style={[styles.fixedHeaderTitle, { color: colors.text }]}>{t('farmer.dashboard')}</Text>
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TouchableOpacity
-              style={[styles.notificationButton, { backgroundColor: isDark ? '#2C2C2E' : '#DEDEE0' }]}
-              onPress={() => navigation.navigate('SocialFeed')}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="people-outline" size={26} color={colors.text} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.notificationButton, { backgroundColor: isDark ? '#2C2C2E' : '#DEDEE0' }]}
-              onPress={() => navigation.navigate('GoLive')}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="videocam-outline" size={26} color={COLORS.primary} />
-            </TouchableOpacity>
             <TouchableOpacity
               style={[styles.notificationButton, { backgroundColor: isDark ? '#2C2C2E' : '#DEDEE0' }]}
               onPress={() => navigation.navigate('Notifications')}
@@ -1491,6 +1478,9 @@ export default function DashboardScreen() {
           </View>
         )}
       </TouchableOpacity>
+
+      {/* Floating Social Menu */}
+      <FloatingSocialMenu isFarmer={true} />
     </View>
   );
 }

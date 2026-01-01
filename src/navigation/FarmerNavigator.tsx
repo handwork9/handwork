@@ -14,6 +14,7 @@ import { useNotificationSocket } from '../hooks/useNotificationSocket';
 
 // Farmer Screens
 import DashboardScreen from '../screens/farmer/DashboardScreen';
+import FarmerProfileScreen from '../screens/buyer/FarmerProfileScreen';
 import ProductsScreen from '../screens/farmer/ProductsScreen';
 import AddEditProductScreen from '../screens/farmer/AddEditProductScreen';
 import FarmerOrdersScreen from '../screens/farmer/FarmerOrdersScreen';
@@ -572,6 +573,11 @@ export function FarmerNavigator() {
       <Stack.Screen
         name="GoLive"
         component={GoLiveScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="FarmerProfile"
+        component={FarmerProfileScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

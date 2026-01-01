@@ -10,10 +10,11 @@ import {
   PanResponder,
   StatusBar,
   FlatList,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { formatDistanceToNow } from 'date-fns';
@@ -182,7 +183,20 @@ const StoryView = ({
 const StoriesScreen = () => {
   const navigation = useNavigation();
   const route = useRoute<RouteProp<{ params: StoriesRouteParams }, 'params'>>();
-  const { stories, initialIndex } = route.params;
+  
+  // Get params safely - they might be undefined if navigating directly
+  const routeStories = route.params?.stories;
+  const initialIndex = route.params?.initialIndex ?? 0;
+
+  // Fetch stories if not provided via route params
+  const { data: fetchedStories, isLoading } = useQuery({
+    queryKey: ['stories-all'],
+    queryFn: () => socialService.getStories(),
+    enabled: !routeStories, // Only fetch if no stories provided
+  });
+
+  // Use route stories if provided, otherwise use fetched stories
+  const stories = routeStories || fetchedStories || [];
 
   const [currentFarmerIndex, setCurrentFarmerIndex] = useState(initialIndex);
   const [currentStoryIndex, setCurrentStoryIndex] = useState(0);
@@ -192,7 +206,7 @@ const StoriesScreen = () => {
   const flatListRef = useRef<FlatList>(null);
 
   const currentFarmer = stories[currentFarmerIndex];
-  const currentStory = currentFarmer?.stories[currentStoryIndex];
+  const currentStory = currentFarmer?.stories?.[currentStoryIndex];
 
   useEffect(() => {
     StatusBar.setHidden(true);
@@ -200,6 +214,8 @@ const StoriesScreen = () => {
   }, []);
 
   const goToNextStory = useCallback(() => {
+    if (!currentFarmer?.stories) return;
+    
     if (currentStoryIndex < currentFarmer.stories.length - 1) {
       setCurrentStoryIndex(currentStoryIndex + 1);
       setProgress(0);
@@ -210,7 +226,7 @@ const StoriesScreen = () => {
     } else {
       navigation.goBack();
     }
-  }, [currentStoryIndex, currentFarmerIndex, currentFarmer?.stories.length, stories.length]);
+  }, [currentStoryIndex, currentFarmerIndex, currentFarmer?.stories?.length, stories.length]);
 
   const goToPreviousStory = useCallback(() => {
     if (currentStoryIndex > 0) {
@@ -219,7 +235,7 @@ const StoriesScreen = () => {
     } else if (currentFarmerIndex > 0) {
       const prevFarmer = stories[currentFarmerIndex - 1];
       setCurrentFarmerIndex(currentFarmerIndex - 1);
-      setCurrentStoryIndex(prevFarmer.stories.length - 1);
+      setCurrentStoryIndex(prevFarmer?.stories?.length ? prevFarmer.stories.length - 1 : 0);
       setProgress(0);
     }
   }, [currentStoryIndex, currentFarmerIndex, stories]);
@@ -277,7 +293,38 @@ const StoriesScreen = () => {
   });
 
   if (!currentFarmer || !currentStory) {
-    return null;
+    // Loading state
+    if (isLoading) {
+      return (
+        <View style={[styles.container, styles.centerContent]}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={styles.loadingText}>Loading stories...</Text>
+        </View>
+      );
+    }
+    
+    // No stories available
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <SafeAreaView style={styles.emptyHeader}>
+          <TouchableOpacity 
+            style={styles.closeButton} 
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="close" size={28} color="white" />
+          </TouchableOpacity>
+        </SafeAreaView>
+        <Ionicons name="images-outline" size={64} color="#666" />
+        <Text style={styles.emptyTitle}>No Stories Yet</Text>
+        <Text style={styles.emptySubtitle}>Check back later for new stories from farmers</Text>
+        <TouchableOpacity 
+          style={styles.goBackButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.goBackButtonText}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
   }
 
   return (
@@ -504,6 +551,56 @@ const styles = StyleSheet.create({
   },
   sendBtn: {
     padding: SPACING.xs,
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: 'white',
+    marginTop: SPACING.md,
+    fontFamily: FONTS.medium,
+  },
+  emptyHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    padding: SPACING.md,
+  },
+  closeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyTitle: {
+    color: 'white',
+    fontSize: FONT_SIZES.xl,
+    fontFamily: FONTS.bold,
+    marginTop: SPACING.md,
+  },
+  emptySubtitle: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: FONT_SIZES.md,
+    fontFamily: FONTS.regular,
+    textAlign: 'center',
+    marginTop: SPACING.sm,
+    paddingHorizontal: SPACING.xl,
+  },
+  goBackButton: {
+    marginTop: SPACING.xl,
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SPACING.xl,
+    paddingVertical: SPACING.md,
+    borderRadius: 25,
+  },
+  goBackButtonText: {
+    color: 'white',
+    fontFamily: FONTS.semiBold,
+    fontSize: FONT_SIZES.md,
   },
 });
 

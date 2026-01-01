@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, Not, LessThan, MoreThan } from 'typeorm';
+import { Repository, In, Not, LessThan, MoreThan, IsNull } from 'typeorm';
 import { SocialPost, PostType, PostVisibility } from '../database/entities/social-post.entity';
 import { PostLike } from '../database/entities/post-like.entity';
 import { PostComment } from '../database/entities/post-comment.entity';
@@ -275,12 +275,17 @@ export class SocialService {
     post.commentCount += 1;
     await this.postRepository.save(post);
 
-    return savedComment;
+    // Return comment with user relation
+    const commentWithUser = await this.commentRepository.findOne({
+      where: { id: savedComment.id },
+      relations: ['user'],
+    });
+    return commentWithUser!;
   }
 
   async getPostComments(postId: string, page = 1, limit = 20): Promise<{ comments: PostComment[]; total: number }> {
     const [comments, total] = await this.commentRepository.findAndCount({
-      where: { postId, parentCommentId: undefined }, // Only top-level comments
+      where: { postId, parentCommentId: IsNull() }, // Only top-level comments
       relations: ['user', 'replies', 'replies.user'],
       order: { createdAt: 'DESC' },
       skip: (page - 1) * limit,

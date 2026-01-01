@@ -4,6 +4,7 @@ import {
   PrimaryGeneratedColumn,
   CreateDateColumn,
   ManyToOne,
+  OneToMany,
   JoinColumn,
   Index,
 } from 'typeorm';
@@ -35,11 +36,14 @@ export class PostComment {
   content: string;
 
   @Column('uuid', { nullable: true })
-  parentCommentId: string; // For reply threads
+  parentCommentId: string | null; // For reply threads
 
-  @ManyToOne(() => PostComment, { nullable: true, onDelete: 'CASCADE' })
+  @ManyToOne(() => PostComment, (comment) => comment.replies, { nullable: true, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'parentCommentId' })
   parentComment: PostComment;
+
+  @OneToMany(() => PostComment, (comment) => comment.parentComment)
+  replies: PostComment[];
 
   @Column({ type: 'int', default: 0 })
   likeCount: number;

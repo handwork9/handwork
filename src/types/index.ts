@@ -680,6 +680,7 @@ export type FarmerStackParamList = {
   Stories: { initialFarmerIndex?: number };
   LiveStreams: undefined;
   GoLive: undefined;
+  FarmerProfile: { farmerId: string };
 };
 
 export type RiderTabParamList = {
