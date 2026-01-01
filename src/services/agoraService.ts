@@ -1,11 +1,27 @@
-import createAgoraRtcEngine, {
-  IRtcEngine,
-  ChannelProfileType,
-  ClientRoleType,
-  VideoSourceType,
-  RenderModeType,
-} from 'react-native-agora';
 import { Platform, PermissionsAndroid, Alert } from 'react-native';
+
+// Dynamic import for Agora - only available in development builds, not Expo Go
+let createAgoraRtcEngine: any = null;
+let ChannelProfileType: any = { ChannelProfileLiveBroadcasting: 1 };
+let ClientRoleType: any = { ClientRoleBroadcaster: 1, ClientRoleAudience: 2 };
+let VideoSourceType: any = { VideoSourceCamera: 0 };
+let RenderModeType: any = { RenderModeHidden: 1 };
+let IRtcEngine: any = null;
+
+let isAgoraAvailable = false;
+try {
+  const agoraModule = require('react-native-agora');
+  createAgoraRtcEngine = agoraModule.default;
+  ChannelProfileType = agoraModule.ChannelProfileType;
+  ClientRoleType = agoraModule.ClientRoleType;
+  VideoSourceType = agoraModule.VideoSourceType;
+  RenderModeType = agoraModule.RenderModeType;
+  isAgoraAvailable = true;
+  console.log('[AgoraService] Agora SDK loaded successfully');
+} catch (error) {
+  console.warn('[AgoraService] Agora SDK not available - live streaming disabled in Expo Go');
+  isAgoraAvailable = false;
+}
 import { AGORA_CONFIG } from '../constants/config';
 import apiClient from './apiClient';
 
@@ -24,7 +40,7 @@ export interface StreamStats {
 }
 
 class AgoraService {
-  private engine: IRtcEngine | null = null;
+  private engine: any = null;
   private isInitialized = false;
   private currentChannel: string | null = null;
   private localUid: number = 0;
@@ -68,9 +84,22 @@ class AgoraService {
   }
 
   /**
+   * Check if Agora is available
+   */
+  isAvailable(): boolean {
+    return isAgoraAvailable;
+  }
+
+  /**
    * Initialize the Agora engine
    */
   async initialize(): Promise<boolean> {
+    if (!isAgoraAvailable) {
+      console.warn('[AgoraService] Agora not available - cannot initialize');
+      this.onError?.('Live streaming requires a development build. Please use "npx expo run:ios" or "npx expo run:android" instead of Expo Go.');
+      return false;
+    }
+
     if (this.isInitialized && this.engine) {
       return true;
     }
@@ -119,28 +148,28 @@ class AgoraService {
   private setupEventHandlers() {
     if (!this.engine) return;
 
-    this.engine.addListener('onJoinChannelSuccess', (connection, elapsed) => {
+    this.engine.addListener('onJoinChannelSuccess', (connection: any, elapsed: any) => {
       console.log('[Agora] Join channel success:', connection.channelId, elapsed);
       this.localUid = connection.localUid || 0;
       this.onJoinSuccess?.(connection.channelId || '', connection.localUid || 0);
     });
 
-    this.engine.addListener('onUserJoined', (connection, remoteUid, elapsed) => {
+    this.engine.addListener('onUserJoined', (connection: any, remoteUid: any, elapsed: any) => {
       console.log('[Agora] Remote user joined:', remoteUid);
       this.onUserJoined?.(remoteUid);
     });
 
-    this.engine.addListener('onUserOffline', (connection, remoteUid, reason) => {
+    this.engine.addListener('onUserOffline', (connection: any, remoteUid: any, reason: any) => {
       console.log('[Agora] Remote user left:', remoteUid, reason);
       this.onUserLeft?.(remoteUid);
     });
 
-    this.engine.addListener('onError', (err, msg) => {
+    this.engine.addListener('onError', (err: any, msg: any) => {
       console.error('[Agora] Error:', err, msg);
       this.onError?.(`Error ${err}: ${msg}`);
     });
 
-    this.engine.addListener('onRemoteVideoStateChanged', (connection, remoteUid, state, reason, elapsed) => {
+    this.engine.addListener('onRemoteVideoStateChanged', (connection: any, remoteUid: any, state: any, reason: any, elapsed: any) => {
       console.log('[Agora] Remote video state changed:', remoteUid, state);
       this.onRemoteVideoStateChanged?.(remoteUid, state);
     });
@@ -357,7 +386,7 @@ class AgoraService {
   /**
    * Get the Agora engine instance
    */
-  getEngine(): IRtcEngine | null {
+  getEngine(): any {
     return this.engine;
   }
 
@@ -427,3 +456,6 @@ class AgoraService {
 
 export const agoraService = new AgoraService();
 export default agoraService;
+
+// Export availability check for UI components
+export const isAgoraServiceAvailable = (): boolean => isAgoraAvailable;

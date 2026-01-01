@@ -21,9 +21,11 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Haptics from 'expo-haptics';
-import callService, { CallStatus } from '../../services/callService';
-import { FONTS, FONT_SIZES, SPACING } from '../../constants/theme';
+import { FONTS, FONT_SIZES, SPACING, COLORS } from '../../constants/theme';
 import { BuyerStackParamList } from '../../types';
+import callService, { isCallServiceAvailable } from '../../services/callService';
+
+export type CallStatus = 'idle' | 'calling' | 'ringing' | 'connected' | 'ended';
 
 type VoiceCallScreenNavigationProp = NativeStackNavigationProp<BuyerStackParamList, 'VoiceCall'>;
 type VoiceCallScreenRouteProp = RouteProp<BuyerStackParamList, 'VoiceCall'>;
@@ -85,6 +87,29 @@ export default function VoiceCallScreen() {
   const route = useRoute<VoiceCallScreenRouteProp>();
 
   const { userId, userName, userAvatar, isIncoming = false, channelName } = route.params || {};
+
+  // Show message if Agora is not available (Expo Go)
+  if (!isCallServiceAvailable()) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="#1A1A2E" />
+        <SafeAreaView style={styles.unavailableContainer}>
+          <MaterialCommunityIcons name="phone-off" size={80} color="#FFF" />
+          <Text style={styles.unavailableTitle}>Voice Calls Unavailable</Text>
+          <Text style={styles.unavailableText}>
+            Voice calls require a development build.{'\n'}
+            They are not supported in Expo Go.
+          </Text>
+          <TouchableOpacity 
+            style={styles.unavailableButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.unavailableButtonText}>Go Back</Text>
+          </TouchableOpacity>
+        </SafeAreaView>
+      </View>
+    );
+  }
 
   const [callStatus, setCallStatus] = useState<CallStatus>('idle');
   const [duration, setDuration] = useState(0);
@@ -391,5 +416,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     paddingHorizontal: SPACING.xl,
+  },
+  // Unavailable styles (Expo Go)
+  unavailableContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: SPACING.xl,
+  },
+  unavailableTitle: {
+    fontSize: 24,
+    fontFamily: FONTS.bold,
+    color: '#FFF',
+    marginTop: SPACING.lg,
+    marginBottom: SPACING.md,
+  },
+  unavailableText: {
+    fontSize: FONT_SIZES.md,
+    fontFamily: FONTS.regular,
+    color: 'rgba(255, 255, 255, 0.7)',
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  unavailableButton: {
+    marginTop: SPACING.xl,
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SPACING.xl,
+    paddingVertical: SPACING.md,
+    borderRadius: 25,
+  },
+  unavailableButtonText: {
+    fontSize: FONT_SIZES.md,
+    fontFamily: FONTS.semiBold,
+    color: '#FFF',
   },
 });

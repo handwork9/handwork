@@ -43,6 +43,41 @@ export const UsersIllustration: React.FC<IllustrationProps> = ({
   </Svg>
 );
 
+// Quick Actions Illustration - Lightning bolt with grid
+export const QuickActionsIllustration: React.FC<IllustrationProps> = ({
+  width = 48,
+  height = 48,
+  color = '#7C3AED'
+}) => (
+  <Svg width={width} height={height} viewBox="0 0 48 48" fill="none">
+    <Defs>
+      <LinearGradient id="quickGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+        <Stop offset="0%" stopColor={color} />
+        <Stop offset="100%" stopColor="#5B21B6" />
+      </LinearGradient>
+      <LinearGradient id="quickBoltGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <Stop offset="0%" stopColor="#FFC107" />
+        <Stop offset="100%" stopColor="#FF9800" />
+      </LinearGradient>
+    </Defs>
+    {/* Grid squares */}
+    <Rect x="4" y="4" width="16" height="16" rx="4" fill="url(#quickGrad1)" opacity="0.9" />
+    <Rect x="24" y="4" width="16" height="16" rx="4" fill={color} opacity="0.6" />
+    <Rect x="4" y="24" width="16" height="16" rx="4" fill={color} opacity="0.6" />
+    <Rect x="24" y="24" width="16" height="16" rx="4" fill={color} opacity="0.4" />
+    {/* Icons in grid */}
+    <Path d="M10 12H16M12 10V14" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" />
+    <Circle cx="32" cy="12" r="4" stroke="#FFFFFF" strokeWidth="2" fill="none" />
+    <Path d="M10 32L14 36L18 30" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M30 30H34M30 34H36" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" />
+    {/* Lightning bolt overlay */}
+    <Path
+      d="M38 2L28 18H36L26 38L34 20H26L38 2Z"
+      fill="url(#quickBoltGrad)"
+    />
+  </Svg>
+);
+
 // Shopping/Orders Illustration
 export const OrdersIllustration: React.FC<IllustrationProps> = ({
   width = 48,

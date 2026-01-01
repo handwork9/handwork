@@ -151,8 +151,15 @@ export const groupBuyingService = {
   // Get all active group buys
   async getAll(params?: QueryGroupBuysParams): Promise<{ groupBuys: GroupBuy[]; total: number }> {
     const response = await apiClient.get<any>('/group-buying', { params });
-    const unwrapped = unwrap<any>(response);
-    return { groupBuys: unwrapped.data || unwrapped, total: unwrapped.total || 0 };
+    // Backend returns { success, data, total } where data is the array of group buys
+    if (response && response.success !== undefined) {
+      // Response is wrapped - extract data and total
+      const data = response.data;
+      const total = response.total ?? 0;
+      return { groupBuys: Array.isArray(data) ? data : [], total };
+    }
+    // Response is already unwrapped
+    return { groupBuys: Array.isArray(response) ? response : [], total: 0 };
   },
 
   // Get my group buys
@@ -163,6 +170,9 @@ export const groupBuyingService = {
 
   // Get group buy by ID
   async getById(id: string): Promise<GroupBuy> {
+    if (!id) {
+      throw new Error('Group buy ID is required');
+    }
     const response = await apiClient.get<any>(`/group-buying/${id}`);
     return unwrap<GroupBuy>(response);
   },
@@ -207,6 +217,9 @@ export const groupBuyingService = {
 
   // Get participants
   async getParticipants(id: string): Promise<GroupBuyParticipant[]> {
+    if (!id) {
+      return [];
+    }
     const response = await apiClient.get<any>(`/group-buying/${id}/participants`);
     return unwrap<GroupBuyParticipant[]>(response);
   },

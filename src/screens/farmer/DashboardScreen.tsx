@@ -45,6 +45,7 @@ import {
   EarningsCardIllustration,
   TopSellersIllustration,
   RecentOrdersIllustration,
+  QuickActionsIllustration,
 } from '../../assets/illustrations/stats';
 
 const { width } = Dimensions.get('window');
@@ -170,35 +171,20 @@ const StatCard = ({ icon, label, value, color, trend, onPress, isDark, cardBg, t
           { 
             backgroundColor: cardBg, 
             transform: [{ scale: scaleAnim }],
-            borderColor: isDark ? 'transparent' : `${color}15`,
-            borderWidth: isDark ? 0 : 1,
+            borderColor: isDark ? 'transparent' : '#F0F0F0',
+            borderWidth: 1,
           }
         ]}
       >
-        {/* Gradient Header with Illustration */}
-        <LinearGradient
-          colors={gradientColors}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.statCardHeader}
-        >
-          {/* Decorative circles */}
-          <View style={[styles.statCardDecoCircle1, { backgroundColor: 'rgba(255,255,255,0.1)' }]} />
-          <View style={[styles.statCardDecoCircle2, { backgroundColor: 'rgba(255,255,255,0.08)' }]} />
-          
+        {/* Header with Illustration */}
+        <View style={[styles.statCardHeader, { backgroundColor: `${color}12` }]}>
           <View style={styles.statCardIllustrationContainer}>
             {renderIllustration()}
           </View>
-        </LinearGradient>
-        
-        {/* Clean separator to prevent color bleeding */}
-        <View style={[styles.statCardSeparator, { backgroundColor: isDark ? cardBg : '#FFFFFF' }]} />
+        </View>
         
         {/* Content */}
         <View style={[styles.statCardContent, { backgroundColor: isDark ? cardBg : '#FFFFFF' }]}>
-          {/* Subtle accent bar */}
-          <View style={[styles.statCardAccentBar, { backgroundColor: color }]} />
-          
           <Text style={[styles.statValue, { color: isDark ? '#FFFFFF' : color }]}>
             {formatNumber(value)}
           </Text>
@@ -439,6 +425,7 @@ export default function DashboardScreen() {
   }, [rawOrders]);
   
   const rawProducts = (productsData?.products || []).filter((p: any) => p != null && p.id != null);
+  const productsTotalCount = productsData?.total || 0; // Get total from API response
   const products = useMemo(() => {
     const seen = new Set<string>();
     return rawProducts.filter((product: any) => {
@@ -459,7 +446,7 @@ export default function DashboardScreen() {
     o?.status === 'picked_up' || o?.status === 'in_transit' || 
     o?.status === 'ready_for_pickup'
   ).length;
-  const totalProducts = products.length;
+  const totalProducts = productsTotalCount || products.length; // Use API total, fallback to array length
   const lowStockProducts = products.filter((p: Product) => p?.stock < 10).length;
 
   // Get trend data from dashboard stats
@@ -550,120 +537,83 @@ export default function DashboardScreen() {
         {/* Activation Banner */}
         {needsActivation && (
           <TouchableOpacity
-            style={styles.activationBanner}
+            style={[styles.activationBanner, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}
             onPress={() => navigation.navigate('FarmerActivation')}
             activeOpacity={0.9}
           >
-            <LinearGradient
-              colors={['#FF6B35', '#FF8C42']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.activationGradient}
-            >
-              <View style={styles.activationContent}>
-                <View style={styles.activationIconContainer}>
-                  <Ionicons name="lock-closed" size={24} color={COLORS.white} />
-                </View>
-                <View style={styles.activationTextContainer}>
-                  <Text style={styles.activationTitle}>Activate Your Account</Text>
-                  <Text style={styles.activationSubtitle}>
-                    Pay ₦25,000 one-time fee to start listing products
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={24} color={COLORS.white} />
+            <View style={styles.activationContent}>
+              <View style={[styles.activationIconContainer, { backgroundColor: '#FFF3E0' }]}>
+                <Ionicons name="lock-closed" size={20} color="#FF6B35" />
               </View>
-            </LinearGradient>
+              <View style={styles.activationTextContainer}>
+                <Text style={[styles.activationTitle, { color: colors.text }]}>Activate Your Account</Text>
+                <Text style={[styles.activationSubtitle, { color: colors.textSecondary }]}>
+                  Pay ₦25,000 one-time fee to start listing
+                </Text>
+              </View>
+              <View style={[styles.activationArrow, { backgroundColor: '#FF6B3515' }]}>
+                <Ionicons name="chevron-forward" size={18} color="#FF6B35" />
+              </View>
+            </View>
           </TouchableOpacity>
         )}
 
-        {/* Verified Seller Banner - Enhanced Premium Card */}
+        {/* Verified Seller Banner - Clean Card */}
         {!user?.isPremium && !needsActivation && !verifiedBannerDismissed && (
           <View style={styles.section}>
-            <View style={styles.verifiedEnhancedCard}>
+            <View style={[styles.verifiedCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
               <TouchableOpacity
                 onPress={() => navigation.navigate('FarmerSubscription')}
                 activeOpacity={0.9}
               >
-                <LinearGradient
-                  colors={['#0EA5E9', '#0284C7', '#0369A1']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.verifiedEnhancedGradient}
+                {/* Close Button */}
+                <TouchableOpacity
+                  style={[styles.verifiedCloseButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#F5F5F5' }]}
+                  onPress={handleDismissVerifiedBanner}
+                  hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
                 >
-                  {/* Close Button */}
-                  <TouchableOpacity
-                    style={styles.verifiedCloseButton}
-                    onPress={handleDismissVerifiedBanner}
-                    hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
-                  >
-                    <Ionicons name="close" size={18} color="rgba(255, 255, 255, 0.8)" />
-                  </TouchableOpacity>
-                  
-                  {/* Decorative elements */}
-                  <View style={styles.verifiedDecorContainer}>
-                    <View style={[styles.verifiedDecorCircle, { top: -30, right: -20, width: 100, height: 100, opacity: 0.1 }]} />
-                    <View style={[styles.verifiedDecorCircle, { bottom: -40, left: 30, width: 80, height: 80, opacity: 0.08 }]} />
-                    <View style={[styles.verifiedDecorCircle, { top: 20, left: -30, width: 60, height: 60, opacity: 0.12 }]} />
-                  </View>
-                  
-                  <View style={styles.verifiedEnhancedContent}>
-                    <View style={styles.verifiedEnhancedLeft}>
-                      {/* Premium Badge */}
-                      <View style={styles.verifiedPremiumBadge}>
-                        <Ionicons name="star" size={10} color="#FFD700" />
-                        <Text style={styles.verifiedPremiumBadgeText}>PREMIUM</Text>
+                  <Ionicons name="close" size={16} color={colors.textSecondary} />
+                </TouchableOpacity>
+                
+                <View style={styles.verifiedCardContent}>
+                  <View style={styles.verifiedCardLeft}>
+                    {/* Premium Badge */}
+                    <View style={[styles.verifiedPremiumBadge, { backgroundColor: '#E3F2FD' }]}>
+                      <Ionicons name="star" size={10} color="#1976D2" />
+                      <Text style={[styles.verifiedPremiumBadgeText, { color: '#1976D2' }]}>PREMIUM</Text>
+                    </View>
+                    
+                    <Text style={[styles.verifiedCardTitle, { color: colors.text }]}>Become a Verified Seller</Text>
+                    <Text style={[styles.verifiedCardSubtitle, { color: colors.textSecondary }]}>
+                      Stand out and build customer trust
+                    </Text>
+                    
+                    {/* Benefits */}
+                    <View style={styles.verifiedBenefitsRow}>
+                      <View style={[styles.verifiedBenefitItem, { backgroundColor: '#E3F2FD' }]}>
+                        <Ionicons name="checkmark-circle" size={12} color="#1976D2" />
+                        <Text style={[styles.verifiedBenefitText, { color: '#1976D2' }]}>Blue Badge</Text>
                       </View>
-                      
-                      <Text style={styles.verifiedEnhancedTitle}>Become a Verified Seller</Text>
-                      <Text style={styles.verifiedEnhancedSubtitle}>
-                        Stand out from the crowd and build customer trust
-                      </Text>
-                      
-                      {/* Benefits */}
-                      <View style={styles.verifiedBenefitsRow}>
-                        <View style={styles.verifiedBenefitItem}>
-                          <Ionicons name="checkmark-circle" size={14} color="#7DD3FC" />
-                          <Text style={styles.verifiedBenefitText}>Blue Badge</Text>
-                        </View>
-                        <View style={styles.verifiedBenefitItem}>
-                          <Ionicons name="trending-up" size={14} color="#7DD3FC" />
-                          <Text style={styles.verifiedBenefitText}>Top Search</Text>
-                        </View>
-                        <View style={styles.verifiedBenefitItem}>
-                          <Ionicons name="shield-checkmark" size={14} color="#7DD3FC" />
-                          <Text style={styles.verifiedBenefitText}>Trust Badge</Text>
-                        </View>
-                      </View>
-                      
-                      {/* CTA Button */}
-                      <View style={styles.verifiedCtaButton}>
-                        <Text style={styles.verifiedCtaText}>Get Verified</Text>
-                        <Ionicons name="arrow-forward" size={16} color="#0284C7" />
+                      <View style={[styles.verifiedBenefitItem, { backgroundColor: '#E8F5E9' }]}>
+                        <Ionicons name="trending-up" size={12} color="#388E3C" />
+                        <Text style={[styles.verifiedBenefitText, { color: '#388E3C' }]}>Top Search</Text>
                       </View>
                     </View>
                     
-                    {/* Illustration */}
-                    <View style={styles.verifiedIllustrationContainer}>
-                      <View style={styles.verifiedBadgeIllustration}>
-                        <LinearGradient
-                          colors={['#38BDF8', '#0EA5E9']}
-                          style={styles.verifiedBadgeOuter}
-                        >
-                          <View style={styles.verifiedBadgeInner}>
-                            <Ionicons name="checkmark" size={32} color="#FFFFFF" />
-                          </View>
-                        </LinearGradient>
-                        {/* Sparkles */}
-                        <View style={[styles.verifiedSparkle, { top: -5, right: 5 }]}>
-                          <Ionicons name="sparkles" size={16} color="#FFD700" />
-                        </View>
-                        <View style={[styles.verifiedSparkle, { bottom: 0, left: -8 }]}>
-                          <Ionicons name="star" size={12} color="#FFD700" />
-                        </View>
-                      </View>
+                    {/* CTA Button */}
+                    <View style={[styles.verifiedCtaButton, { backgroundColor: '#0284C7' }]}>
+                      <Text style={[styles.verifiedCtaText, { color: '#FFFFFF' }]}>Get Verified</Text>
+                      <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
                     </View>
                   </View>
-                </LinearGradient>
+                  
+                  {/* Illustration */}
+                  <View style={styles.verifiedIllustrationContainer}>
+                    <View style={[styles.verifiedBadgeIllustration, { backgroundColor: '#E3F2FD' }]}>
+                      <Ionicons name="shield-checkmark" size={36} color="#0284C7" />
+                    </View>
+                  </View>
+                </View>
               </TouchableOpacity>
             </View>
           </View>
@@ -691,7 +641,7 @@ export default function DashboardScreen() {
           ))}
         </View>
 
-        {/* Revenue Goal Progress Card */}
+        {/* Revenue Goal Progress Card - Clean Style */}
         {revenueGoal > 0 && (
           <View style={styles.section}>
             <TouchableOpacity 
@@ -699,26 +649,28 @@ export default function DashboardScreen() {
               onPress={() => navigation.navigate('Analytics')}
               activeOpacity={0.8}
             >
-              <LinearGradient
-                colors={goalProgress >= 100 ? ['#4CAF50', '#66BB6A'] : ['#667eea', '#764ba2']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.goalGradientHeader}
-              >
-                <View style={styles.goalHeaderContent}>
-                  <View>
-                    <Text style={styles.goalTitle}>
-                      {goalProgress >= 100 ? '🎉 Goal Achieved!' : 'Monthly Revenue Goal'}
-                    </Text>
-                    <Text style={styles.goalSubtitle}>
-                      {formatCurrency(currentRevenue)} of {formatCurrency(revenueGoal)}
-                    </Text>
-                  </View>
-                  <View style={styles.goalPercentContainer}>
-                    <Text style={styles.goalPercent}>{Math.round(goalProgress)}%</Text>
-                  </View>
+              <View style={[styles.goalCardHeader, { borderBottomColor: isDark ? '#2D2D2D' : '#F0F0F0' }]}>
+                <View style={[styles.goalIconBadge, { backgroundColor: goalProgress >= 100 ? '#E8F5E9' : '#EDE7F6' }]}>
+                  <Ionicons 
+                    name={goalProgress >= 100 ? 'trophy' : 'flag'} 
+                    size={18} 
+                    color={goalProgress >= 100 ? '#4CAF50' : '#667eea'} 
+                  />
                 </View>
-              </LinearGradient>
+                <View style={styles.goalCardHeaderInfo}>
+                  <Text style={[styles.goalCardTitle, { color: colors.text }]}>
+                    {goalProgress >= 100 ? '🎉 Goal Achieved!' : 'Monthly Revenue Goal'}
+                  </Text>
+                  <Text style={[styles.goalCardSubtitle, { color: colors.textSecondary }]}>
+                    {formatCurrency(currentRevenue)} of {formatCurrency(revenueGoal)}
+                  </Text>
+                </View>
+                <View style={[styles.goalPercentBadge, { backgroundColor: goalProgress >= 100 ? '#E8F5E9' : '#EDE7F6' }]}>
+                  <Text style={[styles.goalPercentText, { color: goalProgress >= 100 ? '#4CAF50' : '#667eea' }]}>
+                    {Math.round(goalProgress)}%
+                  </Text>
+                </View>
+              </View>
               <View style={styles.goalProgressSection}>
                 <AnimatedProgressBar 
                   progress={goalProgress} 
@@ -769,131 +721,88 @@ export default function DashboardScreen() {
           </View>
         )}
 
-        {/* Earnings Summary - Enhanced Media Card */}
+        {/* Earnings Summary - Clean White Card */}
         <View style={styles.section}>
           <View style={[styles.earningsMediaCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
-            {/* Gradient Header with Illustration */}
-            <LinearGradient
-              colors={['#10B981', '#059669', '#047857']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.earningsMediaHeader}
-            >
-              {/* Decorative circles */}
-              <View style={[styles.earningsDecorCircle, { top: -20, right: -20, opacity: 0.1 }]} />
-              <View style={[styles.earningsDecorCircle, { bottom: -30, left: 60, opacity: 0.08, width: 80, height: 80 }]} />
-              
-              <View style={styles.earningsHeaderContent}>
-                <View style={styles.earningsHeaderLeft}>
-                  <Text style={styles.earningsHeaderLabel}>Total Earnings</Text>
-                  <Text style={styles.earningsHeaderValue}>{formatCurrency(monthEarnings)}</Text>
-                  <View style={styles.earningsHeaderBadge}>
-                    <Ionicons name="trending-up" size={12} color="#FFFFFF" />
-                    <Text style={styles.earningsHeaderBadgeText}>This Month</Text>
-                  </View>
-                </View>
-                <View style={styles.earningsIllustrationContainer}>
-                  <EarningsCardIllustration width={85} height={85} />
-                </View>
+            {/* Header with Illustration */}
+            <View style={[styles.earningsCardHeader, { borderBottomColor: isDark ? '#2D2D2D' : '#F0F0F0' }]}>
+              <View style={styles.earningsHeaderLeft}>
+                <Text style={[styles.earningsCardTitle, { color: colors.text }]}>Earnings Summary</Text>
+                <Text style={[styles.earningsCardSubtitle, { color: colors.textSecondary }]}>Track your income</Text>
               </View>
-            </LinearGradient>
+              <View style={styles.earningsIllustrationContainer}>
+                <EarningsCardIllustration width={70} height={70} />
+              </View>
+            </View>
+            
+            {/* Main Earnings Amount */}
+            <View style={styles.earningsMainAmount}>
+              <View style={[styles.earningsAmountBadge, { backgroundColor: '#ECFDF5' }]}>
+                <Ionicons name="trending-up" size={14} color="#10B981" />
+              </View>
+              <View>
+                <Text style={[styles.earningsAmountLabel, { color: colors.textSecondary }]}>This Month</Text>
+                <Text style={[styles.earningsAmountValue, { color: colors.text }]}>{formatCurrency(monthEarnings)}</Text>
+              </View>
+            </View>
             
             {/* Stats Grid */}
-            <View style={styles.earningsStatsGrid}>
+            <View style={[styles.earningsStatsGrid, { borderTopColor: isDark ? '#2D2D2D' : '#F0F0F0' }]}>
               {/* Today's Earnings */}
-              <TouchableOpacity 
-                style={[styles.earningsStatItem, { borderRightWidth: 1, borderRightColor: isDark ? '#3D3D3D' : '#F0F0F0' }]}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.earningsStatIconBg, { backgroundColor: '#ECFDF5' }]}>
-                  <View style={[styles.earningsStatIconInner, { backgroundColor: '#10B981' }]}>
-                    <Ionicons name="today" size={16} color="#FFFFFF" />
-                  </View>
+              <View style={[styles.earningsStatItem, { borderRightWidth: 1, borderRightColor: isDark ? '#2D2D2D' : '#F0F0F0' }]}>
+                <View style={[styles.earningsStatIcon, { backgroundColor: '#FEF3C7' }]}>
+                  <Ionicons name="today" size={16} color="#F59E0B" />
                 </View>
                 <Text style={[styles.earningsStatLabel, { color: colors.textSecondary }]}>Today</Text>
                 <Text style={[styles.earningsStatValue, { color: colors.text }]}>{formatCurrency(todayEarnings)}</Text>
-                <View style={styles.earningsStatTrend}>
-                  <Ionicons name="caret-up" size={10} color="#10B981" />
-                  <Text style={[styles.earningsStatTrendText, { color: '#10B981' }]}>Active</Text>
-                </View>
-              </TouchableOpacity>
+              </View>
               
               {/* This Week */}
-              <TouchableOpacity 
-                style={styles.earningsStatItem}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.earningsStatIconBg, { backgroundColor: '#EFF6FF' }]}>
-                  <View style={[styles.earningsStatIconInner, { backgroundColor: '#3B82F6' }]}>
-                    <Ionicons name="calendar" size={16} color="#FFFFFF" />
-                  </View>
+              <View style={styles.earningsStatItem}>
+                <View style={[styles.earningsStatIcon, { backgroundColor: '#EFF6FF' }]}>
+                  <Ionicons name="calendar" size={16} color="#3B82F6" />
                 </View>
                 <Text style={[styles.earningsStatLabel, { color: colors.textSecondary }]}>This Week</Text>
                 <Text style={[styles.earningsStatValue, { color: colors.text }]}>{formatCurrency(weekEarnings)}</Text>
-                <View style={styles.earningsStatTrend}>
-                  <Ionicons name="trending-up" size={10} color="#3B82F6" />
-                  <Text style={[styles.earningsStatTrendText, { color: '#3B82F6' }]}>+12%</Text>
-                </View>
-              </TouchableOpacity>
+              </View>
             </View>
             
             {/* Withdraw CTA */}
             <TouchableOpacity 
-              style={styles.earningsWithdrawCta}
+              style={[styles.earningsWithdrawBtn, { backgroundColor: '#10B981' }]}
               onPress={() => navigation.navigate('Withdraw')}
-              activeOpacity={0.7}
+              activeOpacity={0.8}
             >
-              <LinearGradient
-                colors={['#10B981', '#059669']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.earningsWithdrawGradient}
-              >
-                <View style={styles.earningsWithdrawContent}>
-                  <Ionicons name="wallet-outline" size={18} color="#FFFFFF" />
-                  <Text style={styles.earningsWithdrawText}>Withdraw Funds</Text>
-                </View>
-                <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-              </LinearGradient>
+              <Ionicons name="wallet-outline" size={18} color="#FFFFFF" />
+              <Text style={styles.earningsWithdrawText}>Withdraw Funds</Text>
+              <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Peak Hours Widget - Enhanced Media Card */}
+        {/* Peak Hours Widget - Clean White Card */}
         {peakHoursData && peakHoursData.length > 0 && (
           <View style={styles.section}>
-            {/* Enhanced Media Card */}
             <View style={[styles.peakHoursEnhancedCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
-              {/* Premium Gradient Header */}
-              <LinearGradient
-                colors={['#8B5CF6', '#7C3AED', '#6D28D9']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.peakHoursEnhancedHeader}
-              >
-                {/* Decorative Elements */}
-                <View style={[styles.peakHoursDecorCircle, { top: -30, right: -30, opacity: 0.1 }]} />
-                <View style={[styles.peakHoursDecorCircle, { bottom: -40, left: 40, width: 100, height: 100, opacity: 0.08 }]} />
-                <View style={[styles.peakHoursDecorDot, { top: 20, right: 80 }]} />
-                <View style={[styles.peakHoursDecorDot, { bottom: 25, left: 120, width: 6, height: 6 }]} />
-                
-                <View style={styles.peakHoursEnhancedHeaderContent}>
-                  <View style={styles.peakHoursEnhancedHeaderLeft}>
-                    <View style={styles.peakHoursEnhancedBadge}>
-                      <Ionicons name="analytics" size={12} color="#FFFFFF" />
-                      <Text style={styles.peakHoursEnhancedBadgeText}>INSIGHTS</Text>
+              {/* Header with Illustration */}
+              <View style={[styles.peakHoursCardHeader, { borderBottomColor: isDark ? '#2D2D2D' : '#F0F0F0' }]}>
+                <View style={styles.peakHoursHeaderLeft}>
+                  <View style={styles.peakHoursLabelRow}>
+                    <View style={[styles.peakHoursInsightBadge, { backgroundColor: '#F3E8FF' }]}>
+                      <Ionicons name="analytics" size={12} color="#8B5CF6" />
+                      <Text style={styles.peakHoursInsightText}>INSIGHTS</Text>
                     </View>
-                    <Text style={styles.peakHoursEnhancedTitle}>Peak Selling Hours</Text>
-                    <Text style={styles.peakHoursEnhancedSubtitle}>Maximize your sales potential</Text>
                   </View>
-                  <View style={styles.peakHoursEnhancedIllustration}>
-                    <PeakHoursIllustration width={85} height={85} />
-                  </View>
+                  <Text style={[styles.peakHoursCardTitle, { color: colors.text }]}>Peak Selling Hours</Text>
+                  <Text style={[styles.peakHoursCardSubtitle, { color: colors.textSecondary }]}>Maximize your sales</Text>
                 </View>
-              </LinearGradient>
+                <View style={styles.peakHoursIllustration}>
+                  <PeakHoursIllustration width={70} height={70} />
+                </View>
+              </View>
               
               {/* Stats Summary Bar */}
-              <View style={[styles.peakHoursSummaryBar, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.05)' }]}>
+              <View style={[styles.peakHoursSummaryBar, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.08)' : '#FAFAFA' }]}>
                 <View style={styles.peakHoursSummaryItem}>
                   <Text style={[styles.peakHoursSummaryValue, { color: colors.text }]}>
                     {peakHoursData.reduce((sum: number, p: any) => sum + (p.orders || 0), 0)}
@@ -910,66 +819,46 @@ export default function DashboardScreen() {
               </View>
               
               {/* Peak Hours List */}
-              <View style={styles.peakHoursEnhancedBody}>
+              <View style={styles.peakHoursListBody}>
                 {peakHoursData.slice(0, 3).map((peak: any, index: number) => {
                   const hour = peak.hour;
                   const period = hour >= 12 ? 'PM' : 'AM';
                   const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
                   const maxRevenue = Math.max(...peakHoursData.slice(0, 3).map((p: any) => p.revenue || 0));
                   const barWidth = maxRevenue > 0 ? ((peak.revenue || 0) / maxRevenue) * 100 : 0;
-                  const rankGradients: [string, string][] = [
-                    ['#FFD700', '#FFA000'],
-                    ['#C0C0C0', '#9E9E9E'],
-                    ['#CD7F32', '#A0522D']
-                  ];
+                  const rankColors = ['#FFB300', '#94A3B8', '#CD7F32'];
                   const rankIcons = ['trophy', 'medal', 'ribbon'] as const;
                   
                   return (
                     <View 
                       key={index} 
                       style={[
-                        styles.peakHoursEnhancedItem,
-                        index < 2 && { borderBottomWidth: 1, borderBottomColor: isDark ? '#3D3D3D' : '#F0F0F0' }
+                        styles.peakHoursListItem,
+                        index < 2 && { borderBottomWidth: 1, borderBottomColor: isDark ? '#2D2D2D' : '#F0F0F0' }
                       ]}
                     >
-                      {/* Rank Badge */}
-                      <View style={styles.peakHoursEnhancedRankContainer}>
-                        <LinearGradient
-                          colors={rankGradients[index]}
-                          style={styles.peakHoursEnhancedRankBadge}
-                        >
-                          <Ionicons name={rankIcons[index]} size={14} color="#FFFFFF" />
-                        </LinearGradient>
-                        <Text style={[styles.peakHoursEnhancedRankLabel, { color: colors.textSecondary }]}>
-                          #{index + 1}
-                        </Text>
+                      {/* Rank */}
+                      <View style={[styles.peakHoursRankIcon, { backgroundColor: `${rankColors[index]}20` }]}>
+                        <Ionicons name={rankIcons[index]} size={16} color={rankColors[index]} />
                       </View>
                       
                       {/* Time & Orders */}
-                      <View style={styles.peakHoursEnhancedTimeContainer}>
-                        <Text style={[styles.peakHoursEnhancedTime, { color: colors.text }]}>
+                      <View style={styles.peakHoursTimeInfo}>
+                        <Text style={[styles.peakHoursTime, { color: colors.text }]}>
                           {displayHour}:00 {period}
                         </Text>
-                        <View style={styles.peakHoursEnhancedOrdersBadge}>
-                          <Ionicons name="bag-handle" size={10} color="#8B5CF6" />
-                          <Text style={styles.peakHoursEnhancedOrdersText}>
-                            {peak.orders || 0} orders
-                          </Text>
-                        </View>
+                        <Text style={[styles.peakHoursOrders, { color: colors.textSecondary }]}>
+                          {peak.orders || 0} orders
+                        </Text>
                       </View>
                       
                       {/* Revenue & Progress */}
-                      <View style={styles.peakHoursEnhancedRevenueContainer}>
-                        <Text style={[styles.peakHoursEnhancedRevenue, { color: colors.text }]}>
+                      <View style={styles.peakHoursRevenueInfo}>
+                        <Text style={[styles.peakHoursRevenue, { color: colors.text }]}>
                           {formatCurrency(peak.revenue || 0)}
                         </Text>
-                        <View style={[styles.peakHoursEnhancedProgressBg, { backgroundColor: isDark ? '#3D3D3D' : '#F0F0F0' }]}>
-                          <LinearGradient
-                            colors={rankGradients[index]}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={[styles.peakHoursEnhancedProgressBar, { width: `${barWidth}%` }]}
-                          />
+                        <View style={[styles.peakHoursProgressBg, { backgroundColor: isDark ? '#2D2D2D' : '#F0F0F0' }]}>
+                          <View style={[styles.peakHoursProgressBar, { width: `${barWidth}%`, backgroundColor: rankColors[index] }]} />
                         </View>
                       </View>
                     </View>
@@ -978,64 +867,41 @@ export default function DashboardScreen() {
               </View>
               
               {/* Pro Tip Footer */}
-              <View style={[styles.peakHoursEnhancedFooter, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.08)' : 'rgba(139, 92, 246, 0.04)' }]}>
-                <View style={styles.peakHoursEnhancedTipIcon}>
-                  <Ionicons name="bulb" size={16} color="#8B5CF6" />
+              <View style={[styles.peakHoursFooter, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.06)' : '#F9FAFB' }]}>
+                <View style={[styles.peakHoursTipIcon, { backgroundColor: '#F3E8FF' }]}>
+                  <Ionicons name="bulb" size={14} color="#8B5CF6" />
                 </View>
-                <View style={styles.peakHoursEnhancedTipContent}>
-                  <Text style={[styles.peakHoursEnhancedTipTitle, { color: colors.text }]}>Pro Tip</Text>
-                  <Text style={[styles.peakHoursEnhancedTipText, { color: colors.textSecondary }]}>
-                    Run flash sales during peak hours to maximize conversions!
+                <View style={styles.peakHoursTipContent}>
+                  <Text style={[styles.peakHoursTipText, { color: colors.textSecondary }]}>
+                    Run flash sales during peak hours to boost conversions!
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
               </View>
             </View>
           </View>
         )}
 
-        {/* Top Selling Products - Enhanced Media Card */}
+        {/* Top Selling Products - Clean White Card */}
         {topProducts.length > 0 && (
           <View style={styles.section}>
-            <View style={styles.topSellersEnhancedCard}>
-              {/* Gradient Header with Trophy Illustration */}
-              <LinearGradient
-                colors={['#FFB300', '#FF8F00', '#E65100']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.topSellersHeader}
-              >
-                {/* Decorative elements */}
-                <View style={styles.topSellersHeaderDecor}>
-                  <View style={[styles.topSellersCircle, { top: -20, right: -10, width: 80, height: 80, opacity: 0.1 }]} />
-                  <View style={[styles.topSellersCircle, { bottom: -30, left: 20, width: 60, height: 60, opacity: 0.08 }]} />
-                  <View style={[styles.topSellersCircle, { top: 30, left: -20, width: 40, height: 40, opacity: 0.15 }]} />
-                </View>
-                
-                <View style={styles.topSellersHeaderContent}>
-                  <View style={styles.topSellersHeaderLeft}>
-                    <View style={styles.topSellersBadge}>
-                      <Ionicons name="trophy" size={14} color="#FFD700" />
-                      <Text style={styles.topSellersBadgeText}>TOP PERFORMERS</Text>
-                    </View>
-                    <Text style={styles.topSellersTitle}>Best Sellers</Text>
-                    <Text style={styles.topSellersSubtitle}>Your highest performing products this month</Text>
-                    <TouchableOpacity 
-                      style={styles.topSellersViewAllBtn}
-                      onPress={() => navigation.navigate('TopProducts')}
-                    >
-                      <Text style={styles.topSellersViewAllText}>View Analytics</Text>
-                      <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
-                    </TouchableOpacity>
+            <View style={[styles.topSellersCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+              {/* Header */}
+              <View style={[styles.topSellersCardHeader, { borderBottomColor: isDark ? '#2D2D2D' : '#F0F0F0' }]}>
+                <View style={styles.topSellersHeaderLeft}>
+                  <View style={[styles.topSellersBadge, { backgroundColor: '#FFF3E0' }]}>
+                    <Ionicons name="trophy" size={12} color="#FF8F00" />
+                    <Text style={[styles.topSellersBadgeText, { color: '#FF8F00' }]}>TOP PERFORMERS</Text>
                   </View>
-                  <View style={styles.topSellersIllustrationWrapper}>
-                    <TopSellersIllustration width={90} height={90} />
-                  </View>
+                  <Text style={[styles.topSellersCardTitle, { color: colors.text }]}>Best Sellers</Text>
+                  <Text style={[styles.topSellersCardSubtitle, { color: colors.textSecondary }]}>Highest performing products</Text>
                 </View>
-              </LinearGradient>
+                <View style={styles.topSellersIllustrationWrapper}>
+                  <TopSellersIllustration width={65} height={65} />
+                </View>
+              </View>
               
               {/* Products List */}
-              <View style={[styles.topSellersProductsList, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+              <View style={styles.topSellersProductsList}>
                 {topProducts.slice(0, 3).map((product: any, index: number) => {
                   if (!product || !product.id) return null;
                   
@@ -1155,51 +1021,30 @@ export default function DashboardScreen() {
           </View>
         )}
 
-        {/* Recent Orders - Enhanced Media Card */}
+        {/* Recent Orders - Clean White Card */}
         <View style={styles.section}>
-          <View style={styles.recentOrdersEnhancedCard}>
-            {/* Gradient Header with Illustration */}
-            <LinearGradient
-              colors={['#1E88E5', '#1565C0', '#0D47A1']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.recentOrdersHeader}
-            >
-              {/* Decorative elements */}
-              <View style={styles.recentOrdersHeaderDecor}>
-                <View style={[styles.recentOrdersCircle, { top: -15, right: 30, width: 70, height: 70, opacity: 0.1 }]} />
-                <View style={[styles.recentOrdersCircle, { bottom: -25, left: 10, width: 50, height: 50, opacity: 0.08 }]} />
-                <View style={[styles.recentOrdersCircle, { top: 20, left: -15, width: 35, height: 35, opacity: 0.12 }]} />
-              </View>
-              
-              <View style={styles.recentOrdersHeaderContent}>
-                <View style={styles.recentOrdersHeaderLeft}>
-                  <View style={styles.recentOrdersBadge}>
-                    <Ionicons name="time" size={12} color="#64B5F6" />
-                    <Text style={styles.recentOrdersBadgeText}>LATEST ACTIVITY</Text>
-                  </View>
-                  <Text style={styles.recentOrdersTitle}>Recent Orders</Text>
-                  <Text style={styles.recentOrdersSubtitle}>
-                    {orders.length > 0 
-                      ? `${orders.length} order${orders.length > 1 ? 's' : ''} in queue`
-                      : 'No pending orders'}
-                  </Text>
-                  <TouchableOpacity 
-                    style={styles.recentOrdersViewAllBtn}
-                    onPress={() => navigation.navigate('FarmerOrders')}
-                  >
-                    <Text style={styles.recentOrdersViewAllText}>View All Orders</Text>
-                    <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
-                  </TouchableOpacity>
+          <View style={[styles.recentOrdersCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+            {/* Header */}
+            <View style={[styles.recentOrdersCardHeader, { borderBottomColor: isDark ? '#2D2D2D' : '#F0F0F0' }]}>
+              <View style={styles.recentOrdersHeaderLeft}>
+                <View style={[styles.recentOrdersBadge, { backgroundColor: '#E3F2FD' }]}>
+                  <Ionicons name="time" size={12} color="#1976D2" />
+                  <Text style={[styles.recentOrdersBadgeText, { color: '#1976D2' }]}>LATEST ACTIVITY</Text>
                 </View>
-                <View style={styles.recentOrdersIllustrationWrapper}>
-                  <RecentOrdersIllustration width={85} height={85} />
-                </View>
+                <Text style={[styles.recentOrdersCardTitle, { color: colors.text }]}>Recent Orders</Text>
+                <Text style={[styles.recentOrdersCardSubtitle, { color: colors.textSecondary }]}>
+                  {orders.length > 0 
+                    ? `${orders.length} order${orders.length > 1 ? 's' : ''} in queue`
+                    : 'No pending orders'}
+                </Text>
               </View>
-            </LinearGradient>
+              <View style={styles.recentOrdersIllustrationWrapper}>
+                <RecentOrdersIllustration width={65} height={65} />
+              </View>
+            </View>
             
             {/* Orders List */}
-            <View style={[styles.recentOrdersList, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+            <View style={styles.recentOrdersList}>
               {orders.length > 0 ? (
                 orders.slice(0, 3).filter((order): order is Order => order != null && order.id != null).map((order: Order, index: number) => {
                   const statusConfig: Record<string, { color: string; bgColor: string; icon: string }> = {
@@ -1326,34 +1171,26 @@ export default function DashboardScreen() {
           </View>
         )}
 
-        {/* Quick Actions - Enhanced Grid Style */}
+        {/* Quick Actions - Clean Card Style */}
         <View style={styles.section}>
-          <View style={styles.quickActionsEnhancedCard}>
+          <View style={[styles.quickActionsCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
             {/* Header */}
-            <LinearGradient
-              colors={['#6366F1', '#8B5CF6', '#A855F7']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.quickActionsHeader}
-            >
-              {/* Decorative elements */}
-              <View style={styles.quickActionsHeaderDecor}>
-                <View style={[styles.quickActionsCircle, { top: -10, right: 40, width: 60, height: 60, opacity: 0.1 }]} />
-                <View style={[styles.quickActionsCircle, { bottom: -20, left: 20, width: 40, height: 40, opacity: 0.08 }]} />
-              </View>
-              
-              <View style={styles.quickActionsHeaderContent}>
-                <View style={styles.quickActionsBadge}>
-                  <Ionicons name="flash" size={12} color="#FFD700" />
-                  <Text style={styles.quickActionsBadgeText}>SHORTCUTS</Text>
+            <View style={[styles.quickActionsCardHeader, { borderBottomColor: isDark ? '#2D2D2D' : '#F0F0F0' }]}>
+              <View style={styles.quickActionsHeaderLeft}>
+                <View style={[styles.quickActionsBadge, { backgroundColor: '#EDE7F6' }]}>
+                  <Ionicons name="flash" size={10} color="#7C3AED" />
+                  <Text style={[styles.quickActionsBadgeText, { color: '#7C3AED' }]}>SHORTCUTS</Text>
                 </View>
-                <Text style={styles.quickActionsTitle}>Quick Actions</Text>
-                <Text style={styles.quickActionsSubtitle}>Manage your farm with one tap</Text>
+                <Text style={[styles.quickActionsCardTitle, { color: colors.text }]}>Quick Actions</Text>
+                <Text style={[styles.quickActionsCardSubtitle, { color: colors.textSecondary }]}>Manage your farm with one tap</Text>
               </View>
-            </LinearGradient>
+              <View style={styles.quickActionsIllustrationWrapper}>
+                <QuickActionsIllustration width={65} height={65} />
+              </View>
+            </View>
             
             {/* Actions Grid */}
-            <View style={[styles.quickActionsGrid, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+            <View style={styles.quickActionsGrid}>
               {/* Row 1 */}
               <View style={styles.quickActionsRow}>
                 {/* Add Product */}
@@ -1362,12 +1199,9 @@ export default function DashboardScreen() {
                   onPress={() => navigation.navigate('AddProduct')}
                   activeOpacity={0.7}
                 >
-                  <LinearGradient
-                    colors={['#4CAF50', '#2E7D32']}
-                    style={styles.quickActionIconGradient}
-                  >
-                    <Ionicons name="add-circle" size={24} color="#FFFFFF" />
-                  </LinearGradient>
+                  <View style={[styles.quickActionIconClean, { backgroundColor: '#E8F5E9' }]}>
+                    <Ionicons name="add-circle" size={22} color="#4CAF50" />
+                  </View>
                   <Text style={[styles.quickActionLabel, { color: colors.text }]}>Add Product</Text>
                   <Text style={[styles.quickActionHint, { color: colors.textSecondary }]}>New listing</Text>
                 </TouchableOpacity>
@@ -1378,12 +1212,9 @@ export default function DashboardScreen() {
                   onPress={() => navigation.navigate('FarmerOrders')}
                   activeOpacity={0.7}
                 >
-                  <LinearGradient
-                    colors={['#2196F3', '#1565C0']}
-                    style={styles.quickActionIconGradient}
-                  >
-                    <Ionicons name="clipboard" size={22} color="#FFFFFF" />
-                  </LinearGradient>
+                  <View style={[styles.quickActionIconClean, { backgroundColor: '#E3F2FD' }]}>
+                    <Ionicons name="clipboard" size={20} color="#1976D2" />
+                  </View>
                   <Text style={[styles.quickActionLabel, { color: colors.text }]}>Orders</Text>
                   <Text style={[styles.quickActionHint, { color: colors.textSecondary }]}>View all</Text>
                 </TouchableOpacity>
@@ -1394,12 +1225,9 @@ export default function DashboardScreen() {
                   onPress={() => navigation.navigate('Withdraw')}
                   activeOpacity={0.7}
                 >
-                  <LinearGradient
-                    colors={['#FF9800', '#F57C00']}
-                    style={styles.quickActionIconGradient}
-                  >
-                    <Ionicons name="wallet" size={22} color="#FFFFFF" />
-                  </LinearGradient>
+                  <View style={[styles.quickActionIconClean, { backgroundColor: '#FFF3E0' }]}>
+                    <Ionicons name="wallet" size={20} color="#F57C00" />
+                  </View>
                   <Text style={[styles.quickActionLabel, { color: colors.text }]}>Withdraw</Text>
                   <Text style={[styles.quickActionHint, { color: colors.textSecondary }]}>Get paid</Text>
                 </TouchableOpacity>
@@ -1416,12 +1244,9 @@ export default function DashboardScreen() {
                   onPress={() => navigation.navigate('Analytics')}
                   activeOpacity={0.7}
                 >
-                  <LinearGradient
-                    colors={['#9C27B0', '#7B1FA2']}
-                    style={styles.quickActionIconGradient}
-                  >
-                    <Ionicons name="stats-chart" size={22} color="#FFFFFF" />
-                  </LinearGradient>
+                  <View style={[styles.quickActionIconClean, { backgroundColor: '#F3E5F5' }]}>
+                    <Ionicons name="stats-chart" size={20} color="#8E24AA" />
+                  </View>
                   <Text style={[styles.quickActionLabel, { color: colors.text }]}>Analytics</Text>
                   <Text style={[styles.quickActionHint, { color: colors.textSecondary }]}>Insights</Text>
                 </TouchableOpacity>
@@ -1432,12 +1257,9 @@ export default function DashboardScreen() {
                   onPress={() => navigation.navigate('FarmerProducts')}
                   activeOpacity={0.7}
                 >
-                  <LinearGradient
-                    colors={['#00BCD4', '#0097A7']}
-                    style={styles.quickActionIconGradient}
-                  >
-                    <Ionicons name="leaf" size={22} color="#FFFFFF" />
-                  </LinearGradient>
+                  <View style={[styles.quickActionIconClean, { backgroundColor: '#E0F7FA' }]}>
+                    <Ionicons name="leaf" size={20} color="#00ACC1" />
+                  </View>
                   <Text style={[styles.quickActionLabel, { color: colors.text }]}>Products</Text>
                   <Text style={[styles.quickActionHint, { color: colors.textSecondary }]}>Manage</Text>
                 </TouchableOpacity>
@@ -1448,12 +1270,9 @@ export default function DashboardScreen() {
                   onPress={() => navigation.navigate('LiveChat' as any)}
                   activeOpacity={0.7}
                 >
-                  <LinearGradient
-                    colors={['#E91E63', '#C2185B']}
-                    style={styles.quickActionIconGradient}
-                  >
-                    <Ionicons name="headset" size={22} color="#FFFFFF" />
-                  </LinearGradient>
+                  <View style={[styles.quickActionIconClean, { backgroundColor: '#FCE4EC' }]}>
+                    <Ionicons name="headset" size={20} color="#D81B60" />
+                  </View>
                   <Text style={[styles.quickActionLabel, { color: colors.text }]}>Support</Text>
                   <Text style={[styles.quickActionHint, { color: colors.textSecondary }]}>Get help</Text>
                 </TouchableOpacity>
@@ -1560,23 +1379,27 @@ const styles = StyleSheet.create({
   statCard: {
     width: CARD_WIDTH,
     backgroundColor: COLORS.surface,
-    borderRadius: 20,
+    borderRadius: 12,
     marginBottom: SPACING.md,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
     shadowRadius: 8,
-    elevation: 6,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.04)',
   },
   statCardHeader: {
-    paddingVertical: SPACING.lg,
+    paddingVertical: SPACING.md,
     paddingHorizontal: SPACING.md,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 110,
+    minHeight: 90,
     position: 'relative',
     overflow: 'hidden',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.04)',
   },
   statCardDecoCircle1: {
     position: 'absolute',
@@ -1604,8 +1427,9 @@ const styles = StyleSheet.create({
     marginTop: -1,
   },
   statCardContent: {
-    padding: SPACING.md,
+    padding: SPACING.sm,
     paddingTop: SPACING.sm,
+    paddingBottom: SPACING.md,
     alignItems: 'center',
     position: 'relative',
   },
@@ -1614,19 +1438,19 @@ const styles = StyleSheet.create({
     top: 0,
     left: SPACING.lg,
     right: SPACING.lg,
-    height: 3,
-    borderRadius: 2,
-    opacity: 0.3,
+    height: 2,
+    borderRadius: 1,
+    opacity: 0.2,
   },
   statValue: {
-    fontSize: 32,
-    fontWeight: '800',
+    fontSize: 26,
+    fontWeight: '700',
     fontFamily: FONTS.bold,
     letterSpacing: -0.5,
     marginTop: SPACING.xs,
   },
   statLabel: {
-    fontSize: FONT_SIZES.sm,
+    fontSize: 12,
     fontFamily: FONTS.medium,
     color: COLORS.textSecondary,
     marginTop: 4,
@@ -1665,93 +1489,84 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontFamily: FONTS.semiBold,
   },
-  // Enhanced Earnings Media Card Styles
+  // Clean Earnings Card Styles
   earningsMediaCard: {
-    borderRadius: 20,
+    borderRadius: 12,
     overflow: 'hidden',
-    shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.04)',
   },
-  earningsMediaHeader: {
-    paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.lg,
-    paddingBottom: SPACING.xl,
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  earningsDecorCircle: {
-    position: 'absolute',
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#FFFFFF',
-  },
-  earningsHeaderContent: {
+  earningsCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+    borderBottomWidth: 1,
+  },
+  earningsCardTitle: {
+    fontSize: 18,
+    fontFamily: FONTS.bold,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  earningsCardSubtitle: {
+    fontSize: 13,
+    fontFamily: FONTS.regular,
   },
   earningsHeaderLeft: {
     flex: 1,
   },
-  earningsHeaderLabel: {
-    fontSize: 14,
-    fontFamily: FONTS.medium,
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginBottom: 4,
+  earningsIllustrationContainer: {
+    marginLeft: SPACING.sm,
   },
-  earningsHeaderValue: {
-    fontSize: 32,
-    fontFamily: FONTS.bold,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: -0.5,
-  },
-  earningsHeaderBadge: {
+  earningsMainAmount: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
-    marginTop: 8,
-    gap: 4,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+    gap: 12,
   },
-  earningsHeaderBadgeText: {
-    fontSize: 11,
-    fontFamily: FONTS.medium,
-    color: '#FFFFFF',
+  earningsAmountBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  earningsIllustrationContainer: {
-    marginLeft: SPACING.md,
+  earningsAmountLabel: {
+    fontSize: 12,
+    fontFamily: FONTS.regular,
+    marginBottom: 2,
+  },
+  earningsAmountValue: {
+    fontSize: 26,
+    fontFamily: FONTS.bold,
+    fontWeight: '700',
+    letterSpacing: -0.5,
   },
   earningsStatsGrid: {
     flexDirection: 'row',
+    borderTopWidth: 1,
     paddingVertical: SPACING.md,
   },
   earningsStatItem: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: SPACING.sm,
+    paddingVertical: SPACING.xs,
   },
-  earningsStatIconBg: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+  earningsStatIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: SPACING.xs,
-  },
-  earningsStatIconInner: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
+    marginBottom: 6,
   },
   earningsStatLabel: {
     fontSize: 12,
@@ -1759,36 +1574,18 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   earningsStatValue: {
-    fontSize: 18,
+    fontSize: 16,
     fontFamily: FONTS.bold,
-    fontWeight: '700',
+    fontWeight: '600',
   },
-  earningsStatTrend: {
+  earningsWithdrawBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 4,
-    gap: 2,
-  },
-  earningsStatTrendText: {
-    fontSize: 10,
-    fontFamily: FONTS.medium,
-  },
-  earningsWithdrawCta: {
+    justifyContent: 'center',
     marginHorizontal: SPACING.md,
     marginBottom: SPACING.md,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  earningsWithdrawGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: SPACING.md,
     paddingVertical: 12,
-  },
-  earningsWithdrawContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    borderRadius: 8,
     gap: 8,
   },
   earningsWithdrawText: {
@@ -1840,9 +1637,16 @@ const styles = StyleSheet.create({
   activationBanner: {
     marginHorizontal: SPACING.md,
     marginBottom: SPACING.md,
-    borderRadius: BORDER_RADIUS.lg,
+    borderRadius: 12,
     overflow: 'hidden',
-    ...SHADOWS.medium,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.04)',
+    padding: SPACING.md,
   },
   activationGradient: {
     padding: SPACING.md,
@@ -1854,8 +1658,7 @@ const styles = StyleSheet.create({
   activationIconContainer: {
     width: 44,
     height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: SPACING.md,
@@ -2230,90 +2033,72 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.xs,
     fontFamily: FONTS.regular,
   },
-  // Enhanced Peak Hours Card styles
+  // Clean Peak Hours Card styles
   peakHoursEnhancedCard: {
-    borderRadius: 20,
+    borderRadius: 12,
     overflow: 'hidden',
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.04)',
   },
-  peakHoursEnhancedHeader: {
-    paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.lg,
-    paddingBottom: SPACING.xl,
-    position: 'relative',
-    overflow: 'hidden',
-    minHeight: 140,
-  },
-  peakHoursDecorCircle: {
-    position: 'absolute',
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#FFFFFF',
-  },
-  peakHoursDecorDot: {
-    position: 'absolute',
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  peakHoursEnhancedHeaderContent: {
+  peakHoursCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+    borderBottomWidth: 1,
   },
-  peakHoursEnhancedHeaderLeft: {
+  peakHoursHeaderLeft: {
     flex: 1,
   },
-  peakHoursEnhancedBadge: {
+  peakHoursLabelRow: {
+    marginBottom: 6,
+  },
+  peakHoursInsightBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
     alignSelf: 'flex-start',
-    marginBottom: 8,
     gap: 4,
   },
-  peakHoursEnhancedBadgeText: {
+  peakHoursInsightText: {
     fontSize: 10,
     fontFamily: FONTS.bold,
     fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: 1,
+    color: '#8B5CF6',
+    letterSpacing: 0.5,
   },
-  peakHoursEnhancedTitle: {
-    fontSize: 24,
+  peakHoursCardTitle: {
+    fontSize: 18,
     fontFamily: FONTS.bold,
     fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 4,
+    marginBottom: 2,
   },
-  peakHoursEnhancedSubtitle: {
-    fontSize: 14,
+  peakHoursCardSubtitle: {
+    fontSize: 13,
     fontFamily: FONTS.regular,
-    color: 'rgba(255, 255, 255, 0.8)',
   },
-  peakHoursEnhancedIllustration: {
-    marginLeft: SPACING.md,
+  peakHoursIllustration: {
+    marginLeft: SPACING.sm,
   },
   peakHoursSummaryBar: {
     flexDirection: 'row',
-    paddingVertical: SPACING.md,
-    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
   },
   peakHoursSummaryItem: {
     flex: 1,
     alignItems: 'center',
   },
   peakHoursSummaryValue: {
-    fontSize: 18,
+    fontSize: 16,
     fontFamily: FONTS.bold,
     fontWeight: '700',
   },
@@ -2326,112 +2111,77 @@ const styles = StyleSheet.create({
     width: 1,
     marginVertical: 4,
   },
-  peakHoursEnhancedBody: {
+  peakHoursListBody: {
     paddingHorizontal: SPACING.md,
   },
-  peakHoursEnhancedItem: {
+  peakHoursListItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: SPACING.md,
+    paddingVertical: SPACING.sm,
   },
-  peakHoursEnhancedRankContainer: {
-    alignItems: 'center',
-    width: 50,
-  },
-  peakHoursEnhancedRankBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
+  peakHoursRankIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 2,
+    marginRight: 12,
   },
-  peakHoursEnhancedRankLabel: {
-    fontSize: 10,
-    fontFamily: FONTS.medium,
-  },
-  peakHoursEnhancedTimeContainer: {
+  peakHoursTimeInfo: {
     flex: 1,
-    marginLeft: SPACING.sm,
   },
-  peakHoursEnhancedTime: {
-    fontSize: 16,
+  peakHoursTime: {
+    fontSize: 15,
     fontFamily: FONTS.semiBold,
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: 2,
   },
-  peakHoursEnhancedOrdersBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(139, 92, 246, 0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-    alignSelf: 'flex-start',
-    gap: 4,
+  peakHoursOrders: {
+    fontSize: 12,
+    fontFamily: FONTS.regular,
   },
-  peakHoursEnhancedOrdersText: {
-    fontSize: 11,
-    fontFamily: FONTS.medium,
-    color: '#8B5CF6',
-  },
-  peakHoursEnhancedRevenueContainer: {
+  peakHoursRevenueInfo: {
     alignItems: 'flex-end',
-    width: 100,
   },
-  peakHoursEnhancedRevenue: {
+  peakHoursRevenue: {
     fontSize: 15,
     fontFamily: FONTS.bold,
     fontWeight: '700',
-    marginBottom: 6,
+    marginBottom: 4,
   },
-  peakHoursEnhancedProgressBg: {
-    width: '100%',
-    height: 6,
-    borderRadius: 3,
+  peakHoursProgressBg: {
+    width: 60,
+    height: 4,
+    borderRadius: 2,
     overflow: 'hidden',
   },
-  peakHoursEnhancedProgressBar: {
+  peakHoursProgressBar: {
     height: '100%',
-    borderRadius: 3,
+    borderRadius: 2,
   },
-  peakHoursEnhancedFooter: {
+  peakHoursFooter: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: SPACING.md,
     paddingHorizontal: SPACING.md,
-    marginTop: SPACING.xs,
+    paddingVertical: SPACING.sm,
+    gap: 10,
   },
-  peakHoursEnhancedTipIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: 'rgba(139, 92, 246, 0.15)',
+  peakHoursTipIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: SPACING.sm,
   },
-  peakHoursEnhancedTipContent: {
+  peakHoursTipContent: {
     flex: 1,
   },
-  peakHoursEnhancedTipTitle: {
-    fontSize: 13,
-    fontFamily: FONTS.semiBold,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  peakHoursEnhancedTipText: {
+  peakHoursTipText: {
     fontSize: 12,
     fontFamily: FONTS.regular,
     lineHeight: 16,
   },
   // Keep old styles for backwards compatibility
-  peakHoursTipText: {
-    flex: 1,
-    fontSize: FONT_SIZES.xs,
-    fontFamily: FONTS.regular,
-    lineHeight: 16,
-  },
   peakHourMedal: {
     fontSize: 20,
     marginRight: SPACING.sm,
@@ -3165,5 +2915,221 @@ const styles = StyleSheet.create({
   iosGroupedSeparator: {
     height: StyleSheet.hairlineWidth,
     marginLeft: 58, // Aligned with text start (icon container + margin)
+  },
+  // Clean Card Styles for Goal Card
+  goalCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+    borderBottomWidth: 1,
+  },
+  goalIconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  goalCardHeaderInfo: {
+    flex: 1,
+  },
+  goalCardTitle: {
+    fontSize: 16,
+    fontFamily: FONTS.bold,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  goalCardSubtitle: {
+    fontSize: 12,
+    fontFamily: FONTS.regular,
+  },
+  goalPercentBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginLeft: SPACING.sm,
+  },
+  goalPercentText: {
+    fontSize: 13,
+    fontFamily: FONTS.bold,
+    fontWeight: '700',
+  },
+  // Clean Card Styles for Top Sellers
+  topSellersCard: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.04)',
+  },
+  topSellersCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+    borderBottomWidth: 1,
+  },
+  topSellersCardTitle: {
+    fontSize: 18,
+    fontFamily: FONTS.bold,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  topSellersCardSubtitle: {
+    fontSize: 13,
+    fontFamily: FONTS.regular,
+    marginTop: 2,
+  },
+  // Clean Card Styles for Recent Orders
+  recentOrdersCard: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.04)',
+  },
+  recentOrdersCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+    borderBottomWidth: 1,
+  },
+  recentOrdersCardTitle: {
+    fontSize: 18,
+    fontFamily: FONTS.bold,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  recentOrdersCardSubtitle: {
+    fontSize: 13,
+    fontFamily: FONTS.regular,
+    marginTop: 2,
+  },
+  // Clean Card Styles for Verified Banner
+  verifiedCard: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.04)',
+    position: 'relative',
+  },
+  verifiedCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SPACING.md,
+    paddingTop: SPACING.lg,
+  },
+  verifiedCardLeft: {
+    flex: 1,
+    paddingRight: SPACING.sm,
+  },
+  verifiedCardTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
+    marginBottom: 4,
+  },
+  verifiedCardSubtitle: {
+    fontSize: 13,
+    fontFamily: FONTS.regular,
+    marginBottom: SPACING.sm,
+    lineHeight: 18,
+  },
+  // Clean Activation Banner Styles
+  activationArrow: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Clean Quick Actions Card Styles
+  quickActionsCard: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.04)',
+  },
+  quickActionsCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+    borderBottomWidth: 1,
+  },
+  quickActionsHeaderLeft: {
+    flex: 1,
+  },
+  quickActionsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+    alignSelf: 'flex-start',
+    marginBottom: 6,
+    gap: 4,
+  },
+  quickActionsBadgeText: {
+    fontSize: 10,
+    fontFamily: FONTS.bold,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  quickActionsIllustrationWrapper: {
+    marginLeft: SPACING.sm,
+  },
+  quickActionsIconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  quickActionsHeaderInfo: {
+    flex: 1,
+  },
+  quickActionsCardTitle: {
+    fontSize: 18,
+    fontFamily: FONTS.bold,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  quickActionsCardSubtitle: {
+    fontSize: 13,
+    fontFamily: FONTS.regular,
+  },
+  quickActionIconClean: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.xs,
   },
 });

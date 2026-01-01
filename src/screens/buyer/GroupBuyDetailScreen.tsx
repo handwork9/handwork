@@ -28,7 +28,7 @@ export default function GroupBuyDetailScreen() {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
   const queryClient = useQueryClient();
-  const { groupBuyId } = route.params;
+  const groupBuyId = route.params?.groupBuyId;
   const currentUser = useSelector((state: RootState) => state.auth.user);
 
   // Fetch group buy details
@@ -40,13 +40,18 @@ export default function GroupBuyDetailScreen() {
   } = useQuery<GroupBuy>({
     queryKey: ['groupBuy', groupBuyId],
     queryFn: () => groupBuyingService.getById(groupBuyId),
+    enabled: !!groupBuyId, // Only run query when groupBuyId exists
   });
 
   // Fetch participants
-  const { data: participants = [] } = useQuery<GroupBuyParticipant[]>({
+  const { data: participantsData } = useQuery<GroupBuyParticipant[]>({
     queryKey: ['groupBuyParticipants', groupBuyId],
     queryFn: () => groupBuyingService.getParticipants(groupBuyId),
+    enabled: !!groupBuyId, // Only run query when groupBuyId exists
   });
+  
+  // Ensure participants is always an array
+  const participants = Array.isArray(participantsData) ? participantsData : [];
 
   // Join mutation
   const joinMutation = useMutation({
@@ -146,28 +151,38 @@ export default function GroupBuyDetailScreen() {
     );
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
+  const formatDate = (dateString: string | undefined) => {
+    if (!dateString) return 'TBD';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
+    } catch {
+      return 'Invalid date';
+    }
   };
 
-  const getTimeRemaining = (deadline: string) => {
-    const now = new Date();
-    const end = new Date(deadline);
-    const diff = end.getTime() - now.getTime();
-    
-    if (diff <= 0) return 'Ended';
-    
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    
-    if (days > 0) return `${days}d ${hours}h left`;
-    return `${hours}h left`;
+  const getTimeRemaining = (deadline: string | undefined) => {
+    if (!deadline) return 'No deadline';
+    try {
+      const now = new Date();
+      const end = new Date(deadline);
+      const diff = end.getTime() - now.getTime();
+      
+      if (diff <= 0) return 'Ended';
+      
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      
+      if (days > 0) return `${days}d ${hours}h left`;
+      return `${hours}h left`;
+    } catch {
+      return 'Unknown';
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -179,6 +194,24 @@ export default function GroupBuyDetailScreen() {
       default: return colors.textSecondary;
     }
   };
+
+  // Handle missing groupBuyId
+  if (!groupBuyId) {
+    return (
+      <View style={[styles.errorContainer, { backgroundColor: colors.background }]}>
+        <Ionicons name="alert-circle-outline" size={64} color={colors.textSecondary} />
+        <Text style={[styles.errorText, { color: colors.text }]}>
+          Group buy not found
+        </Text>
+        <TouchableOpacity
+          style={[styles.retryButton, { backgroundColor: COLORS.primary }]}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.retryButtonText}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -216,7 +249,7 @@ export default function GroupBuyDetailScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>
-          {groupBuy.title}
+          {groupBuy.title || 'Group Buy'}
         </Text>
         <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
           <Ionicons name="share-outline" size={24} color={colors.text} />
@@ -244,7 +277,7 @@ export default function GroupBuyDetailScreen() {
 
         {/* Main Info Card */}
         <View style={[styles.card, { backgroundColor: colors.card }]}>
-          <Text style={[styles.title, { color: colors.text }]}>{groupBuy.title}</Text>
+          <Text style={[styles.title, { color: colors.text }]}>{groupBuy.title || 'Group Buy'}</Text>
           
           {groupBuy.description && (
             <Text style={[styles.description, { color: colors.textSecondary }]}>
@@ -261,14 +294,14 @@ export default function GroupBuyDetailScreen() {
           >
             <View style={styles.discountContent}>
               <Text style={styles.discountLabel}>Current Discount</Text>
-              <Text style={styles.discountValue}>{groupBuy.currentDiscount}% OFF</Text>
+              <Text style={styles.discountValue}>{groupBuy.currentDiscount || 0}% OFF</Text>
             </View>
             <View style={styles.priceContent}>
               <Text style={styles.originalPrice}>
-                ₦{groupBuy.originalPrice.toLocaleString()}
+                ₦{(groupBuy.originalPrice ?? 0).toLocaleString()}
               </Text>
               <Text style={styles.currentPrice}>
-                ₦{groupBuy.currentPrice.toLocaleString()}
+                ₦{(groupBuy.currentPrice ?? 0).toLocaleString()}
               </Text>
             </View>
           </LinearGradient>
@@ -278,7 +311,7 @@ export default function GroupBuyDetailScreen() {
             <View style={styles.statItem}>
               <Ionicons name="people" size={24} color={COLORS.primary} />
               <Text style={[styles.statValue, { color: colors.text }]}>
-                {groupBuy.currentParticipants}/{groupBuy.maxParticipants || '∞'}
+                {groupBuy.currentParticipants ?? 0}/{groupBuy.maxParticipants || '∞'}
               </Text>
               <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
                 Participants
@@ -298,7 +331,7 @@ export default function GroupBuyDetailScreen() {
             <View style={styles.statItem}>
               <Ionicons name="cart" size={24} color={COLORS.primary} />
               <Text style={[styles.statValue, { color: colors.text }]}>
-                {groupBuy.quantityPerPerson}
+                {groupBuy.quantityPerPerson ?? 1}
               </Text>
               <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
                 Per Person
@@ -317,7 +350,7 @@ export default function GroupBuyDetailScreen() {
             />
             <View style={styles.organizerInfo}>
               <Text style={[styles.organizerName, { color: colors.text }]}>
-                {groupBuy.organizer?.firstName} {groupBuy.organizer?.lastName}
+                {groupBuy.organizer?.firstName || 'Unknown'} {groupBuy.organizer?.lastName || ''}
               </Text>
               {isOrganizer && (
                 <View style={styles.youBadge}>
@@ -340,7 +373,7 @@ export default function GroupBuyDetailScreen() {
           <View style={styles.detailRow}>
             <Ionicons name="people-outline" size={20} color={colors.textSecondary} />
             <Text style={[styles.detailText, { color: colors.text }]}>
-              Minimum: {groupBuy.minParticipants} participants needed
+              Minimum: {groupBuy.minParticipants ?? 2} participants needed
             </Text>
           </View>
           {groupBuy.shareCode && (

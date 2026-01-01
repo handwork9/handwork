@@ -19,7 +19,7 @@ import {
   Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
@@ -51,6 +51,7 @@ type SortOption = typeof SORT_OPTIONS[number]['key'];
 
 export default function ProductsScreen() {
   const navigation = useNavigation<NavigationProp>();
+  const route = useRoute();
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
@@ -58,6 +59,9 @@ export default function ProductsScreen() {
   const { products: reduxProducts } = useAppSelector(state => state.farmer);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<'all' | 'active' | 'low_stock' | 'out_of_stock'>('all');
+  
+  // Check if this is the stack screen (FarmerProducts) vs tab screen (Products)
+  const isStackScreen = route.name === 'FarmerProducts';
   
   // Search and Sort state
   const [searchQuery, setSearchQuery] = useState('');
@@ -546,7 +550,7 @@ export default function ProductsScreen() {
               style={[styles.mediaActionButton, { backgroundColor: isDark ? 'rgba(0, 122, 255, 0.15)' : '#E3F2FD' }]}
               onPress={() => handleQuickStockUpdate(item)}
             >
-              <Ionicons name="cube-outline" size={16} color="#007AFF" />
+              <Ionicons name="cube-outline" size={20} color="#007AFF" />
               <Text style={[styles.mediaActionText, { color: '#007AFF' }]}>Stock</Text>
             </TouchableOpacity>
             
@@ -554,7 +558,7 @@ export default function ProductsScreen() {
               style={[styles.mediaActionButton, { backgroundColor: isDark ? 'rgba(52, 199, 89, 0.15)' : '#E8F5E9' }]}
               onPress={() => navigation.navigate('EditProduct', { productId: item.id })}
             >
-              <Ionicons name="create-outline" size={16} color="#34C759" />
+              <Ionicons name="create-outline" size={20} color="#34C759" />
               <Text style={[styles.mediaActionText, { color: '#34C759' }]}>Edit</Text>
             </TouchableOpacity>
             
@@ -565,14 +569,14 @@ export default function ProductsScreen() {
                 handleDelete(item.id, item.title || item.name || 'Product');
               }}
             >
-              <Ionicons name="trash-outline" size={16} color="#FF3B30" />
+              <Ionicons name="trash-outline" size={20} color="#FF3B30" />
             </TouchableOpacity>
             
             <TouchableOpacity
               style={[styles.mediaActionButton, styles.mediaActionButtonMore, { backgroundColor: isDark ? 'rgba(142, 142, 147, 0.15)' : '#F2F2F7' }]}
               onPress={() => handleDuplicateProduct(item)}
             >
-              <Ionicons name="copy-outline" size={16} color={colors.textSecondary} />
+              <Ionicons name="copy-outline" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
         </View>
@@ -671,7 +675,7 @@ export default function ProductsScreen() {
       {/* Fixed Header */}
       <View style={[styles.fixedHeader, { paddingTop: insets.top, backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
         <View style={styles.headerContent}>
-          {navigation.canGoBack() && (
+          {isStackScreen && navigation.canGoBack() && (
             <TouchableOpacity
               style={styles.backButton}
               onPress={() => navigation.goBack()}

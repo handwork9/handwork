@@ -1,14 +1,32 @@
 /**
  * Call Service - Manages video and voice calls using Agora RTC
+ * Note: Agora requires a development build - won't work in Expo Go
  */
-import createAgoraRtcEngine, {
-  IRtcEngine,
-  ChannelProfileType,
-  ClientRoleType,
-  AudioProfileType,
-  AudioScenarioType,
-} from 'react-native-agora';
 import { Platform, PermissionsAndroid, Alert } from 'react-native';
+
+// Dynamic import for Agora - only available in development builds, not Expo Go
+let createAgoraRtcEngine: any = null;
+let ChannelProfileType: any = { ChannelProfileCommunication: 0 };
+let ClientRoleType: any = { ClientRoleBroadcaster: 1 };
+let AudioProfileType: any = { AudioProfileDefault: 0 };
+let AudioScenarioType: any = { AudioScenarioChatroom: 3 };
+let IRtcEngine: any = null;
+
+// Check if Agora is available (only in development builds)
+let isAgoraAvailable = false;
+try {
+  const agoraModule = require('react-native-agora');
+  createAgoraRtcEngine = agoraModule.default;
+  ChannelProfileType = agoraModule.ChannelProfileType;
+  ClientRoleType = agoraModule.ClientRoleType;
+  AudioProfileType = agoraModule.AudioProfileType;
+  AudioScenarioType = agoraModule.AudioScenarioType;
+  isAgoraAvailable = true;
+  console.log('[CallService] Agora SDK loaded successfully');
+} catch (error) {
+  console.warn('[CallService] Agora SDK not available - video/voice calls disabled. Use a development build to enable calls.');
+  isAgoraAvailable = false;
+}
 import { AGORA_CONFIG } from '../constants/config';
 import apiClient from './apiClient';
 
@@ -38,7 +56,7 @@ export interface CallToken {
 }
 
 class CallService {
-  private engine: IRtcEngine | null = null;
+  private engine: any = null;
   private isInitialized = false;
   private currentCall: CallData | null = null;
   private callStatus: CallStatus = 'idle';
@@ -94,9 +112,23 @@ class CallService {
   }
 
   /**
+   * Check if video/voice calls are available (Agora SDK loaded)
+   */
+  isCallsAvailable(): boolean {
+    return isAgoraAvailable;
+  }
+
+  /**
    * Initialize the Agora engine for calls
    */
   async initialize(callType: CallType): Promise<boolean> {
+    // Check if Agora is available (only in development builds)
+    if (!isAgoraAvailable) {
+      console.warn('[CallService] Agora not available - cannot initialize');
+      this.onCallFailed?.('Video/voice calls require a development build. Please use "npx expo run:ios" or "npx expo run:android" instead of Expo Go.');
+      return false;
+    }
+
     if (this.isInitialized && this.engine) {
       return true;
     }
@@ -109,8 +141,11 @@ class CallService {
 
       this.engine = createAgoraRtcEngine();
       
+      const appId = AGORA_CONFIG.APP_ID || 'ca032aa424a64f05b9e9736ad62c7798';
+      console.log('[CallService] Initializing with App ID:', appId);
+      
       await this.engine.initialize({
-        appId: AGORA_CONFIG.APP_ID,
+        appId: appId,
         channelProfile: ChannelProfileType.ChannelProfileCommunication, // 1:1 calls
       });
 
@@ -151,12 +186,12 @@ class CallService {
   private setupEventHandlers() {
     if (!this.engine) return;
 
-    this.engine.addListener('onJoinChannelSuccess', (connection, elapsed) => {
+    this.engine.addListener('onJoinChannelSuccess', (connection: any, elapsed: any) => {
       console.log('[CallService] Joined channel:', connection.channelId);
       this.localUid = connection.localUid || 0;
     });
 
-    this.engine.addListener('onUserJoined', (connection, remoteUid, elapsed) => {
+    this.engine.addListener('onUserJoined', (connection: any, remoteUid: any, elapsed: any) => {
       console.log('[CallService] Remote user joined:', remoteUid);
       this.callStatus = 'connected';
       this.startCallTimer();
@@ -164,23 +199,23 @@ class CallService {
       this.onCallConnected?.();
     });
 
-    this.engine.addListener('onUserOffline', (connection, remoteUid, reason) => {
+    this.engine.addListener('onUserOffline', (connection: any, remoteUid: any, reason: any) => {
       console.log('[CallService] Remote user left:', remoteUid, reason);
       this.onRemoteUserLeft?.(remoteUid);
       // End call when remote user leaves
       this.endCall();
     });
 
-    this.engine.addListener('onError', (err, msg) => {
+    this.engine.addListener('onError', (err: any, msg: any) => {
       console.error('[CallService] Error:', err, msg);
       this.onCallFailed?.(`Error ${err}: ${msg}`);
     });
 
-    this.engine.addListener('onRemoteAudioStateChanged', (connection, remoteUid, state, reason, elapsed) => {
+    this.engine.addListener('onRemoteAudioStateChanged', (connection: any, remoteUid: any, state: any, reason: any, elapsed: any) => {
       this.onRemoteAudioStateChanged?.(remoteUid, state);
     });
 
-    this.engine.addListener('onRemoteVideoStateChanged', (connection, remoteUid, state, reason, elapsed) => {
+    this.engine.addListener('onRemoteVideoStateChanged', (connection: any, remoteUid: any, state: any, reason: any, elapsed: any) => {
       this.onRemoteVideoStateChanged?.(remoteUid, state);
     });
   }
@@ -190,8 +225,9 @@ class CallService {
    */
   async getCallToken(channelName: string): Promise<CallToken | null> {
     try {
+      // Use the existing social/live endpoint for Agora tokens
       const response = await apiClient.post<CallToken>(
-        '/chat/call-token',
+        '/social/live/agora-token',
         { channelName, role: 'host' }
       );
       return response as CallToken;
@@ -465,7 +501,7 @@ class CallService {
   /**
    * Get engine instance
    */
-  getEngine(): IRtcEngine | null {
+  getEngine(): any {
     return this.engine;
   }
 
@@ -551,3 +587,6 @@ class CallService {
 
 export const callService = new CallService();
 export default callService;
+
+// Export availability check for UI components
+export const isCallServiceAvailable = (): boolean => isAgoraAvailable;

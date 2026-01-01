@@ -17,8 +17,20 @@ import { useNavigation } from '@react-navigation/native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { io, Socket } from 'socket.io-client';
-import { RtcSurfaceView, VideoSourceType } from 'react-native-agora';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, FONTS } from '../../constants/theme';
+
+// Dynamic import for Agora - only available in development builds
+let RtcSurfaceView: any = null;
+let VideoSourceType: any = { VideoSourceCamera: 0 };
+let isAgoraAvailable = false;
+try {
+  const agora = require('react-native-agora');
+  RtcSurfaceView = agora.RtcSurfaceView;
+  VideoSourceType = agora.VideoSourceType;
+  isAgoraAvailable = true;
+} catch (e) {
+  console.log('[LiveStreamsScreen] Agora not available - running in Expo Go');
+}
 import { useTheme } from '../../context/ThemeContext';
 import { socialService, LiveStream } from '../../services/socialService';
 import { API_CONFIG } from '../../constants/config';

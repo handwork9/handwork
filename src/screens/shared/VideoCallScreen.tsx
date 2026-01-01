@@ -21,11 +21,25 @@ import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Haptics from 'expo-haptics';
-import { RtcSurfaceView, VideoSourceType } from 'react-native-agora';
-import callService, { CallStatus, CallType } from '../../services/callService';
 import { useTheme } from '../../context/ThemeContext';
 import { FONTS, FONT_SIZES, SPACING, COLORS } from '../../constants/theme';
 import { BuyerStackParamList } from '../../types';
+import callService, { isCallServiceAvailable } from '../../services/callService';
+
+// Try to import Agora components - will fail in Expo Go
+let RtcSurfaceView: any = null;
+let VideoSourceType: any = null;
+
+try {
+  const agora = require('react-native-agora');
+  RtcSurfaceView = agora.RtcSurfaceView;
+  VideoSourceType = agora.VideoSourceType;
+} catch (e) {
+  console.log('[VideoCallScreen] Agora components not available - running in Expo Go');
+}
+
+export type CallStatus = 'idle' | 'calling' | 'ringing' | 'connected' | 'ended';
+export type CallType = 'video' | 'voice';
 
 type VideoCallScreenNavigationProp = NativeStackNavigationProp<BuyerStackParamList, 'VideoCall'>;
 type VideoCallScreenRouteProp = RouteProp<BuyerStackParamList, 'VideoCall'>;
@@ -98,6 +112,29 @@ export default function VideoCallScreen() {
   const { colors } = useTheme();
 
   const { userId, userName, userAvatar, callType = 'video', isIncoming = false, channelName } = route.params || {};
+
+  // Show message if Agora is not available (Expo Go)
+  if (!isCallServiceAvailable()) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="#1A1A2E" />
+        <SafeAreaView style={styles.unavailableContainer}>
+          <MaterialCommunityIcons name="video-off" size={80} color="#FFF" />
+          <Text style={styles.unavailableTitle}>Video Calls Unavailable</Text>
+          <Text style={styles.unavailableText}>
+            Video and voice calls require a development build.{'\n'}
+            They are not supported in Expo Go.
+          </Text>
+          <TouchableOpacity 
+            style={styles.unavailableButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.unavailableButtonText}>Go Back</Text>
+          </TouchableOpacity>
+        </SafeAreaView>
+      </View>
+    );
+  }
 
   const [callStatus, setCallStatus] = useState<CallStatus>('idle');
   const [duration, setDuration] = useState(0);
@@ -654,5 +691,38 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.regular,
     color: 'rgba(255, 255, 255, 0.7)',
     marginTop: SPACING.xs,
+  },
+  // Unavailable styles (Expo Go)
+  unavailableContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: SPACING.xl,
+  },
+  unavailableTitle: {
+    fontSize: 24,
+    fontFamily: FONTS.bold,
+    color: '#FFF',
+    marginTop: SPACING.lg,
+    marginBottom: SPACING.md,
+  },
+  unavailableText: {
+    fontSize: FONT_SIZES.md,
+    fontFamily: FONTS.regular,
+    color: 'rgba(255, 255, 255, 0.7)',
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  unavailableButton: {
+    marginTop: SPACING.xl,
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SPACING.xl,
+    paddingVertical: SPACING.md,
+    borderRadius: 25,
+  },
+  unavailableButtonText: {
+    fontSize: FONT_SIZES.md,
+    fontFamily: FONTS.semiBold,
+    color: '#FFF',
   },
 });
