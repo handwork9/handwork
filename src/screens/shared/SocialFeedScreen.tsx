@@ -854,6 +854,12 @@ const SocialFeedScreen = () => {
         <View style={styles.headerActions}>
           <TouchableOpacity 
             style={styles.headerBtn}
+            onPress={() => navigation.navigate('SavedPosts' as any)}
+          >
+            <Ionicons name="bookmark-outline" size={22} color={colors.text} />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.headerBtn}
             onPress={() => navigation.navigate('LiveStreams' as any)}
           >
             <Ionicons name="videocam-outline" size={24} color={colors.text} />

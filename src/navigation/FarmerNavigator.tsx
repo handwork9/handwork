@@ -87,6 +87,7 @@ import CreatePostScreen from '../screens/farmer/CreatePostScreen';
 import StoriesScreen from '../screens/shared/StoriesScreen';
 import LiveStreamsScreen from '../screens/shared/LiveStreamsScreen';
 import GoLiveScreen from '../screens/farmer/GoLiveScreen';
+import SavedPostsScreen from '../screens/shared/SavedPostsScreen';
 
 const Tab = createBottomTabNavigator<FarmerTabParamList>();
 const Stack = createNativeStackNavigator<FarmerStackParamList>();
@@ -578,6 +579,11 @@ export function FarmerNavigator() {
       <Stack.Screen
         name="FarmerProfile"
         component={FarmerProfileScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="SavedPosts"
+        component={SavedPostsScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>
