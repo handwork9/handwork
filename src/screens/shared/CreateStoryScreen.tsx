@@ -21,7 +21,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, FONTS } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
 import { socialService, CreateStoryDto } from '../../services/socialService';
@@ -58,6 +57,7 @@ const CreateStoryScreen = () => {
   // Story state
   const [storyType, setStoryType] = useState<StoryType | null>(null);
   const [mediaUri, setMediaUri] = useState<string | null>(null);
+  const [mediaBase64, setMediaBase64] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null);
   const [caption, setCaption] = useState('');
   const [textContent, setTextContent] = useState('');
@@ -99,12 +99,14 @@ const CreateStoryScreen = () => {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [9, 16],
-      quality: 0.7,
+      quality: 0.6,
+      base64: true,
     });
 
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
       setMediaUri(asset.uri);
+      setMediaBase64(asset.base64 || null);
       setMediaType('image');
       setStoryType('image');
     }
@@ -122,12 +124,14 @@ const CreateStoryScreen = () => {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [9, 16],
-      quality: 0.7,
+      quality: 0.6,
+      base64: true,
     });
 
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
       setMediaUri(asset.uri);
+      setMediaBase64(asset.base64 || null);
       setMediaType('image');
       setStoryType('image');
     }
@@ -137,6 +141,7 @@ const CreateStoryScreen = () => {
   const startTextStory = () => {
     setStoryType('text');
     setMediaUri(null);
+    setMediaBase64(null);
     setMediaType(null);
     setTimeout(() => textInputRef.current?.focus(), 100);
   };
@@ -145,6 +150,7 @@ const CreateStoryScreen = () => {
   const resetStory = () => {
     setStoryType(null);
     setMediaUri(null);
+    setMediaBase64(null);
     setMediaType(null);
     setCaption('');
     setTextContent('');
@@ -180,20 +186,15 @@ const CreateStoryScreen = () => {
       if (mediaUri && storyType === 'image') {
         // Only support image uploads for now (videos require different handling)
         try {
-          // Convert file URI to base64
-          const base64 = await FileSystem.readAsStringAsync(mediaUri, {
-            encoding: FileSystem.EncodingType.Base64,
-          });
-          
-          if (!base64) {
-            throw new Error('Failed to read image file');
+          if (!mediaBase64) {
+            throw new Error('No image data available. Please select an image again.');
           }
           
           // Get file extension for proper MIME type
           const extension = mediaUri.split('.').pop()?.toLowerCase() || 'jpg';
           const mimeType = `image/${extension === 'jpg' ? 'jpeg' : extension}`;
           
-          const base64Data = `data:${mimeType};base64,${base64}`;
+          const base64Data = `data:${mimeType};base64,${mediaBase64}`;
           
           console.log('[CreateStory] Uploading image, size:', Math.round(base64Data.length / 1024), 'KB');
           
@@ -204,9 +205,9 @@ const CreateStoryScreen = () => {
           } else {
             throw new Error(uploadResult.error || 'Failed to upload image');
           }
-        } catch (readError: any) {
-          console.error('[CreateStory] File read/upload error:', readError);
-          throw new Error(readError?.message || 'Failed to process image');
+        } catch (uploadError: any) {
+          console.error('[CreateStory] Upload error:', uploadError);
+          throw new Error(uploadError?.message || 'Failed to upload image');
         }
       } else if (mediaUri && storyType === 'video') {
         // For videos, just use the local URI for now (video upload requires different handling)
