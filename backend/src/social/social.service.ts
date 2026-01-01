@@ -1,3 +1,4 @@
+// Social Service - handles posts, comments, stories, live streams
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, Not, LessThan, MoreThan, IsNull } from 'typeorm';
