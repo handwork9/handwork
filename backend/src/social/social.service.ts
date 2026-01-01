@@ -297,13 +297,31 @@ export class SocialService {
       const limitNum = Number(limit) || 20;
       
       console.log('Getting comments for post:', postId, 'page:', pageNum, 'limit:', limitNum);
-      const [comments, total] = await this.commentRepository.findAndCount({
-        where: { postId, parentCommentId: IsNull() }, // Only top-level comments
-        relations: ['user'],
-        order: { createdAt: 'DESC' },
-        skip: (pageNum - 1) * limitNum,
-        take: limitNum,
-      });
+      
+      // Use query builder to select only needed user fields
+      const [comments, total] = await this.commentRepository
+        .createQueryBuilder('comment')
+        .leftJoinAndSelect('comment.user', 'user')
+        .select([
+          'comment.id',
+          'comment.userId',
+          'comment.postId',
+          'comment.content',
+          'comment.parentCommentId',
+          'comment.likeCount',
+          'comment.isActive',
+          'comment.createdAt',
+          'user.id',
+          'user.name',
+          'user.avatar',
+        ])
+        .where('comment.postId = :postId', { postId })
+        .andWhere('comment.parentCommentId IS NULL')
+        .orderBy('comment.createdAt', 'DESC')
+        .skip((pageNum - 1) * limitNum)
+        .take(limitNum)
+        .getManyAndCount();
+      
       console.log('Found', comments.length, 'comments, total:', total);
       return { comments, total };
     } catch (error) {
