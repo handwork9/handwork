@@ -191,13 +191,13 @@ class CallService {
   async getCallToken(channelName: string): Promise<CallToken | null> {
     try {
       const response = await apiClient.post<CallToken>(
-        '/social/live/agora-token',
+        '/chat/call-token',
         { channelName, role: 'host' }
       );
       return response as CallToken;
     } catch (error) {
       console.error('[CallService] Failed to get token:', error);
-      // Fallback for development
+      // Fallback for development - use empty token (works with Agora testing mode)
       return {
         token: '',
         uid: Math.floor(Math.random() * 100000),

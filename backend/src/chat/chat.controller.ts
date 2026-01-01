@@ -143,4 +143,59 @@ export class ChatController {
     });
     return { onlineStatus: statusMap };
   }
+
+  /**
+   * Get Agora RTC token for voice/video calls
+   */
+  @Post('call-token')
+  async getCallToken(
+    @CurrentUser() user: any,
+    @Body() dto: { channelName: string; role?: 'host' | 'audience' },
+  ) {
+    const appId = process.env.AGORA_APP_ID;
+    const appCertificate = process.env.AGORA_APP_CERTIFICATE;
+
+    if (!appId || !appCertificate) {
+      throw new Error('Agora configuration missing');
+    }
+
+    // Generate a unique UID based on user ID hash
+    const hashString = (str: string): number => {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+      }
+      return hash;
+    };
+
+    const uid = Math.abs(hashString(user.id)) % 100000000;
+    
+    // Token expires in 24 hours (in seconds)
+    const tokenExpireInSeconds = 86400;
+    const privilegeExpireInSeconds = 86400;
+
+    // Import agora-token dynamically
+    const { RtcTokenBuilder, RtcRole } = await import('agora-token');
+    
+    const roleType = dto.role === 'audience' ? RtcRole.SUBSCRIBER : RtcRole.PUBLISHER;
+
+    const token = RtcTokenBuilder.buildTokenWithUid(
+      appId,
+      appCertificate,
+      dto.channelName,
+      uid,
+      roleType,
+      tokenExpireInSeconds,
+      privilegeExpireInSeconds,
+    );
+
+    return {
+      token,
+      uid,
+      channelName: dto.channelName,
+      expiresIn: tokenExpireInSeconds,
+    };
+  }
 }
