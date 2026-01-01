@@ -85,6 +85,7 @@ import VideoCallScreen from '../screens/shared/VideoCallScreen';
 import SocialFeedScreen from '../screens/shared/SocialFeedScreen';
 import CreatePostScreen from '../screens/farmer/CreatePostScreen';
 import StoriesScreen from '../screens/shared/StoriesScreen';
+import CreateStoryScreen from '../screens/shared/CreateStoryScreen';
 import LiveStreamsScreen from '../screens/shared/LiveStreamsScreen';
 import GoLiveScreen from '../screens/farmer/GoLiveScreen';
 import SavedPostsScreen from '../screens/shared/SavedPostsScreen';
@@ -565,6 +566,11 @@ export function FarmerNavigator() {
           presentation: 'fullScreenModal',
           animation: 'fade',
         }}
+      />
+      <Stack.Screen
+        name="CreateStory"
+        component={CreateStoryScreen}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="LiveStreams"

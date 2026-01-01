@@ -29,6 +29,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { formatDistanceToNow } from 'date-fns';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, FONTS } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
+import { useAppSelector } from '../../store';
 import { socialService, SocialPost, FarmerStories, PostComment } from '../../services/socialService';
 import { chatService, Conversation } from '../../services/chatService';
 import { BuyerStackParamList } from '../../types';
@@ -975,6 +976,8 @@ const SocialFeedScreen = () => {
   const { colors, isDark } = useTheme();
   const navigation = useNavigation<NavigationProp>();
   const queryClient = useQueryClient();
+  const { user } = useAppSelector((state) => state.auth);
+  const isFarmer = user?.role === 'farmer';
   const [refreshing, setRefreshing] = useState(false);
   const [selectedPost, setSelectedPost] = useState<SocialPost | null>(null);
   const [showCommentsModal, setShowCommentsModal] = useState(false);
@@ -1066,15 +1069,38 @@ const SocialFeedScreen = () => {
   };
 
   const renderStories = () => {
-    if (!storiesData || storiesData.length === 0) return null;
+    // Show stories section if there are stories OR if user is a farmer (to show add button)
+    const hasStories = storiesData && storiesData.length > 0;
+    
+    if (!hasStories && !isFarmer) return null;
 
     return (
       <View style={[styles.storiesContainer, { borderBottomColor: isDark ? '#333' : '#eee' }]}>
         <FlatList
           horizontal
           showsHorizontalScrollIndicator={false}
-          data={storiesData}
+          data={storiesData || []}
           keyExtractor={(item) => item.farmer.id}
+          ListHeaderComponent={
+            isFarmer ? (
+              <TouchableOpacity 
+                style={styles.addStoryContainer}
+                onPress={() => navigation.navigate('CreateStory' as any)}
+              >
+                <View style={styles.addStoryCircle}>
+                  <LinearGradient
+                    colors={[COLORS.primary, COLORS.primaryDark || '#4CAF50']}
+                    style={styles.addStoryGradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  >
+                    <Ionicons name="add" size={32} color="#FFF" />
+                  </LinearGradient>
+                </View>
+                <Text style={[styles.storyName, { color: colors.text }]}>Add Story</Text>
+              </TouchableOpacity>
+            ) : null
+          }
           renderItem={({ item, index }) => (
             <StoryCircle 
               story={item} 
@@ -1317,6 +1343,23 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.xs,
     marginTop: 4,
     textAlign: 'center',
+  },
+  // Add Story Button
+  addStoryContainer: {
+    alignItems: 'center',
+    width: STORY_SIZE + 10,
+    marginRight: SPACING.xs,
+  },
+  addStoryCircle: {
+    width: STORY_SIZE,
+    height: STORY_SIZE,
+    borderRadius: STORY_SIZE / 2,
+    overflow: 'hidden',
+  },
+  addStoryGradient: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   // Post Card
   postCard: {

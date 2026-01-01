@@ -597,6 +597,7 @@ export type BuyerStackParamList = {
   Stories: { initialFarmerIndex?: number };
   LiveStreams: undefined;
   SavedPosts: undefined;
+  CreateStory: undefined;
 };
 
 export type FarmerTabParamList = {
@@ -679,6 +680,7 @@ export type FarmerStackParamList = {
   SocialFeed: undefined;
   CreatePost: undefined;
   Stories: { initialFarmerIndex?: number };
+  CreateStory: undefined;
   LiveStreams: undefined;
   GoLive: undefined;
   FarmerProfile: { farmerId: string };
