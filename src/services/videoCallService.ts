@@ -123,9 +123,9 @@ class VideoCallService {
         const expiresAt = tokenPayload.exp * 1000;
         const now = Date.now();
         
-        // If token expires within 5 minutes, refresh it
-        if (expiresAt - now < 5 * 60 * 1000) {
-          console.log('[VideoCall] Token expiring soon, refreshing...');
+        // If token is expired or expires within 5 minutes, refresh it
+        if (expiresAt <= now || expiresAt - now < 5 * 60 * 1000) {
+          console.log('[VideoCall] Token expired or expiring soon, refreshing...');
           const response = await axios.post(`${API_CONFIG.BASE_URL}/auth/refresh`, {
             refreshToken: authState.refreshToken,
           });
@@ -136,11 +136,23 @@ class VideoCallService {
             // Update tokens in store
             store.dispatch(setTokens({ accessToken, refreshToken: newRefreshToken }));
             console.log('[VideoCall] Token refreshed successfully');
+          } else {
+            console.error('[VideoCall] Token refresh failed - no new token returned');
+            return;
           }
         }
       } catch (error) {
-        console.warn('[VideoCall] Token refresh check failed:', error);
-        // Continue with existing token
+        console.error('[VideoCall] Token refresh failed:', error);
+        // If refresh fails and token is expired, don't try to connect
+        try {
+          const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+          if (tokenPayload.exp * 1000 <= Date.now()) {
+            console.error('[VideoCall] Cannot connect with expired token');
+            return;
+          }
+        } catch {
+          // Token parsing failed, try to connect anyway
+        }
       }
     }
 
