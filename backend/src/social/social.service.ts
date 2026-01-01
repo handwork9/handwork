@@ -290,15 +290,19 @@ export class SocialService {
     }
   }
 
-  async getPostComments(postId: string, page = 1, limit = 20): Promise<{ comments: PostComment[]; total: number }> {
+  async getPostComments(postId: string, page: number | string = 1, limit: number | string = 20): Promise<{ comments: PostComment[]; total: number }> {
     try {
-      console.log('Getting comments for post:', postId, 'page:', page, 'limit:', limit);
+      // Ensure page and limit are numbers
+      const pageNum = Number(page) || 1;
+      const limitNum = Number(limit) || 20;
+      
+      console.log('Getting comments for post:', postId, 'page:', pageNum, 'limit:', limitNum);
       const [comments, total] = await this.commentRepository.findAndCount({
         where: { postId, parentCommentId: IsNull() }, // Only top-level comments
         relations: ['user'],
         order: { createdAt: 'DESC' },
-        skip: (page - 1) * limit,
-        take: limit,
+        skip: (pageNum - 1) * limitNum,
+        take: limitNum,
       });
       console.log('Found', comments.length, 'comments, total:', total);
       return { comments, total };
