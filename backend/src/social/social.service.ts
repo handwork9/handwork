@@ -9,6 +9,7 @@ import { FarmerFollow } from '../database/entities/farmer-follow.entity';
 import { FarmStory } from '../database/entities/farm-story.entity';
 import { StoryView } from '../database/entities/story-view.entity';
 import { FarmLiveStream, LiveStreamStatus } from '../database/entities/farm-live-stream.entity';
+import { SavedPost } from '../database/entities/saved-post.entity';
 import { User } from '../database/entities/user.entity';
 import { FarmerProfile } from '../database/entities/farmer-profile.entity';
 import {
@@ -39,6 +40,8 @@ export class SocialService {
     private readonly storyViewRepository: Repository<StoryView>,
     @InjectRepository(FarmLiveStream)
     private readonly liveStreamRepository: Repository<FarmLiveStream>,
+    @InjectRepository(SavedPost)
+    private readonly savedPostRepository: Repository<SavedPost>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(FarmerProfile)
@@ -770,6 +773,86 @@ export class SocialService {
     }
 
     return stream;
+  }
+
+  // ==================== SAVED POSTS ====================
+
+  async savePost(userId: string, postId: string): Promise<{ saved: boolean }> {
+    const post = await this.postRepository.findOne({ where: { id: postId } });
+    if (!post) {
+      throw new NotFoundException('Post not found');
+    }
+
+    // Check if already saved
+    const existingSave = await this.savedPostRepository.findOne({
+      where: { userId, postId },
+    });
+
+    if (existingSave) {
+      // Unsave
+      await this.savedPostRepository.remove(existingSave);
+      return { saved: false };
+    }
+
+    // Save
+    const savedPost = this.savedPostRepository.create({ userId, postId });
+    await this.savedPostRepository.save(savedPost);
+    return { saved: true };
+  }
+
+  async getSavedPosts(userId: string, page = 1, limit = 20): Promise<{ posts: SocialPost[]; total: number }> {
+    const pageNum = Number(page) || 1;
+    const limitNum = Number(limit) || 20;
+
+    const [savedPosts, total] = await this.savedPostRepository.findAndCount({
+      where: { userId },
+      order: { createdAt: 'DESC' },
+      skip: (pageNum - 1) * limitNum,
+      take: limitNum,
+    });
+
+    if (savedPosts.length === 0) {
+      return { posts: [], total: 0 };
+    }
+
+    const postIds = savedPosts.map(sp => sp.postId);
+    const posts = await this.postRepository
+      .createQueryBuilder('post')
+      .leftJoinAndSelect('post.farmer', 'farmer')
+      .leftJoinAndSelect('farmer.user', 'user')
+      .select([
+        'post.id',
+        'post.farmerId',
+        'post.content',
+        'post.images',
+        'post.type',
+        'post.likeCount',
+        'post.commentCount',
+        'post.shareCount',
+        'post.createdAt',
+        'farmer.id',
+        'farmer.farmName',
+        'user.id',
+        'user.name',
+        'user.avatar',
+      ])
+      .where('post.id IN (:...postIds)', { postIds })
+      .getMany();
+
+    // Sort posts to match saved order
+    const postsMap = new Map(posts.map(p => [p.id, p]));
+    const orderedPosts = postIds
+      .map(id => postsMap.get(id))
+      .filter((p): p is SocialPost => p !== undefined);
+
+    return { posts: orderedPosts, total };
+  }
+
+  async isPostSaved(userId: string, postId: string): Promise<boolean> {
+    const saved = await this.savedPostRepository.findOne({
+      where: { userId, postId },
+    });
+    return !!saved;
   }
 
   // ==================== CLEANUP ====================

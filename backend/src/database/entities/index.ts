@@ -46,3 +46,4 @@ export * from './post-comment.entity';
 export * from './farm-story.entity';
 export * from './story-view.entity';
 export * from './farm-live-stream.entity';
+export * from './saved-post.entity';

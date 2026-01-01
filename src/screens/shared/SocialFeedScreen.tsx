@@ -623,7 +623,11 @@ const PostCard = ({
           </TouchableOpacity>
         </View>
         <TouchableOpacity style={styles.actionBtn} onPress={onSave}>
-          <Ionicons name="bookmark-outline" size={24} color={colors.text} />
+          <Ionicons 
+            name={post.isSaved ? "bookmark" : "bookmark-outline"} 
+            size={24} 
+            color={post.isSaved ? COLORS.primary : colors.text} 
+          />
         </TouchableOpacity>
       </View>
 
@@ -767,8 +771,35 @@ const SocialFeedScreen = () => {
     );
   };
 
+  // Save post mutation
+  const saveMutation = useMutation({
+    mutationFn: (postId: string) => socialService.savePost(postId),
+    onMutate: async (postId) => {
+      await queryClient.cancelQueries({ queryKey: ['social-feed'] });
+      const previousData = queryClient.getQueryData(['social-feed']);
+
+      queryClient.setQueryData(['social-feed'], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          posts: old.posts.map((post: SocialPost) =>
+            post.id === postId
+              ? { ...post, isSaved: !post.isSaved }
+              : post
+          ),
+        };
+      });
+
+      return { previousData };
+    },
+    onError: (err, postId, context) => {
+      queryClient.setQueryData(['social-feed'], context?.previousData);
+      Alert.alert('Error', 'Failed to save post');
+    },
+  });
+
   const handleSavePost = (post: SocialPost) => {
-    Alert.alert('Coming Soon', 'Save posts feature will be available soon!');
+    saveMutation.mutate(post.id);
   };
 
   const renderPost = ({ item }: { item: SocialPost }) => (

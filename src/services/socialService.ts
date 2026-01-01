@@ -28,6 +28,7 @@ export interface SocialPost {
   shareCount: number;
   isPinned: boolean;
   isLiked?: boolean;
+  isSaved?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -227,6 +228,24 @@ class SocialService {
 
   async deleteComment(commentId: string): Promise<void> {
     await apiClient.delete(`/social/comments/${commentId}`);
+  }
+
+  // ==================== SAVED POSTS ====================
+
+  async savePost(postId: string): Promise<{ saved: boolean }> {
+    const response = await apiClient.post<ApiResponse<{ saved: boolean }>>(`/social/posts/${postId}/save`);
+    return response.data || response as unknown as { saved: boolean };
+  }
+
+  async getSavedPosts(page = 1, limit = 20): Promise<{ posts: SocialPost[]; total: number }> {
+    const response = await apiClient.get<ApiResponse<{ posts: SocialPost[]; total: number }>>('/social/saved-posts', { params: { page, limit } });
+    return response.data || response as unknown as { posts: SocialPost[]; total: number };
+  }
+
+  async isPostSaved(postId: string): Promise<boolean> {
+    const response = await apiClient.get<ApiResponse<{ saved: boolean }>>(`/social/posts/${postId}/is-saved`);
+    const result = response.data || response as unknown as { saved: boolean };
+    return result.saved;
   }
 
   // ==================== FOLLOWS ====================

@@ -10,6 +10,7 @@ import { FarmerFollow } from '../database/entities/farmer-follow.entity';
 import { FarmStory } from '../database/entities/farm-story.entity';
 import { StoryView } from '../database/entities/story-view.entity';
 import { FarmLiveStream } from '../database/entities/farm-live-stream.entity';
+import { SavedPost } from '../database/entities/saved-post.entity';
 import { User } from '../database/entities/user.entity';
 import { FarmerProfile } from '../database/entities/farmer-profile.entity';
 
@@ -23,6 +24,7 @@ import { FarmerProfile } from '../database/entities/farmer-profile.entity';
       FarmStory,
       StoryView,
       FarmLiveStream,
+      SavedPost,
       User,
       FarmerProfile,
     ]),

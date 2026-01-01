@@ -151,6 +151,39 @@ export class SocialController {
     return this.socialService.deleteComment(req.user.id, id);
   }
 
+  // ==================== SAVED POSTS ====================
+
+  @Post('posts/:id/save')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Save or unsave a post' })
+  @ApiResponse({ status: 200, description: 'Post save toggled successfully' })
+  async savePost(@Request() req: AuthenticatedRequest, @Param('id', ParseUUIDPipe) id: string) {
+    return this.socialService.savePost(req.user.id, id);
+  }
+
+  @Get('saved-posts')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Get saved posts' })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  @ApiResponse({ status: 200, description: 'Saved posts retrieved successfully' })
+  async getSavedPosts(
+    @Request() req: AuthenticatedRequest,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.socialService.getSavedPosts(req.user.id, page, limit);
+  }
+
+  @Get('posts/:id/is-saved')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Check if post is saved' })
+  @ApiResponse({ status: 200, description: 'Returns saved status' })
+  async isPostSaved(@Request() req: AuthenticatedRequest, @Param('id', ParseUUIDPipe) id: string) {
+    const saved = await this.socialService.isPostSaved(req.user.id, id);
+    return { saved };
+  }
+
   // ==================== FOLLOWS ====================
 
   @Post('farmers/:id/follow')
