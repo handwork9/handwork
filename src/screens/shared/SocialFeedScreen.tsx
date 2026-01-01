@@ -18,6 +18,7 @@ import {
   Alert,
   Linking,
   Clipboard,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -29,6 +30,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, FONTS } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
 import { socialService, SocialPost, FarmerStories, PostComment } from '../../services/socialService';
+import { chatService, Conversation } from '../../services/chatService';
 import { BuyerStackParamList } from '../../types';
 
 const { width } = Dimensions.get('window');
@@ -470,6 +472,324 @@ const PostOptionsModal = ({
   );
 };
 
+// Instagram-style Share Modal Component
+const ShareModal = ({
+  visible,
+  onClose,
+  post,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  post: SocialPost | null;
+}) => {
+  const { colors, isDark } = useTheme();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [message, setMessage] = useState('');
+  const [isSending, setIsSending] = useState(false);
+  const [sentTo, setSentTo] = useState<string[]>([]);
+
+  // Fetch recent conversations
+  const { data: conversations, isLoading } = useQuery({
+    queryKey: ['share-conversations'],
+    queryFn: () => chatService.getConversations(),
+    enabled: visible,
+  });
+
+  // Reset state when modal opens/closes
+  useEffect(() => {
+    if (!visible) {
+      setSearchQuery('');
+      setSelectedUsers([]);
+      setMessage('');
+      setSentTo([]);
+    }
+  }, [visible]);
+
+  // Get unique users from conversations
+  const recentUsers = React.useMemo(() => {
+    if (!conversations) return [];
+    const users: { id: string; name: string; avatar?: string; role: string }[] = [];
+    const seenIds = new Set<string>();
+
+    conversations.forEach((conv: Conversation) => {
+      conv.participants.forEach((p: { id: string; name: string; avatar?: string; role: string }) => {
+        if (!seenIds.has(p.id)) {
+          seenIds.add(p.id);
+          users.push({
+            id: p.id,
+            name: p.name,
+            avatar: p.avatar,
+            role: p.role,
+          });
+        }
+      });
+    });
+
+    return users;
+  }, [conversations]);
+
+  // Filter users based on search
+  const filteredUsers = React.useMemo(() => {
+    if (!searchQuery) return recentUsers;
+    const query = searchQuery.toLowerCase();
+    return recentUsers.filter(user => 
+      user.name.toLowerCase().includes(query)
+    );
+  }, [recentUsers, searchQuery]);
+
+  const toggleUserSelection = (userId: string) => {
+    setSelectedUsers(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
+  };
+
+  const handleSendToUser = async (userId: string) => {
+    if (!post || sentTo.includes(userId)) return;
+
+    setIsSending(true);
+    try {
+      const user = recentUsers.find(u => u.id === userId);
+      if (!user) return;
+
+      // Get or create conversation
+      const conversation = await chatService.getOrCreateConversation(
+        userId,
+        user.role as 'buyer' | 'farmer' | 'rider'
+      );
+
+      if (conversation) {
+        // Send the post as a message
+        const postContent = `📸 Shared a post from ${post.farmer.farmName}\n\n${post.content || ''}\n\n🔗 View post: https://handwork.app/post/${post.id}`;
+        await chatService.sendMessage({
+          conversationId: conversation.id,
+          text: message ? `${message}\n\n${postContent}` : postContent,
+          type: 'text',
+        });
+        setSentTo(prev => [...prev, userId]);
+      }
+    } catch (error) {
+      console.error('Failed to share post:', error);
+      Alert.alert('Error', 'Failed to share post');
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleSendToSelected = async () => {
+    if (selectedUsers.length === 0 || !post) return;
+
+    setIsSending(true);
+    try {
+      for (const userId of selectedUsers) {
+        if (!sentTo.includes(userId)) {
+          await handleSendToUser(userId);
+        }
+      }
+      Alert.alert('Sent!', `Post shared with ${selectedUsers.length} ${selectedUsers.length === 1 ? 'person' : 'people'}`);
+      onClose();
+    } catch (error) {
+      console.error('Failed to share:', error);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleCopyLink = () => {
+    const link = `https://handwork.app/post/${post?.id}`;
+    Clipboard.setString(link);
+    Alert.alert('Copied!', 'Link copied to clipboard');
+  };
+
+  const handleShareExternal = async () => {
+    if (!post) return;
+    try {
+      await Share.share({
+        message: `Check out this post from ${post.farmer.farmName} on Handwork!\n\n${post.content || ''}\n\nhttps://handwork.app/post/${post.id}`,
+      });
+    } catch (error) {
+      console.error('Error sharing:', error);
+    }
+  };
+
+  const renderUserItem = ({ item }: { item: typeof recentUsers[0] }) => {
+    const isSelected = selectedUsers.includes(item.id);
+    const isSent = sentTo.includes(item.id);
+
+    return (
+      <View style={styles.shareUserItem}>
+        <TouchableOpacity 
+          style={styles.shareUserInfo}
+          onPress={() => toggleUserSelection(item.id)}
+        >
+          {item.avatar ? (
+            <Image source={{ uri: item.avatar }} style={styles.shareUserAvatar} />
+          ) : (
+            <View style={[styles.shareUserAvatar, styles.shareAvatarPlaceholder]}>
+              <Text style={styles.shareAvatarText}>
+                {item.name.charAt(0).toUpperCase()}
+              </Text>
+            </View>
+          )}
+          <View style={styles.shareUserDetails}>
+            <Text style={[styles.shareUserName, { color: colors.text }]} numberOfLines={1}>
+              {item.name}
+            </Text>
+            <Text style={[styles.shareUserRole, { color: colors.textSecondary }]}>
+              {item.role.charAt(0).toUpperCase() + item.role.slice(1)}
+            </Text>
+          </View>
+          {isSelected && !isSent && (
+            <View style={styles.shareCheckmark}>
+              <Ionicons name="checkmark-circle" size={24} color={COLORS.primary} />
+            </View>
+          )}
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.shareSendBtn,
+            isSent && styles.shareSentBtn,
+            isSending && styles.shareSendingBtn,
+          ]}
+          onPress={() => handleSendToUser(item.id)}
+          disabled={isSent || isSending}
+        >
+          <Text style={[styles.shareSendBtnText, isSent && styles.shareSentBtnText]}>
+            {isSent ? 'Sent' : 'Send'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={onClose}
+    >
+      <View style={styles.shareModalOverlay}>
+        <View style={[styles.shareModalContainer, { backgroundColor: colors.background }]}>
+          {/* Header */}
+          <View style={[styles.shareModalHeader, { borderBottomColor: isDark ? '#333' : '#eee' }]}>
+            <TouchableOpacity onPress={onClose} style={styles.shareCloseBtn}>
+              <Ionicons name="close" size={24} color={colors.text} />
+            </TouchableOpacity>
+            <Text style={[styles.shareModalTitle, { color: colors.text }]}>Share</Text>
+            <View style={{ width: 40 }} />
+          </View>
+
+          {/* Post Preview */}
+          {post && (
+            <View style={[styles.sharePostPreview, { borderBottomColor: isDark ? '#333' : '#eee' }]}>
+              {post.images && post.images[0] && (
+                <Image source={{ uri: post.images[0] }} style={styles.sharePostImage} />
+              )}
+              <View style={styles.sharePostInfo}>
+                <Text style={[styles.sharePostFarm, { color: colors.text }]} numberOfLines={1}>
+                  {post.farmer.farmName}
+                </Text>
+                <Text style={[styles.sharePostContent, { color: colors.textSecondary }]} numberOfLines={2}>
+                  {post.content || 'Photo post'}
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* Message Input */}
+          <View style={[styles.shareMessageContainer, { borderBottomColor: isDark ? '#333' : '#eee' }]}>
+            <TextInput
+              style={[styles.shareMessageInput, { color: colors.text }]}
+              placeholder="Write a message..."
+              placeholderTextColor={colors.textSecondary}
+              value={message}
+              onChangeText={setMessage}
+              multiline
+              maxLength={200}
+            />
+          </View>
+
+          {/* Search */}
+          <View style={[styles.shareSearchContainer, { backgroundColor: isDark ? '#222' : '#f5f5f5' }]}>
+            <Ionicons name="search" size={20} color={colors.textSecondary} />
+            <TextInput
+              style={[styles.shareSearchInput, { color: colors.text }]}
+              placeholder="Search people..."
+              placeholderTextColor={colors.textSecondary}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Users List */}
+          <FlatList
+            data={filteredUsers}
+            keyExtractor={(item) => item.id}
+            renderItem={renderUserItem}
+            style={styles.shareUsersList}
+            contentContainerStyle={styles.shareUsersListContent}
+            ListEmptyComponent={
+              <View style={styles.shareEmptyContainer}>
+                {isLoading ? (
+                  <ActivityIndicator size="large" color={COLORS.primary} />
+                ) : (
+                  <>
+                    <Ionicons name="people-outline" size={48} color={isDark ? '#555' : '#ccc'} />
+                    <Text style={[styles.shareEmptyText, { color: colors.textSecondary }]}>
+                      {searchQuery ? 'No users found' : 'Start a conversation to share posts'}
+                    </Text>
+                  </>
+                )}
+              </View>
+            }
+          />
+
+          {/* Send to Selected Button */}
+          {selectedUsers.length > 0 && (
+            <TouchableOpacity
+              style={[styles.shareSendSelectedBtn, isSending && styles.shareSendingBtn]}
+              onPress={handleSendToSelected}
+              disabled={isSending}
+            >
+              {isSending ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Text style={styles.shareSendSelectedText}>
+                  Send to {selectedUsers.length} {selectedUsers.length === 1 ? 'person' : 'people'}
+                </Text>
+              )}
+            </TouchableOpacity>
+          )}
+
+          {/* Quick Share Options */}
+          <View style={[styles.shareQuickOptions, { borderTopColor: isDark ? '#333' : '#eee' }]}>
+            <TouchableOpacity style={styles.shareQuickOption} onPress={handleCopyLink}>
+              <View style={[styles.shareQuickIcon, { backgroundColor: isDark ? '#333' : '#f0f0f0' }]}>
+                <Ionicons name="link" size={24} color={colors.text} />
+              </View>
+              <Text style={[styles.shareQuickText, { color: colors.text }]}>Copy Link</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.shareQuickOption} onPress={handleShareExternal}>
+              <View style={[styles.shareQuickIcon, { backgroundColor: isDark ? '#333' : '#f0f0f0' }]}>
+                <Ionicons name="share-social" size={24} color={colors.text} />
+              </View>
+              <Text style={[styles.shareQuickText, { color: colors.text }]}>Share to...</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
 // Post Card Component
 const PostCard = ({ 
   post, 
@@ -659,6 +979,7 @@ const SocialFeedScreen = () => {
   const [selectedPost, setSelectedPost] = useState<SocialPost | null>(null);
   const [showCommentsModal, setShowCommentsModal] = useState(false);
   const [showOptionsModal, setShowOptionsModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   // Fetch stories
   const { data: storiesData } = useQuery({
@@ -712,14 +1033,9 @@ const SocialFeedScreen = () => {
     setRefreshing(false);
   }, []);
 
-  const handleShare = async (post: SocialPost) => {
-    try {
-      await Share.share({
-        message: `Check out this post from ${post.farmer.farmName} on Handwork!\n\n${post.content || ''}`,
-      });
-    } catch (error) {
-      console.error('Error sharing:', error);
-    }
+  const handleShare = (post: SocialPost) => {
+    setSelectedPost(post);
+    setShowShareModal(true);
   };
 
   const handleOpenComments = (post: SocialPost) => {
@@ -904,6 +1220,16 @@ const SocialFeedScreen = () => {
         }}
         post={selectedPost}
         onShare={() => selectedPost && handleShare(selectedPost)}
+      />
+
+      {/* Instagram-style Share Modal */}
+      <ShareModal
+        visible={showShareModal}
+        onClose={() => {
+          setShowShareModal(false);
+          setSelectedPost(null);
+        }}
+        post={selectedPost}
       />
     </SafeAreaView>
   );
@@ -1341,6 +1667,189 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.md,
     fontFamily: FONTS.semiBold,
     textAlign: 'center',
+  },
+  // Share Modal Styles
+  shareModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  shareModalContainer: {
+    height: '85%',
+    borderTopLeftRadius: BORDER_RADIUS.xl,
+    borderTopRightRadius: BORDER_RADIUS.xl,
+  },
+  shareModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+    borderBottomWidth: 1,
+  },
+  shareCloseBtn: {
+    padding: SPACING.xs,
+  },
+  shareModalTitle: {
+    fontSize: FONT_SIZES.lg,
+    fontFamily: FONTS.bold,
+  },
+  sharePostPreview: {
+    flexDirection: 'row',
+    padding: SPACING.md,
+    borderBottomWidth: 1,
+    alignItems: 'center',
+  },
+  sharePostImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 8,
+    marginRight: SPACING.md,
+  },
+  sharePostInfo: {
+    flex: 1,
+  },
+  sharePostFarm: {
+    fontSize: FONT_SIZES.md,
+    fontFamily: FONTS.semiBold,
+  },
+  sharePostContent: {
+    fontSize: FONT_SIZES.sm,
+    marginTop: 2,
+  },
+  shareMessageContainer: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderBottomWidth: 1,
+  },
+  shareMessageInput: {
+    fontSize: FONT_SIZES.md,
+    minHeight: 40,
+    maxHeight: 80,
+  },
+  shareSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    margin: SPACING.md,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderRadius: BORDER_RADIUS.lg,
+    gap: SPACING.sm,
+  },
+  shareSearchInput: {
+    flex: 1,
+    fontSize: FONT_SIZES.md,
+  },
+  shareUsersList: {
+    flex: 1,
+  },
+  shareUsersListContent: {
+    paddingHorizontal: SPACING.md,
+  },
+  shareUserItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: SPACING.sm,
+  },
+  shareUserInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  shareUserAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: SPACING.md,
+  },
+  shareAvatarPlaceholder: {
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  shareAvatarText: {
+    color: 'white',
+    fontFamily: FONTS.bold,
+    fontSize: 18,
+  },
+  shareUserDetails: {
+    flex: 1,
+  },
+  shareUserName: {
+    fontSize: FONT_SIZES.md,
+    fontFamily: FONTS.semiBold,
+  },
+  shareUserRole: {
+    fontSize: FONT_SIZES.sm,
+    marginTop: 2,
+  },
+  shareCheckmark: {
+    marginRight: SPACING.sm,
+  },
+  shareSendBtn: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    borderRadius: 8,
+  },
+  shareSentBtn: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#ccc',
+  },
+  shareSendingBtn: {
+    opacity: 0.6,
+  },
+  shareSendBtnText: {
+    color: 'white',
+    fontFamily: FONTS.semiBold,
+    fontSize: FONT_SIZES.sm,
+  },
+  shareSentBtnText: {
+    color: '#999',
+  },
+  shareEmptyContainer: {
+    alignItems: 'center',
+    paddingVertical: SPACING.xl * 2,
+  },
+  shareEmptyText: {
+    fontSize: FONT_SIZES.md,
+    marginTop: SPACING.md,
+    textAlign: 'center',
+  },
+  shareSendSelectedBtn: {
+    backgroundColor: COLORS.primary,
+    margin: SPACING.md,
+    paddingVertical: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    alignItems: 'center',
+  },
+  shareSendSelectedText: {
+    color: 'white',
+    fontSize: FONT_SIZES.md,
+    fontFamily: FONTS.bold,
+  },
+  shareQuickOptions: {
+    flexDirection: 'row',
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.xl,
+    borderTopWidth: 1,
+    gap: SPACING.xl,
+  },
+  shareQuickOption: {
+    alignItems: 'center',
+    gap: SPACING.xs,
+  },
+  shareQuickIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  shareQuickText: {
+    fontSize: FONT_SIZES.xs,
+    fontFamily: FONTS.medium,
   },
 });
 
