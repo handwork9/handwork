@@ -249,38 +249,44 @@ export class SocialService {
   // ==================== COMMENTS ====================
 
   async createComment(userId: string, postId: string, dto: CreateCommentDto): Promise<PostComment> {
-    const post = await this.postRepository.findOne({ where: { id: postId } });
-    if (!post) {
-      throw new NotFoundException('Post not found');
-    }
-
-    if (dto.parentCommentId) {
-      const parent = await this.commentRepository.findOne({
-        where: { id: dto.parentCommentId },
-      });
-      if (!parent || parent.postId !== postId) {
-        throw new BadRequestException('Invalid parent comment');
+    try {
+      const post = await this.postRepository.findOne({ where: { id: postId } });
+      if (!post) {
+        throw new NotFoundException('Post not found');
       }
+
+      if (dto.parentCommentId) {
+        const parent = await this.commentRepository.findOne({
+          where: { id: dto.parentCommentId },
+        });
+        if (!parent || parent.postId !== postId) {
+          throw new BadRequestException('Invalid parent comment');
+        }
+      }
+
+      const comment = this.commentRepository.create({
+        content: dto.content,
+        userId,
+        postId,
+        parentCommentId: dto.parentCommentId || null,
+      });
+
+      const savedComment = await this.commentRepository.save(comment);
+
+      // Update comment count
+      post.commentCount += 1;
+      await this.postRepository.save(post);
+
+      // Return comment with user relation
+      const commentWithUser = await this.commentRepository.findOne({
+        where: { id: savedComment.id },
+        relations: ['user'],
+      });
+      return commentWithUser!;
+    } catch (error) {
+      console.error('Error creating comment:', error);
+      throw error;
     }
-
-    const comment = this.commentRepository.create({
-      ...dto,
-      userId,
-      postId,
-    });
-
-    const savedComment = await this.commentRepository.save(comment);
-
-    // Update comment count
-    post.commentCount += 1;
-    await this.postRepository.save(post);
-
-    // Return comment with user relation
-    const commentWithUser = await this.commentRepository.findOne({
-      where: { id: savedComment.id },
-      relations: ['user'],
-    });
-    return commentWithUser!;
   }
 
   async getPostComments(postId: string, page = 1, limit = 20): Promise<{ comments: PostComment[]; total: number }> {
