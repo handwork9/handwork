@@ -135,7 +135,7 @@ export class ChatService {
     userId: string,
     conversationId: string,
     query: GetMessagesQueryDto,
-  ): Promise<Message[]> {
+  ): Promise<any[]> {
     const conversation = await this.conversationRepository.findOne({
       where: { id: conversationId },
     });
@@ -150,6 +150,7 @@ export class ChatService {
 
     const queryBuilder = this.messageRepository
       .createQueryBuilder('message')
+      .leftJoinAndSelect('message.sender', 'sender')
       .where('message.conversationId = :conversationId', { conversationId })
       .orderBy('message.createdAt', 'DESC')
       .take(query.limit || 50);
@@ -159,7 +160,23 @@ export class ChatService {
     }
 
     const messages = await queryBuilder.getMany();
-    return messages.reverse(); // Return in chronological order
+    
+    // Map messages to include sender info
+    const messagesWithSender = messages.map(msg => ({
+      id: msg.id,
+      conversationId: msg.conversationId,
+      senderId: msg.senderId,
+      senderName: msg.sender?.name || 'Unknown',
+      senderAvatar: msg.sender?.avatar,
+      senderRole: msg.senderRole,
+      text: msg.text,
+      type: msg.type,
+      status: msg.status,
+      metadata: msg.metadata,
+      createdAt: msg.createdAt,
+    }));
+    
+    return messagesWithSender.reverse(); // Return in chronological order
   }
 
   /**
@@ -203,11 +220,18 @@ export class ChatService {
       lastMessageAt: message.createdAt,
     });
 
+    // Get sender info for notifications and broadcast
+    const sender = await this.userRepository.findOne({ where: { id: userId } });
+    const senderName = sender?.name || 'Someone';
+    const senderAvatar = sender?.avatar;
+
     // Broadcast message to all participants in the conversation via WebSocket
     this.chatGateway.broadcastMessage(conversationId, {
       id: message.id,
       conversationId: message.conversationId,
       senderId: message.senderId,
+      senderName,
+      senderAvatar,
       senderRole: message.senderRole,
       text: message.text,
       type: message.type,
@@ -215,11 +239,6 @@ export class ChatService {
       metadata: message.metadata,
       createdAt: message.createdAt,
     });
-
-    // Get sender info for notifications
-    const sender = await this.userRepository.findOne({ where: { id: userId } });
-    const senderName = sender?.name || 'Someone';
-    const senderAvatar = sender?.avatar;
 
     // Also notify each participant directly (in case they're not in the conversation room)
     for (const participantId of conversation.participantIds) {

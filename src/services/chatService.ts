@@ -7,6 +7,8 @@ export interface ChatMessage {
   id: string;
   conversationId: string;
   senderId: string;
+  senderName?: string;
+  senderAvatar?: string;
   senderRole: 'buyer' | 'farmer' | 'rider';
   text: string;
   type: 'text' | 'image' | 'location' | 'order_update';
