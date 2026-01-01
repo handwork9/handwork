@@ -32,8 +32,9 @@ export class ChatService {
     // Get participant details for each conversation
     const conversationsWithDetails = await Promise.all(
       conversations.map(async (conv) => {
-        const participants = await this.userRepository.findBy({
-          id: In(conv.participantIds),
+        const participants = await this.userRepository.find({
+          where: { id: In(conv.participantIds) },
+          relations: ['farmerProfile'],
         });
 
         const unreadCount = await this.messageRepository.count({
@@ -49,7 +50,7 @@ export class ChatService {
           orderId: conv.orderId,
           participants: participants.map(p => ({
             id: p.id,
-            name: p.name,
+            name: p.farmerProfile?.farmName || p.fullName || p.name || 'User',
             role: p.role,
             phone: p.phone,
             avatar: p.avatar,
@@ -106,9 +107,10 @@ export class ChatService {
       conversation = await this.conversationRepository.save(newConversation);
     }
 
-    // Get participant details
-    const participants = await this.userRepository.findBy({
-      id: In(participantIds),
+    // Get participant details with farmer profile
+    const participants = await this.userRepository.find({
+      where: { id: In(participantIds) },
+      relations: ['farmerProfile'],
     });
 
     return {
@@ -117,7 +119,7 @@ export class ChatService {
       productId: conversation.productId,
       participants: participants.map(p => ({
         id: p.id,
-        name: p.name,
+        name: p.farmerProfile?.farmName || p.fullName || p.name || 'User',
         role: p.role,
         phone: p.phone,
         avatar: p.avatar,
@@ -316,8 +318,9 @@ export class ChatService {
       throw new ForbiddenException('You are not a participant in this conversation');
     }
 
-    const participants = await this.userRepository.findBy({
-      id: In(conversation.participantIds),
+    const participants = await this.userRepository.find({
+      where: { id: In(conversation.participantIds) },
+      relations: ['farmerProfile'],
     });
 
     const unreadCount = await this.messageRepository.count({
@@ -333,7 +336,7 @@ export class ChatService {
       orderId: conversation.orderId,
       participants: participants.map(p => ({
         id: p.id,
-        name: p.name,
+        name: p.farmerProfile?.farmName || p.fullName || p.name || 'User',
         role: p.role,
         phone: p.phone,
         avatar: p.avatar,

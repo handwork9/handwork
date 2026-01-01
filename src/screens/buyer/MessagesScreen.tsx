@@ -230,10 +230,20 @@ export default function MessagesScreen() {
         // Find the other participant (not the current user)
         const otherParticipant = conv.participants.find(p => p.id !== currentUser?.id);
         
+        // Build display name from available info
+        let displayName = 'Unknown';
+        if (otherParticipant?.name && otherParticipant.name.trim()) {
+          displayName = otherParticipant.name;
+        } else if (otherParticipant?.phone) {
+          displayName = otherParticipant.phone;
+        } else if (otherParticipant?.role) {
+          displayName = otherParticipant.role.charAt(0).toUpperCase() + otherParticipant.role.slice(1);
+        }
+        
         return {
           id: conv.id,
           farmerId: otherParticipant?.id || '',
-          farmerName: otherParticipant?.name || 'Unknown',
+          farmerName: displayName,
           farmerAvatar: otherParticipant?.avatar,
           farmerPhone: otherParticipant?.phone,
           lastMessage: conv.lastMessage?.text || 'No messages yet',

@@ -70,6 +70,7 @@ import WithdrawalDetailScreen from '../screens/shared/WithdrawalDetailScreen';
 import NotificationSettingsScreen from '../screens/shared/NotificationSettingsScreen';
 import AppearanceScreen from '../screens/shared/AppearanceScreen';
 import VideoCallScreen from '../screens/shared/VideoCallScreen';
+import VoiceCallScreen from '../screens/shared/VoiceCallScreen';
 
 const Tab = createBottomTabNavigator<RiderTabParamList>();
 const Stack = createNativeStackNavigator<RiderStackParamList>();
@@ -460,6 +461,15 @@ export function RiderNavigator() {
       <Stack.Screen
         name="VideoCall"
         component={VideoCallScreen}
+        options={{ 
+          headerShown: false,
+          presentation: 'fullScreenModal',
+          animation: 'fade',
+        }}
+      />
+      <Stack.Screen
+        name="VoiceCall"
+        component={VoiceCallScreen}
         options={{ 
           headerShown: false,
           presentation: 'fullScreenModal',

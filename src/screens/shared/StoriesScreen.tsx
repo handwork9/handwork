@@ -11,6 +11,11 @@ import {
   StatusBar,
   FlatList,
   ActivityIndicator,
+  TextInput,
+  Keyboard,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -20,6 +25,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { formatDistanceToNow } from 'date-fns';
 import { COLORS, SPACING, FONT_SIZES, FONTS } from '../../constants/theme';
 import { socialService, FarmerStories, FarmStory } from '../../services/socialService';
+import { chatService } from '../../services/chatService';
 
 const { width, height } = Dimensions.get('window');
 
@@ -70,6 +76,7 @@ const StoryView = ({
   onPrevious,
   onClose,
   onProgressUpdate,
+  externalPaused = false,
 }: {
   story: FarmStory;
   isActive: boolean;
@@ -77,10 +84,14 @@ const StoryView = ({
   onPrevious: () => void;
   onClose: () => void;
   onProgressUpdate: (progress: number) => void;
+  externalPaused?: boolean;
 }) => {
   const progressRef = useRef(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const [isPaused, setIsPaused] = useState(false);
+  const [isPressedPaused, setIsPressedPaused] = useState(false);
+  
+  // Combine internal press pause and external pause (from keyboard/input)
+  const isPaused = isPressedPaused || externalPaused;
 
   const viewStoryMutation = useMutation({
     mutationFn: () => socialService.viewStory(story.id),
@@ -124,8 +135,8 @@ const StoryView = ({
     };
   }, [isActive, isPaused, story.duration]);
 
-  const handlePressIn = () => setIsPaused(true);
-  const handlePressOut = () => setIsPaused(false);
+  const handlePressIn = () => setIsPressedPaused(true);
+  const handlePressOut = () => setIsPressedPaused(false);
 
   const handleTap = (event: any) => {
     const touchX = event.nativeEvent.locationX;
@@ -185,7 +196,7 @@ const StoriesScreen = () => {
   const route = useRoute<RouteProp<{ params: StoriesRouteParams }, 'params'>>();
   
   // Get params safely - they might be undefined if navigating directly
-  const initialFarmerIndex = route.params?.initialIndex ?? route.params?.initialFarmerIndex ?? 0;
+  const initialFarmerIndex = route.params?.initialIndex ?? 0;
 
   // Always fetch stories - use same query key as SocialFeedScreen
   const { data: fetchedStories, isLoading, error } = useQuery({
@@ -198,9 +209,13 @@ const StoriesScreen = () => {
   const [currentFarmerIndex, setCurrentFarmerIndex] = useState(initialFarmerIndex);
   const [currentStoryIndex, setCurrentStoryIndex] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [replyMessage, setReplyMessage] = useState('');
+  const [isSendingReply, setIsSendingReply] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   
   const translateX = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef<FlatList>(null);
+  const inputRef = useRef<TextInput>(null);
 
   const currentFarmer = stories[currentFarmerIndex];
   const currentStory = currentFarmer?.stories?.[currentStoryIndex];
@@ -236,6 +251,46 @@ const StoriesScreen = () => {
       setProgress(0);
     }
   }, [currentStoryIndex, currentFarmerIndex, stories]);
+
+  // Handle sending reply to farmer
+  const handleSendReply = useCallback(async () => {
+    if (!replyMessage.trim() || isSendingReply || !currentFarmer) return;
+    
+    setIsSendingReply(true);
+    Keyboard.dismiss();
+    
+    try {
+      // Get or create conversation with the farmer
+      const conversation = await chatService.getOrCreateConversation(
+        currentFarmer.farmer.id,
+        'farmer'
+      );
+      
+      if (!conversation) {
+        Alert.alert('Error', 'Could not start conversation with this farmer');
+        return;
+      }
+      
+      // Send the message
+      const message = await chatService.sendMessage({
+        conversationId: conversation.id,
+        text: `[Replying to story] ${replyMessage.trim()}`,
+        type: 'text',
+      });
+      
+      if (message) {
+        setReplyMessage('');
+        Alert.alert('Sent!', 'Your message has been sent to the farmer');
+      } else {
+        Alert.alert('Error', 'Failed to send message. Please try again.');
+      }
+    } catch (error) {
+      console.error('Failed to send story reply:', error);
+      Alert.alert('Error', 'Failed to send message. Please try again.');
+    } finally {
+      setIsSendingReply(false);
+    }
+  }, [replyMessage, isSendingReply, currentFarmer]);
 
   const panResponder = PanResponder.create({
     onMoveShouldSetPanResponder: (_, gestureState) => {
@@ -337,6 +392,7 @@ const StoriesScreen = () => {
           onPrevious={goToPreviousStory}
           onClose={() => navigation.goBack()}
           onProgressUpdate={setProgress}
+          externalPaused={isPaused}
         />
 
         {/* Header */}
@@ -378,17 +434,41 @@ const StoriesScreen = () => {
           </View>
         </SafeAreaView>
 
-        {/* Bottom actions */}
-        <SafeAreaView style={styles.footer} edges={['bottom']}>
-          <View style={styles.footerContent}>
-            <TouchableOpacity style={styles.replyInput}>
-              <Text style={styles.replyPlaceholder}>Send message</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.sendBtn}>
-              <Ionicons name="paper-plane-outline" size={24} color="white" />
-            </TouchableOpacity>
-          </View>
-        </SafeAreaView>
+        {/* Bottom actions - Reply input */}
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.footer}
+          keyboardVerticalOffset={0}
+        >
+          <SafeAreaView edges={['bottom']}>
+            <View style={styles.footerContent}>
+              <TextInput
+                ref={inputRef}
+                style={styles.replyTextInput}
+                placeholder="Send message..."
+                placeholderTextColor="rgba(255,255,255,0.6)"
+                value={replyMessage}
+                onChangeText={setReplyMessage}
+                onFocus={() => setIsPaused(true)}
+                onBlur={() => setIsPaused(false)}
+                returnKeyType="send"
+                onSubmitEditing={handleSendReply}
+                editable={!isSendingReply}
+              />
+              <TouchableOpacity 
+                style={[styles.sendBtn, (!replyMessage.trim() || isSendingReply) && styles.sendBtnDisabled]}
+                onPress={handleSendReply}
+                disabled={!replyMessage.trim() || isSendingReply}
+              >
+                {isSendingReply ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <Ionicons name="paper-plane" size={24} color="white" />
+                )}
+              </TouchableOpacity>
+            </View>
+          </SafeAreaView>
+        </KeyboardAvoidingView>
       </Animated.View>
     </View>
   );
@@ -533,7 +613,7 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.sm,
     gap: SPACING.sm,
   },
-  replyInput: {
+  replyTextInput: {
     flex: 1,
     backgroundColor: 'rgba(255,255,255,0.2)',
     borderRadius: 20,
@@ -541,13 +621,21 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.sm,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.3)',
-  },
-  replyPlaceholder: {
-    color: 'rgba(255,255,255,0.7)',
+    color: 'white',
     fontSize: FONT_SIZES.md,
+    fontFamily: FONTS.regular,
+    minHeight: 40,
   },
   sendBtn: {
-    padding: SPACING.xs,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sendBtnDisabled: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
   },
   centerContent: {
     justifyContent: 'center',

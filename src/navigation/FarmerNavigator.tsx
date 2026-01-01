@@ -80,6 +80,7 @@ import NotificationSettingsScreen from '../screens/shared/NotificationSettingsSc
 import AppearanceScreen from '../screens/shared/AppearanceScreen';
 import DeleteAccountScreen from '../screens/shared/DeleteAccountScreen';
 import VideoCallScreen from '../screens/shared/VideoCallScreen';
+import VoiceCallScreen from '../screens/shared/VoiceCallScreen';
 
 // Social Feature Screens
 import SocialFeedScreen from '../screens/shared/SocialFeedScreen';
@@ -531,6 +532,15 @@ export function FarmerNavigator() {
       <Stack.Screen
         name="VideoCall"
         component={VideoCallScreen}
+        options={{ 
+          headerShown: false,
+          presentation: 'fullScreenModal',
+          animation: 'fade',
+        }}
+      />
+      <Stack.Screen
+        name="VoiceCall"
+        component={VoiceCallScreen}
         options={{ 
           headerShown: false,
           presentation: 'fullScreenModal',

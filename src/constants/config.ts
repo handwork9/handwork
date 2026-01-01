@@ -57,6 +57,13 @@ export const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID
 export const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '';
 export const GOOGLE_ANDROID_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || '';
 
+// Agora.io Configuration for Live Streaming
+// Get these from Agora Console: https://console.agora.io
+export const AGORA_CONFIG = {
+  APP_ID: process.env.EXPO_PUBLIC_AGORA_APP_ID || '',
+  // App Certificate is used on backend for token generation
+};
+
 export const DELIVERY_CONFIG = {
   // Same-state delivery constraints
   MAX_DELIVERY_DISTANCE_KM: 50, // Maximum delivery distance in kilometers

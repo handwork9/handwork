@@ -362,4 +362,15 @@ export class SocialController {
   async endLiveStream(@Request() req: AuthenticatedRequest, @Param('id', ParseUUIDPipe) id: string) {
     return this.socialService.endLiveStream(req.user.id, id);
   }
+
+  @Post('live/agora-token')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Get Agora RTC token for live streaming' })
+  @ApiResponse({ status: 200, description: 'Token generated successfully' })
+  async getAgoraToken(
+    @Request() req: AuthenticatedRequest,
+    @Body() dto: { channelName: string; role: 'host' | 'audience' },
+  ) {
+    return this.socialService.generateAgoraToken(req.user.id, dto.channelName, dto.role);
+  }
 }

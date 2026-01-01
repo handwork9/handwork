@@ -888,4 +888,58 @@ export class SocialService {
 
     return result.affected || 0;
   }
+
+  // ==================== AGORA TOKEN ====================
+
+  async generateAgoraToken(
+    userId: string,
+    channelName: string,
+    role: 'host' | 'audience',
+  ): Promise<{ token: string; uid: number; channelName: string; expiresIn: number }> {
+    const appId = process.env.AGORA_APP_ID;
+    const appCertificate = process.env.AGORA_APP_CERTIFICATE;
+
+    if (!appId || !appCertificate) {
+      throw new BadRequestException('Agora configuration missing');
+    }
+
+    // Generate a unique UID based on user ID hash
+    const uid = Math.abs(this.hashString(userId)) % 100000000;
+    
+    // Token expires in 24 hours (in seconds)
+    const tokenExpireInSeconds = 86400;
+    const privilegeExpireInSeconds = 86400;
+
+    // Import agora-token dynamically
+    const { RtcTokenBuilder, RtcRole } = await import('agora-token');
+    
+    const roleType = role === 'host' ? RtcRole.PUBLISHER : RtcRole.SUBSCRIBER;
+
+    const token = RtcTokenBuilder.buildTokenWithUid(
+      appId,
+      appCertificate,
+      channelName,
+      uid,
+      roleType,
+      tokenExpireInSeconds,
+      privilegeExpireInSeconds,
+    );
+
+    return {
+      token,
+      uid,
+      channelName,
+      expiresIn: tokenExpireInSeconds,
+    };
+  }
+
+  private hashString(str: string): number {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    return hash;
+  }
 }

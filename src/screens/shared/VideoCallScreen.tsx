@@ -1,9 +1,6 @@
 /**
  * VideoCallScreen
- * Full-screen video/audio call interface
- * 
- * NOTE: Requires react-native-webrtc which only works in development builds,
- * not in Expo Go.
+ * Full-screen video/audio call interface using Agora SDK
  */
 
 import React, { useEffect, useState, useCallback } from 'react';
@@ -17,24 +14,18 @@ import {
   Alert,
   Vibration,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Haptics from 'expo-haptics';
-import { videoCallService, CallState, CallType } from '../../services/videoCallService';
+import { RtcSurfaceView, VideoSourceType } from 'react-native-agora';
+import callService, { CallStatus, CallType } from '../../services/callService';
 import { useTheme } from '../../context/ThemeContext';
-import { FONTS, FONT_SIZES, SPACING } from '../../constants/theme';
+import { FONTS, FONT_SIZES, SPACING, COLORS } from '../../constants/theme';
 import { BuyerStackParamList } from '../../types';
-
-// Lazy-load RTCView to avoid crashes in Expo Go
-let RTCView: any = null;
-try {
-  RTCView = require('react-native-webrtc').RTCView;
-} catch (error) {
-  console.warn('react-native-webrtc RTCView not available');
-}
 
 type VideoCallScreenNavigationProp = NativeStackNavigationProp<BuyerStackParamList, 'VideoCall'>;
 type VideoCallScreenRouteProp = RouteProp<BuyerStackParamList, 'VideoCall'>;
@@ -47,6 +38,7 @@ interface ControlButtonProps {
   isDestructive?: boolean;
   size?: 'normal' | 'large';
   disabled?: boolean;
+  iconType?: 'material' | 'ionicons';
 }
 
 const ControlButton: React.FC<ControlButtonProps> = ({
@@ -57,6 +49,7 @@ const ControlButton: React.FC<ControlButtonProps> = ({
   isDestructive = false,
   size = 'normal',
   disabled = false,
+  iconType = 'material',
 }) => {
   const buttonSize = size === 'large' ? 70 : 56;
   const iconSize = size === 'large' ? 32 : 24;
@@ -89,7 +82,11 @@ const ControlButton: React.FC<ControlButtonProps> = ({
       disabled={disabled}
       activeOpacity={0.7}
     >
-      <MaterialCommunityIcons name={icon as any} size={iconSize} color={iconColor} />
+      {iconType === 'ionicons' ? (
+        <Ionicons name={icon as any} size={iconSize} color={iconColor} />
+      ) : (
+        <MaterialCommunityIcons name={icon as any} size={iconSize} color={iconColor} />
+      )}
       {label && <Text style={[styles.controlLabel, { color: '#FFFFFF' }]}>{label}</Text>}
     </TouchableOpacity>
   );
@@ -100,133 +97,136 @@ export default function VideoCallScreen() {
   const route = useRoute<VideoCallScreenRouteProp>();
   const { colors } = useTheme();
 
-  const { userId, userName, userAvatar, callType = 'video', isIncoming = false } = route.params || {};
+  const { userId, userName, userAvatar, callType = 'video', isIncoming = false, channelName } = route.params || {};
 
-  const [callState, setCallState] = useState<CallState>(videoCallService.getState());
+  const [callStatus, setCallStatus] = useState<CallStatus>('idle');
+  const [duration, setDuration] = useState(0);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isVideoEnabled, setIsVideoEnabled] = useState(true);
+  const [isSpeakerOn, setIsSpeakerOn] = useState(true);
   const [isFrontCamera, setIsFrontCamera] = useState(true);
+  const [remoteUid, setRemoteUid] = useState<number | null>(null);
   const [showControls, setShowControls] = useState(true);
 
-  // Check if WebRTC is available
-  if (!RTCView) {
-    return (
-      <SafeAreaView style={[styles.container, { backgroundColor: '#1C1C1E' }]}>
-        <StatusBar barStyle="light-content" backgroundColor="#1C1C1E" />
-        <View style={styles.unavailableContainer}>
-          <MaterialCommunityIcons name="video-off" size={64} color="#666" />
-          <Text style={styles.unavailableTitle}>Video Calls Not Available</Text>
-          <Text style={styles.unavailableText}>
-            Video calling requires a development build.{'\n'}
-            It is not supported in Expo Go.
-          </Text>
-          <TouchableOpacity
-            style={styles.unavailableButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Text style={styles.unavailableButtonText}>Go Back</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  // Subscribe to call state changes
+  // Initialize call
   useEffect(() => {
-    const unsubscribe = videoCallService.onStateChange(setCallState);
-    
-    // Start or answer call
-    if (isIncoming) {
-      // Will answer when user taps accept
-    } else if (userId) {
-      startOutgoingCall();
-    }
+    const initCall = async () => {
+      // Setup callbacks
+      callService.setCallbacks({
+        onRemoteUserJoined: (uid) => {
+          console.log('Remote user joined:', uid);
+          setRemoteUid(uid);
+          setCallStatus('connected');
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        },
+        onRemoteUserLeft: (uid) => {
+          console.log('Remote user left:', uid);
+          setRemoteUid(null);
+          handleEndCall();
+        },
+        onCallConnected: () => {
+          setCallStatus('connected');
+        },
+        onCallEnded: () => {
+          navigation.goBack();
+        },
+        onCallFailed: (error) => {
+          Alert.alert('Call Failed', error);
+          navigation.goBack();
+        },
+        onDurationUpdate: (dur) => {
+          setDuration(dur);
+        },
+      });
+
+      if (isIncoming && channelName) {
+        // Join incoming call
+        const success = await callService.joinCall(
+          (callType as CallType) || 'video',
+          channelName,
+          userName || 'Unknown',
+          userAvatar
+        );
+        if (!success) {
+          Alert.alert('Error', 'Failed to join call');
+          navigation.goBack();
+          return;
+        }
+        setCallStatus('ringing');
+      } else if (userId) {
+        // Start outgoing call
+        const result = await callService.startCall(
+          (callType as CallType) || 'video',
+          userId,
+          userName || 'Unknown',
+          userAvatar
+        );
+        if (!result.success) {
+          Alert.alert('Error', result.error || 'Failed to start call');
+          navigation.goBack();
+          return;
+        }
+        setCallStatus('calling');
+      }
+    };
+
+    initCall();
 
     return () => {
-      unsubscribe();
+      callService.endCall();
     };
   }, []);
 
   // Auto-hide controls after 5 seconds when connected
   useEffect(() => {
-    if (callState.status === 'connected' && showControls) {
+    if (callStatus === 'connected' && showControls) {
       const timer = setTimeout(() => setShowControls(false), 5000);
       return () => clearTimeout(timer);
     }
-  }, [callState.status, showControls]);
-
-  // Handle call ended - navigate back
-  useEffect(() => {
-    if (callState.status === 'ended') {
-      const timer = setTimeout(() => {
-        navigation.goBack();
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [callState.status]);
+  }, [callStatus, showControls]);
 
   // Vibrate for incoming call
   useEffect(() => {
-    if (isIncoming && callState.status === 'ringing') {
+    if (isIncoming && callStatus === 'ringing') {
       const pattern = [0, 500, 500, 500, 500, 500];
       Vibration.vibrate(pattern, true);
-      
       return () => Vibration.cancel();
     }
-  }, [isIncoming, callState.status]);
+  }, [isIncoming, callStatus]);
 
-  const startOutgoingCall = async () => {
-    try {
-      await videoCallService.startCall(userId!, callType as CallType);
-    } catch (error: any) {
-      Alert.alert('Call Failed', error.message || 'Could not start call');
-      navigation.goBack();
-    }
-  };
-
-  const handleAnswer = async () => {
-    try {
-      Vibration.cancel();
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      await videoCallService.answerCall();
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Could not answer call');
-    }
-  };
-
-  const handleDecline = () => {
+  const handleEndCall = useCallback(async () => {
     Vibration.cancel();
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    videoCallService.declineCall();
-    navigation.goBack();
-  };
-
-  const handleEndCall = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    videoCallService.endCall();
-  };
+    await callService.endCall();
+    navigation.goBack();
+  }, [navigation]);
 
-  const handleToggleAudio = () => {
+  const handleToggleMute = useCallback(async () => {
     Haptics.selectionAsync();
-    videoCallService.toggleAudio();
-  };
+    const newMuted = await callService.toggleMute();
+    setIsMuted(newMuted);
+  }, []);
 
-  const handleToggleVideo = () => {
+  const handleToggleVideo = useCallback(async () => {
     Haptics.selectionAsync();
-    videoCallService.toggleVideo();
-  };
+    const newEnabled = await callService.toggleVideo();
+    setIsVideoEnabled(newEnabled);
+  }, []);
 
-  const handleSwitchCamera = () => {
+  const handleSwitchCamera = useCallback(async () => {
     Haptics.selectionAsync();
-    videoCallService.switchCamera();
+    await callService.switchCamera();
     setIsFrontCamera(!isFrontCamera);
-  };
+  }, [isFrontCamera]);
 
-  const handleToggleSpeaker = () => {
+  const handleToggleSpeaker = useCallback(async () => {
     Haptics.selectionAsync();
-    videoCallService.toggleSpeaker();
-  };
+    const newSpeaker = await callService.toggleSpeaker();
+    setIsSpeakerOn(newSpeaker);
+  }, []);
 
   const toggleControls = () => {
-    if (callState.status === 'connected') {
+    if (callStatus === 'connected') {
       setShowControls(!showControls);
     }
   };
@@ -238,37 +238,40 @@ export default function VideoCallScreen() {
   };
 
   const getStatusText = () => {
-    switch (callState.status) {
+    switch (callStatus) {
       case 'calling':
         return 'Calling...';
       case 'ringing':
         return 'Incoming call...';
       case 'connected':
-        return formatDuration(callState.duration);
+        return formatDuration(duration);
       case 'ended':
-        return callState.error || 'Call ended';
+        return 'Call ended';
       default:
-        return '';
+        return 'Connecting...';
     }
   };
 
-  const displayName = callState.remoteUserName || userName || 'Unknown';
+  const displayName = userName || 'Unknown';
 
   // Render incoming call UI
-  if (isIncoming && callState.status === 'ringing') {
+  if (isIncoming && callStatus === 'ringing') {
     return (
       <View style={styles.container}>
         <StatusBar barStyle="light-content" backgroundColor="#000" />
         
         <View style={styles.incomingCallContainer}>
-          {/* Avatar placeholder */}
-          <View style={styles.avatarLarge}>
-            <MaterialCommunityIcons name="account" size={80} color="#FFF" />
-          </View>
+          {userAvatar ? (
+            <Image source={{ uri: userAvatar }} style={styles.avatarLarge} />
+          ) : (
+            <View style={[styles.avatarLarge, styles.avatarPlaceholderLarge]}>
+              <MaterialCommunityIcons name="account" size={80} color="#FFF" />
+            </View>
+          )}
 
           <Text style={styles.callerName}>{displayName}</Text>
           <Text style={styles.callTypeText}>
-            Incoming {callState.type === 'video' ? 'Video' : 'Audio'} Call
+            Incoming {callType === 'video' ? 'Video' : 'Voice'} Call
           </Text>
 
           {/* Answer/Decline buttons */}
@@ -276,7 +279,7 @@ export default function VideoCallScreen() {
             <View style={styles.incomingCallButton}>
               <TouchableOpacity
                 style={[styles.actionButton, styles.declineButton]}
-                onPress={handleDecline}
+                onPress={handleEndCall}
               >
                 <MaterialCommunityIcons name="phone-hangup" size={36} color="#FFF" />
               </TouchableOpacity>
@@ -286,10 +289,10 @@ export default function VideoCallScreen() {
             <View style={styles.incomingCallButton}>
               <TouchableOpacity
                 style={[styles.actionButton, styles.answerButton]}
-                onPress={handleAnswer}
+                onPress={() => setCallStatus('connected')}
               >
                 <MaterialCommunityIcons 
-                  name={callState.type === 'video' ? 'video' : 'phone'} 
+                  name={callType === 'video' ? 'video' : 'phone'} 
                   size={36} 
                   color="#FFF" 
                 />
@@ -312,30 +315,37 @@ export default function VideoCallScreen() {
       <StatusBar barStyle="light-content" backgroundColor="#000" />
 
       {/* Remote video (full screen) */}
-      {callState.remoteStream && callState.type === 'video' ? (
-        <RTCView
-          streamURL={(callState.remoteStream as any).toURL?.() || ''}
+      {remoteUid && callType === 'video' ? (
+        <RtcSurfaceView
+          canvas={{
+            uid: remoteUid,
+            sourceType: VideoSourceType.VideoSourceRemote,
+          }}
           style={styles.remoteVideo}
-          objectFit="cover"
-          mirror={false}
         />
       ) : (
         <View style={styles.audioCallBackground}>
-          <View style={styles.avatarLarge}>
-            <MaterialCommunityIcons name="account" size={80} color="#FFF" />
-          </View>
+          {userAvatar ? (
+            <Image source={{ uri: userAvatar }} style={styles.avatarLarge} />
+          ) : (
+            <View style={[styles.avatarLarge, styles.avatarPlaceholderLarge]}>
+              <MaterialCommunityIcons name="account" size={80} color="#FFF" />
+            </View>
+          )}
           <Text style={styles.audioCallName}>{displayName}</Text>
+          <Text style={styles.audioCallStatus}>{getStatusText()}</Text>
+          {callStatus === 'calling' && (
+            <ActivityIndicator size="small" color="white" style={{ marginTop: 16 }} />
+          )}
         </View>
       )}
 
       {/* Local video (picture-in-picture) */}
-      {callState.localStream && callState.type === 'video' && callState.isVideoEnabled && (
+      {callType === 'video' && isVideoEnabled && (
         <View style={styles.localVideoContainer}>
-          <RTCView
-            streamURL={(callState.localStream as any).toURL?.() || ''}
+          <RtcSurfaceView
+            canvas={{ uid: 0 }}
             style={styles.localVideo}
-            objectFit="cover"
-            mirror={isFrontCamera}
           />
         </View>
       )}
@@ -364,7 +374,7 @@ export default function VideoCallScreen() {
             </View>
           </View>
 
-          {callState.type === 'video' && (
+          {callType === 'video' && (
             <TouchableOpacity 
               style={styles.switchCameraButton}
               onPress={handleSwitchCamera}
@@ -378,19 +388,19 @@ export default function VideoCallScreen() {
       {/* Bottom controls */}
       {showControls && (
         <SafeAreaView style={styles.bottomBar} edges={['bottom']}>
-          {callState.status === 'connected' ? (
+          {callStatus === 'connected' || callStatus === 'calling' ? (
             <View style={styles.controlsRow}>
               <ControlButton
-                icon={callState.isAudioEnabled ? 'microphone' : 'microphone-off'}
-                onPress={handleToggleAudio}
-                isActive={!callState.isAudioEnabled}
+                icon={isMuted ? 'microphone-off' : 'microphone'}
+                onPress={handleToggleMute}
+                isActive={isMuted}
               />
 
-              {callState.type === 'video' && (
+              {callType === 'video' && (
                 <ControlButton
-                  icon={callState.isVideoEnabled ? 'video' : 'video-off'}
+                  icon={isVideoEnabled ? 'video' : 'video-off'}
                   onPress={handleToggleVideo}
-                  isActive={!callState.isVideoEnabled}
+                  isActive={!isVideoEnabled}
                 />
               )}
 
@@ -402,42 +412,24 @@ export default function VideoCallScreen() {
               />
 
               <ControlButton
-                icon={callState.isSpeakerOn ? 'volume-high' : 'volume-off'}
+                icon={isSpeakerOn ? 'volume-high' : 'volume-off'}
                 onPress={handleToggleSpeaker}
-                isActive={!callState.isSpeakerOn}
+                isActive={!isSpeakerOn}
               />
 
-              {callState.type === 'video' && (
+              {callType === 'video' && (
                 <ControlButton
                   icon="camera-flip"
                   onPress={handleSwitchCamera}
                 />
               )}
             </View>
-          ) : callState.status === 'calling' ? (
-            <View style={styles.controlsRow}>
-              <ControlButton
-                icon="phone-hangup"
-                onPress={handleEndCall}
-                isDestructive
-                size="large"
-              />
-            </View>
-          ) : callState.status === 'ended' ? (
+          ) : callStatus === 'ended' ? (
             <View style={styles.endedContainer}>
-              <MaterialCommunityIcons 
-                name={callState.error ? 'phone-missed' : 'phone-hangup'} 
-                size={48} 
-                color="#FFF" 
-              />
-              <Text style={styles.endedText}>
-                {callState.error || 'Call Ended'}
-              </Text>
-              {callState.duration > 0 && (
-                <Text style={styles.durationText}>
-                  Duration: {(videoCallService.constructor as any).formatDuration?.(callState.duration) || 
-                    `${Math.floor(callState.duration / 60)}:${(callState.duration % 60).toString().padStart(2, '0')}`}
-                </Text>
+              <MaterialCommunityIcons name="phone-hangup" size={48} color="#FFF" />
+              <Text style={styles.endedText}>Call Ended</Text>
+              {duration > 0 && (
+                <Text style={styles.durationText}>Duration: {formatDuration(duration)}</Text>
               )}
             </View>
           ) : null}
@@ -466,15 +458,23 @@ const styles = StyleSheet.create({
     width: 150,
     height: 150,
     borderRadius: 75,
+    marginBottom: SPACING.lg,
+  },
+  avatarPlaceholderLarge: {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: SPACING.lg,
   },
   audioCallName: {
     fontSize: 28,
     fontFamily: FONTS.semiBold,
     color: '#FFF',
+  },
+  audioCallStatus: {
+    fontSize: FONT_SIZES.lg,
+    fontFamily: FONTS.regular,
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: SPACING.sm,
   },
   localVideoContainer: {
     position: 'absolute',
@@ -485,6 +485,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     backgroundColor: '#000',
+    borderWidth: 2,
+    borderColor: 'white',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -652,38 +654,5 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.regular,
     color: 'rgba(255, 255, 255, 0.7)',
     marginTop: SPACING.xs,
-  },
-  // Unavailable styles (for Expo Go)
-  unavailableContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: SPACING.xl,
-  },
-  unavailableTitle: {
-    fontSize: FONT_SIZES.xl,
-    fontFamily: FONTS.bold,
-    color: '#FFF',
-    marginTop: SPACING.lg,
-    marginBottom: SPACING.sm,
-  },
-  unavailableText: {
-    fontSize: FONT_SIZES.md,
-    fontFamily: FONTS.regular,
-    color: 'rgba(255, 255, 255, 0.7)',
-    textAlign: 'center',
-    lineHeight: 24,
-  },
-  unavailableButton: {
-    marginTop: SPACING.xl,
-    paddingHorizontal: SPACING.xl,
-    paddingVertical: SPACING.md,
-    backgroundColor: '#3B82F6',
-    borderRadius: 12,
-  },
-  unavailableButtonText: {
-    fontSize: FONT_SIZES.md,
-    fontFamily: FONTS.semiBold,
-    color: '#FFF',
   },
 });

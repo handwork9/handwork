@@ -17,51 +17,101 @@ interface ApiResponse<T> {
   data: T;
 }
 
+// Retry configuration for uploads
+const UPLOAD_RETRY_CONFIG = {
+  maxRetries: 3,
+  initialDelay: 1000, // 1 second
+};
+
+// Helper to delay execution
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 export const uploadService = {
   /**
-   * Upload a single base64 encoded image
+   * Upload a single base64 encoded image with retry logic
    */
   async uploadImage(
     base64: string,
     folder: string = 'products'
   ): Promise<{ success: boolean; data?: UploadResponse; error?: string }> {
-    try {
-      console.log('[UploadService] Uploading image to folder:', folder);
-      const response = await apiClient.post<ApiResponse<UploadResponse>>('/uploads/image', {
-        base64,
-        folder,
-      });
-      console.log('[UploadService] Upload response:', JSON.stringify(response.data, null, 2));
-      return { success: true, data: response.data };
-    } catch (error: any) {
-      console.error('[UploadService] Upload image error:', error);
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to upload image' 
-      };
+    let lastError: any;
+    
+    for (let attempt = 1; attempt <= UPLOAD_RETRY_CONFIG.maxRetries; attempt++) {
+      try {
+        console.log(`[UploadService] Uploading image to folder: ${folder} (attempt ${attempt}/${UPLOAD_RETRY_CONFIG.maxRetries})`);
+        const response = await apiClient.post<ApiResponse<UploadResponse>>('/uploads/image', {
+          base64,
+          folder,
+        }, {
+          timeout: 60000, // 60 second timeout for uploads
+        });
+        console.log('[UploadService] Upload response:', JSON.stringify(response.data, null, 2));
+        return { success: true, data: response.data };
+      } catch (error: any) {
+        lastError = error;
+        console.error(`[UploadService] Upload attempt ${attempt} failed:`, error.message || error);
+        
+        // Only retry on 502, 503, 504 or network errors
+        const status = error.response?.status;
+        const isRetryable = !status || status === 502 || status === 503 || status === 504;
+        
+        if (isRetryable && attempt < UPLOAD_RETRY_CONFIG.maxRetries) {
+          const delayMs = UPLOAD_RETRY_CONFIG.initialDelay * Math.pow(2, attempt - 1);
+          console.log(`[UploadService] Retrying in ${delayMs}ms...`);
+          await delay(delayMs);
+        } else {
+          break;
+        }
+      }
     }
+    
+    return { 
+      success: false, 
+      error: lastError?.response?.data?.message || lastError?.message || 'Failed to upload image' 
+    };
   },
 
   /**
-   * Upload multiple base64 encoded images
+   * Upload multiple base64 encoded images with retry logic
    */
   async uploadImages(
     images: string[],
     folder: string = 'products'
   ): Promise<{ success: boolean; data?: MultipleUploadResponse; error?: string }> {
-    try {
-      const response = await apiClient.post<ApiResponse<MultipleUploadResponse>>('/uploads/images', {
-        images,
-        folder,
-      });
-      return { success: true, data: response.data };
-    } catch (error: any) {
-      console.error('Upload images error:', error);
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to upload images' 
-      };
+    let lastError: any;
+    
+    for (let attempt = 1; attempt <= UPLOAD_RETRY_CONFIG.maxRetries; attempt++) {
+      try {
+        console.log(`[UploadService] Uploading ${images.length} images to folder: ${folder} (attempt ${attempt}/${UPLOAD_RETRY_CONFIG.maxRetries})`);
+        const response = await apiClient.post<ApiResponse<MultipleUploadResponse>>('/uploads/images', {
+          images,
+          folder,
+        }, {
+          timeout: 120000, // 2 minute timeout for multiple uploads
+        });
+        return { success: true, data: response.data };
+      } catch (error: any) {
+        lastError = error;
+        console.error(`[UploadService] Upload multiple attempt ${attempt} failed:`, error.message || error);
+        
+        // Only retry on 502, 503, 504 or network errors
+        const status = error.response?.status;
+        const isRetryable = !status || status === 502 || status === 503 || status === 504;
+        
+        if (isRetryable && attempt < UPLOAD_RETRY_CONFIG.maxRetries) {
+          const delayMs = UPLOAD_RETRY_CONFIG.initialDelay * Math.pow(2, attempt - 1);
+          console.log(`[UploadService] Retrying in ${delayMs}ms...`);
+          await delay(delayMs);
+        } else {
+          break;
+        }
+      }
     }
+    
+    return { 
+      success: false, 
+      error: lastError?.response?.data?.message || lastError?.message || 'Failed to upload images' 
+    };
   },
 
   /**

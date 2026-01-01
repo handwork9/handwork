@@ -17,11 +17,13 @@ import { useNavigation } from '@react-navigation/native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { io, Socket } from 'socket.io-client';
+import { RtcSurfaceView, VideoSourceType } from 'react-native-agora';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, FONTS } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
 import { socialService, LiveStream } from '../../services/socialService';
 import { API_CONFIG } from '../../constants/config';
 import { useAppSelector } from '../../store';
+import agoraService from '../../services/agoraService';
 
 const { width } = Dimensions.get('window');
 
@@ -120,11 +122,39 @@ const LiveStreamViewer = ({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [showChat, setShowChat] = useState(true);
+  const [isAgoraReady, setIsAgoraReady] = useState(false);
+  const [remoteUid, setRemoteUid] = useState<number | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
-    // Connect to live stream socket
+    // Initialize Agora as viewer
+    const initAgoraViewer = async () => {
+      try {
+        // Use stream ID as channel name to join the broadcaster's channel
+        const joined = await agoraService.joinAsViewer(stream.id);
+        if (joined) {
+          setIsAgoraReady(true);
+        }
+
+        // Listen for remote user (broadcaster) joining
+        agoraService.onRemoteUserJoined((uid) => {
+          console.log('Broadcaster joined with uid:', uid);
+          setRemoteUid(uid);
+        });
+
+        agoraService.onRemoteUserLeft((uid) => {
+          console.log('Broadcaster left:', uid);
+          setRemoteUid(null);
+        });
+      } catch (error) {
+        console.error('Failed to join as viewer:', error);
+      }
+    };
+
+    initAgoraViewer();
+
+    // Connect to live stream socket for chat
     socketRef.current = io(`${API_CONFIG.WS_URL}/live`, {
       transports: ['websocket'],
     });
@@ -157,6 +187,11 @@ const LiveStreamViewer = ({
     });
 
     return () => {
+      // Leave Agora channel
+      agoraService.leaveChannel();
+      setIsAgoraReady(false);
+      setRemoteUid(null);
+      
       if (socketRef.current) {
         socketRef.current.emit('leave_stream', { streamId: stream.id });
         socketRef.current.disconnect();
@@ -188,14 +223,27 @@ const LiveStreamViewer = ({
 
   return (
     <View style={styles.viewerContainer}>
-      {/* Video placeholder - In production, integrate with actual video player */}
+      {/* Live video from broadcaster using Agora */}
       <View style={styles.videoContainer}>
-        {stream.thumbnailUrl ? (
-          <Image source={{ uri: stream.thumbnailUrl }} style={styles.videoPlaceholder} />
+        {isAgoraReady && remoteUid ? (
+          <RtcSurfaceView
+            canvas={{ 
+              uid: remoteUid,
+              sourceType: VideoSourceType.VideoSourceRemote,
+            }}
+            style={styles.remoteVideo}
+          />
         ) : (
           <View style={[styles.videoPlaceholder, { backgroundColor: '#000' }]}>
-            <Ionicons name="videocam" size={60} color="white" />
-            <Text style={styles.streamingText}>Live streaming...</Text>
+            {stream.thumbnailUrl ? (
+              <Image source={{ uri: stream.thumbnailUrl }} style={styles.loadingThumbnail} />
+            ) : null}
+            <View style={styles.loadingOverlay}>
+              <ActivityIndicator size="large" color="white" />
+              <Text style={styles.streamingText}>
+                {isAgoraReady ? 'Waiting for broadcaster...' : 'Connecting to stream...'}
+              </Text>
+            </View>
           </View>
         )}
 
@@ -634,6 +682,25 @@ const styles = StyleSheet.create({
   videoContainer: {
     flex: 1,
     position: 'relative',
+  },
+  remoteVideo: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+  loadingThumbnail: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    opacity: 0.5,
+  },
+  loadingOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    width: '100%',
+    height: '100%',
   },
   videoPlaceholder: {
     flex: 1,

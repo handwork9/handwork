@@ -589,8 +589,16 @@ export type BuyerStackParamList = {
     userId?: string; 
     userName?: string; 
     userAvatar?: string;
-    callType?: 'video' | 'audio'; 
+    callType?: 'video' | 'voice'; 
     isIncoming?: boolean;
+    channelName?: string;
+  };
+  VoiceCall: {
+    userId?: string;
+    userName?: string;
+    userAvatar?: string;
+    isIncoming?: boolean;
+    channelName?: string;
   };
   // Social Features
   SocialFeed: undefined;
@@ -673,8 +681,16 @@ export type FarmerStackParamList = {
     userId?: string; 
     userName?: string; 
     userAvatar?: string;
-    callType?: 'video' | 'audio'; 
+    callType?: 'video' | 'voice'; 
     isIncoming?: boolean;
+    channelName?: string;
+  };
+  VoiceCall: {
+    userId?: string;
+    userName?: string;
+    userAvatar?: string;
+    isIncoming?: boolean;
+    channelName?: string;
   };
   // Social Features
   SocialFeed: undefined;
@@ -753,8 +769,16 @@ export type RiderStackParamList = {
     userId?: string; 
     userName?: string; 
     userAvatar?: string;
-    callType?: 'video' | 'audio'; 
+    callType?: 'video' | 'voice'; 
     isIncoming?: boolean;
+    channelName?: string;
+  };
+  VoiceCall: {
+    userId?: string;
+    userName?: string;
+    userAvatar?: string;
+    isIncoming?: boolean;
+    channelName?: string;
   };
 };
 

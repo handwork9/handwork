@@ -150,8 +150,12 @@ class ChatService {
    */
   async getConversations(): Promise<Conversation[]> {
     try {
-      const response = await apiClient.get<{ success: boolean; data: { conversations: Conversation[] } }>('/chat/conversations');
-      return response.data.conversations;
+      const response = await apiClient.get<{ conversations: Conversation[] } | { success: boolean; data: { conversations: Conversation[] } }>('/chat/conversations');
+      // Handle both response formats
+      const conversations = 'data' in response && response.data?.conversations 
+        ? response.data.conversations 
+        : (response as { conversations: Conversation[] }).conversations;
+      return conversations || [];
     } catch (error) {
       console.error('Failed to get conversations:', error);
       return [];
@@ -174,14 +178,18 @@ class ChatService {
       }
       
       console.log('getOrCreateConversation called:', { participantId, participantRole, options });
-      const response = await apiClient.post<{ success: boolean; data: { conversation: Conversation } }>('/chat/conversations', {
+      const response = await apiClient.post<{ conversation: Conversation } | { success: boolean; data: { conversation: Conversation } }>('/chat/conversations', {
         orderId: options?.orderId,
         productId: options?.productId,
         participantId,
         participantRole,
       });
       console.log('getOrCreateConversation response:', response);
-      return response.data.conversation;
+      // Handle both response formats
+      const conversation = 'data' in response && response.data?.conversation 
+        ? response.data.conversation 
+        : (response as { conversation: Conversation }).conversation;
+      return conversation || null;
     } catch (error) {
       console.error('Failed to get/create conversation:', error);
       return null;
@@ -201,10 +209,14 @@ class ChatService {
       if (options?.before) params.append('before', options.before);
 
       const query = params.toString() ? `?${params.toString()}` : '';
-      const response = await apiClient.get<{ success: boolean; data: { messages: ChatMessage[] } }>(
+      const response = await apiClient.get<{ messages: ChatMessage[] } | { success: boolean; data: { messages: ChatMessage[] } }>(
         `/chat/conversations/${conversationId}/messages${query}`
       );
-      return response.data.messages;
+      // Handle both response formats
+      const messages = 'data' in response && response.data?.messages 
+        ? response.data.messages 
+        : (response as { messages: ChatMessage[] }).messages;
+      return messages || [];
     } catch (error) {
       console.error('Failed to get messages:', error);
       return [];
@@ -217,7 +229,7 @@ class ChatService {
   async sendMessage(payload: SendMessagePayload): Promise<ChatMessage | null> {
     try {
       console.log('sendMessage called:', payload);
-      const response = await apiClient.post<{ success: boolean; data: { message: ChatMessage } }>(
+      const response = await apiClient.post<{ message: ChatMessage } | { success: boolean; data: { message: ChatMessage } }>(
         `/chat/conversations/${payload.conversationId}/messages`,
         {
           text: payload.text,
@@ -226,7 +238,11 @@ class ChatService {
         }
       );
       console.log('sendMessage response:', response);
-      return response.data.message;
+      // Handle both response formats
+      const message = 'data' in response && response.data?.message 
+        ? response.data.message 
+        : (response as { message: ChatMessage }).message;
+      return message || null;
     } catch (error) {
       console.error('Failed to send message:', error);
       return null;

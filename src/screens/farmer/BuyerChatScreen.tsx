@@ -436,11 +436,10 @@ const BuyerChatScreen: React.FC = () => {
         {
           text: 'In-App Voice Call',
           onPress: () => {
-            (navigation as NavigationProp<FarmerStackParamList>).navigate('VideoCall', {
+            (navigation as NavigationProp<FarmerStackParamList>).navigate('VoiceCall', {
               userId: buyer.id,
               userName: buyer.name,
               userAvatar: buyer.avatar,
-              callType: 'audio',
               isIncoming: false,
             });
           },

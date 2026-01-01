@@ -12,6 +12,7 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -19,13 +20,16 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { io, Socket } from 'socket.io-client';
+import { RtcSurfaceView, VideoSourceType } from 'react-native-agora';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, FONTS } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
 import { socialService, LiveStream, CreateLiveStreamDto } from '../../services/socialService';
 import { uploadService } from '../../services/uploadService';
 import { API_CONFIG } from '../../constants/config';
 import { useAppSelector } from '../../store';
-import { productService, Product } from '../../services/productService';
+import { productService } from '../../services/productService';
+import { Product } from '../../types';
+import agoraService from '../../services/agoraService';
 
 interface ChatMessage {
   streamId: string;
@@ -57,14 +61,40 @@ const GoLiveScreen = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  
+  // Agora state
+  const [isAgoraReady, setIsAgoraReady] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isVideoEnabled, setIsVideoEnabled] = useState(true);
+  const [isFrontCamera, setIsFrontCamera] = useState(true);
 
   const socketRef = useRef<Socket | null>(null);
   const flatListRef = useRef<FlatList>(null);
 
+  // Initialize Agora on mount
+  useEffect(() => {
+    const initAgora = async () => {
+      const initialized = await agoraService.initialize();
+      setIsAgoraReady(initialized);
+      if (!initialized) {
+        Alert.alert(
+          'Permission Required',
+          'Camera and microphone permissions are needed for live streaming.',
+        );
+      }
+    };
+    initAgora();
+
+    // Cleanup on unmount
+    return () => {
+      agoraService.stopBroadcast();
+    };
+  }, []);
+
   // Fetch farmer's products for featuring
   const { data: productsData } = useQuery({
     queryKey: ['farmer-products'],
-    queryFn: () => productService.getMyProducts({ limit: 50 }),
+    queryFn: () => productService.getMyProducts(),
   });
 
   // Setup socket connection when live
@@ -108,10 +138,25 @@ const GoLiveScreen = () => {
   const createStreamMutation = useMutation({
     mutationFn: (data: CreateLiveStreamDto) => socialService.createLiveStream(data),
     onSuccess: async (newStream) => {
-      // Start the stream
-      const startedStream = await socialService.startLiveStream(newStream.id);
-      setStream(startedStream);
-      setIsLive(true);
+      try {
+        // Start the stream in the backend
+        const startedStream = await socialService.startLiveStream(newStream.id);
+        setStream(startedStream);
+        
+        // Start Agora broadcast using stream ID as channel name
+        const agoraStarted = await agoraService.startBroadcast(newStream.id);
+        if (agoraStarted) {
+          setIsAgoraReady(true);
+          setIsLive(true);
+        } else {
+          throw new Error('Failed to start video broadcast');
+        }
+      } catch (error: any) {
+        console.error('Error starting broadcast:', error);
+        Alert.alert('Error', error.message || 'Failed to start video broadcast');
+        // End the stream if Agora fails
+        await socialService.endLiveStream(newStream.id).catch(() => {});
+      }
     },
     onError: (error: any) => {
       Alert.alert('Error', error.message || 'Failed to start live stream');
@@ -120,7 +165,13 @@ const GoLiveScreen = () => {
 
   // End stream mutation
   const endStreamMutation = useMutation({
-    mutationFn: (streamId: string) => socialService.endLiveStream(streamId),
+    mutationFn: async (streamId: string) => {
+      // Stop Agora broadcast first
+      await agoraService.leaveChannel();
+      setIsAgoraReady(false);
+      // Then end stream in backend
+      return socialService.endLiveStream(streamId);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['live-streams'] });
       setIsLive(false);
@@ -241,12 +292,21 @@ const GoLiveScreen = () => {
   if (isLive && stream) {
     return (
       <View style={styles.liveContainer}>
-        {/* Video placeholder - integrate with actual camera/streaming */}
+        {/* Live video preview using Agora */}
         <View style={styles.liveVideoContainer}>
-          <View style={[styles.videoPlaceholder, { backgroundColor: '#000' }]}>
-            <Ionicons name="videocam" size={60} color="white" />
-            <Text style={styles.streamingText}>You are live!</Text>
-          </View>
+          {isAgoraReady && isVideoEnabled ? (
+            <RtcSurfaceView
+              canvas={{ uid: 0 }}
+              style={styles.localVideo}
+            />
+          ) : (
+            <View style={[styles.videoPlaceholder, { backgroundColor: '#000' }]}>
+              <Ionicons name={isVideoEnabled ? "videocam" : "videocam-off"} size={60} color="white" />
+              <Text style={styles.streamingText}>
+                {isVideoEnabled ? 'Starting camera...' : 'Camera Off'}
+              </Text>
+            </View>
+          )}
 
           {/* Live overlay */}
           <SafeAreaView style={styles.liveOverlay}>
@@ -317,7 +377,31 @@ const GoLiveScreen = () => {
               >
                 <Ionicons name="pricetag" size={24} color="white" />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.controlBtn}>
+              <TouchableOpacity 
+                style={[styles.controlBtn, !isMuted && styles.controlBtnActive]}
+                onPress={async () => {
+                  const newMuted = await agoraService.toggleMute();
+                  setIsMuted(newMuted);
+                }}
+              >
+                <Ionicons name={isMuted ? "mic-off" : "mic"} size={24} color="white" />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.controlBtn, !isVideoEnabled && styles.controlBtnActive]}
+                onPress={async () => {
+                  const newEnabled = await agoraService.toggleVideo();
+                  setIsVideoEnabled(newEnabled);
+                }}
+              >
+                <Ionicons name={isVideoEnabled ? "videocam" : "videocam-off"} size={24} color="white" />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.controlBtn}
+                onPress={async () => {
+                  await agoraService.switchCamera();
+                  setIsFrontCamera(!isFrontCamera);
+                }}
+              >
                 <Ionicons name="camera-reverse" size={24} color="white" />
               </TouchableOpacity>
             </View>
@@ -405,6 +489,7 @@ const GoLiveScreen = () => {
       >
         <ScrollView 
           style={styles.flex}
+          contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
@@ -608,12 +693,17 @@ const GoLiveScreen = () => {
   );
 };
 
+const { width: screenWidth } = Dimensions.get('window');
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
   flex: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   header: {
     flexDirection: 'row',
@@ -628,7 +718,9 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.semiBold,
   },
   thumbnailContainer: {
-    margin: SPACING.md,
+    width: screenWidth - (SPACING.md * 2),
+    alignSelf: 'center',
+    marginVertical: SPACING.md,
     aspectRatio: 16 / 9,
     borderRadius: BORDER_RADIUS.lg,
     overflow: 'hidden',
@@ -641,6 +733,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(0,0,0,0.1)',
+    borderStyle: 'dashed',
+    borderRadius: BORDER_RADIUS.lg,
   },
   thumbnailText: {
     marginTop: SPACING.sm,
@@ -827,6 +923,11 @@ const styles = StyleSheet.create({
     flex: 1,
     position: 'relative',
   },
+  localVideo: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
   videoPlaceholder: {
     flex: 1,
     justifyContent: 'center',
@@ -988,6 +1089,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  controlBtnActive: {
+    backgroundColor: 'rgba(231, 76, 60, 0.6)',
   },
   chatInputContainer: {
     flexDirection: 'row',
