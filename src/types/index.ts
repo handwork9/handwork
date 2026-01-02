@@ -525,6 +525,8 @@ export type BuyerStackParamList = {
   RewardDetail: { reward: any };
   RewardTransactionDetail: { transaction: any };
   HowToEarn: undefined;
+  Leaderboard: undefined;
+  DailyChallenges: undefined;
   BecomeFarmerInfo: undefined;
   FarmerOnboarding: undefined;
   Favorites: undefined;
@@ -642,6 +644,8 @@ export type FarmerStackParamList = {
   RewardDetail: { reward: any };
   RewardTransactionDetail: { transaction: any };
   HowToEarn: undefined;
+  Leaderboard: undefined;
+  DailyChallenges: undefined;
   Favorites: undefined;
   Invite: undefined;
   InviteHistory: undefined;
@@ -731,6 +735,8 @@ export type RiderStackParamList = {
   RewardDetail: { reward: any };
   RewardTransactionDetail: { transaction: any };
   HowToEarn: undefined;
+  Leaderboard: undefined;
+  DailyChallenges: undefined;
   Favorites: undefined;
   Invite: undefined;
   InviteHistory: undefined;

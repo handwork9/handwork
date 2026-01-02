@@ -110,12 +110,20 @@ export default function RewardsScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Rewards</Text>
-        <TouchableOpacity 
-          style={styles.historyButton}
-          onPress={() => (navigation as any).navigate('RewardHistory')}
-        >
-          <Ionicons name="time-outline" size={24} color={PRIMARY_COLOR} />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity 
+            style={styles.headerActionButton}
+            onPress={() => (navigation as any).navigate('Leaderboard')}
+          >
+            <Ionicons name="trophy-outline" size={24} color="#F59E0B" />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.headerActionButton}
+            onPress={() => (navigation as any).navigate('RewardHistory')}
+          >
+            <Ionicons name="time-outline" size={24} color={PRIMARY_COLOR} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {loading ? (
@@ -189,6 +197,30 @@ export default function RewardsScreen() {
                 <Text style={styles.checkinText}>Daily Check-in</Text>
               </>
             )}
+          </TouchableOpacity>
+        </View>
+
+        {/* Quick Actions */}
+        <View style={styles.quickActionsContainer}>
+          <TouchableOpacity 
+            style={[styles.quickActionCard, { backgroundColor: cardBg }]}
+            onPress={() => (navigation as any).navigate('DailyChallenges')}
+          >
+            <View style={[styles.quickActionIcon, { backgroundColor: '#FEF3C7' }]}>
+              <Ionicons name="flag" size={20} color="#F59E0B" />
+            </View>
+            <Text style={[styles.quickActionTitle, { color: colors.text }]}>Daily Challenges</Text>
+            <Text style={[styles.quickActionSubtitle, { color: colors.textSecondary }]}>Complete tasks</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.quickActionCard, { backgroundColor: cardBg }]}
+            onPress={() => (navigation as any).navigate('Leaderboard')}
+          >
+            <View style={[styles.quickActionIcon, { backgroundColor: '#FEF3C7' }]}>
+              <Ionicons name="trophy" size={20} color="#F59E0B" />
+            </View>
+            <Text style={[styles.quickActionTitle, { color: colors.text }]}>Leaderboard</Text>
+            <Text style={[styles.quickActionSubtitle, { color: colors.textSecondary }]}>See rankings</Text>
           </TouchableOpacity>
         </View>
 
@@ -317,6 +349,17 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontFamily: FONTS.semiBold,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  headerActionButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   historyButton: {
     width: 40,
     height: 40,
@@ -326,6 +369,40 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 16,
+  },
+  quickActionsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  quickActionCard: {
+    flex: 1,
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  quickActionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  quickActionTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+    marginBottom: 2,
+  },
+  quickActionSubtitle: {
+    fontSize: 11,
+    fontFamily: FONTS.regular,
   },
   heroCard: {
     borderRadius: 20,

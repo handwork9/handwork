@@ -43,6 +43,8 @@ import RewardHistoryScreen from '../screens/shared/RewardHistoryScreen';
 import RewardDetailScreen from '../screens/shared/RewardDetailScreen';
 import RewardTransactionDetailScreen from '../screens/shared/RewardTransactionDetailScreen';
 import HowToEarnScreen from '../screens/shared/HowToEarnScreen';
+import LeaderboardScreen from '../screens/shared/LeaderboardScreen';
+import DailyChallengesScreen from '../screens/shared/DailyChallengesScreen';
 import BecomeFarmerInfoScreen from '../screens/shared/BecomeFarmerInfoScreen';
 import FarmerOnboardingScreen from '../screens/shared/FarmerOnboardingScreen';
 import InviteHistoryScreen from '../screens/shared/InviteHistoryScreen';
@@ -358,6 +360,16 @@ export function BuyerNavigator() {
       <Stack.Screen
         name="HowToEarn"
         component={HowToEarnScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Leaderboard"
+        component={LeaderboardScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="DailyChallenges"
+        component={DailyChallengesScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen

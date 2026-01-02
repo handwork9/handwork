@@ -395,6 +395,97 @@ export default function ProductDetailScreen({ navigation, route }: Props) {
           <Text style={[styles.description, { color: colors.text }]}>{product.description}</Text>
         </View>
 
+        {/* Product Journey / Traceability Section */}
+        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>FARM-TO-TABLE JOURNEY</Text>
+        <View style={[styles.insetCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', marginHorizontal: 16, padding: 16 }]}>
+          <View style={styles.journeyTimeline}>
+            {/* Farm Origin */}
+            <View style={styles.journeyStep}>
+              <View style={[styles.journeyDot, { backgroundColor: '#4CAF50' }]}>
+                <Ionicons name="leaf" size={14} color="#FFFFFF" />
+              </View>
+              <View style={[styles.journeyLine, { backgroundColor: '#E0E0E0' }]} />
+              <View style={styles.journeyContent}>
+                <Text style={[styles.journeyLabel, { color: colors.textSecondary }]}>Grown at</Text>
+                <Text style={[styles.journeyValue, { color: colors.text }]}>
+                  {product.farmerName || 'Local'} Farm
+                </Text>
+                <Text style={[styles.journeySubtext, { color: colors.textSecondary }]}>
+                  {product.pickupCity || product.pickupLocation?.city || ''}, {product.pickupState || product.pickupLocation?.state || ''}
+                </Text>
+              </View>
+            </View>
+
+            {/* Harvest Date */}
+            {product.harvestDate && (
+              <View style={styles.journeyStep}>
+                <View style={[styles.journeyDot, { backgroundColor: '#FF9800' }]}>
+                  <Ionicons name="calendar" size={14} color="#FFFFFF" />
+                </View>
+                <View style={[styles.journeyLine, { backgroundColor: '#E0E0E0' }]} />
+                <View style={styles.journeyContent}>
+                  <Text style={[styles.journeyLabel, { color: colors.textSecondary }]}>Harvested</Text>
+                  <Text style={[styles.journeyValue, { color: colors.text }]}>
+                    {new Date(product.harvestDate).toLocaleDateString('en-US', { 
+                      month: 'long', day: 'numeric', year: 'numeric' 
+                    })}
+                  </Text>
+                  <Text style={[styles.journeySubtext, { color: colors.textSecondary }]}>
+                    {Math.ceil((new Date().getTime() - new Date(product.harvestDate).getTime()) / (1000 * 60 * 60 * 24))} days ago
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {/* Quality Assurance */}
+            <View style={styles.journeyStep}>
+              <View style={[styles.journeyDot, { backgroundColor: '#2196F3' }]}>
+                <Ionicons name="shield-checkmark" size={14} color="#FFFFFF" />
+              </View>
+              <View style={[styles.journeyLine, { backgroundColor: '#E0E0E0' }]} />
+              <View style={styles.journeyContent}>
+                <Text style={[styles.journeyLabel, { color: colors.textSecondary }]}>Quality Verified</Text>
+                <View style={styles.journeyCertifications}>
+                  {product.isOrganic && (
+                    <View style={[styles.journeyCertBadge, { backgroundColor: '#E8F5E9' }]}>
+                      <Text style={[styles.journeyCertText, { color: '#4CAF50' }]}>🌿 Organic</Text>
+                    </View>
+                  )}
+                  {product.certifications?.includes('pesticide_free') && (
+                    <View style={[styles.journeyCertBadge, { backgroundColor: '#E3F2FD' }]}>
+                      <Text style={[styles.journeyCertText, { color: '#2196F3' }]}>🛡️ Pesticide Free</Text>
+                    </View>
+                  )}
+                  {product.certifications?.includes('non_gmo') && (
+                    <View style={[styles.journeyCertBadge, { backgroundColor: '#F3E5F5' }]}>
+                      <Text style={[styles.journeyCertText, { color: '#9C27B0' }]}>✓ Non-GMO</Text>
+                    </View>
+                  )}
+                  {!product.isOrganic && (!product.certifications || product.certifications.length === 0) && (
+                    <View style={[styles.journeyCertBadge, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#F5F5F5' }]}>
+                      <Text style={[styles.journeyCertText, { color: colors.textSecondary }]}>✓ Quality Checked</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            </View>
+
+            {/* Ready for You */}
+            <View style={[styles.journeyStep, { paddingBottom: 0 }]}>
+              <View style={[styles.journeyDot, { backgroundColor: colors.primary }]}>
+                <Ionicons name="home" size={14} color="#FFFFFF" />
+              </View>
+              <View style={styles.journeyContent}>
+                <Text style={[styles.journeyLabel, { color: colors.textSecondary }]}>Ready for Delivery</Text>
+                <Text style={[styles.journeyValue, { color: colors.text }]}>To Your Doorstep</Text>
+                <Text style={[styles.journeySubtext, { color: colors.textSecondary }]}>
+                  Fresh from farm to your table
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
         {/* Pickup Location Section */}
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>PICKUP LOCATION</Text>
         <View style={[styles.insetCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', marginHorizontal: 16 }]}>
@@ -767,5 +858,62 @@ const styles = StyleSheet.create({
   bulkDiscountDesc: {
     fontSize: 13,
     fontFamily: FONTS.regular,
+  },
+  // Product Journey / Traceability styles
+  journeyTimeline: {
+    position: 'relative',
+  },
+  journeyStep: {
+    flexDirection: 'row',
+    paddingBottom: 20,
+  },
+  journeyDot: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  journeyLine: {
+    position: 'absolute',
+    left: 13,
+    top: 28,
+    bottom: 0,
+    width: 2,
+  },
+  journeyContent: {
+    flex: 1,
+    marginLeft: 12,
+    paddingTop: 2,
+  },
+  journeyLabel: {
+    fontSize: 12,
+    fontFamily: FONTS.regular,
+    marginBottom: 2,
+  },
+  journeyValue: {
+    fontSize: 15,
+    fontFamily: FONTS.semiBold,
+  },
+  journeySubtext: {
+    fontSize: 12,
+    fontFamily: FONTS.regular,
+    marginTop: 2,
+  },
+  journeyCertifications: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 6,
+  },
+  journeyCertBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  journeyCertText: {
+    fontSize: 11,
+    fontFamily: FONTS.medium,
   },
 });

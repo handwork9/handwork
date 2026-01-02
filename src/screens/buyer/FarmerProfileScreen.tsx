@@ -11,6 +11,19 @@ import { productService } from '../../services/productService';
 import { apiClient } from '../../services/apiClient';
 import { useTheme } from '../../context/ThemeContext';
 
+// Badge type definitions
+interface FarmerBadge {
+  id: string;
+  type: string;
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+  points: number;
+  earnedAt: string;
+  isDisplayed: boolean;
+}
+
 type Props = NativeStackScreenProps<BuyerStackParamList, 'FarmerProfile'>;
 
 interface FarmerData {
@@ -42,7 +55,14 @@ export default function FarmerProfileScreen({ navigation, route }: Props) {
     queryFn: () => productService.getFarmerProducts(farmerId),
   });
 
+  // Fetch farmer badges
+  const { data: badgesData } = useQuery({
+    queryKey: ['farmer-badges', farmerId],
+    queryFn: () => apiClient.get<FarmerBadge[]>(`/badges/farmer/${farmerId}`),
+  });
+
   const farmer = farmerData?.data;
+  const badges = badgesData || [];
   const products = productsData?.data?.data || [];
 
   if (farmerLoading) {
@@ -190,6 +210,42 @@ export default function FarmerProfileScreen({ navigation, route }: Props) {
             </View>
           </View>
         </View>
+
+        {/* Badges Section */}
+        {badges.length > 0 && (
+          <>
+            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+              ACHIEVEMENTS ({badges.length})
+            </Text>
+            <View style={[styles.insetCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', padding: 12 }]}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={styles.badgesRow}>
+                  {badges.slice(0, 6).map((badge: FarmerBadge) => (
+                    <View key={badge.id} style={styles.badgeItem}>
+                      <View style={[styles.badgeIconContainer, { backgroundColor: badge.color + '20' }]}>
+                        <Text style={styles.badgeEmoji}>{badge.icon}</Text>
+                      </View>
+                      <Text style={[styles.badgeName, { color: colors.text }]} numberOfLines={1}>
+                        {badge.name}
+                      </Text>
+                      <Text style={[styles.badgePoints, { color: badge.color }]}>
+                        +{badge.points} pts
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </ScrollView>
+              {badges.length > 6 && (
+                <TouchableOpacity style={styles.viewAllBadgesButton}>
+                  <Text style={[styles.viewAllBadgesText, { color: colors.primary }]}>
+                    View all {badges.length} badges
+                  </Text>
+                  <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+                </TouchableOpacity>
+              )}
+            </View>
+          </>
+        )}
 
         {/* About Section */}
         {farmer?.bio && (
@@ -421,5 +477,50 @@ const styles = StyleSheet.create({
   productCardWrapper: {
     width: '48%',
     marginBottom: 8,
+  },
+  // Badge styles
+  badgesRow: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingVertical: 4,
+  },
+  badgeItem: {
+    alignItems: 'center',
+    width: 72,
+  },
+  badgeIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  badgeEmoji: {
+    fontSize: 24,
+  },
+  badgeName: {
+    fontSize: 11,
+    fontFamily: FONTS.medium,
+    textAlign: 'center',
+  },
+  badgePoints: {
+    fontSize: 10,
+    fontFamily: FONTS.semiBold,
+    marginTop: 2,
+  },
+  viewAllBadgesButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 12,
+    marginTop: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(60, 60, 67, 0.12)',
+    gap: 4,
+  },
+  viewAllBadgesText: {
+    fontSize: 14,
+    fontFamily: FONTS.medium,
   },
 });

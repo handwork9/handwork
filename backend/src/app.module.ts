@@ -53,6 +53,7 @@ import { BadgesModule } from './badges/badges.module';
 import { LeaderboardModule } from './leaderboard/leaderboard.module';
 import { ChatbotModule } from './chatbot/chatbot.module';
 import { SocialModule } from './social/social.module';
+import { IntegrationsModule } from './integrations/integrations.module';
 
 @Module({
   imports: [
@@ -195,6 +196,7 @@ import { SocialModule } from './social/social.module';
     LeaderboardModule,
     ChatbotModule,
     SocialModule,
+    IntegrationsModule,
   ],
 })
 export class AppModule {}

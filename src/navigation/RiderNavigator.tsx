@@ -47,6 +47,8 @@ import TransferScreen from '../screens/shared/TransferScreen';
 import InviteHistoryScreen from '../screens/shared/InviteHistoryScreen';
 import RewardDetailScreen from '../screens/shared/RewardDetailScreen';
 import HowToEarnScreen from '../screens/shared/HowToEarnScreen';
+import LeaderboardScreen from '../screens/shared/LeaderboardScreen';
+import DailyChallengesScreen from '../screens/shared/DailyChallengesScreen';
 import RewardHistoryScreen from '../screens/shared/RewardHistoryScreen';
 import RewardTransactionDetailScreen from '../screens/shared/RewardTransactionDetailScreen';
 import LanguageScreen from '../screens/shared/LanguageScreen';
@@ -427,6 +429,16 @@ export function RiderNavigator() {
       <Stack.Screen
         name="HowToEarn"
         component={HowToEarnScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Leaderboard"
+        component={LeaderboardScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="DailyChallenges"
+        component={DailyChallengesScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen

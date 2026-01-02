@@ -30,6 +30,8 @@ import {
   TagOutlined,
   UnorderedListOutlined,
   InboxOutlined,
+  ApiOutlined,
+  WhatsAppOutlined,
 } from '@ant-design/icons';
 import { useAuthStore, hasPermission, PERMISSIONS } from '@/store/auth';
 import { useSocketStore } from '@/lib/socket';
@@ -259,6 +261,36 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       icon: <MailOutlined />,
       label: 'Promotional Emails',
       disabled: !hasPermission(user, PERMISSIONS.SEND_NOTIFICATIONS),
+    },
+    {
+      type: 'divider',
+    },
+    {
+      key: 'integrations',
+      icon: <ApiOutlined />,
+      label: 'Integrations',
+      children: [
+        {
+          key: '/integrations',
+          icon: <SettingOutlined />,
+          label: 'Overview',
+        },
+        {
+          key: '/integrations/whatsapp',
+          icon: <WhatsAppOutlined />,
+          label: 'WhatsApp',
+        },
+        {
+          key: '/integrations/email-marketing',
+          icon: <MailOutlined />,
+          label: 'Email Marketing',
+        },
+        {
+          key: '/integrations/analytics',
+          icon: <BarChartOutlined />,
+          label: 'Analytics',
+        },
+      ],
     },
     {
       type: 'divider',
