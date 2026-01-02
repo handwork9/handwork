@@ -12,6 +12,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   StatusBar,
+  Animated,
+  Image,
+  Pressable,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,6 +22,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useMutation } from '@tanstack/react-query';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { BuyerStackParamList, DeliveryType, DeliveryMethod, DeliverySpeed, DeliveryTimeSlot, PickupLocationOption } from '../../types';
 import { Button, TextInput } from '../../components/common';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, FONTS } from '../../constants/theme';
@@ -41,6 +45,191 @@ import { Coupon, CouponValidationResult } from '../../services/couponService';
 import DeliveryOptions from '../../components/checkout/DeliveryOptions';
 
 type Props = NativeStackScreenProps<BuyerStackParamList, 'Checkout'>;
+
+// Enhanced section component with collapsible functionality
+interface SectionProps {
+  title: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  iconColor?: string;
+  iconBgColor?: string;
+  children: React.ReactNode;
+  collapsible?: boolean;
+  defaultExpanded?: boolean;
+  badge?: string;
+  required?: boolean;
+  error?: boolean;
+  colors: any;
+  isDark: boolean;
+}
+
+const Section: React.FC<SectionProps> = ({
+  title,
+  icon,
+  iconColor,
+  iconBgColor,
+  children,
+  collapsible = false,
+  defaultExpanded = true,
+  badge,
+  required,
+  error,
+  colors,
+  isDark,
+}) => {
+  const [expanded, setExpanded] = useState(defaultExpanded);
+  const animatedHeight = useRef(new Animated.Value(defaultExpanded ? 1 : 0)).current;
+
+  const toggleExpand = () => {
+    if (!collapsible) return;
+    Animated.timing(animatedHeight, {
+      toValue: expanded ? 0 : 1,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+    setExpanded(!expanded);
+  };
+
+  return (
+    <View style={[
+      styles.sectionContainer,
+      { backgroundColor: isDark ? colors.card : '#FFFFFF' },
+      error && styles.sectionError,
+    ]}>
+      <TouchableOpacity
+        activeOpacity={collapsible ? 0.7 : 1}
+        onPress={toggleExpand}
+        style={styles.sectionHeader}
+      >
+        <View style={[
+          styles.sectionIconContainer,
+          { backgroundColor: error ? '#FEE2E2' : (iconBgColor || (isDark ? 'rgba(0, 122, 255, 0.15)' : '#E5F1FF')) },
+        ]}>
+          <Ionicons name={icon} size={18} color={error ? '#EF4444' : (iconColor || colors.primary)} />
+        </View>
+        <View style={styles.sectionTitleContainer}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={[
+              styles.sectionTitle,
+              { color: error ? '#EF4444' : colors.text },
+            ]}>
+              {title}
+            </Text>
+            {required && <Text style={styles.requiredStar}> *</Text>}
+          </View>
+          {badge && (
+            <View style={[styles.sectionBadge, { backgroundColor: colors.primary + '20' }]}>
+              <Text style={[styles.sectionBadgeText, { color: colors.primary }]}>{badge}</Text>
+            </View>
+          )}
+        </View>
+        {collapsible && (
+          <Ionicons
+            name={expanded ? 'chevron-up' : 'chevron-down'}
+            size={20}
+            color={colors.textSecondary}
+          />
+        )}
+      </TouchableOpacity>
+      {(!collapsible || expanded) && (
+        <View style={styles.sectionContent}>{children}</View>
+      )}
+    </View>
+  );
+};
+
+// Progress indicator for checkout steps
+const CheckoutProgress: React.FC<{ currentStep: number; colors: any }> = ({ currentStep, colors }) => {
+  const steps = [
+    { label: 'Address', icon: 'location' as const },
+    { label: 'Delivery', icon: 'bicycle' as const },
+    { label: 'Payment', icon: 'card' as const },
+    { label: 'Confirm', icon: 'checkmark-circle' as const },
+  ];
+
+  return (
+    <View style={styles.progressContainer}>
+      {steps.map((step, index) => {
+        const isActive = index <= currentStep;
+        const isComplete = index < currentStep;
+        return (
+          <React.Fragment key={step.label}>
+            <View style={styles.progressStep}>
+              <View style={[
+                styles.progressDot,
+                isActive && { backgroundColor: colors.primary },
+                !isActive && { backgroundColor: colors.border },
+              ]}>
+                {isComplete ? (
+                  <Ionicons name="checkmark" size={12} color="#FFFFFF" />
+                ) : (
+                  <Ionicons name={step.icon} size={12} color={isActive ? '#FFFFFF' : colors.textSecondary} />
+                )}
+              </View>
+              <Text style={[
+                styles.progressLabel,
+                { color: isActive ? colors.primary : colors.textSecondary },
+              ]}>{step.label}</Text>
+            </View>
+            {index < steps.length - 1 && (
+              <View style={[
+                styles.progressLine,
+                { backgroundColor: index < currentStep ? colors.primary : colors.border },
+              ]} />
+            )}
+          </React.Fragment>
+        );
+      })}
+    </View>
+  );
+};
+
+// Order item preview card
+const OrderItemPreview: React.FC<{ items: any[]; colors: any; isDark: boolean }> = ({ items, colors, isDark }) => {
+  const totalItems = items.reduce((sum, i) => sum + i.quantity, 0);
+  const displayItems = items.slice(0, 3);
+  const moreCount = items.length - 3;
+
+  return (
+    <View style={[styles.orderPreview, { backgroundColor: isDark ? colors.surface : '#F8F9FA' }]}>
+      <View style={styles.orderPreviewImages}>
+        {displayItems.map((item, index) => (
+          <View
+            key={item.productId}
+            style={[
+              styles.orderPreviewImageWrapper,
+              { marginLeft: index > 0 ? -10 : 0, zIndex: displayItems.length - index },
+            ]}
+          >
+            {item.product?.images?.[0] ? (
+              <Image
+                source={{ uri: item.product.images[0] }}
+                style={styles.orderPreviewImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={[styles.orderPreviewImagePlaceholder, { backgroundColor: colors.border }]}>
+                <Ionicons name="leaf" size={16} color={colors.textSecondary} />
+              </View>
+            )}
+            {item.quantity > 1 && (
+              <View style={[styles.orderPreviewQty, { backgroundColor: colors.primary }]}>
+                <Text style={styles.orderPreviewQtyText}>{item.quantity}</Text>
+              </View>
+            )}
+          </View>
+        ))}
+        {moreCount > 0 && (
+          <View style={[styles.orderPreviewMore, { backgroundColor: colors.border }]}>
+            <Text style={[styles.orderPreviewMoreText, { color: colors.text }]}>+{moreCount}</Text>
+          </View>
+        )}
+      </View>
+      <Text style={[styles.orderPreviewText, { color: colors.textSecondary }]}>
+        {totalItems} {totalItems === 1 ? 'item' : 'items'} in your order
+      </Text>
+    </View>
+  );
+};
 
 const DELIVERY_OPTIONS: { type: DeliveryType; label: string; description: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   {
@@ -915,26 +1104,48 @@ export default function CheckoutScreen({ navigation }: Props) {
 
   return (
     <View style={[styles.container, { backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
-      {/* Fixed Header */}
+      {/* Enhanced Fixed Header with Gradient */}
       <View style={[styles.fixedHeader, { paddingTop: insets.top + 8, backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.fixedHeaderTitle, { color: colors.text }]}>Checkout</Text>
-        <View style={styles.placeholder} />
+        <View style={styles.headerCenter}>
+          <Text style={[styles.fixedHeaderTitle, { color: colors.text }]}>Checkout</Text>
+          <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
+            {items.reduce((sum, i) => sum + i.quantity, 0)} items • ₦{total.toLocaleString()}
+          </Text>
+        </View>
+        <TouchableOpacity style={styles.headerSecureIcon}>
+          <Ionicons name="shield-checkmark" size={20} color={colors.primary} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView 
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Order Preview */}
+        <OrderItemPreview items={items} colors={colors} isDark={isDark} />
+
+        {/* Progress Indicator */}
+        <CheckoutProgress 
+          currentStep={
+            !selectedAddress && !user?.address ? 0 : 
+            deliveryMethod === 'home_delivery' && deliveryType === 'SCHEDULED' && !selectedTimeSlot ? 1 : 
+            paymentMethod === 'card' ? 2 : 3
+          } 
+          colors={colors} 
+        />
+
         {/* Delivery Address */}
-        <Text style={[styles.sectionTitle, { color: addressError ? '#EF4444' : colors.textSecondary }]}>DELIVERY ADDRESS</Text>
-        <View style={[
-          styles.insetCard, 
-          { backgroundColor: isDark ? colors.card : '#FFFFFF' },
-          addressError && { borderWidth: 2, borderColor: '#EF4444' }
-        ]}>
+        <Section
+          title="Delivery Address"
+          icon="location"
+          required
+          error={addressError}
+          colors={colors}
+          isDark={isDark}
+        >
           <TouchableOpacity 
             style={styles.addressRow}
             onPress={() => {
@@ -943,9 +1154,6 @@ export default function CheckoutScreen({ navigation }: Props) {
             }}
             activeOpacity={0.7}
           >
-            <View style={[styles.addressIconContainer, { backgroundColor: addressError ? '#FEE2E2' : (isDark ? 'rgba(0, 122, 255, 0.15)' : '#E5F1FF') }]}>
-              <Ionicons name="location" size={20} color={addressError ? '#EF4444' : colors.primary} />
-            </View>
             <View style={styles.addressDetails}>
               <Text 
                 style={[styles.addressLabel, { color: addressError ? '#EF4444' : colors.text }]}
@@ -966,29 +1174,36 @@ export default function CheckoutScreen({ navigation }: Props) {
                   : (user?.address ? `${user?.city || ''}, ${user?.state || ''}` : 'Tap to add address')}
               </Text>
             </View>
-            <Text style={[styles.changeText, { color: addressError ? '#EF4444' : colors.primary }]}>
-              {(selectedAddress || user?.address) ? 'Change' : 'Add'}
-            </Text>
+            <View style={[styles.changeButton, { backgroundColor: colors.primary + '15' }]}>
+              <Text style={[styles.changeText, { color: colors.primary }]}>
+                {(selectedAddress || user?.address) ? 'Change' : 'Add'}
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+            </View>
           </TouchableOpacity>
           {addressError && (
-            <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
-              <Text style={{ color: '#EF4444', fontSize: 13, fontWeight: '500' }}>
-                ⚠️ Please add a delivery address to continue
-              </Text>
+            <View style={styles.errorMessage}>
+              <Ionicons name="alert-circle" size={14} color="#EF4444" />
+              <Text style={styles.errorText}>Please add a delivery address to continue</Text>
             </View>
           )}
-        </View>
+        </Section>
 
         {/* Send as Gift Option */}
-        <View style={[styles.insetCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', marginTop: 16 }]}>
+        <Section
+          title="Send as Gift"
+          icon="gift"
+          iconColor={isGift ? '#E91E63' : undefined}
+          iconBgColor={isGift ? '#FCE4EC' : undefined}
+          badge={isGift ? 'Active' : undefined}
+          colors={colors}
+          isDark={isDark}
+        >
           <TouchableOpacity
             style={styles.giftToggleRow}
             onPress={() => setIsGift(!isGift)}
             activeOpacity={0.7}
           >
-            <View style={[styles.giftIconContainer, { backgroundColor: isGift ? '#FCE4EC' : (isDark ? colors.surface : '#F2F2F7') }]}>
-              <Ionicons name="gift" size={20} color={isGift ? '#E91E63' : colors.textSecondary} />
-            </View>
             <View style={styles.giftToggleContent}>
               <Text style={[styles.giftToggleLabel, { color: colors.text }]}>Send as a Gift</Text>
               <Text style={[styles.giftToggleDesc, { color: colors.textSecondary }]}>
@@ -1056,23 +1271,28 @@ export default function CheckoutScreen({ navigation }: Props) {
               </View>
             </View>
           )}
-        </View>
+        </Section>
 
-        {/* Delivery Time */}
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary, marginTop: 24 }]}>DELIVERY TIME</Text>
-        <View style={styles.deliveryOptionsRow}>
-          {DELIVERY_OPTIONS.map((option) => {
-            const isSelected = deliveryType === option.type;
-            return (
-              <TouchableOpacity
-                key={option.type}
-                style={[
-                  styles.deliveryOption,
-                  { backgroundColor: isDark ? colors.card : '#FFFFFF' },
-                  isSelected && { borderColor: colors.primary, borderWidth: 2 },
-                ]}
-                onPress={() => setDeliveryType(option.type)}
-                activeOpacity={0.7}
+        {/* Delivery Time Section */}
+        <Section
+          title="Delivery Time"
+          icon="time"
+          colors={colors}
+          isDark={isDark}
+        >
+          <View style={styles.deliveryOptionsRow}>
+            {DELIVERY_OPTIONS.map((option) => {
+              const isSelected = deliveryType === option.type;
+              return (
+                <TouchableOpacity
+                  key={option.type}
+                  style={[
+                    styles.deliveryOption,
+                    { backgroundColor: isDark ? colors.card : '#FFFFFF' },
+                    isSelected && { borderColor: colors.primary, borderWidth: 2 },
+                  ]}
+                  onPress={() => setDeliveryType(option.type)}
+                  activeOpacity={0.7}
               >
                 <View style={[
                   styles.deliveryIconContainer,
@@ -1099,18 +1319,16 @@ export default function CheckoutScreen({ navigation }: Props) {
               </TouchableOpacity>
             );
           })}
-        </View>
+          </View>
 
-        {/* Time Slot Picker - Only show when Scheduled is selected */}
-        {deliveryType === 'SCHEDULED' && (
-          <>
-            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>SELECT TIME SLOT</Text>
-            <TouchableOpacity
-              style={[styles.insetCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}
-              onPress={() => setShowTimeSlotModal(true)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.timeSlotSelector}>
+          {/* Time Slot Picker - Only show when Scheduled is selected */}
+          {deliveryType === 'SCHEDULED' && (
+            <View style={{ marginTop: 12 }}>
+              <TouchableOpacity
+                style={[styles.timeSlotSelector, { backgroundColor: isDark ? colors.surface : '#F2F2F7' }]}
+                onPress={() => setShowTimeSlotModal(true)}
+                activeOpacity={0.7}
+              >
                 <View style={[styles.timeSlotSelectorIcon, { backgroundColor: isDark ? 'rgba(0, 122, 255, 0.15)' : '#E5F1FF' }]}>
                   <Ionicons name="time-outline" size={20} color={colors.primary} />
                 </View>
@@ -1136,10 +1354,10 @@ export default function CheckoutScreen({ navigation }: Props) {
                   )}
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-              </View>
-            </TouchableOpacity>
-          </>
-        )}
+              </TouchableOpacity>
+            </View>
+          )}
+        </Section>
 
         {/* Enhanced Delivery Options - Speed, Pickup Points */}
         <DeliveryOptions
@@ -1168,9 +1386,15 @@ export default function CheckoutScreen({ navigation }: Props) {
           }}
         />
 
-        {/* Payment Method */}
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>PAYMENT METHOD</Text>
-        <View style={[styles.insetCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+        {/* Payment Method Section */}
+        <Section
+          title="Payment Method"
+          icon="card"
+          iconColor={colors.primary}
+          iconBgColor={isDark ? 'rgba(0, 122, 255, 0.15)' : '#E5F1FF'}
+          colors={colors}
+          isDark={isDark}
+        >
           {/* Wallet Option */}
           <TouchableOpacity
             style={[
@@ -1253,60 +1477,77 @@ export default function CheckoutScreen({ navigation }: Props) {
               {paymentMethod === 'payForMe' && <View style={[styles.radioButtonInner, { backgroundColor: colors.primary }]} />}
             </View>
           </TouchableOpacity>
-        </View>
-        
-        {/* Top Up Link */}
-        {paymentMethod === 'wallet' && !canAffordWithWallet && (
-          <TouchableOpacity 
-            style={styles.topUpLink}
-            onPress={() => navigation.navigate('TopUp' as any)}
-          >
-            <Ionicons name="add-circle-outline" size={18} color={colors.primary} />
-            <Text style={[styles.topUpLinkText, { color: colors.primary }]}>Top up your wallet</Text>
-          </TouchableOpacity>
-        )}
+          
+          {/* Top Up Link - Inside payment section */}
+          {paymentMethod === 'wallet' && !canAffordWithWallet && (
+            <TouchableOpacity 
+              style={[styles.topUpLink, { marginTop: 12 }]}
+              onPress={() => navigation.navigate('TopUp' as any)}
+            >
+              <Ionicons name="add-circle-outline" size={18} color={colors.primary} />
+              <Text style={[styles.topUpLinkText, { color: colors.primary }]}>Top up your wallet</Text>
+            </TouchableOpacity>
+          )}
+        </Section>
 
-        {/* Coupon Code */}
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>COUPON CODE</Text>
-        <CouponInput
-          subtotal={total}
-          deliveryFee={deliveryPricing.deliveryFee}
-          cartItems={cartItemsForCoupon}
-          onApplyCoupon={handleApplyCoupon}
-          onRemoveCoupon={handleRemoveCoupon}
-          appliedCoupon={appliedCoupon}
-        />
+        {/* Coupon Code Section */}
+        <Section
+          title="Coupon Code"
+          icon="pricetag"
+          iconColor="#FF6B00"
+          iconBgColor={isDark ? 'rgba(255, 107, 0, 0.15)' : '#FFF3E0'}
+          badge={appliedCoupon ? 'Applied' : undefined}
+          colors={colors}
+          isDark={isDark}
+        >
+          <CouponInput
+            subtotal={total}
+            deliveryFee={deliveryPricing.deliveryFee}
+            cartItems={cartItemsForCoupon}
+            onApplyCoupon={handleApplyCoupon}
+            onRemoveCoupon={handleRemoveCoupon}
+            appliedCoupon={appliedCoupon}
+          />
+        </Section>
 
-        {/* Message for Farmer */}
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>MESSAGE FOR FARMER</Text>
-        <View style={[styles.insetCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+        {/* Message for Farmer Section */}
+        <Section
+          title="Message for Farmer"
+          icon="leaf"
+          iconColor="#43A047"
+          iconBgColor={isDark ? 'rgba(76, 175, 80, 0.15)' : '#E8F5E9'}
+          collapsible
+          defaultCollapsed
+          colors={colors}
+          isDark={isDark}
+        >
           <View style={styles.farmerMessageHeader}>
-            <View style={[styles.farmerMessageIcon, { backgroundColor: isDark ? 'rgba(76, 175, 80, 0.15)' : '#E8F5E9' }]}>
-              <Ionicons name="leaf" size={18} color="#43A047" />
-            </View>
             <View style={styles.farmerMessageHeaderText}>
-              <Text style={[styles.farmerMessageTitle, { color: colors.text }]}>Special Requests</Text>
               <Text style={[styles.farmerMessageSubtitle, { color: colors.textSecondary }]}>
                 Let the farmer know your preferences
               </Text>
             </View>
           </View>
-          <View style={[styles.farmerMessageInputContainer, { borderTopColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60, 60, 67, 0.08)' }]}>
-            <TextInput
-              placeholder="e.g., Pick ripe ones only, no stems, extra fresh..."
-              value={farmerMessage}
-              onChangeText={setFarmerMessage}
-              multiline
-              numberOfLines={3}
-              containerStyle={styles.farmerMessageInput}
-              style={{ minHeight: 70, textAlignVertical: 'top', fontSize: 13 }}
-            />
-          </View>
-        </View>
+          <TextInput
+            placeholder="e.g., Pick ripe ones only, no stems, extra fresh..."
+            value={farmerMessage}
+            onChangeText={setFarmerMessage}
+            multiline
+            numberOfLines={3}
+            containerStyle={styles.farmerMessageInput}
+            style={{ minHeight: 70, textAlignVertical: 'top', fontSize: 13 }}
+          />
+        </Section>
 
-        {/* Delivery Instructions */}
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>DELIVERY INSTRUCTIONS</Text>
-        <View style={[styles.insetCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', padding: 12 }]}>
+        {/* Delivery Instructions Section */}
+        <Section
+          title="Delivery Instructions"
+          icon="document-text"
+          colors={colors}
+          isDark={isDark}
+          collapsible
+          defaultCollapsed
+        >
           <TextInput
             placeholder="Gate code, leave at door, etc."
             value={orderNotes}
@@ -1314,35 +1555,40 @@ export default function CheckoutScreen({ navigation }: Props) {
             containerStyle={styles.notesInput}
             style={{ minHeight: 40 }}
           />
-        </View>
+        </Section>
 
-        {/* Note for Rider */}
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>NOTE FOR RIDER</Text>
-        <View style={[styles.insetCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
-          <View style={styles.riderNoteHeader}>
-            <View style={[styles.riderNoteIconBg, { backgroundColor: isDark ? 'rgba(0, 122, 255, 0.15)' : '#E5F1FF' }]}>
-              <Ionicons name="bicycle" size={18} color={colors.primary} />
-            </View>
-            <Text style={[styles.riderNoteHeaderText, { color: colors.textSecondary }]}>
-              Special instructions for the delivery rider
-            </Text>
-          </View>
-          <View style={[styles.riderNoteInputContainer, { borderTopColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60, 60, 67, 0.08)' }]}>
-            <TextInput
-              placeholder="e.g., Call when you arrive, use back entrance, look for the red gate..."
-              value={riderNote}
-              onChangeText={setRiderNote}
-              multiline
-              numberOfLines={2}
-              containerStyle={styles.riderNoteInput}
-              style={{ minHeight: 50, textAlignVertical: 'top' }}
-            />
-          </View>
-        </View>
+        {/* Note for Rider Section */}
+        <Section
+          title="Note for Rider"
+          icon="bicycle"
+          iconColor={colors.primary}
+          iconBgColor={isDark ? 'rgba(0, 122, 255, 0.15)' : '#E5F1FF'}
+          collapsible
+          defaultCollapsed
+          colors={colors}
+          isDark={isDark}
+        >
+          <Text style={[styles.riderNoteHeaderText, { color: colors.textSecondary, marginBottom: 8 }]}>
+            Special instructions for the delivery rider
+          </Text>
+          <TextInput
+            placeholder="e.g., Call when you arrive, use back entrance, look for the red gate..."
+            value={riderNote}
+            onChangeText={setRiderNote}
+            multiline
+            numberOfLines={2}
+            containerStyle={styles.riderNoteInput}
+            style={{ minHeight: 50, textAlignVertical: 'top' }}
+          />
+        </Section>
 
-        {/* Order Summary */}
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>ORDER SUMMARY</Text>
-        <View style={[styles.insetCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+        {/* Order Summary Section */}
+        <Section
+          title="Order Summary"
+          icon="receipt"
+          colors={colors}
+          isDark={isDark}
+        >
           <View style={[styles.summaryRow, styles.summaryRowBorder, { borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60, 60, 67, 0.12)' }]}>
             <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
               Items ({items.reduce((sum, i) => sum + i.quantity, 0)})
@@ -1402,7 +1648,7 @@ export default function CheckoutScreen({ navigation }: Props) {
           <Text style={[styles.estimatedTimeText, { color: colors.textSecondary }]}>
             Estimated delivery: {deliveryPricing.estimatedTime} mins
           </Text>
-        </View>
+        </Section>
 
         {/* Terms of Use Section */}
         <View style={[styles.termsSection, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
@@ -2857,5 +3103,151 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontFamily: FONTS.semiBold,
     marginBottom: 8,
+  },
+  // Section Component Styles
+  sectionContainer: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+  },
+  sectionHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  sectionIconWrapper: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  sectionTitleContainer: {
+    flex: 1,
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontFamily: FONTS.semiBold,
+  },
+  sectionBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginLeft: 8,
+  },
+  sectionBadgeText: {
+    fontSize: 11,
+    fontFamily: FONTS.medium,
+  },
+  sectionSubtitle: {
+    fontSize: 13,
+    fontFamily: FONTS.regular,
+    marginTop: 2,
+  },
+  sectionContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
+  // Checkout Progress Styles
+  progressContainer: {
+    paddingVertical: 16,
+    paddingHorizontal: 8,
+  },
+  progressSteps: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  progressStep: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  progressStepCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  progressStepLabel: {
+    fontSize: 11,
+    fontFamily: FONTS.medium,
+    textAlign: 'center',
+  },
+  progressLine: {
+    height: 3,
+    flex: 1,
+    marginHorizontal: 4,
+    borderRadius: 1.5,
+    marginBottom: 20,
+  },
+  // Order Item Preview Styles
+  orderPreviewContainer: {
+    paddingVertical: 8,
+  },
+  orderPreviewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  orderPreviewImages: {
+    flexDirection: 'row',
+    marginRight: 12,
+  },
+  orderPreviewImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    marginRight: -12,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  orderPreviewMore: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: -12,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  orderPreviewMoreText: {
+    fontSize: 13,
+    fontFamily: FONTS.semiBold,
+  },
+  orderPreviewInfo: {
+    flex: 1,
+  },
+  orderPreviewCount: {
+    fontSize: 14,
+    fontFamily: FONTS.medium,
+  },
+  orderPreviewTotal: {
+    fontSize: 13,
+    fontFamily: FONTS.regular,
+    marginTop: 2,
   },
 });
