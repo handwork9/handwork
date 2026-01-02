@@ -204,11 +204,19 @@ export default function AIChatbotScreen() {
           ]
         );
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Chat error:', error);
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
+      
+      let errorText = "I'm sorry, I couldn't process your message. Please try again or contact support.";
+      if (error.response?.data?.message) {
+        errorText = `Error: ${error.response.data.message}`;
+      }
+      
       const errorMessage: Message = {
         id: `error-${Date.now()}`,
-        text: "I'm sorry, I couldn't process your message. Please try again or contact support.",
+        text: errorText,
         sender: 'bot',
         timestamp: new Date(),
         suggestedActions: ['Try Again', 'Contact Support'],

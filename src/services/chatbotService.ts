@@ -34,10 +34,11 @@ class ChatbotService {
    * Send a message to the AI chatbot
    */
   async sendMessage(message: string, conversationId?: string): Promise<ChatResponse> {
-    const response = await apiClient.post('/chatbot/chat', {
-      message,
-      conversationId,
-    });
+    const payload: { message: string; conversationId?: string } = { message };
+    if (conversationId) {
+      payload.conversationId = conversationId;
+    }
+    const response = await apiClient.post('/chatbot/chat', payload);
     return response.data;
   }
 
