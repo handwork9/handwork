@@ -2421,6 +2421,8 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 22,
     overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   sendButtonActive: {
     shadowColor: '#7C3AED',

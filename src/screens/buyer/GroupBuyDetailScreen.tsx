@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -350,7 +351,7 @@ export default function GroupBuyDetailScreen() {
             />
             <View style={styles.organizerInfo}>
               <Text style={[styles.organizerName, { color: colors.text }]}>
-                {groupBuy.organizer?.firstName || 'Unknown'} {groupBuy.organizer?.lastName || ''}
+                {groupBuy.organizer?.name || 'Unknown'}
               </Text>
               {isOrganizer && (
                 <View style={styles.youBadge}>
@@ -377,11 +378,21 @@ export default function GroupBuyDetailScreen() {
             </Text>
           </View>
           {groupBuy.shareCode && (
-            <View style={styles.detailRow}>
+            <View style={styles.shareCodeRow}>
               <Ionicons name="ticket-outline" size={20} color={colors.textSecondary} />
-              <Text style={[styles.detailText, { color: colors.text }]}>
-                Share Code: {groupBuy.shareCode}
+              <Text style={[styles.detailText, { color: colors.text, flex: 1 }]}>
+                Share Code: <Text style={{ fontFamily: FONTS.bold }}>{groupBuy.shareCode}</Text>
               </Text>
+              <TouchableOpacity
+                style={[styles.copyButton, { backgroundColor: colors.surface }]}
+                onPress={async () => {
+                  await Clipboard.setStringAsync(groupBuy.shareCode);
+                  Alert.alert('Copied!', 'Share code copied to clipboard');
+                }}
+              >
+                <Ionicons name="copy-outline" size={16} color={COLORS.primary} />
+                <Text style={[styles.copyButtonText, { color: COLORS.primary }]}>Copy</Text>
+              </TouchableOpacity>
             </View>
           )}
         </View>
@@ -706,6 +717,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: SPACING.sm,
     marginBottom: SPACING.sm,
+  },
+  shareCodeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    marginBottom: SPACING.sm,
+  },
+  copyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    gap: 4,
+  },
+  copyButtonText: {
+    fontSize: 12,
+    fontFamily: FONTS.semiBold,
   },
   detailText: {
     fontSize: FONT_SIZES.md,

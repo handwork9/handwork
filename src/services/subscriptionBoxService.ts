@@ -254,10 +254,10 @@ const subscriptionBoxService = {
    */
   getSizeDescription: (size: BoxSize): string => {
     const descriptions: Record<BoxSize, string> = {
-      [BoxSize.SMALL]: '5-7 items',
-      [BoxSize.MEDIUM]: '8-12 items',
-      [BoxSize.LARGE]: '13-18 items',
-      [BoxSize.FAMILY]: '20+ items',
+      [BoxSize.SMALL]: '5-7 items • Perfect for 1-2 people',
+      [BoxSize.MEDIUM]: '8-12 items • Great for 2-3 people',
+      [BoxSize.LARGE]: '13-18 items • Ideal for 3-4 people',
+      [BoxSize.FAMILY]: '20+ items • Best for 5+ people',
     };
     return descriptions[size] || '';
   },

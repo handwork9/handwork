@@ -31,27 +31,27 @@ export enum BoxSize {
   FAMILY = 'family',    // 20+ items
 }
 
-// Pricing for subscription boxes
+// Pricing for subscription boxes (in Naira)
 export const BOX_PRICING: Record<BoxSize, Record<SubscriptionBoxType, number>> = {
   [BoxSize.SMALL]: {
-    [SubscriptionBoxType.WEEKLY]: 5000,
-    [SubscriptionBoxType.BIWEEKLY]: 9500,
-    [SubscriptionBoxType.MONTHLY]: 18000,
+    [SubscriptionBoxType.WEEKLY]: 18500,
+    [SubscriptionBoxType.BIWEEKLY]: 35000,
+    [SubscriptionBoxType.MONTHLY]: 65000,
   },
   [BoxSize.MEDIUM]: {
-    [SubscriptionBoxType.WEEKLY]: 8500,
-    [SubscriptionBoxType.BIWEEKLY]: 16000,
-    [SubscriptionBoxType.MONTHLY]: 30000,
+    [SubscriptionBoxType.WEEKLY]: 28500,
+    [SubscriptionBoxType.BIWEEKLY]: 54000,
+    [SubscriptionBoxType.MONTHLY]: 100000,
   },
   [BoxSize.LARGE]: {
-    [SubscriptionBoxType.WEEKLY]: 12000,
-    [SubscriptionBoxType.BIWEEKLY]: 22500,
-    [SubscriptionBoxType.MONTHLY]: 42000,
+    [SubscriptionBoxType.WEEKLY]: 42000,
+    [SubscriptionBoxType.BIWEEKLY]: 79000,
+    [SubscriptionBoxType.MONTHLY]: 150000,
   },
   [BoxSize.FAMILY]: {
-    [SubscriptionBoxType.WEEKLY]: 18000,
-    [SubscriptionBoxType.BIWEEKLY]: 34000,
-    [SubscriptionBoxType.MONTHLY]: 65000,
+    [SubscriptionBoxType.WEEKLY]: 58000,
+    [SubscriptionBoxType.BIWEEKLY]: 110000,
+    [SubscriptionBoxType.MONTHLY]: 210000,
   },
 };
 

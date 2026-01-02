@@ -12,6 +12,10 @@ import {
   FlatList,
   Image,
   ActivityIndicator,
+  Modal,
+  Pressable,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -34,6 +38,9 @@ export default function GroupBuyingScreen() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabType>('explore');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showCodeModal, setShowCodeModal] = useState(false);
+  const [shareCode, setShareCode] = useState('');
+  const [isJoiningByCode, setIsJoiningByCode] = useState(false);
 
   // Fetch discount tiers
   const { data: tiersData } = useQuery<GroupBuyTier[]>({
@@ -166,6 +173,29 @@ export default function GroupBuyingScreen() {
         },
       ]
     );
+  };
+
+  const handleJoinByCode = async () => {
+    const code = shareCode.trim().toUpperCase();
+    if (!code) {
+      Alert.alert('Error', 'Please enter a share code');
+      return;
+    }
+
+    setIsJoiningByCode(true);
+    try {
+      const groupBuy = await groupBuyingService.getByShareCode(code);
+      setShowCodeModal(false);
+      setShareCode('');
+      navigation.navigate('GroupBuyDetail', { groupBuyId: groupBuy.id });
+    } catch (error: any) {
+      Alert.alert(
+        'Invalid Code',
+        error.response?.data?.message || 'No group buy found with this code. Please check and try again.'
+      );
+    } finally {
+      setIsJoiningByCode(false);
+    }
   };
 
   const renderGroupBuyCard = ({ item: groupBuy }: { item: GroupBuy }) => {
@@ -574,7 +604,12 @@ export default function GroupBuyingScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Group Buying</Text>
-        <View style={{ width: 40 }} />
+        <TouchableOpacity
+          style={styles.codeButton}
+          onPress={() => setShowCodeModal(true)}
+        >
+          <Ionicons name="qr-code-outline" size={22} color={COLORS.primary} />
+        </TouchableOpacity>
       </View>
 
       {/* Tabs */}
@@ -601,6 +636,78 @@ export default function GroupBuyingScreen() {
       {activeTab === 'explore' && renderExploreTab()}
       {activeTab === 'my' && renderMyTab()}
       {activeTab === 'organize' && renderOrganizeTab()}
+
+      {/* Join by Code Modal */}
+      <Modal
+        visible={showCodeModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCodeModal(false)}
+      >
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.codeModalOverlay}
+        >
+          <Pressable 
+            style={styles.codeModalDismiss} 
+            onPress={() => setShowCodeModal(false)} 
+          />
+          <View style={[styles.codeModalContent, { backgroundColor: isDark ? colors.card : '#fff' }]}>
+            <View style={styles.codeModalHandle} />
+            <View style={styles.codeModalHeader}>
+              <Text style={[styles.codeModalTitle, { color: colors.text }]}>Join with Code</Text>
+              <TouchableOpacity onPress={() => setShowCodeModal(false)}>
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            
+            <Text style={[styles.codeModalSubtitle, { color: colors.textSecondary }]}>
+              Enter the share code from a friend to join their group buy
+            </Text>
+
+            <View style={[styles.codeInputContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Ionicons name="ticket-outline" size={20} color={colors.textSecondary} />
+              <TextInput
+                style={[styles.codeInput, { color: colors.text }]}
+                placeholder="Enter share code (e.g. ABC123)"
+                placeholderTextColor={colors.textSecondary}
+                value={shareCode}
+                onChangeText={(text) => setShareCode(text.toUpperCase())}
+                autoCapitalize="characters"
+                autoCorrect={false}
+                maxLength={10}
+              />
+              {shareCode.length > 0 && (
+                <TouchableOpacity onPress={() => setShareCode('')}>
+                  <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <TouchableOpacity
+              style={[styles.joinByCodeButton, { backgroundColor: COLORS.primary }]}
+              onPress={handleJoinByCode}
+              disabled={isJoiningByCode || !shareCode.trim()}
+            >
+              {isJoiningByCode ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="enter-outline" size={20} color="#fff" />
+                  <Text style={styles.joinByCodeButtonText}>Join Group Buy</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            <View style={styles.codeModalTip}>
+              <Ionicons name="information-circle-outline" size={18} color={colors.textSecondary} />
+              <Text style={[styles.codeModalTipText, { color: colors.textSecondary }]}>
+                Share codes are case-insensitive and usually 6-8 characters
+              </Text>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -896,5 +1003,94 @@ const styles = StyleSheet.create({
   emptySubtitle: {
     fontSize: FONT_SIZES.sm,
     marginTop: SPACING.xs,
+  },
+  // Code Button & Modal Styles
+  codeButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  codeModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  codeModalDismiss: {
+    flex: 1,
+  },
+  codeModalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    paddingBottom: 34,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  codeModalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#D1D5DB',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  codeModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  codeModalTitle: {
+    fontSize: 18,
+    fontFamily: FONTS.semiBold,
+  },
+  codeModalSubtitle: {
+    fontSize: 14,
+    fontFamily: FONTS.regular,
+    marginBottom: 20,
+  },
+  codeInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: BORDER_RADIUS.md,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 16,
+    gap: 10,
+  },
+  codeInput: {
+    flex: 1,
+    fontSize: 16,
+    fontFamily: FONTS.medium,
+    letterSpacing: 2,
+  },
+  joinByCodeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: BORDER_RADIUS.md,
+    gap: 8,
+  },
+  joinByCodeButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontFamily: FONTS.semiBold,
+  },
+  codeModalTip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 16,
+    gap: 8,
+  },
+  codeModalTipText: {
+    flex: 1,
+    fontSize: 12,
+    fontFamily: FONTS.regular,
   },
 });

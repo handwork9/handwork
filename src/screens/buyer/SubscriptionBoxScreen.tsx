@@ -409,32 +409,52 @@ export default function SubscriptionBoxScreen() {
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
             Box Size
           </Text>
-          {Object.values(BoxSize).map((size) => (
-            <TouchableOpacity
-              key={size}
-              style={[
-                styles.sizeCard,
-                selectedSize === size && styles.sizeCardSelected,
-                { backgroundColor: isDark ? '#1F2937' : '#F9FAFB', borderColor: selectedSize === size ? COLORS.primary : 'transparent' },
-              ]}
-              onPress={() => setSelectedSize(size)}
-            >
-              <View style={styles.sizeInfo}>
-                <Text style={[styles.sizeName, { color: colors.text }]}>
-                  {(size?.charAt(0)?.toUpperCase() || '') + (size?.slice(1) || '')}
-                </Text>
-                <Text style={[styles.sizeDescription, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                  {subscriptionBoxService.getSizeDescription(size)}
-                </Text>
-              </View>
-              <Text style={[styles.sizePrice, { color: COLORS.primary }]}>
-                {pricingData ? subscriptionBoxService.formatPrice(pricingData.pricing[size][selectedType]) : '...'}
-              </Text>
-              {selectedSize === size && (
-                <Ionicons name="checkmark-circle" size={24} color={COLORS.primary} style={styles.sizeCheck} />
-              )}
-            </TouchableOpacity>
-          ))}
+          {Object.values(BoxSize).map((size) => {
+            const sizeIcons: Record<string, string> = {
+              small: 'cube-outline',
+              medium: 'cube',
+              large: 'gift-outline',
+              family: 'gift',
+            };
+            return (
+              <TouchableOpacity
+                key={size}
+                style={[
+                  styles.sizeCard,
+                  selectedSize === size && styles.sizeCardSelected,
+                  { backgroundColor: isDark ? '#1F2937' : '#F9FAFB', borderColor: selectedSize === size ? COLORS.primary : 'transparent' },
+                ]}
+                onPress={() => setSelectedSize(size)}
+              >
+                <View style={[styles.sizeIconContainer, { backgroundColor: selectedSize === size ? `${COLORS.primary}15` : isDark ? '#374151' : '#E5E7EB' }]}>
+                  <Ionicons 
+                    name={sizeIcons[size] as any} 
+                    size={28} 
+                    color={selectedSize === size ? COLORS.primary : colors.textSecondary} 
+                  />
+                </View>
+                <View style={styles.sizeInfo}>
+                  <Text style={[styles.sizeName, { color: colors.text }]}>
+                    {(size?.charAt(0)?.toUpperCase() || '') + (size?.slice(1) || '')}
+                  </Text>
+                  <Text style={[styles.sizeDescription, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                    {subscriptionBoxService.getSizeDescription(size)}
+                  </Text>
+                </View>
+                <View style={styles.sizePriceContainer}>
+                  <Text style={[styles.sizePrice, { color: COLORS.primary }]}>
+                    {pricingData ? subscriptionBoxService.formatPrice(pricingData.pricing[size][selectedType]) : '...'}
+                  </Text>
+                  <Text style={[styles.sizePriceLabel, { color: colors.textSecondary }]}>
+                    /{selectedType === SubscriptionBoxType.WEEKLY ? 'week' : selectedType === SubscriptionBoxType.BIWEEKLY ? '2 wks' : 'month'}
+                  </Text>
+                </View>
+                {selectedSize === size && (
+                  <Ionicons name="checkmark-circle" size={26} color={COLORS.primary} style={styles.sizeCheck} />
+                )}
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         {/* Category Preferences */}
@@ -784,30 +804,48 @@ const styles = StyleSheet.create({
   sizeCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: SPACING.md,
-    borderRadius: 12,
-    marginBottom: SPACING.sm,
+    padding: SPACING.lg,
+    borderRadius: 16,
+    marginBottom: SPACING.md,
     borderWidth: 2,
+    minHeight: 100,
   },
   sizeCardSelected: {
     borderWidth: 2,
+  },
+  sizeIconContainer: {
+    width: 52,
+    height: 52,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: SPACING.md,
   },
   sizeInfo: {
     flex: 1,
   },
   sizeName: {
-    fontSize: FONT_SIZES.md,
-    fontFamily: FONTS.semiBold,
+    fontSize: 17,
+    fontFamily: FONTS.bold,
   },
   sizeDescription: {
-    fontSize: FONT_SIZES.sm,
+    fontSize: 13,
     fontFamily: FONTS.regular,
-    marginTop: 2,
+    marginTop: 4,
+    lineHeight: 18,
+  },
+  sizePriceContainer: {
+    alignItems: 'flex-end',
+    marginRight: SPACING.sm,
   },
   sizePrice: {
-    fontSize: FONT_SIZES.lg,
+    fontSize: 20,
     fontFamily: FONTS.bold,
-    marginRight: SPACING.md,
+  },
+  sizePriceLabel: {
+    fontSize: 11,
+    fontFamily: FONTS.regular,
+    marginTop: 2,
   },
   sizeCheck: {
     marginLeft: SPACING.sm,

@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Pressable,
   Image,
   Alert,
   TextInput,
@@ -37,6 +38,7 @@ export default function ShoppingListsScreen() {
   const dispatch = useAppDispatch();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showInfoModal, setShowInfoModal] = useState(false);
   const [newListName, setNewListName] = useState('');
   const [selectedList, setSelectedList] = useState<ShoppingList | null>(null);
 
@@ -368,12 +370,20 @@ export default function ShoppingListsScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Shopping Lists</Text>
-        <TouchableOpacity
-          style={styles.createButton}
-          onPress={() => setShowCreateModal(true)}
-        >
-          <Ionicons name="add" size={24} color={colors.primary} />
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            style={styles.infoButton}
+            onPress={() => setShowInfoModal(true)}
+          >
+            <Ionicons name="information-circle-outline" size={24} color={colors.textSecondary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.createButton}
+            onPress={() => setShowCreateModal(true)}
+          >
+            <Ionicons name="add" size={24} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
@@ -456,6 +466,122 @@ export default function ShoppingListsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Info Bottom Sheet - How Shopping Lists Work */}
+      <Modal
+        visible={showInfoModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowInfoModal(false)}
+      >
+        <View style={styles.bottomSheetOverlay}>
+          <Pressable 
+            style={styles.bottomSheetDismissArea} 
+            onPress={() => setShowInfoModal(false)}
+          />
+          <View style={[styles.bottomSheetContent, { backgroundColor: isDark ? colors.card : '#fff' }]}>
+            <View style={styles.bottomSheetHandle} />
+            <View style={styles.bottomSheetHeader}>
+              <Text style={[styles.bottomSheetTitle, { color: colors.text }]}>How Shopping Lists Work</Text>
+              <TouchableOpacity onPress={() => setShowInfoModal(false)}>
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView 
+              style={styles.infoModalScroll} 
+              showsVerticalScrollIndicator={false}
+              bounces={true}
+              nestedScrollEnabled={true}
+            >
+              {/* Create Lists */}
+              <View style={styles.infoSection}>
+                <View style={[styles.infoIconContainer, { backgroundColor: '#EBF5FF' }]}>
+                  <Ionicons name="add-circle" size={24} color="#3B82F6" />
+                </View>
+                <View style={styles.infoTextContainer}>
+                  <Text style={[styles.infoSectionTitle, { color: colors.text }]}>Create Multiple Lists</Text>
+                  <Text style={[styles.infoSectionText, { color: colors.textSecondary }]}>
+                    Organize your shopping with multiple lists like "Weekly Groceries", "Party Supplies", or "Monthly Staples". One list can be set as your default for quick adding.
+                  </Text>
+                </View>
+              </View>
+
+              {/* Add Products */}
+              <View style={styles.infoSection}>
+                <View style={[styles.infoIconContainer, { backgroundColor: '#F0FDF4' }]}>
+                  <Ionicons name="basket" size={24} color="#22C55E" />
+                </View>
+                <View style={styles.infoTextContainer}>
+                  <Text style={[styles.infoSectionTitle, { color: colors.text }]}>Add Products</Text>
+                  <Text style={[styles.infoSectionText, { color: colors.textSecondary }]}>
+                    Browse products and tap the "Add to List" button on any product. Set the quantity and add notes like "Get the ripe ones". If you add the same product twice, the quantity increases automatically.
+                  </Text>
+                </View>
+              </View>
+
+              {/* Track Progress */}
+              <View style={styles.infoSection}>
+                <View style={[styles.infoIconContainer, { backgroundColor: '#FEF3C7' }]}>
+                  <Ionicons name="checkbox" size={24} color="#F59E0B" />
+                </View>
+                <View style={styles.infoTextContainer}>
+                  <Text style={[styles.infoSectionTitle, { color: colors.text }]}>Check Off Items</Text>
+                  <Text style={[styles.infoSectionText, { color: colors.textSecondary }]}>
+                    While shopping, tap items to mark them as purchased. The progress bar shows how much of your list is complete. Stay organized and never forget an item!
+                  </Text>
+                </View>
+              </View>
+
+              {/* Add to Cart */}
+              <View style={styles.infoSection}>
+                <View style={[styles.infoIconContainer, { backgroundColor: '#F5F3FF' }]}>
+                  <Ionicons name="cart" size={24} color="#7C3AED" />
+                </View>
+                <View style={styles.infoTextContainer}>
+                  <Text style={[styles.infoSectionTitle, { color: colors.text }]}>Quick Add to Cart</Text>
+                  <Text style={[styles.infoSectionText, { color: colors.textSecondary }]}>
+                    Ready to buy? Tap "Add All to Cart" to move all unpurchased items from your list directly to your shopping cart with the right quantities. Checkout in seconds!
+                  </Text>
+                </View>
+              </View>
+
+              {/* Share Lists */}
+              <View style={styles.infoSection}>
+                <View style={[styles.infoIconContainer, { backgroundColor: '#FEE2E2' }]}>
+                  <Ionicons name="share-social" size={24} color="#EF4444" />
+                </View>
+                <View style={styles.infoTextContainer}>
+                  <Text style={[styles.infoSectionTitle, { color: colors.text }]}>Share with Family</Text>
+                  <Text style={[styles.infoSectionText, { color: colors.textSecondary }]}>
+                    Make any list shareable to generate a unique code. Share it with family or friends so they can view your list and know exactly what to get.
+                  </Text>
+                </View>
+              </View>
+
+              {/* Estimated Total */}
+              <View style={styles.infoSection}>
+                <View style={[styles.infoIconContainer, { backgroundColor: '#ECFDF5' }]}>
+                  <Ionicons name="calculator" size={24} color="#10B981" />
+                </View>
+                <View style={styles.infoTextContainer}>
+                  <Text style={[styles.infoSectionTitle, { color: colors.text }]}>Estimated Total</Text>
+                  <Text style={[styles.infoSectionText, { color: colors.textSecondary }]}>
+                    See the estimated cost of your shopping list based on current product prices. Plan your budget before you shop!
+                  </Text>
+                </View>
+              </View>
+            </ScrollView>
+
+            <TouchableOpacity
+              style={[styles.bottomSheetButton, { backgroundColor: colors.primary }]}
+              onPress={() => setShowInfoModal(false)}
+            >
+              <Text style={styles.bottomSheetButtonText}>Got it!</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -480,6 +606,17 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 17,
     fontFamily: FONTS.semiBold,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  infoButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   createButton: {
     width: 40,
@@ -728,5 +865,84 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontFamily: FONTS.semiBold,
     fontSize: 14,
+  },
+  // Bottom Sheet Styles
+  bottomSheetOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  bottomSheetDismissArea: {
+    flex: 1,
+  },
+  bottomSheetContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    paddingBottom: 34,
+    maxHeight: '85%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  bottomSheetHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#D1D5DB',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  bottomSheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  bottomSheetTitle: {
+    fontSize: 18,
+    fontFamily: FONTS.semiBold,
+  },
+  infoModalScroll: {
+    maxHeight: 400,
+  },
+  infoSection: {
+    flexDirection: 'row',
+    marginBottom: 20,
+    alignItems: 'flex-start',
+  },
+  infoIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  infoTextContainer: {
+    flex: 1,
+  },
+  infoSectionTitle: {
+    fontSize: 15,
+    fontFamily: FONTS.semiBold,
+    marginBottom: 4,
+  },
+  infoSectionText: {
+    fontSize: 13,
+    fontFamily: FONTS.regular,
+    lineHeight: 20,
+  },
+  bottomSheetButton: {
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  bottomSheetButtonText: {
+    color: '#fff',
+    fontFamily: FONTS.semiBold,
+    fontSize: 15,
   },
 });

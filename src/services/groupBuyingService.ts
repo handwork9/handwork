@@ -19,8 +19,9 @@ export interface GroupBuyProduct {
 
 export interface GroupBuyOrganizer {
   id: string;
-  firstName: string;
-  lastName: string;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
   avatar: string;
 }
 
