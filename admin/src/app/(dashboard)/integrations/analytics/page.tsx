@@ -98,7 +98,7 @@ const mockEcommerceData: EcommerceData = {
 
 export default function AnalyticsPage() {
   const [loading, setLoading] = useState(false);
-  const [dateRange, setDateRange] = useState<[any, any]>([subDays(new Date(), 30), new Date()]);
+  const [dateRange, setDateRange] = useState<[any, any] | null>(null);
   const [eventStats, setEventStats] = useState<EventStats[]>(mockEventStats);
   const [pageViews, setPageViews] = useState<PageView[]>(mockPageViews);
   const [ecommerceData, setEcommerceData] = useState<EcommerceData>(mockEcommerceData);
@@ -204,6 +204,11 @@ export default function AnalyticsPage() {
       render: (val) => val.toLocaleString(),
     },
   ];
+
+  // Initialize date range on client side to avoid hydration mismatch
+  useEffect(() => {
+    setDateRange([subDays(new Date(), 30), new Date()]);
+  }, []);
 
   return (
     <div style={{ padding: '24px' }}>
