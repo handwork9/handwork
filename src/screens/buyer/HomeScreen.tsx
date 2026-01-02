@@ -253,11 +253,11 @@ export default function HomeScreen() {
     refetch,
     isRefetching,
   } = useQuery({
-    queryKey: ['products', selectedCategory, userState],
+    queryKey: ['products', selectedCategory],
     queryFn: () =>
       productService.getProducts({
         category: selectedCategory?.toLowerCase() || undefined,
-        state: userState,
+        // Don't filter by state - show all products nationwide
         lat: location?.latitude,
         lng: location?.longitude,
         limit: 20,
@@ -265,147 +265,147 @@ export default function HomeScreen() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Fetch products for different category sections - DISABLED FOR PERFORMANCE TESTING
+  // Fetch products for different category sections
   const { data: vegetablesData } = useQuery({
-    queryKey: ['products', 'vegetables', userState],
-    queryFn: () => productService.getProducts({ category: 'vegetables', state: userState, limit: 6 }),
+    queryKey: ['products', 'vegetables'],
+    queryFn: () => productService.getProducts({ category: 'vegetables', limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: fruitsData } = useQuery({
-    queryKey: ['products', 'fruits', userState],
-    queryFn: () => productService.getProducts({ category: 'fruits', state: userState, limit: 6 }),
+    queryKey: ['products', 'fruits'],
+    queryFn: () => productService.getProducts({ category: 'fruits', limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: grainsData } = useQuery({
-    queryKey: ['products', 'grains', userState],
-    queryFn: () => productService.getProducts({ category: 'grains', state: userState, limit: 6 }),
+    queryKey: ['products', 'grains'],
+    queryFn: () => productService.getProducts({ category: 'grains', limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: dairyData } = useQuery({
-    queryKey: ['products', 'dairy', userState],
-    queryFn: () => productService.getProducts({ category: 'dairy', state: userState, limit: 6 }),
+    queryKey: ['products', 'dairy'],
+    queryFn: () => productService.getProducts({ category: 'dairy', limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: meatData } = useQuery({
-    queryKey: ['products', 'meat', userState],
-    queryFn: () => productService.getProducts({ category: 'meat', state: userState, limit: 6 }),
+    queryKey: ['products', 'meat'],
+    queryFn: () => productService.getProducts({ category: 'meat', limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: seafoodData } = useQuery({
-    queryKey: ['products', 'seafood', userState],
-    queryFn: () => productService.getProducts({ category: 'seafood', state: userState, limit: 6 }),
+    queryKey: ['products', 'seafood'],
+    queryFn: () => productService.getProducts({ category: 'seafood', limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   // Additional category queries
   const { data: eggsData } = useQuery({
-    queryKey: ['products', 'eggs', userState],
-    queryFn: () => productService.getProducts({ category: 'eggs', state: userState, limit: 6 }),
+    queryKey: ['products', 'eggs'],
+    queryFn: () => productService.getProducts({ category: 'eggs', limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: poultryData } = useQuery({
-    queryKey: ['products', 'poultry', userState],
-    queryFn: () => productService.getProducts({ category: 'poultry', state: userState, limit: 6 }),
+    queryKey: ['products', 'poultry'],
+    queryFn: () => productService.getProducts({ category: 'poultry', limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: herbsData } = useQuery({
-    queryKey: ['products', 'herbs_spices', userState],
-    queryFn: () => productService.getProducts({ category: 'herbs_spices', state: userState, limit: 6 }),
+    queryKey: ['products', 'herbs_spices'],
+    queryFn: () => productService.getProducts({ category: 'herbs_spices', limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: honeyData } = useQuery({
-    queryKey: ['products', 'honey', userState],
-    queryFn: () => productService.getProducts({ category: 'honey', state: userState, limit: 6 }),
+    queryKey: ['products', 'honey'],
+    queryFn: () => productService.getProducts({ category: 'honey', limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: nutsData } = useQuery({
-    queryKey: ['products', 'nuts', userState],
-    queryFn: () => productService.getProducts({ category: 'nuts', state: userState, limit: 6 }),
+    queryKey: ['products', 'nuts'],
+    queryFn: () => productService.getProducts({ category: 'nuts', limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: tubersData } = useQuery({
-    queryKey: ['products', 'tubers', userState],
-    queryFn: () => productService.getProducts({ category: 'tubers', state: userState, limit: 6 }),
+    queryKey: ['products', 'tubers'],
+    queryFn: () => productService.getProducts({ category: 'tubers', limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: oilsData } = useQuery({
-    queryKey: ['products', 'oils', userState],
-    queryFn: () => productService.getProducts({ category: 'oils', state: userState, limit: 6 }),
+    queryKey: ['products', 'oils'],
+    queryFn: () => productService.getProducts({ category: 'oils', limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: legumesData } = useQuery({
-    queryKey: ['products', 'legumes', userState],
-    queryFn: () => productService.getProducts({ category: 'legumes', state: userState, limit: 6 }),
+    queryKey: ['products', 'legumes'],
+    queryFn: () => productService.getProducts({ category: 'legumes', limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: processedData } = useQuery({
-    queryKey: ['products', 'processed', userState],
-    queryFn: () => productService.getProducts({ category: 'processed', state: userState, limit: 6 }),
+    queryKey: ['products', 'processed'],
+    queryFn: () => productService.getProducts({ category: 'processed', limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: livestockData } = useQuery({
-    queryKey: ['products', 'livestock', userState],
-    queryFn: () => productService.getProducts({ category: 'livestock', state: userState, limit: 6 }),
+    queryKey: ['products', 'livestock'],
+    queryFn: () => productService.getProducts({ category: 'livestock', limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: seedsData } = useQuery({
-    queryKey: ['products', 'seeds', userState],
-    queryFn: () => productService.getProducts({ category: 'seeds', state: userState, limit: 6 }),
+    queryKey: ['products', 'seeds'],
+    queryFn: () => productService.getProducts({ category: 'seeds', limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: beveragesData } = useQuery({
-    queryKey: ['products', 'beverages', userState],
-    queryFn: () => productService.getProducts({ category: 'beverages', state: userState, limit: 6 }),
+    queryKey: ['products', 'beverages'],
+    queryFn: () => productService.getProducts({ category: 'beverages', limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: othersData } = useQuery({
-    queryKey: ['products', 'others', userState],
-    queryFn: () => productService.getProducts({ category: 'others', state: userState, limit: 6 }),
+    queryKey: ['products', 'others'],
+    queryFn: () => productService.getProducts({ category: 'others', limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
-  // Fetch promoted products - filter by state to show local promoted products
+  // Fetch promoted products - show all promoted products nationwide
   const { data: promotedData } = useQuery({
-    queryKey: ['products', 'promoted', userState],
-    queryFn: () => productService.getPromotedProducts(userState, 6),
+    queryKey: ['products', 'promoted'],
+    queryFn: () => productService.getPromotedProducts(undefined, 6),
     staleTime: 5 * 60 * 1000,
   });
 
-  // Fetch sponsored products from verified/premium sellers - filter by state
+  // Fetch sponsored products from verified/premium sellers - show nationwide
   const { data: sponsoredData } = useQuery({
-    queryKey: ['products', 'sponsored', userState],
-    queryFn: () => productService.getSponsoredProducts(userState, 12),
+    queryKey: ['products', 'sponsored'],
+    queryFn: () => productService.getSponsoredProducts(undefined, 12),
     staleTime: 5 * 60 * 1000,
   });
 
-  // Fetch admin-curated official store products - filter by state
+  // Fetch admin-curated official store products - show nationwide
   const { data: adminProductsData } = useQuery({
-    queryKey: ['products', 'admin-products', userState],
-    queryFn: () => productService.getAdminProducts(userState, 6),
+    queryKey: ['products', 'admin-products'],
+    queryFn: () => productService.getAdminProducts(undefined, 6),
     staleTime: 5 * 60 * 1000,
   });
 
-  // Fetch recommended products - filter by state
+  // Fetch recommended products - show nationwide
   const { data: recommendedData } = useQuery({
-    queryKey: ['products', 'recommended', userState],
-    queryFn: () => productService.getRecommendedProducts(userState, 20),
+    queryKey: ['products', 'recommended'],
+    queryFn: () => productService.getRecommendedProducts(undefined, 20),
     staleTime: 5 * 60 * 1000,
   });
 
