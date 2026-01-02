@@ -38,7 +38,7 @@ export class CreateAppSettingsTable1704300000000 implements MigrationInterface {
           data: {
             appName: 'Handwork Marketplace',
             supportEmail: 'support@handwork.com',
-            supportPhone: '+234 800 000 0000',
+            supportPhone: '+234 706 210 3875',
             currency: 'NGN',
             timezone: 'Africa/Lagos',
           }

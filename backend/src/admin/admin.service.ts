@@ -50,7 +50,7 @@ export interface SettingsData {
 export const DEFAULT_SETTINGS: SettingsData = {
   appName: 'Handwork Marketplace',
   supportEmail: 'support@handwork.com',
-  supportPhone: '+234 800 000 0000',
+  supportPhone: '+234 706 210 3875',
   currency: 'NGN',
   timezone: 'Africa/Lagos',
   

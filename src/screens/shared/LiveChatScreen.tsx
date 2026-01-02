@@ -22,10 +22,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import supportService, { SupportTicket, SupportMessage } from '../../services/supportService';
 import { FONTS } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
 import { useAppSelector } from '../../store';
+
+const GUEST_SESSION_KEY = 'handwork_guest_chat_session';
 
 interface Message {
   id: string;
@@ -238,6 +241,19 @@ const LiveChatScreen: React.FC = () => {
   
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
+  
+  // Guest chat state
+  const [guestMode, setGuestMode] = useState<'welcome' | 'collecting-info' | 'chatting'>('welcome');
+  const [guestName, setGuestName] = useState('');
+  const [guestEmail, setGuestEmail] = useState('');
+  const [guestSessionId, setGuestSessionId] = useState<string | null>(null);
+  const [guestMessages, setGuestMessages] = useState<Message[]>([]);
+  const [guestInputText, setGuestInputText] = useState('');
+  const [isBotTyping, setIsBotTyping] = useState(false);
+  const [isGuestLoading, setIsGuestLoading] = useState(false);
+  const [isGuestSending, setIsGuestSending] = useState(false);
+  const guestFlatListRef = useRef<FlatList>(null);
+  const guestPollingRef = useRef<NodeJS.Timeout | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const [isAgentTyping, setIsAgentTyping] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -1090,144 +1106,597 @@ const LiveChatScreen: React.FC = () => {
   };
 
   const handleContactPhone = () => {
-    Linking.openURL('tel:+2348000000000');
+    Linking.openURL('tel:+2347062103875');
   };
 
   const handleContactWhatsApp = () => {
-    Linking.openURL('https://wa.me/2348000000000?text=Hello,%20I%20need%20help%20with%20Handwork');
+    const message = encodeURIComponent(
+      `👋 Hello Handwork Support Team!\n\n` +
+      `I need assistance with the following:\n\n` +
+      `📝 Issue: [Please describe your issue]\n\n` +
+      `📱 App Version: Latest\n` +
+      `🕐 Time: ${new Date().toLocaleString()}\n\n` +
+      `Thank you for your help!`
+    );
+    Linking.openURL(`https://wa.me/2347062103875?text=${message}`);
   };
 
-  // Render Guest Contact Form for unauthenticated users
+  // Guest chat quick replies
+  const GUEST_QUICK_REPLIES = [
+    { id: '1', text: '📦 Track my order', category: 'order' },
+    { id: '2', text: '💳 Payment issue', category: 'payment' },
+    { id: '3', text: '🚚 Delivery problem', category: 'delivery' },
+    { id: '4', text: '👤 Account help', category: 'account' },
+    { id: '5', text: '💬 Other inquiry', category: 'other' },
+  ];
+
+  // Load existing guest session on mount
+  useEffect(() => {
+    if (!isAuthenticated) {
+      loadGuestSession();
+    }
+    
+    // Cleanup polling on unmount
+    return () => {
+      if (guestPollingRef.current) {
+        clearInterval(guestPollingRef.current);
+      }
+    };
+  }, [isAuthenticated]);
+
+  // Load guest session from storage
+  const loadGuestSession = async () => {
+    try {
+      const savedSession = await AsyncStorage.getItem(GUEST_SESSION_KEY);
+      if (savedSession) {
+        const { sessionId, email, name } = JSON.parse(savedSession);
+        setGuestSessionId(sessionId);
+        setGuestEmail(email || '');
+        setGuestName(name || '');
+        setGuestMode('chatting');
+        
+        // Load existing messages from backend
+        setIsGuestLoading(true);
+        const messages = await supportService.getGuestMessages(sessionId);
+        if (messages.length > 0) {
+          const transformedMessages = messages.map(transformSupportMessage);
+          setGuestMessages(transformedMessages);
+        }
+        setIsGuestLoading(false);
+        
+        // Start polling for new messages
+        startGuestPolling(sessionId);
+      } else {
+        // Show welcome messages for new guests
+        showWelcomeMessages();
+      }
+    } catch (error) {
+      console.error('[GuestChat] Failed to load session:', error);
+      showWelcomeMessages();
+    }
+  };
+
+  // Transform SupportMessage to local Message format
+  const transformSupportMessage = (msg: SupportMessage): Message => ({
+    id: msg.id,
+    text: msg.content,
+    sender: msg.senderType === 'user' ? 'user' : 'agent',
+    timestamp: new Date(msg.createdAt),
+    status: 'delivered',
+    agentName: msg.sender?.name || (msg.senderType === 'agent' ? 'Support Agent' : undefined),
+    type: msg.type as any,
+  });
+
+  // Show welcome messages for new guests
+  const showWelcomeMessages = () => {
+    const welcomeMessages: Message[] = [
+      {
+        id: 'welcome-1',
+        text: "👋 Hi there! Welcome to Handwork Support!",
+        sender: 'agent',
+        timestamp: new Date(),
+        status: 'delivered',
+        agentName: 'Support Bot',
+        type: 'text',
+      },
+    ];
+    setGuestMessages(welcomeMessages);
+    
+    setTimeout(() => {
+      setGuestMessages(prev => [...prev, {
+        id: 'welcome-2',
+        text: "I'm here to help you 24/7. How can I assist you today?",
+        sender: 'agent',
+        timestamp: new Date(),
+        status: 'delivered',
+        agentName: 'Support Bot',
+        type: 'text',
+      }]);
+    }, 800);
+  };
+
+  // Start polling for new messages
+  const startGuestPolling = (sessionId: string) => {
+    if (guestPollingRef.current) {
+      clearInterval(guestPollingRef.current);
+    }
+    
+    guestPollingRef.current = setInterval(async () => {
+      try {
+        const messages = await supportService.getGuestMessages(sessionId);
+        if (messages.length > 0) {
+          const transformedMessages = messages.map(transformSupportMessage);
+          setGuestMessages(transformedMessages);
+        }
+      } catch (error) {
+        console.error('[GuestChat] Polling error:', error);
+      }
+    }, 5000); // Poll every 5 seconds
+  };
+
+  // Handle guest quick reply selection
+  const handleGuestQuickReply = async (reply: { id: string; text: string; category: string }) => {
+    // Add user message locally first
+    const userMessage: Message = {
+      id: `user-${Date.now()}`,
+      text: reply.text,
+      sender: 'user',
+      timestamp: new Date(),
+      status: 'sending',
+      type: 'text',
+    };
+    setGuestMessages(prev => [...prev, userMessage]);
+    setGuestMode('collecting-info');
+    
+    // Bot response asking for details
+    setIsBotTyping(true);
+    setTimeout(() => {
+      setIsBotTyping(false);
+      const botResponse: Message = {
+        id: `bot-${Date.now()}`,
+        text: getBotResponseForCategory(reply.category),
+        sender: 'agent',
+        timestamp: new Date(),
+        status: 'delivered',
+        agentName: 'Support Bot',
+        type: 'text',
+      };
+      setGuestMessages(prev => {
+        // Update user message status to sent
+        const updated = prev.map(m => m.id === userMessage.id ? { ...m, status: 'sent' as const } : m);
+        return [...updated, botResponse];
+      });
+      
+      // Ask for email
+      setTimeout(() => {
+        setGuestMessages(prev => [...prev, {
+          id: `bot-email-${Date.now()}`,
+          text: "To help you better, could you please share your email? This helps us track your issue and follow up if needed. 📧",
+          sender: 'agent',
+          timestamp: new Date(),
+          status: 'delivered',
+          agentName: 'Support Bot',
+          type: 'text',
+        }]);
+      }, 1000);
+    }, 1200);
+  };
+
+  // Get bot response based on category
+  const getBotResponseForCategory = (category: string): string => {
+    switch (category) {
+      case 'order':
+        return "I'd be happy to help you track your order! 📦 Please share your order number or the email/phone used during checkout.";
+      case 'payment':
+        return "I understand payment issues can be frustrating. 💳 Let me help you resolve this. Can you tell me more about what happened?";
+      case 'delivery':
+        return "Sorry to hear about the delivery issue! 🚚 I'm here to help. What seems to be the problem with your delivery?";
+      case 'account':
+        return "Account matters are important! 👤 What would you like help with - login issues, profile updates, or something else?";
+      default:
+        return "Thanks for reaching out! 💬 Please tell me more about how I can help you today.";
+    }
+  };
+
+  // Handle guest message send - NOW CONNECTED TO BACKEND
+  const handleGuestSendMessage = async () => {
+    if (!guestInputText.trim() || isGuestSending) return;
+    
+    const text = guestInputText.trim();
+    setGuestInputText('');
+    
+    // Add user message locally
+    const userMessage: Message = {
+      id: `user-${Date.now()}`,
+      text,
+      sender: 'user',
+      timestamp: new Date(),
+      status: 'sending',
+      type: 'text',
+    };
+    setGuestMessages(prev => [...prev, userMessage]);
+    
+    // Check if it's an email and we don't have a session yet
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    
+    if (emailRegex.test(text) && !guestSessionId) {
+      // Create a ticket on the backend with the email
+      setGuestEmail(text);
+      setIsGuestSending(true);
+      
+      try {
+        // Get the previous messages to send as initial message
+        const previousUserMessages = guestMessages
+          .filter(m => m.sender === 'user')
+          .map(m => m.text)
+          .join('\n');
+        
+        const { ticket, sessionId } = await supportService.createGuestTicket({
+          email: text,
+          message: previousUserMessages || 'Guest started a conversation',
+          category: 'other',
+          deviceInfo: {
+            platform: Platform.OS,
+            timestamp: new Date().toISOString(),
+          },
+        });
+        
+        // Save session
+        setGuestSessionId(sessionId);
+        await AsyncStorage.setItem(GUEST_SESSION_KEY, JSON.stringify({
+          sessionId,
+          email: text,
+          ticketId: ticket?.id,
+        }));
+        
+        // Update message status
+        setGuestMessages(prev => prev.map(m => 
+          m.id === userMessage.id ? { ...m, status: 'sent' as const } : m
+        ));
+        
+        setGuestMode('chatting');
+        
+        // Bot confirmation
+        setIsBotTyping(true);
+        setTimeout(() => {
+          setIsBotTyping(false);
+          setGuestMessages(prev => [...prev, {
+            id: `bot-email-confirm-${Date.now()}`,
+            text: `Perfect, thanks! I've noted your email: ${text} ✅\n\nYour conversation is now being recorded. Our support team will respond to you here or via email. Feel free to describe your issue in detail!`,
+            sender: 'agent',
+            timestamp: new Date(),
+            status: 'delivered',
+            agentName: 'Support Bot',
+            type: 'text',
+          }]);
+        }, 800);
+        
+        // Start polling for agent responses
+        startGuestPolling(sessionId);
+        
+      } catch (error) {
+        console.error('[GuestChat] Failed to create ticket:', error);
+        // Show error but continue with local chat
+        setGuestMessages(prev => prev.map(m => 
+          m.id === userMessage.id ? { ...m, status: 'sent' as const } : m
+        ));
+        
+        setIsBotTyping(true);
+        setTimeout(() => {
+          setIsBotTyping(false);
+          setGuestMessages(prev => [...prev, {
+            id: `bot-email-confirm-${Date.now()}`,
+            text: `Thanks for your email! 📧 I'm having trouble connecting to our server right now, but you can continue chatting here or reach us via WhatsApp for immediate assistance.`,
+            sender: 'agent',
+            timestamp: new Date(),
+            status: 'delivered',
+            agentName: 'Support Bot',
+            type: 'text',
+          }]);
+        }, 800);
+        setGuestMode('chatting');
+      } finally {
+        setIsGuestSending(false);
+      }
+      return;
+    }
+    
+    // If we have a session, send to backend
+    if (guestSessionId) {
+      setIsGuestSending(true);
+      try {
+        await supportService.sendGuestMessage(guestSessionId, text);
+        setGuestMessages(prev => prev.map(m => 
+          m.id === userMessage.id ? { ...m, status: 'sent' as const } : m
+        ));
+      } catch (error) {
+        console.error('[GuestChat] Failed to send message:', error);
+        setGuestMessages(prev => prev.map(m => 
+          m.id === userMessage.id ? { ...m, status: 'sent' as const } : m
+        ));
+      } finally {
+        setIsGuestSending(false);
+      }
+      return;
+    }
+    
+    // If no session and not an email, show bot response
+    setGuestMessages(prev => prev.map(m => 
+      m.id === userMessage.id ? { ...m, status: 'sent' as const } : m
+    ));
+    
+    setIsBotTyping(true);
+    setTimeout(() => {
+      setIsBotTyping(false);
+      
+      // Smart responses based on keywords
+      let responseText = '';
+      const lowerText = text.toLowerCase();
+      
+      if (lowerText.includes('refund') || lowerText.includes('money back')) {
+        responseText = "I understand you'd like a refund. 💰 Our refunds are typically processed within 3-5 business days. To help you further, please share your email address so our team can look into it!";
+      } else if (lowerText.includes('cancel')) {
+        responseText = "You'd like to cancel? I can help with that! 🛑 Please share your email address and order details, and we'll process it immediately.";
+      } else if (lowerText.includes('late') || lowerText.includes('delay')) {
+        responseText = "I apologize for the delay! 😔 To check on your order, please share your email address first.";
+      } else if (lowerText.includes('thank')) {
+        responseText = "You're welcome! 😊 Is there anything else I can help you with today?";
+      } else if (lowerText.includes('human') || lowerText.includes('agent') || lowerText.includes('person')) {
+        responseText = "I'll connect you with a human agent! 👨‍💼 To do that, please share your email address first so they can follow up with you.";
+      } else {
+        responseText = "Got it! To ensure our team can follow up and help you properly, could you please share your email address? 📧";
+      }
+      
+      setGuestMessages(prev => [...prev, {
+        id: `bot-response-${Date.now()}`,
+        text: responseText,
+        sender: 'agent',
+        timestamp: new Date(),
+        status: 'delivered',
+        agentName: 'Support Bot',
+        type: 'text',
+      }]);
+    }, 1500);
+  };
+
+  // Scroll to bottom when new guest messages arrive
+  useEffect(() => {
+    if (guestMessages.length > 0 && guestFlatListRef.current) {
+      setTimeout(() => {
+        guestFlatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  }, [guestMessages, isBotTyping]);
+
+  // Render guest message bubble
+  const renderGuestMessage = ({ item }: { item: Message }) => {
+    const isUser = item.sender === 'user';
+    
+    return (
+      <View style={[
+        styles.messageContainer,
+        isUser ? styles.userMessageContainer : styles.agentMessageContainer,
+      ]}>
+        {!isUser && (
+          <View style={styles.avatarContainer}>
+            <View style={[styles.avatar, styles.avatarFallback]}>
+              <Ionicons name="chatbubble-ellipses" size={16} color="#FFF" />
+            </View>
+            <View style={[styles.onlineIndicator, { borderColor: isDark ? colors.background : '#F9FAFB' }]} />
+          </View>
+        )}
+        <View style={[
+          styles.messageBubble,
+          isUser ? styles.userBubble : [styles.agentBubble, dynamicStyles.messageBubble],
+        ]}>
+          {!isUser && (
+            <Text style={styles.agentName}>
+              {item.agentName || 'Support Bot'}
+            </Text>
+          )}
+          <Text style={[
+            styles.messageText,
+            isUser ? styles.userMessageText : dynamicStyles.messageText,
+          ]}>
+            {item.text}
+          </Text>
+          <View style={styles.messageFooter}>
+            <Text style={[
+              styles.timestamp,
+              isUser ? styles.userTimestamp : dynamicStyles.timestamp,
+            ]}>
+              {item.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </Text>
+          </View>
+        </View>
+        {isUser && <View style={styles.avatarSpacer} />}
+      </View>
+    );
+  };
+
+  // Render Guest Intercom-style Chat for unauthenticated users
   if (!isAuthenticated) {
     return (
-      <View style={[styles.container, dynamicStyles.container]}>
+      <KeyboardAvoidingView 
+        style={[styles.container, dynamicStyles.container]}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      >
         {/* Header */}
-        <LinearGradient
-          colors={['#7C3AED', '#9333EA']}
-          style={[styles.header, { paddingTop: insets.top }]}
+        <View
+          style={[styles.header, { paddingTop: insets.top, backgroundColor: isDark ? colors.background : '#F2F2F7' }]}
         >
           <View style={styles.headerContent}>
             <TouchableOpacity 
-              style={styles.backButton}
+              style={[styles.backButton, { backgroundColor: isDark ? colors.card : '#DEDEE0' }]}
               onPress={() => navigation.goBack()}
             >
-              <Ionicons name="arrow-back" size={24} color="#FFF" />
+              <Ionicons name="arrow-back" size={24} color={colors.text} />
             </TouchableOpacity>
             
             <View style={styles.headerInfo}>
               <View style={styles.headerAvatarContainer}>
-                <View style={[styles.headerAvatar, styles.headerAvatarPlaceholder]}>
-                  <Ionicons name="headset" size={24} color="#FFF" />
+                <View style={[styles.headerAvatar, { backgroundColor: '#7C3AED' }]}>
+                  <Ionicons name="chatbubble-ellipses" size={24} color="#FFF" />
                 </View>
+                <View style={[styles.onlineIndicator, { backgroundColor: '#22C55E' }]} />
               </View>
               <View style={styles.headerText}>
-                <Text style={styles.headerTitle}>Handwork Support</Text>
-                <Text style={styles.headerSubtitle}>Contact Us</Text>
+                <Text style={[styles.headerTitle, { color: colors.text }]}>Handwork Support</Text>
+                <Text style={[styles.headerSubtitle, { color: '#22C55E' }]}>● Online Now</Text>
               </View>
             </View>
             
-            <View style={{ width: 40 }} />
+            <TouchableOpacity 
+              style={[styles.backButton, { backgroundColor: isDark ? colors.card : '#DEDEE0' }]}
+              onPress={handleContactWhatsApp}
+            >
+              <Ionicons name="logo-whatsapp" size={22} color="#22C55E" />
+            </TouchableOpacity>
           </View>
-        </LinearGradient>
+        </View>
 
-        {/* Guest Contact Options */}
-        <ScrollView 
-          style={{ flex: 1 }}
-          contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 20 }}
-        >
-          <View style={[styles.guestWelcomeCard, { backgroundColor: isDark ? colors.card : '#FFF' }]}>
-            <View style={styles.guestIconContainer}>
-              <Ionicons name="chatbubbles" size={48} color="#7C3AED" />
-            </View>
-            <Text style={[styles.guestTitle, { color: colors.text }]}>
-              Need Help?
-            </Text>
-            <Text style={[styles.guestSubtitle, { color: colors.textSecondary }]}>
-              You can reach our support team through any of the channels below. For faster assistance, please sign in to your account.
-            </Text>
+        {/* Chat Messages */}
+        <FlatList
+          ref={guestFlatListRef}
+          data={guestMessages}
+          renderItem={renderGuestMessage}
+          keyExtractor={item => item.id}
+          contentContainerStyle={[styles.messagesList, { paddingBottom: 16 }]}
+          showsVerticalScrollIndicator={false}
+          ListFooterComponent={() => (
+            <>
+              {/* Bot typing indicator */}
+              {isBotTyping && (
+                <View style={[styles.messageContainer, styles.agentMessageContainer]}>
+                  <View style={styles.avatarContainer}>
+                    <View style={[styles.avatar, styles.avatarFallback]}>
+                      <Ionicons name="chatbubble-ellipses" size={16} color="#FFF" />
+                    </View>
+                    <View style={[styles.onlineIndicator, { borderColor: isDark ? colors.background : '#F9FAFB' }]} />
+                  </View>
+                  <View style={[styles.messageBubble, styles.agentBubble, styles.typingBubble, dynamicStyles.messageBubble]}>
+                    <View style={styles.typingDots}>
+                      {[0, 1, 2].map((i) => (
+                        <Animated.View
+                          key={i}
+                          style={[
+                            styles.typingDot,
+                            { backgroundColor: colors.textSecondary },
+                          ]}
+                        />
+                      ))}
+                    </View>
+                  </View>
+                </View>
+              )}
+              
+              {/* Quick replies - show only at welcome state */}
+              {guestMode === 'welcome' && guestMessages.length >= 2 && !isBotTyping && (
+                <View style={styles.guestQuickRepliesContainer}>
+                  <Text style={[styles.guestQuickRepliesTitle, { color: colors.textSecondary }]}>
+                    What can we help you with?
+                  </Text>
+                  <View style={styles.guestQuickRepliesGrid}>
+                    {GUEST_QUICK_REPLIES.map((reply) => (
+                      <TouchableOpacity
+                        key={reply.id}
+                        style={[styles.guestQuickReplyButton, { 
+                          backgroundColor: isDark ? colors.card : '#FFF',
+                          borderColor: isDark ? 'rgba(124, 58, 237, 0.3)' : '#E9D5FF',
+                        }]}
+                        onPress={() => handleGuestQuickReply(reply)}
+                      >
+                        <Text style={[styles.guestQuickReplyText, { color: colors.text }]}>
+                          {reply.text}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+              
+              {/* Alternative contact options - show after some messages */}
+              {guestMessages.length > 4 && (
+                <View style={[styles.guestAlternativeContainer, { backgroundColor: isDark ? colors.card : '#F5F3FF' }]}>
+                  <Text style={[styles.guestAlternativeTitle, { color: colors.text }]}>
+                    Prefer other channels?
+                  </Text>
+                  <View style={styles.guestAlternativeButtons}>
+                    <TouchableOpacity 
+                      style={[styles.guestAltButton, { backgroundColor: isDark ? 'rgba(34, 197, 94, 0.2)' : '#DCFCE7' }]}
+                      onPress={handleContactWhatsApp}
+                    >
+                      <Ionicons name="logo-whatsapp" size={18} color="#22C55E" />
+                      <Text style={[styles.guestAltButtonText, { color: '#22C55E' }]}>WhatsApp</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={[styles.guestAltButton, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.2)' : '#ECFDF5' }]}
+                      onPress={handleContactPhone}
+                    >
+                      <Ionicons name="call" size={18} color="#10B981" />
+                      <Text style={[styles.guestAltButtonText, { color: '#10B981' }]}>Call</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={[styles.guestAltButton, { backgroundColor: isDark ? 'rgba(124, 58, 237, 0.2)' : '#EEF2FF' }]}
+                      onPress={handleContactEmail}
+                    >
+                      <Ionicons name="mail" size={18} color="#7C3AED" />
+                      <Text style={[styles.guestAltButtonText, { color: '#7C3AED' }]}>Email</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+            </>
+          )}
+        />
+
+        {/* Input Area */}
+        <View style={[styles.inputContainer, dynamicStyles.inputContainer, { paddingBottom: insets.bottom + 8 }]}>
+          <View style={[styles.inputWrapper, dynamicStyles.inputWrapper]}>
+            <TextInput
+              style={[styles.input, { color: colors.text }]}
+              placeholder={guestEmail ? "Type your message..." : "Type a message or enter your email..."}
+              placeholderTextColor={colors.textSecondary}
+              value={guestInputText}
+              onChangeText={setGuestInputText}
+              multiline
+              maxLength={1000}
+              returnKeyType="send"
+              onSubmitEditing={handleGuestSendMessage}
+            />
           </View>
-
-          <Text style={[styles.guestSectionTitle, { color: colors.text }]}>
-            Contact Options
-          </Text>
-
-          <TouchableOpacity 
-            style={[styles.guestContactOption, { backgroundColor: isDark ? colors.card : '#FFF' }]}
-            onPress={handleContactEmail}
+          <TouchableOpacity
+            style={[
+              styles.sendButton,
+              { backgroundColor: guestInputText.trim() ? '#7C3AED' : isDark ? colors.card : '#E5E7EB' },
+            ]}
+            onPress={handleGuestSendMessage}
+            disabled={!guestInputText.trim()}
           >
-            <View style={[styles.guestContactIcon, { backgroundColor: '#EEF2FF' }]}>
-              <Ionicons name="mail" size={24} color="#7C3AED" />
-            </View>
-            <View style={styles.guestContactInfo}>
-              <Text style={[styles.guestContactTitle, { color: colors.text }]}>Email Us</Text>
-              <Text style={[styles.guestContactSubtitle, { color: colors.textSecondary }]}>
-                support@handwork.ng
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+            <Ionicons
+              name="send"
+              size={20}
+              color={guestInputText.trim() ? '#FFF' : colors.textSecondary}
+            />
           </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={[styles.guestContactOption, { backgroundColor: isDark ? colors.card : '#FFF' }]}
-            onPress={handleContactPhone}
-          >
-            <View style={[styles.guestContactIcon, { backgroundColor: '#ECFDF5' }]}>
-              <Ionicons name="call" size={24} color="#10B981" />
-            </View>
-            <View style={styles.guestContactInfo}>
-              <Text style={[styles.guestContactTitle, { color: colors.text }]}>Call Us</Text>
-              <Text style={[styles.guestContactSubtitle, { color: colors.textSecondary }]}>
-                +234 800 000 0000
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={[styles.guestContactOption, { backgroundColor: isDark ? colors.card : '#FFF' }]}
-            onPress={handleContactWhatsApp}
-          >
-            <View style={[styles.guestContactIcon, { backgroundColor: '#F0FDF4' }]}>
-              <Ionicons name="logo-whatsapp" size={24} color="#22C55E" />
-            </View>
-            <View style={styles.guestContactInfo}>
-              <Text style={[styles.guestContactTitle, { color: colors.text }]}>WhatsApp</Text>
-              <Text style={[styles.guestContactSubtitle, { color: colors.textSecondary }]}>
-                Chat with us instantly
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
-
-          <View style={[styles.guestSignInCard, { backgroundColor: isDark ? 'rgba(124, 58, 237, 0.1)' : '#F5F3FF' }]}>
-            <Ionicons name="person-circle" size={32} color="#7C3AED" />
-            <View style={styles.guestSignInInfo}>
-              <Text style={[styles.guestSignInTitle, { color: colors.text }]}>
-                Already have an account?
-              </Text>
-              <Text style={[styles.guestSignInSubtitle, { color: colors.textSecondary }]}>
-                Sign in to access live chat support with faster response times.
-              </Text>
-            </View>
-          </View>
-        </ScrollView>
-      </View>
+        </View>
+      </KeyboardAvoidingView>
     );
   }
 
   return (
     <View style={[styles.container, dynamicStyles.container]}>
       {/* Header */}
-      <LinearGradient
-        colors={['#7C3AED', '#9333EA']}
-        style={[styles.header, { paddingTop: insets.top }]}
+      <View
+        style={[styles.header, { paddingTop: insets.top, backgroundColor: isDark ? colors.background : '#F2F2F7' }]}
       >
         <View style={styles.headerContent}>
           <TouchableOpacity 
-            style={styles.backButton}
+            style={[styles.backButton, { backgroundColor: isDark ? colors.card : '#DEDEE0' }]}
             onPress={() => navigation.goBack()}
           >
-            <Ionicons name="arrow-back" size={24} color="#FFF" />
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           
           <View style={styles.headerInfo}>
@@ -1238,7 +1707,7 @@ const LiveChatScreen: React.FC = () => {
                   style={styles.headerAvatar}
                 />
               ) : (
-                <View style={[styles.headerAvatar, styles.headerAvatarPlaceholder]}>
+                <View style={[styles.headerAvatar, { backgroundColor: '#7C3AED' }]}>
                   <Ionicons name="headset" size={24} color="#FFF" />
                 </View>
               )}
@@ -1248,10 +1717,10 @@ const LiveChatScreen: React.FC = () => {
               ]} />
             </View>
             <View style={styles.headerText}>
-              <Text style={styles.headerTitle}>
+              <Text style={[styles.headerTitle, { color: colors.text }]}>
                 {ticket?.assignedTo?.name || 'Handwork Support'}
               </Text>
-              <Text style={styles.headerSubtitle}>
+              <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
                 {isAgentTyping 
                   ? 'Typing...' 
                   : ticket?.assignedTo 
@@ -1264,11 +1733,11 @@ const LiveChatScreen: React.FC = () => {
             </View>
           </View>
           
-          <TouchableOpacity style={styles.menuButton} onPress={handleMenuPress}>
-            <Ionicons name="ellipsis-vertical" size={24} color="#FFF" />
+          <TouchableOpacity style={[styles.menuButton, { backgroundColor: isDark ? colors.card : '#DEDEE0' }]} onPress={handleMenuPress}>
+            <Ionicons name="ellipsis-vertical" size={24} color={colors.text} />
           </TouchableOpacity>
         </View>
-      </LinearGradient>
+      </View>
 
       {/* Loading State */}
       {isLoading && (
@@ -1626,19 +2095,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
   },
   header: {
-    paddingBottom: 16,
+    paddingBottom: 12,
   },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingTop: 8,
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1655,8 +2123,8 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerOnlineIndicator: {
     position: 'absolute',
@@ -1665,9 +2133,14 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: '#10B981',
     borderWidth: 2,
-    borderColor: '#7C3AED',
+    borderColor: '#F2F2F7',
+  },
+  onlineGreen: {
+    backgroundColor: '#10B981',
+  },
+  onlineYellow: {
+    backgroundColor: '#F59E0B',
   },
   headerText: {
     marginLeft: 12,
@@ -1675,12 +2148,10 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#FFF',
     fontFamily: FONTS.semiBold,
   },
   headerSubtitle: {
     fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 2,
     fontFamily: FONTS.regular,
   },
@@ -1688,7 +2159,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2184,6 +2654,64 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: FONTS.regular,
     lineHeight: 18,
+  },
+  // Guest Intercom-style chat styles
+  guestQuickRepliesContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  guestQuickRepliesTitle: {
+    fontSize: 13,
+    fontFamily: FONTS.medium,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  guestQuickRepliesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  guestQuickReplyButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginBottom: 4,
+  },
+  guestQuickReplyText: {
+    fontSize: 14,
+    fontFamily: FONTS.medium,
+  },
+  guestAlternativeContainer: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 16,
+  },
+  guestAlternativeTitle: {
+    fontSize: 14,
+    fontFamily: FONTS.semiBold,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  guestAlternativeButtons: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  guestAltButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    gap: 6,
+  },
+  guestAltButtonText: {
+    fontSize: 13,
+    fontFamily: FONTS.semiBold,
   },
   // Image message styles
   imageBubble: {

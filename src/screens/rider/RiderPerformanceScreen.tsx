@@ -538,43 +538,40 @@ export default function RiderPerformanceScreen() {
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       
       {/* Header */}
-      <LinearGradient
-        colors={isDark ? ['#1a1a2e', '#16213e'] : ['#10B981', '#059669']}
-        style={[styles.header, { paddingTop: insets.top }]}
-      >
+      <View style={[styles.header, { paddingTop: insets.top, backgroundColor: isDark ? '#000' : '#F2F2F7' }]}>
         <View style={styles.headerTop}>
           <TouchableOpacity
-            style={styles.backButton}
+            style={[styles.backButton, { backgroundColor: isDark ? colors.card : '#DEDEE0' }]}
             onPress={() => navigation.goBack()}
           >
-            <Ionicons name="arrow-back" size={24} color="#FFF" />
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Performance</Text>
-          <TouchableOpacity style={styles.shareButton}>
-            <Ionicons name="share-outline" size={24} color="#FFF" />
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Performance</Text>
+          <TouchableOpacity style={[styles.shareButton, { backgroundColor: isDark ? 'rgba(16,185,129,0.3)' : 'rgba(16,185,129,0.15)' }]}>
+            <Ionicons name="share-outline" size={24} color="#10B981" />
           </TouchableOpacity>
         </View>
         
         {/* Earnings Summary */}
-        <View style={styles.summaryContainer}>
+        <View style={[styles.summaryCard, { backgroundColor: isDark ? colors.card : '#FFF' }]}>
           <View style={styles.summaryMain}>
-            <Text style={styles.summaryLabel}>Total Earnings</Text>
-            <Text style={styles.summaryAmount}>
+            <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Total Earnings</Text>
+            <Text style={[styles.summaryAmount, { color: colors.text }]}>
               {formatCurrency(performance?.totalEarnings || 0)}
             </Text>
             {performance?.earningsTrend !== undefined && (
               <View style={[
                 styles.trendBadge,
-                { backgroundColor: performance.earningsTrend >= 0 ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)' }
+                { backgroundColor: performance.earningsTrend >= 0 ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)' }
               ]}>
                 <Ionicons
                   name={performance.earningsTrend >= 0 ? 'trending-up' : 'trending-down'}
                   size={14}
-                  color={performance.earningsTrend >= 0 ? '#6EE7B7' : '#FCA5A5'}
+                  color={performance.earningsTrend >= 0 ? '#10B981' : '#EF4444'}
                 />
                 <Text style={[
                   styles.trendText,
-                  { color: performance.earningsTrend >= 0 ? '#6EE7B7' : '#FCA5A5' }
+                  { color: performance.earningsTrend >= 0 ? '#10B981' : '#EF4444' }
                 ]}>
                   {Math.abs(performance.earningsTrend).toFixed(1)}% vs last {timePeriod}
                 </Text>
@@ -582,17 +579,17 @@ export default function RiderPerformanceScreen() {
             )}
           </View>
           
-          <View style={styles.tierCard}>
-            <View style={[styles.tierIcon, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-              <Ionicons name={tier.icon} size={20} color="#FFF" />
+          <View style={[styles.tierCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F5F5F5' }]}>
+            <View style={[styles.tierIcon, { backgroundColor: `${tier.color}20` }]}>
+              <Ionicons name={tier.icon} size={20} color={tier.color} />
             </View>
             <View>
-              <Text style={styles.tierLabel}>Performance Tier</Text>
-              <Text style={styles.tierValue}>{tier.tier}</Text>
+              <Text style={[styles.tierLabel, { color: colors.textSecondary }]}>Performance Tier</Text>
+              <Text style={[styles.tierValue, { color: tier.color }]}>{tier.tier}</Text>
             </View>
           </View>
         </View>
-      </LinearGradient>
+      </View>
       
       <ScrollView
         style={styles.content}
@@ -607,24 +604,23 @@ export default function RiderPerformanceScreen() {
         }
       >
         {/* Time Period Selector */}
-        <View style={[styles.periodSelector, { backgroundColor: isDark ? colors.card : '#FFF' }]}>
+        <View style={[styles.periodSelector, { borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E5E5' }]}>
           {(['week', 'month', 'quarter', 'year'] as TimePeriod[]).map((period) => (
             <TouchableOpacity
               key={period}
-              style={[
-                styles.periodButton,
-                timePeriod === period && { backgroundColor: '#10B981' },
-              ]}
+              style={styles.periodButton}
               onPress={() => setTimePeriod(period)}
             >
               <Text
                 style={[
                   styles.periodText,
-                  { color: timePeriod === period ? '#FFF' : colors.textSecondary },
+                  { color: timePeriod === period ? colors.text : colors.textSecondary },
+                  timePeriod === period && styles.periodTextActive,
                 ]}
               >
                 {period.charAt(0).toUpperCase() + period.slice(1)}
               </Text>
+              {timePeriod === period && <View style={[styles.periodIndicator, { backgroundColor: '#10B981' }]} />}
             </TouchableOpacity>
           ))}
         </View>
@@ -667,7 +663,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingBottom: SPACING.xl,
+    paddingBottom: SPACING.md,
   },
   headerTop: {
     flexDirection: 'row',
@@ -680,7 +676,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -688,19 +683,19 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.lg,
     fontWeight: '600',
     fontFamily: FONTS.semiBold,
-    color: '#FFF',
   },
   shareButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  summaryContainer: {
-    paddingHorizontal: SPACING.md,
-    paddingTop: SPACING.md,
+  summaryCard: {
+    marginHorizontal: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.md,
+    ...SHADOWS.small,
   },
   summaryMain: {
     alignItems: 'center',
@@ -708,7 +703,6 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: FONT_SIZES.sm,
-    color: 'rgba(255,255,255,0.8)',
     fontFamily: FONTS.regular,
     marginBottom: 4,
   },
@@ -716,7 +710,6 @@ const styles = StyleSheet.create({
     fontSize: 36,
     fontWeight: '700',
     fontFamily: FONTS.bold,
-    color: '#FFF',
     marginBottom: 8,
   },
   trendBadge: {
@@ -735,8 +728,7 @@ const styles = StyleSheet.create({
   tierCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: BORDER_RADIUS.lg,
+    borderRadius: BORDER_RADIUS.md,
     padding: SPACING.sm,
     gap: SPACING.sm,
   },
@@ -749,7 +741,6 @@ const styles = StyleSheet.create({
   },
   tierLabel: {
     fontSize: FONT_SIZES.xs,
-    color: 'rgba(255,255,255,0.8)',
     fontFamily: FONTS.regular,
   },
   tierValue: {
@@ -768,21 +759,30 @@ const styles = StyleSheet.create({
   },
   periodSelector: {
     flexDirection: 'row',
-    borderRadius: BORDER_RADIUS.lg,
-    padding: 4,
     marginBottom: SPACING.md,
-    ...SHADOWS.small,
+    borderBottomWidth: 1,
   },
   periodButton: {
     flex: 1,
-    paddingVertical: SPACING.sm,
+    paddingVertical: 12,
     alignItems: 'center',
-    borderRadius: BORDER_RADIUS.md,
+    position: 'relative',
   },
   periodText: {
     fontSize: FONT_SIZES.sm,
-    fontWeight: '500',
     fontFamily: FONTS.medium,
+  },
+  periodTextActive: {
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+  },
+  periodIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    left: 12,
+    right: 12,
+    height: 3,
+    borderRadius: 1.5,
   },
   card: {
     borderRadius: BORDER_RADIUS.lg,

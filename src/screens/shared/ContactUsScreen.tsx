@@ -44,21 +44,21 @@ const CONTACT_OPTIONS: ContactOption[] = [
     id: '2',
     icon: 'call',
     title: 'Call Us',
-    subtitle: '+234 123 456 7890',
+    subtitle: '+234 706 210 3875',
     color: '#16A34A',
     bgColor: '#DCFCE7',
     action: 'phone',
-    value: '+2341234567890',
+    value: '+2347062103875',
   },
   {
     id: '3',
     icon: 'logo-whatsapp',
     title: 'WhatsApp',
-    subtitle: 'Quick responses',
+    subtitle: '+234 706 210 3875',
     color: '#25D366',
     bgColor: '#D1FAE5',
     action: 'whatsapp',
-    value: '+2341234567890',
+    value: '+2347062103875',
   },
   {
     id: '4',
@@ -100,7 +100,14 @@ export default function ContactUsScreen() {
         Linking.openURL(`mailto:${option.value}?subject=Support Request`);
         break;
       case 'whatsapp':
-        Linking.openURL(`whatsapp://send?phone=${option.value.replace('+', '')}`);
+        const whatsappMessage = encodeURIComponent(
+          `👋 Hello Handwork Support!\n\n` +
+          `I'm reaching out regarding:\n\n` +
+          `📝 Topic: [Order/Delivery/Account/Payment/Other]\n` +
+          `📄 Details: [Please describe your concern]\n\n` +
+          `Looking forward to your response!`
+        );
+        Linking.openURL(`https://wa.me/${option.value.replace('+', '')}?text=${whatsappMessage}`);
         break;
       case 'chat':
         (navigation as any).navigate('LiveChat');

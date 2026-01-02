@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum, IsUUID, IsObject } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsUUID, IsObject, IsEmail } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { TicketCategory, TicketPriority, SupportMessageType, ReportType, ReportStatus } from '../../database/entities';
 
@@ -31,6 +31,47 @@ export class CreateTicketDto {
   @IsOptional()
   @IsObject()
   metadata?: Record<string, any>;
+}
+
+export class CreateGuestTicketDto {
+  @ApiPropertyOptional({ description: 'Guest name' })
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @ApiPropertyOptional({ description: 'Guest email for follow-up' })
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @ApiPropertyOptional({ description: 'Guest phone number' })
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @ApiPropertyOptional({ enum: TicketCategory })
+  @IsOptional()
+  @IsEnum(TicketCategory)
+  category?: TicketCategory;
+
+  @ApiProperty({ description: 'Initial message content' })
+  @IsString()
+  message: string;
+
+  @ApiPropertyOptional({ description: 'Device/app info' })
+  @IsOptional()
+  @IsObject()
+  deviceInfo?: Record<string, any>;
+}
+
+export class SendGuestMessageDto {
+  @ApiProperty({ description: 'Guest session ID' })
+  @IsString()
+  sessionId: string;
+
+  @ApiProperty({ description: 'Message content' })
+  @IsString()
+  content: string;
 }
 
 export class SendMessageDto {

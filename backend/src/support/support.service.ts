@@ -680,4 +680,150 @@ export class SupportService {
 
     return stats;
   }
+
+  // ==================== GUEST TICKET METHODS ====================
+
+  /**
+   * Create a guest support ticket (no authentication required)
+   */
+  async createGuestTicket(dto: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    category?: TicketCategory;
+    message: string;
+    deviceInfo?: Record<string, any>;
+  }): Promise<{ ticket: SupportTicket; sessionId: string }> {
+    // Generate a session ID for the guest
+    const sessionId = `guest_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 10)}`;
+
+    const ticket = this.ticketRepository.create({
+      ticketNumber: this.generateTicketNumber(),
+      userId: null, // No user for guest tickets
+      subject: `Guest Support: ${dto.category || 'General Inquiry'}`,
+      category: dto.category || TicketCategory.OTHER,
+      priority: TicketPriority.MEDIUM,
+      metadata: {
+        isGuest: true,
+        sessionId,
+        guestName: dto.name || 'Guest',
+        guestEmail: dto.email,
+        guestPhone: dto.phone,
+        deviceInfo: dto.deviceInfo,
+      },
+    });
+
+    await this.ticketRepository.save(ticket);
+
+    // Create the initial guest message
+    const message = this.messageRepository.create({
+      ticketId: ticket.id,
+      senderId: null,
+      senderType: MessageSender.USER,
+      content: dto.message,
+      type: SupportMessageType.TEXT,
+      metadata: {
+        guestName: dto.name || 'Guest',
+        guestEmail: dto.email,
+        sessionId,
+      },
+    });
+
+    await this.messageRepository.save(message);
+
+    // Update ticket's last message time
+    ticket.lastMessageAt = new Date();
+    await this.ticketRepository.save(ticket);
+
+    // Notify admins about new guest ticket
+    this.supportGateway.notifyNewTicket(ticket);
+
+    this.logger.log(`Guest ticket created: ${ticket.ticketNumber} (Session: ${sessionId})`);
+
+    return { 
+      ticket: await this.getTicketById(ticket.id), 
+      sessionId 
+    };
+  }
+
+  /**
+   * Get guest ticket by session ID
+   */
+  async getGuestTicketBySession(sessionId: string): Promise<SupportTicket | null> {
+    const ticket = await this.ticketRepository
+      .createQueryBuilder('ticket')
+      .where(`ticket.metadata->>'sessionId' = :sessionId`, { sessionId })
+      .andWhere(`ticket.metadata->>'isGuest' = 'true'`)
+      .leftJoinAndSelect('ticket.assignedTo', 'assignedTo')
+      .orderBy('ticket.createdAt', 'DESC')
+      .getOne();
+
+    return ticket;
+  }
+
+  /**
+   * Send a message as guest
+   */
+  async sendGuestMessage(sessionId: string, content: string): Promise<SupportMessage> {
+    const ticket = await this.getGuestTicketBySession(sessionId);
+    
+    if (!ticket) {
+      throw new NotFoundException('Guest session not found');
+    }
+
+    const message = this.messageRepository.create({
+      ticketId: ticket.id,
+      senderId: null,
+      senderType: MessageSender.USER,
+      content,
+      type: SupportMessageType.TEXT,
+      metadata: {
+        sessionId,
+        guestName: ticket.metadata?.guestName || 'Guest',
+      },
+    });
+
+    await this.messageRepository.save(message);
+
+    // Update ticket's last message time
+    ticket.lastMessageAt = new Date();
+    await this.ticketRepository.save(ticket);
+
+    // Notify via WebSocket
+    this.supportGateway.sendMessageToTicket(ticket.id, {
+      ...message,
+      sender: {
+        id: sessionId,
+        name: ticket.metadata?.guestName || 'Guest',
+        isGuest: true,
+      },
+    });
+
+    return message;
+  }
+
+  /**
+   * Get messages for a guest session
+   */
+  async getGuestMessages(sessionId: string): Promise<SupportMessage[]> {
+    const ticket = await this.getGuestTicketBySession(sessionId);
+    
+    if (!ticket) {
+      return [];
+    }
+
+    return this.getTicketMessages(ticket.id);
+  }
+
+  /**
+   * Get all guest tickets (admin)
+   */
+  async getGuestTickets(): Promise<SupportTicket[]> {
+    return this.ticketRepository
+      .createQueryBuilder('ticket')
+      .where(`ticket.metadata->>'isGuest' = 'true'`)
+      .leftJoinAndSelect('ticket.assignedTo', 'assignedTo')
+      .orderBy('ticket.lastMessageAt', 'DESC')
+      .getMany();
+  }
 }

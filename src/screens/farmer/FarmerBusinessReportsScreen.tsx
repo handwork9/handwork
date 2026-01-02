@@ -239,50 +239,45 @@ const FarmerBusinessReportsScreen: React.FC = () => {
 
   // Render header
   const renderHeader = () => (
-    <LinearGradient
-      colors={isDark ? ['#1a472a', '#0d3320'] : ['#2E7D32', '#1B5E20']}
-      style={[styles.header, { paddingTop: insets.top + SPACING.sm }]}
-    >
+    <View style={[styles.header, { paddingTop: insets.top + SPACING.sm, backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
       <View style={styles.headerContent}>
         <TouchableOpacity
-          style={styles.backButton}
+          style={[styles.backButton, { backgroundColor: isDark ? colors.card : '#DEDEE0' }]}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color="#fff" />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>Business Reports</Text>
-          <Text style={styles.headerSubtitle}>Comprehensive analytics</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Business Reports</Text>
         </View>
         <TouchableOpacity
-          style={styles.exportButton}
+          style={[styles.exportButton, { backgroundColor: isDark ? `${COLORS.primary}30` : COLORS.primaryLight }]}
           onPress={handleExportReport}
         >
-          <Ionicons name="share-outline" size={22} color="#fff" />
+          <Ionicons name="share-outline" size={22} color={COLORS.primary} />
         </TouchableOpacity>
       </View>
       
       {/* Period selector */}
-      <View style={styles.periodSelector}>
+      <View style={[styles.periodSelector, { borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E5E5' }]}>
         {(['week', 'month', 'quarter', 'year'] as ReportPeriod[]).map((p) => (
           <TouchableOpacity
             key={p}
-            style={[
-              styles.periodButton,
-              period === p && styles.periodButtonActive,
-            ]}
+            style={styles.periodButton}
             onPress={() => setPeriod(p)}
           >
             <Text style={[
               styles.periodButtonText,
+              { color: period === p ? colors.text : colors.textSecondary },
               period === p && styles.periodButtonTextActive,
             ]}>
               {p.charAt(0).toUpperCase() + p.slice(1)}
             </Text>
+            {period === p && <View style={[styles.periodIndicator, { backgroundColor: COLORS.primary }]} />}
           </TouchableOpacity>
         ))}
       </View>
-    </LinearGradient>
+    </View>
   );
 
   // Render summary cards
@@ -677,7 +672,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -685,48 +679,54 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
   },
-  headerTitle: {
-    fontSize: FONT_SIZES.xl,
-    fontFamily: FONTS.bold,
-    color: '#fff',
+  headerIconRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  headerSubtitle: {
-    fontSize: FONT_SIZES.sm,
-    color: 'rgba(255,255,255,0.8)',
-    marginTop: 2,
+  headerIconBg: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: SPACING.xs,
+  },
+  headerTitle: {
+    fontSize: FONT_SIZES.lg,
+    fontFamily: FONTS.bold,
   },
   exportButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   periodSelector: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 12,
     marginTop: SPACING.md,
-    padding: 4,
+    borderBottomWidth: 1,
   },
   periodButton: {
     flex: 1,
-    paddingVertical: 8,
+    paddingVertical: 12,
     alignItems: 'center',
-    borderRadius: 8,
-  },
-  periodButtonActive: {
-    backgroundColor: '#fff',
+    position: 'relative',
   },
   periodButtonText: {
     fontSize: FONT_SIZES.sm,
-    color: 'rgba(255,255,255,0.8)',
     fontFamily: FONTS.medium,
   },
   periodButtonTextActive: {
-    color: '#2E7D32',
     fontFamily: FONTS.semiBold,
+  },
+  periodIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    left: 12,
+    right: 12,
+    height: 3,
+    borderRadius: 1.5,
   },
   scrollView: {
     flex: 1,

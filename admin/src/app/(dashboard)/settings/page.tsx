@@ -80,7 +80,7 @@ interface AppSettings {
 const defaultSettings: AppSettings = {
   appName: 'Handwork Marketplace',
   supportEmail: 'support@handwork.com',
-  supportPhone: '+234 800 000 0000',
+  supportPhone: '+234 706 210 3875',
   currency: 'NGN',
   timezone: 'Africa/Lagos',
   
@@ -246,7 +246,7 @@ export default function SettingsPage() {
                   label="Support Phone"
                   rules={[{ required: true }]}
                 >
-                  <Input placeholder="+234 800 000 0000" />
+                  <Input placeholder="+234 706 210 3875" />
                 </Form.Item>
               </Col>
             </Row>

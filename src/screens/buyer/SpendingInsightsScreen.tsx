@@ -501,43 +501,40 @@ export default function SpendingInsightsScreen() {
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       
       {/* Header */}
-      <LinearGradient
-        colors={isDark ? ['#1a1a2e', '#16213e'] : [colors.primary, colors.primary]}
-        style={[styles.header, { paddingTop: insets.top }]}
-      >
+      <View style={[styles.header, { paddingTop: insets.top, backgroundColor: isDark ? '#000' : '#F2F2F7' }]}>
         <View style={styles.headerTop}>
           <TouchableOpacity
-            style={styles.backButton}
+            style={[styles.backButton, { backgroundColor: isDark ? colors.card : '#DEDEE0' }]}
             onPress={() => navigation.goBack()}
           >
-            <Ionicons name="arrow-back" size={24} color="#FFF" />
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Spending Insights</Text>
-          <TouchableOpacity style={styles.shareButton}>
-            <Ionicons name="share-outline" size={24} color="#FFF" />
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Spending Insights</Text>
+          <TouchableOpacity style={[styles.shareButton, { backgroundColor: isDark ? `${colors.primary}30` : COLORS.primaryLight }]}>
+            <Ionicons name="share-outline" size={24} color={colors.primary} />
           </TouchableOpacity>
         </View>
         
         {/* Total Spent Summary */}
-        <View style={styles.summaryContainer}>
+        <View style={[styles.summaryCard, { backgroundColor: isDark ? colors.card : '#FFF' }]}>
           <View style={styles.summaryMain}>
-            <Text style={styles.summaryLabel}>Total Spent</Text>
-            <Text style={styles.summaryAmount}>
+            <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Total Spent</Text>
+            <Text style={[styles.summaryAmount, { color: colors.text }]}>
               {formatCurrency(insights?.totalSpent || 0)}
             </Text>
             {insights?.spendingTrend !== undefined && (
               <View style={[
                 styles.trendBadge,
-                { backgroundColor: insights.spendingTrend >= 0 ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.2)' }
+                { backgroundColor: insights.spendingTrend >= 0 ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.1)' }
               ]}>
                 <Ionicons
                   name={insights.spendingTrend >= 0 ? 'trending-up' : 'trending-down'}
                   size={14}
-                  color={insights.spendingTrend >= 0 ? '#FCA5A5' : '#6EE7B7'}
+                  color={insights.spendingTrend >= 0 ? '#EF4444' : '#10B981'}
                 />
                 <Text style={[
                   styles.trendText,
-                  { color: insights.spendingTrend >= 0 ? '#FCA5A5' : '#6EE7B7' }
+                  { color: insights.spendingTrend >= 0 ? '#EF4444' : '#10B981' }
                 ]}>
                   {Math.abs(insights.spendingTrend).toFixed(1)}% vs last {timePeriod}
                 </Text>
@@ -545,21 +542,21 @@ export default function SpendingInsightsScreen() {
             )}
           </View>
           
-          <View style={styles.summaryStats}>
+          <View style={[styles.summaryStats, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F5F5F5' }]}>
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>{insights?.totalOrders || 0}</Text>
-              <Text style={styles.statLabel}>Orders</Text>
+              <Text style={[styles.statValue, { color: colors.text }]}>{insights?.totalOrders || 0}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Orders</Text>
             </View>
-            <View style={styles.statDivider} />
+            <View style={[styles.statDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#E0E0E0' }]} />
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>
+              <Text style={[styles.statValue, { color: colors.text }]}>
                 {formatCompactCurrency(insights?.avgOrderValue || 0)}
               </Text>
-              <Text style={styles.statLabel}>Avg Order</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Avg Order</Text>
             </View>
           </View>
         </View>
-      </LinearGradient>
+      </View>
       
       <ScrollView
         style={styles.content}
@@ -574,24 +571,23 @@ export default function SpendingInsightsScreen() {
         }
       >
         {/* Time Period Selector */}
-        <View style={[styles.periodSelector, { backgroundColor: isDark ? colors.card : '#FFF' }]}>
+        <View style={[styles.periodSelector, { borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E5E5' }]}>
           {(['week', 'month', 'quarter', 'year'] as TimePeriod[]).map((period) => (
             <TouchableOpacity
               key={period}
-              style={[
-                styles.periodButton,
-                timePeriod === period && { backgroundColor: colors.primary },
-              ]}
+              style={styles.periodButton}
               onPress={() => setTimePeriod(period)}
             >
               <Text
                 style={[
                   styles.periodText,
-                  { color: timePeriod === period ? '#FFF' : colors.textSecondary },
+                  { color: timePeriod === period ? colors.text : colors.textSecondary },
+                  timePeriod === period && styles.periodTextActive,
                 ]}
               >
                 {period.charAt(0).toUpperCase() + period.slice(1)}
               </Text>
+              {timePeriod === period && <View style={[styles.periodIndicator, { backgroundColor: colors.primary }]} />}
             </TouchableOpacity>
           ))}
         </View>
@@ -636,7 +632,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingBottom: SPACING.xl,
+    paddingBottom: SPACING.md,
   },
   headerTop: {
     flexDirection: 'row',
@@ -649,7 +645,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -657,19 +652,19 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.lg,
     fontWeight: '600',
     fontFamily: FONTS.semiBold,
-    color: '#FFF',
   },
   shareButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  summaryContainer: {
-    paddingHorizontal: SPACING.md,
-    paddingTop: SPACING.md,
+  summaryCard: {
+    marginHorizontal: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.md,
+    ...SHADOWS.small,
   },
   summaryMain: {
     alignItems: 'center',
@@ -677,7 +672,6 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: FONT_SIZES.sm,
-    color: 'rgba(255,255,255,0.8)',
     fontFamily: FONTS.regular,
     marginBottom: 4,
   },
@@ -685,7 +679,6 @@ const styles = StyleSheet.create({
     fontSize: 36,
     fontWeight: '700',
     fontFamily: FONTS.bold,
-    color: '#FFF',
     marginBottom: 8,
   },
   trendBadge: {
@@ -705,8 +698,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: BORDER_RADIUS.lg,
+    borderRadius: BORDER_RADIUS.md,
     padding: SPACING.sm,
   },
   statItem: {
@@ -717,18 +709,15 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.lg,
     fontWeight: '700',
     fontFamily: FONTS.bold,
-    color: '#FFF',
   },
   statLabel: {
     fontSize: FONT_SIZES.xs,
-    color: 'rgba(255,255,255,0.8)',
     fontFamily: FONTS.regular,
     marginTop: 2,
   },
   statDivider: {
     width: 1,
     height: 30,
-    backgroundColor: 'rgba(255,255,255,0.2)',
     marginHorizontal: SPACING.md,
   },
   content: {
@@ -741,21 +730,30 @@ const styles = StyleSheet.create({
   },
   periodSelector: {
     flexDirection: 'row',
-    borderRadius: BORDER_RADIUS.lg,
-    padding: 4,
     marginBottom: SPACING.md,
-    ...SHADOWS.small,
+    borderBottomWidth: 1,
   },
   periodButton: {
     flex: 1,
-    paddingVertical: SPACING.sm,
+    paddingVertical: 12,
     alignItems: 'center',
-    borderRadius: BORDER_RADIUS.md,
+    position: 'relative',
   },
   periodText: {
     fontSize: FONT_SIZES.sm,
-    fontWeight: '500',
     fontFamily: FONTS.medium,
+  },
+  periodTextActive: {
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+  },
+  periodIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    left: 12,
+    right: 12,
+    height: 3,
+    borderRadius: 1.5,
   },
   card: {
     borderRadius: BORDER_RADIUS.lg,

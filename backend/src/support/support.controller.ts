@@ -14,7 +14,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { SupportService } from './support.service';
-import { CreateTicketDto, SendMessageDto, UpdateTicketDto, CreateReportDto, UpdateReportDto } from './dto';
+import { CreateTicketDto, SendMessageDto, UpdateTicketDto, CreateReportDto, UpdateReportDto, CreateGuestTicketDto, SendGuestMessageDto } from './dto';
 import { TicketStatus, TicketPriority, TicketCategory, MessageSender, ReportType, ReportStatus } from '../database/entities';
 import { UserRole } from '../common/enums';
 
@@ -29,6 +29,57 @@ interface AuthenticatedRequest {
 @Controller('support')
 export class SupportController {
   constructor(private readonly supportService: SupportService) {}
+
+  // ==================== GUEST ENDPOINTS (No Auth Required) ====================
+
+  /**
+   * Create a guest support ticket
+   */
+  @Post('guest/ticket')
+  @ApiOperation({ summary: 'Create a guest support ticket (no auth required)' })
+  async createGuestTicket(@Body() dto: CreateGuestTicketDto) {
+    const result = await this.supportService.createGuestTicket({
+      name: dto.name,
+      email: dto.email,
+      phone: dto.phone,
+      category: dto.category,
+      message: dto.message,
+      deviceInfo: dto.deviceInfo,
+    });
+    return result;
+  }
+
+  /**
+   * Send a message as guest
+   */
+  @Post('guest/message')
+  @ApiOperation({ summary: 'Send a message as guest' })
+  async sendGuestMessage(@Body() dto: SendGuestMessageDto) {
+    const message = await this.supportService.sendGuestMessage(dto.sessionId, dto.content);
+    return { message };
+  }
+
+  /**
+   * Get guest chat messages
+   */
+  @Get('guest/messages/:sessionId')
+  @ApiOperation({ summary: 'Get messages for a guest session' })
+  async getGuestMessages(@Param('sessionId') sessionId: string) {
+    const messages = await this.supportService.getGuestMessages(sessionId);
+    return { messages };
+  }
+
+  /**
+   * Get guest ticket info
+   */
+  @Get('guest/ticket/:sessionId')
+  @ApiOperation({ summary: 'Get guest ticket by session ID' })
+  async getGuestTicket(@Param('sessionId') sessionId: string) {
+    const ticket = await this.supportService.getGuestTicketBySession(sessionId);
+    return { ticket };
+  }
+
+  // ==================== AUTHENTICATED USER ENDPOINTS ====================
 
   /**
    * Start or continue a live chat (for app users)
@@ -141,6 +192,19 @@ export class SupportController {
   }
 
   // ==================== ADMIN ENDPOINTS ====================
+
+  /**
+   * Get all guest tickets (admin)
+   */
+  @Get('admin/guest-tickets')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get all guest support tickets (admin)' })
+  async getGuestTickets() {
+    const tickets = await this.supportService.getGuestTickets();
+    return { tickets };
+  }
 
   /**
    * Get all tickets (admin)

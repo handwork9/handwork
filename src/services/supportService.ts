@@ -514,6 +514,83 @@ class SupportService {
 
     return response.data.data.report;
   }
+
+  // ==================== GUEST METHODS ====================
+
+  /**
+   * Create a guest support ticket
+   */
+  async createGuestTicket(data: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    category?: string;
+    message: string;
+    deviceInfo?: Record<string, any>;
+  }): Promise<{ ticket: SupportTicket; sessionId: string }> {
+    try {
+      const response = await apiClient.post<{
+        success: boolean;
+        data: { ticket: SupportTicket; sessionId: string };
+      }>('/support/guest/ticket', data);
+
+      return response.data;
+    } catch (error) {
+      console.error('[Support] Failed to create guest ticket:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Send a message as guest
+   */
+  async sendGuestMessage(sessionId: string, content: string): Promise<SupportMessage> {
+    try {
+      const response = await apiClient.post<{
+        success: boolean;
+        data: { message: SupportMessage };
+      }>('/support/guest/message', { sessionId, content });
+
+      return response.data.message;
+    } catch (error) {
+      console.error('[Support] Failed to send guest message:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get messages for a guest session
+   */
+  async getGuestMessages(sessionId: string): Promise<SupportMessage[]> {
+    try {
+      const response = await apiClient.get<{
+        success: boolean;
+        data: { messages: SupportMessage[] };
+      }>(`/support/guest/messages/${sessionId}`);
+
+      return response.data.messages || [];
+    } catch (error) {
+      console.error('[Support] Failed to get guest messages:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get guest ticket info
+   */
+  async getGuestTicket(sessionId: string): Promise<SupportTicket | null> {
+    try {
+      const response = await apiClient.get<{
+        success: boolean;
+        data: { ticket: SupportTicket | null };
+      }>(`/support/guest/ticket/${sessionId}`);
+
+      return response.data.ticket;
+    } catch (error) {
+      console.error('[Support] Failed to get guest ticket:', error);
+      return null;
+    }
+  }
 }
 
 // Add SupportReport interface for type safety

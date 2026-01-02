@@ -209,9 +209,21 @@ export default function AvailableJobsScreen() {
     queryFn: async (): Promise<DeliveryJob[]> => {
       try {
         const result = await riderService.getAvailableJobs(location?.latitude, location?.longitude);
-        return (result as any).jobs || [];
+        console.log('[AvailableJobsScreen] Raw API result:', JSON.stringify(result, null, 2));
+        
+        // Handle nested response structure
+        let data: any = result;
+        if (data && typeof data === 'object' && 'data' in data) {
+          data = data.data;
+        }
+        if (data && typeof data === 'object' && 'jobs' in data) {
+          data = data.jobs;
+        }
+        
+        console.log('[AvailableJobsScreen] Extracted jobs:', data?.length || 0);
+        return Array.isArray(data) ? data : [];
       } catch (error) {
-        console.log('No available jobs from REST API, using WebSocket offers');
+        console.log('[AvailableJobsScreen] Error fetching jobs:', error);
         return [];
       }
     },
