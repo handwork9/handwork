@@ -271,22 +271,26 @@ export default function GoPremiumLearnMoreScreen() {
     <View style={[styles.container, { backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       
-      {/* Floating Back Button */}
-      <TouchableOpacity
-        style={[styles.floatingBackButton, { top: insets.top + 10 }]}
-        onPress={() => navigation.goBack()}
-      >
-        <Ionicons name="arrow-back" size={24} color={isDark ? '#FFF' : '#1F2937'} />
-      </TouchableOpacity>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + 10, backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+        <TouchableOpacity
+          style={styles.headerBackButton}
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Go Premium</Text>
+        <View style={styles.headerRight} />
+      </View>
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100, paddingTop: insets.top + 60 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100, paddingTop: 20 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Page Title */}
+        {/* Page Subtitle */}
         <View style={styles.pageTitleContainer}>
-          <Text style={[styles.pageTitle, { color: colors.text }]}>Go Premium</Text>
           <Text style={[styles.pageSubtitle, { color: colors.textSecondary }]}>
             Unlock exclusive benefits and savings
           </Text>
@@ -496,21 +500,28 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  floatingBackButton: {
-    position: 'absolute',
-    left: 16,
-    zIndex: 10,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+  },
+  headerBackButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.95)',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+  },
+  headerTitle: {
+    fontSize: 17,
+    fontFamily: FONTS.semiBold,
+  },
+  headerRight: {
+    width: 40,
   },
   scrollView: {
     flex: 1,
@@ -521,11 +532,6 @@ const styles = StyleSheet.create({
   pageTitleContainer: {
     paddingHorizontal: 16,
     marginBottom: 20,
-  },
-  pageTitle: {
-    fontSize: 28,
-    fontFamily: FONTS.bold,
-    marginBottom: 4,
   },
   pageSubtitle: {
     fontSize: 15,

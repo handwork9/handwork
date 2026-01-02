@@ -11,7 +11,7 @@ import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Conversation } from '../database/entities';
+import { Conversation, User } from '../database/entities';
 
 // Use default namespace - namespaces have deployment issues
 // All events are already prefixed with 'chat:' so no conflicts
@@ -35,13 +35,15 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     @InjectRepository(Conversation)
     private conversationRepository: Repository<Conversation>,
+    @InjectRepository(User)
+    private userRepository: Repository<User>,
   ) {}
 
   handleConnection(client: Socket): void {
     this.logger.log(`Chat client connected: ${client.id}`);
   }
 
-  handleDisconnect(client: Socket): void {
+  async handleDisconnect(client: Socket): Promise<void> {
     const userId = this.socketToUser.get(client.id);
     if (userId) {
       const userSocketIds = this.userSockets.get(userId);
@@ -49,6 +51,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         userSocketIds.delete(client.id);
         if (userSocketIds.size === 0) {
           this.userSockets.delete(userId);
+          // User is now fully offline - update lastSeen
+          await this.updateLastSeen(userId);
         }
       }
       this.socketToUser.delete(client.id);
@@ -63,6 +67,18 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     this.logger.log(`Chat client disconnected: ${client.id}`);
+  }
+
+  /**
+   * Update user's lastSeen timestamp
+   */
+  private async updateLastSeen(userId: string): Promise<void> {
+    try {
+      await this.userRepository.update(userId, { lastSeen: new Date() });
+      this.logger.log(`Updated lastSeen for user ${userId}`);
+    } catch (error) {
+      this.logger.error(`Failed to update lastSeen for user ${userId}:`, error);
+    }
   }
 
   /**

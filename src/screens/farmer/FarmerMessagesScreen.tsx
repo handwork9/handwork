@@ -37,6 +37,7 @@ interface Conversation {
   lastMessageTime: Date;
   unreadCount: number;
   isOnline: boolean;
+  lastSeen?: Date;
   productId?: string;
   productName?: string;
   orderId?: string;
@@ -161,7 +162,8 @@ export default function FarmerMessagesScreen() {
           lastMessage: conv.lastMessage?.text || 'No messages yet',
           lastMessageTime: new Date(conv.lastMessage?.createdAt || conv.createdAt),
           unreadCount: conv.unreadCount,
-          isOnline: false, // TODO: implement online status
+          isOnline: otherParticipant?.isOnline ?? false,
+          lastSeen: otherParticipant?.lastSeen ? new Date(otherParticipant.lastSeen) : undefined,
           productId: conv.productId,
           orderId: conv.orderId,
         };

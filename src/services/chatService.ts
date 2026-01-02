@@ -32,6 +32,8 @@ export interface Conversation {
     role: 'buyer' | 'farmer' | 'rider';
     phone?: string;
     avatar?: string;
+    isOnline?: boolean;
+    lastSeen?: string;
   }[];
   lastMessage?: ChatMessage;
   unreadCount: number;

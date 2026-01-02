@@ -62,6 +62,14 @@ export class User {
   @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
   longitude: number;
 
+  // Birthday (for birthday coupons)
+  @Column({ type: 'date', nullable: true })
+  dateOfBirth: Date;
+
+  // Online status tracking
+  @Column({ type: 'timestamp', nullable: true })
+  lastSeen: Date;
+
   // Nationality fields
   @Column({ nullable: true, length: 100 })
   nationality: string;

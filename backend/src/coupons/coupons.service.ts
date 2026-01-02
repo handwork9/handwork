@@ -3,13 +3,17 @@ import {
   NotFoundException,
   BadRequestException,
   Logger,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThanOrEqual, MoreThanOrEqual, In } from 'typeorm';
+import { Repository, LessThanOrEqual, MoreThanOrEqual, In, Raw } from 'typeorm';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { Coupon, CouponUsage, CouponType, CouponStatus, CouponSource } from '../database/entities/coupon.entity';
 import { Order } from '../database/entities/order.entity';
 import { User } from '../database/entities/user.entity';
 import { CreateCouponDto, UpdateCouponDto, ValidateCouponDto } from './dto';
+import { NotificationsService, NotificationType } from '../notifications/notifications.service';
 
 export interface CouponValidationResult {
   valid: boolean;
@@ -38,6 +42,8 @@ export class CouponsService {
     private orderRepository: Repository<Order>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    @Inject(forwardRef(() => NotificationsService))
+    private notificationsService: NotificationsService,
   ) {}
 
   async create(dto: CreateCouponDto): Promise<Coupon> {
@@ -494,5 +500,98 @@ export class CouponsService {
     });
     
     return this.createMilestoneCoupon(userId, orderCount);
+  }
+
+  /**
+   * Create birthday coupon for a user
+   */
+  async createBirthdayCoupon(userId: string, userName: string): Promise<Coupon> {
+    const code = this.generateCouponCode('BDAY');
+    
+    // Check if user already has a birthday coupon for this year
+    const currentYear = new Date().getFullYear();
+    const existingBirthdayCoupon = await this.couponRepository
+      .createQueryBuilder('coupon')
+      .where('coupon.userId = :userId', { userId })
+      .andWhere('coupon.source = :source', { source: CouponSource.BIRTHDAY })
+      .andWhere('EXTRACT(YEAR FROM coupon.createdAt) = :year', { year: currentYear })
+      .getOne();
+    
+    if (existingBirthdayCoupon) {
+      this.logger.log(`User ${userId} already has birthday coupon for ${currentYear}: ${existingBirthdayCoupon.code}`);
+      return existingBirthdayCoupon;
+    }
+
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + 30); // Valid for 30 days
+
+    const coupon = this.couponRepository.create({
+      code,
+      name: 'Birthday Treat 🎂',
+      description: `Happy Birthday, ${userName}! Enjoy 15% off your next order.`,
+      type: CouponType.PERCENTAGE,
+      value: 15,
+      minOrderAmount: 3000, // Minimum ₦3,000
+      maxDiscountAmount: 5000, // Max ₦5,000 discount
+      startDate: new Date(),
+      endDate,
+      usageLimit: 1,
+      usageLimitPerUser: 1,
+      userId,
+      source: CouponSource.BIRTHDAY,
+      status: CouponStatus.ACTIVE,
+    });
+
+    await this.couponRepository.save(coupon);
+    this.logger.log(`Created birthday coupon ${code} for user ${userId}`);
+    return coupon;
+  }
+
+  /**
+   * Daily cron job to check birthdays and create birthday coupons
+   * Runs every day at 8:00 AM
+   */
+  @Cron('0 8 * * *')
+  async processBirthdayCoupons(): Promise<void> {
+    this.logger.log('Running birthday coupon cron job...');
+
+    const today = new Date();
+    const currentMonth = today.getMonth() + 1; // JavaScript months are 0-indexed
+    const currentDay = today.getDate();
+
+    // Find all users whose birthday is today
+    const usersWithBirthday = await this.userRepository
+      .createQueryBuilder('user')
+      .where('user.dateOfBirth IS NOT NULL')
+      .andWhere('EXTRACT(MONTH FROM user.dateOfBirth) = :month', { month: currentMonth })
+      .andWhere('EXTRACT(DAY FROM user.dateOfBirth) = :day', { day: currentDay })
+      .andWhere('user.isActive = true')
+      .getMany();
+
+    this.logger.log(`Found ${usersWithBirthday.length} users with birthday today`);
+
+    for (const user of usersWithBirthday) {
+      try {
+        const coupon = await this.createBirthdayCoupon(user.id, user.name);
+        
+        // Send push notification
+        await this.notificationsService.sendPushNotification({
+          userId: user.id,
+          type: NotificationType.PROMO,
+          title: '🎂 Happy Birthday!',
+          body: `We have a special gift for you! Use code ${coupon.code} for 15% off your next order.`,
+          data: {
+            type: 'birthday_coupon',
+            couponCode: coupon.code,
+          },
+        });
+
+        this.logger.log(`Birthday coupon sent to ${user.name} (${user.id})`);
+      } catch (error) {
+        this.logger.error(`Failed to create birthday coupon for user ${user.id}:`, error);
+      }
+    }
+
+    this.logger.log('Birthday coupon cron job completed');
   }
 }

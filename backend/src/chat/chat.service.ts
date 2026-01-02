@@ -45,15 +45,22 @@ export class ChatService {
           },
         });
 
+        // Check online status for each participant
+        const participantIds = participants.map(p => p.id);
+        const onlineUsers = this.chatGateway.getOnlineUsers(participantIds);
+
         return {
           id: conv.id,
           orderId: conv.orderId,
+          productId: conv.productId,
           participants: participants.map(p => ({
             id: p.id,
             name: p.farmerProfile?.farmName || p.fullName || p.name || 'User',
             role: p.role,
             phone: p.phone,
             avatar: p.avatar,
+            isOnline: onlineUsers.includes(p.id),
+            lastSeen: p.lastSeen,
           })),
           lastMessage: conv.lastMessageText ? {
             id: conv.lastMessageId,
