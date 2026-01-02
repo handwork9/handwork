@@ -1,10 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { Twilio } from 'twilio';
 import { OtpCode, OtpPurpose, OtpDeliveryMethod } from '../database/entities/otp-code.entity';
 import { EmailService } from '../email/email.service';
+import { WhatsAppService } from '../integrations/whatsapp.service';
 import { generateOTP } from '../common/utils/helpers';
 
 export interface CreateOtpOptions {
@@ -24,6 +25,8 @@ export class OtpService {
     private readonly otpRepository: Repository<OtpCode>,
     private readonly configService: ConfigService,
     private readonly emailService: EmailService,
+    @Inject(forwardRef(() => WhatsAppService))
+    private readonly whatsAppService: WhatsAppService,
   ) {
     // Initialize Twilio client if credentials are available
     const accountSid = this.configService.get<string>('services.twilio.accountSid');
@@ -58,6 +61,18 @@ export class OtpService {
       phone,
       purpose,
       deliveryMethod: OtpDeliveryMethod.SMS,
+    });
+  }
+
+  /**
+   * Create OTP for WhatsApp delivery
+   * Uses WhatsApp Business API for delivery
+   */
+  async createWhatsAppOtp(phone: string, purpose: OtpPurpose = OtpPurpose.LOGIN): Promise<{ otpId: string; expiresIn: number }> {
+    return this.createOtpInternal({
+      phone,
+      purpose,
+      deliveryMethod: OtpDeliveryMethod.WHATSAPP,
     });
   }
 
@@ -106,6 +121,8 @@ export class OtpService {
     // Send OTP based on delivery method
     if (deliveryMethod === OtpDeliveryMethod.SMS && phone) {
       await this.sendOtpSms(phone, otp.code);
+    } else if (deliveryMethod === OtpDeliveryMethod.WHATSAPP && phone) {
+      await this.sendOtpWhatsApp(phone, otp.code, purpose);
     } else if (deliveryMethod === OtpDeliveryMethod.EMAIL && email) {
       await this.sendOtpEmail(email, otp.code, purpose);
     }
@@ -166,6 +183,68 @@ export class OtpService {
     } catch (error) {
       this.logger.error(`Failed to send verification email to ${email}: ${error.message}`);
       // Don't throw - allow OTP to be created even if email fails
+    }
+  }
+
+  /**
+   * Send OTP via WhatsApp Business API
+   */
+  private async sendOtpWhatsApp(phone: string, code: string, purpose: OtpPurpose): Promise<void> {
+    const appName = this.configService.get('APP_NAME', 'Handwork');
+    
+    // Always log in development
+    if (this.configService.get('NODE_ENV') === 'development') {
+      this.logger.log(`📲 WhatsApp OTP for ${phone}: ${code}`);
+    }
+
+    try {
+      // Try template message first (recommended by WhatsApp for OTPs)
+      const templateSent = await this.whatsAppService.sendTemplateMessage({
+        to: phone,
+        templateName: 'otp_verification',
+        languageCode: 'en',
+        components: [
+          {
+            type: 'body',
+            parameters: [
+              { type: 'text', text: code },
+              { type: 'text', text: '10' }, // expires in minutes
+            ],
+          },
+          {
+            type: 'button',
+            sub_type: 'url',
+            index: 0,
+            parameters: [
+              { type: 'text', text: code },
+            ],
+          },
+        ],
+      });
+
+      if (!templateSent) {
+        // Fallback to text message if template not available
+        let messageText = `🔐 *${appName} Verification Code*\n\nYour code is: *${code}*\n\nValid for 10 minutes.\n\n⚠️ Do not share this code with anyone.`;
+        
+        switch (purpose) {
+          case OtpPurpose.LOGIN:
+            messageText = `🔐 *${appName} Login Code*\n\nYour login verification code is: *${code}*\n\nValid for 10 minutes.\n\n⚠️ Do not share this code with anyone.`;
+            break;
+          case OtpPurpose.SIGNUP:
+            messageText = `👋 *Welcome to ${appName}!*\n\nYour registration code is: *${code}*\n\nValid for 10 minutes.\n\n⚠️ Do not share this code with anyone.`;
+            break;
+          case OtpPurpose.PASSWORD_RESET:
+            messageText = `🔑 *${appName} Password Reset*\n\nYour password reset code is: *${code}*\n\nValid for 10 minutes.\n\n⚠️ Do not share this code with anyone.`;
+            break;
+        }
+
+        await this.whatsAppService.sendTextMessage(phone, messageText);
+      }
+
+      this.logger.log(`WhatsApp OTP sent successfully to ${phone}`);
+    } catch (error) {
+      this.logger.error(`Failed to send WhatsApp OTP to ${phone}: ${error.message}`);
+      // Don't throw - allow OTP to be created even if WhatsApp fails
     }
   }
 

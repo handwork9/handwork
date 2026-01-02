@@ -15,7 +15,7 @@ import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
 import { AuthService } from './auth.service';
 import { TwoFactorService } from './two-factor.service';
-import { SignupDto, LoginDto, RefreshTokenDto, RequestOtpDto, VerifyOtpDto, ChangePasswordDto, TwoFactorCodeDto, TwoFactorLoginDto, ForgotPasswordDto, ResetPasswordDto, GoogleLoginDto, RequestEmailOtpDto, RequestPhoneOtpDto, VerifyEmailOtpDto, VerifyPhoneOtpDto } from './dto';
+import { SignupDto, LoginDto, RefreshTokenDto, RequestOtpDto, VerifyOtpDto, ChangePasswordDto, TwoFactorCodeDto, TwoFactorLoginDto, ForgotPasswordDto, ResetPasswordDto, GoogleLoginDto, RequestEmailOtpDto, RequestPhoneOtpDto, VerifyEmailOtpDto, VerifyPhoneOtpDto, RequestWhatsAppOtpDto, VerifyWhatsAppOtpDto } from './dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser, Public } from '../common/decorators';
 import { User } from '../database/entities/user.entity';
@@ -172,6 +172,42 @@ export class AuthController {
   @ApiResponse({ status: 400, description: 'Invalid or expired OTP' })
   async verifyPhoneOtp(@Body() dto: VerifyPhoneOtpDto, @CurrentUser('id') userId: string) {
     return this.authService.verifyPhoneOtp(dto, userId);
+  }
+
+  // ==================== WhatsApp OTP (Login/Signup via WhatsApp) ====================
+
+  @Public()
+  @Post('otp/whatsapp/request')
+  @Throttle({ default: { limit: 3, ttl: 60000 } }) // 3 OTP requests per minute
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Request OTP via WhatsApp for login/signup' })
+  @ApiResponse({ status: 200, description: 'OTP sent to WhatsApp successfully' })
+  async requestWhatsAppOtp(@Body() dto: RequestWhatsAppOtpDto) {
+    return this.authService.requestWhatsAppOtp(dto.phone, dto.purpose);
+  }
+
+  @Public()
+  @Post('otp/whatsapp/verify')
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 verification attempts per minute
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify WhatsApp OTP and login/signup' })
+  @ApiResponse({ status: 200, description: 'OTP verified successfully or 2FA required' })
+  @ApiResponse({ status: 400, description: 'Invalid or expired OTP' })
+  async verifyWhatsAppOtp(@Body() dto: VerifyWhatsAppOtpDto, @Req() req: Request, @Ip() ip: string) {
+    const deviceInfo = this.getDeviceInfo(req, ip);
+    const result = await this.authService.verifyWhatsAppOtp(dto, deviceInfo);
+    
+    // Check if 2FA is required
+    if ('requiresTwoFactor' in result && result.requiresTwoFactor) {
+      return result;
+    }
+    
+    // Normal login response
+    const { user, tokens } = result as { user: any; tokens: any };
+    return {
+      user: this.sanitizeUser(user),
+      ...tokens,
+    };
   }
 
   // ==================== Legacy Phone OTP (Backward Compatibility) ====================

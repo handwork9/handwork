@@ -24,6 +24,7 @@ import { UsersModule } from '../users/users.module';
 import { EmailModule } from '../email/email.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { ReferralsModule } from '../referrals/referrals.module';
+import { IntegrationsModule } from '../integrations/integrations.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { ReferralsModule } from '../referrals/referrals.module';
     EmailModule,
     forwardRef(() => PaymentsModule),
     forwardRef(() => ReferralsModule),
+    forwardRef(() => IntegrationsModule),
   ],
   controllers: [AuthController, SessionsController, PinController],
   providers: [AuthService, OtpService, TwoFactorService, PinService, SessionsService, JwtStrategy, JwtRefreshStrategy, LocalStrategy],

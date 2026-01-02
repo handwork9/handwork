@@ -17,6 +17,7 @@ export enum OtpPurpose {
 export enum OtpDeliveryMethod {
   EMAIL = 'email',
   SMS = 'sms',
+  WHATSAPP = 'whatsapp',
 }
 
 @Entity('otp_codes')

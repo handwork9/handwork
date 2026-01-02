@@ -24,7 +24,7 @@ import { PaystackService } from '../payments/paystack.service';
 import { SessionsService } from './sessions.service';
 import { ReferralsService } from '../referrals/referrals.service';
 import { DeviceType } from '../database/entities/session.entity';
-import { SignupDto, LoginDto, RefreshTokenDto, VerifyOtpDto, TwoFactorLoginDto, GoogleLoginDto, VerifyEmailOtpDto, VerifyPhoneOtpDto } from './dto';
+import { SignupDto, LoginDto, RefreshTokenDto, VerifyOtpDto, TwoFactorLoginDto, GoogleLoginDto, VerifyEmailOtpDto, VerifyPhoneOtpDto, VerifyWhatsAppOtpDto } from './dto';
 import { JwtPayload, AuthTokens } from './interfaces';
 import { UserRole, VehicleType } from '../common/enums';
 import { BCRYPT_ROUNDS } from '../common/config/security.config';
@@ -798,6 +798,135 @@ export class AuthService {
       message: 'Phone number verified successfully',
       phone: normalizedPhone,
     };
+  }
+
+  // ==================== WhatsApp OTP Methods (Login/Signup via WhatsApp) ====================
+
+  /**
+   * Request OTP via WhatsApp for login/signup
+   */
+  async requestWhatsAppOtp(phone: string, purpose: string = 'login'): Promise<{ otpId: string; expiresIn: number; message: string }> {
+    const normalizedPhone = this.normalizePhoneNumber(phone);
+    
+    // Find user by phone
+    const phoneVariations = this.getPhoneVariations(normalizedPhone);
+    const existingUser = await this.userRepository.findOne({
+      where: phoneVariations.map(p => ({ phone: p })),
+    });
+
+    // For login, user must exist
+    if (purpose === 'login' && !existingUser) {
+      // Don't reveal if user exists - return success anyway for security
+      this.logger.warn(`WhatsApp OTP requested for non-existent user: ${normalizedPhone}`);
+      return {
+        otpId: 'not-found',
+        expiresIn: 600,
+        message: 'If an account exists with this phone number, you will receive a verification code on WhatsApp',
+      };
+    }
+
+    // For signup, user should not exist
+    if (purpose === 'signup' && existingUser) {
+      throw new ConflictException('An account with this phone number already exists. Please login instead.');
+    }
+
+    // Create WhatsApp OTP
+    const otpPurpose = purpose === 'login' ? 'LOGIN' : purpose === 'signup' ? 'SIGNUP' : 'PASSWORD_RESET';
+    const otp = await this.otpService.createWhatsAppOtp(normalizedPhone, otpPurpose as any);
+
+    return {
+      otpId: otp.otpId,
+      expiresIn: otp.expiresIn,
+      message: `Verification code sent to ${normalizedPhone} via WhatsApp`,
+    };
+  }
+
+  /**
+   * Verify WhatsApp OTP and login/create user
+   */
+  async verifyWhatsAppOtp(dto: VerifyWhatsAppOtpDto, deviceInfo?: { ip?: string; userAgent?: string; location?: string }): Promise<LoginResponse> {
+    const normalizedPhone = this.normalizePhoneNumber(dto.phone);
+
+    // Handle fake OTP ID (from security measure above)
+    if (dto.otpId === 'not-found') {
+      throw new BadRequestException('Invalid or expired verification code');
+    }
+
+    // Verify the OTP
+    const isValid = await this.otpService.verifyOtp(dto.otpId, dto.code);
+    if (!isValid) {
+      throw new BadRequestException('Invalid or expired verification code');
+    }
+
+    // Get phone from OTP record
+    const otpPhone = await this.otpService.getPhoneByOtpId(dto.otpId);
+    if (!otpPhone) {
+      throw new BadRequestException('Verification code not found');
+    }
+
+    const normalizedOtpPhone = this.normalizePhoneNumber(otpPhone);
+    if (normalizedOtpPhone !== normalizedPhone) {
+      throw new BadRequestException('Phone number does not match verification code');
+    }
+
+    // Find or create user
+    const phoneVariations = this.getPhoneVariations(normalizedPhone);
+    let user = await this.userRepository.findOne({
+      where: phoneVariations.map(p => ({ phone: p })),
+    });
+
+    const isNewUser = !user;
+
+    if (!user) {
+      // Create new user with phone only
+      this.logger.log(`Creating new user for phone: ${normalizedPhone}`);
+      user = this.userRepository.create({
+        phone: normalizedPhone,
+        name: `User ${normalizedPhone.slice(-4)}`,
+        password: await bcrypt.hash(Math.random().toString(36) + Math.random().toString(36), BCRYPT_ROUNDS),
+        isPhoneVerified: true,
+      });
+      await this.userRepository.save(user);
+
+      // Send welcome notification via WhatsApp (async)
+      // Note: Would need to add this to WhatsAppService
+    } else {
+      // Mark phone as verified
+      user.isPhoneVerified = true;
+      await this.userRepository.save(user);
+
+      // Check if 2FA is enabled
+      if (user.isTwoFactorEnabled) {
+        const tempToken = await this.generateTempToken(user);
+        return {
+          requiresTwoFactor: true,
+          tempToken,
+          message: 'Two-factor authentication required',
+        };
+      }
+    }
+
+    // Generate tokens
+    const tokens = await this.generateTokens(user);
+    await this.updateRefreshToken(user.id, tokens.refreshToken);
+
+    // Create session for tracking active devices
+    const parsedDevice = this.parseDeviceInfo(deviceInfo?.userAgent);
+    const session = await this.sessionsService.createSession({
+      userId: user.id,
+      deviceName: parsedDevice.deviceName,
+      deviceType: parsedDevice.deviceType,
+      os: parsedDevice.os,
+      osVersion: parsedDevice.osVersion,
+      ip: deviceInfo?.ip,
+      location: deviceInfo?.location,
+      refreshToken: tokens.refreshToken,
+    });
+
+    // Add session ID to access token
+    const tokensWithSession = await this.generateTokensWithSession(user, session.id);
+
+    return { user, tokens: tokensWithSession, requiresTwoFactor: false };
   }
 
   /**

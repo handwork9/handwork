@@ -277,6 +277,36 @@ export class RequestPhoneOtpDto {
   phone: string;
 }
 
+// WhatsApp OTP for login/verification
+export class RequestWhatsAppOtpDto {
+  @ApiProperty({ example: '+2348012345678', description: 'Phone number to send WhatsApp OTP to' })
+  @IsString()
+  @Matches(/^\+?[0-9]{10,15}$/, { message: 'Invalid phone number format' })
+  phone: string;
+
+  @ApiProperty({ example: 'login', description: 'Purpose of OTP: login, signup, password_reset' })
+  @IsString()
+  @IsOptional()
+  purpose?: string;
+}
+
+export class VerifyWhatsAppOtpDto {
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  otpId: string;
+
+  @ApiProperty({ example: '123456' })
+  @IsString()
+  @Matches(/^[0-9]{6}$/, { message: 'OTP must be 6 digits' })
+  code: string;
+
+  @ApiProperty({ example: '+2348012345678' })
+  @IsString()
+  @Matches(/^\+?[0-9]{10,15}$/, { message: 'Invalid phone number format' })
+  phone: string;
+}
+
 export class VerifyOtpDto {
   @ApiProperty()
   @IsString()
