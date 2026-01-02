@@ -87,7 +87,7 @@ export class PriceAlertsService {
         try {
           await this.notificationsService.sendPushNotification({
             userId: favorite.userId,
-            type: NotificationType.PROMOTION,
+            type: NotificationType.PROMO,
             title: `🔥 Price Drop Alert!`,
             body: `${product.title} is now ₦${Number(newPrice).toLocaleString()} (${discount}% off)! Was ₦${Number(oldPrice).toLocaleString()}.`,
             data: {
