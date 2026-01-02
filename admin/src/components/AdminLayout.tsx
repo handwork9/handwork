@@ -32,6 +32,7 @@ import {
   InboxOutlined,
   ApiOutlined,
   WhatsAppOutlined,
+  EnvironmentOutlined,
 } from '@ant-design/icons';
 import { useAuthStore, hasPermission, PERMISSIONS } from '@/store/auth';
 import { useSocketStore } from '@/lib/socket';
@@ -144,6 +145,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           key: '/content-moderation',
           icon: <FileTextOutlined />,
           label: 'Content Moderation',
+        },
+        {
+          key: '/pickup-locations',
+          icon: <EnvironmentOutlined />,
+          label: 'Pickup Locations',
         },
       ],
     },

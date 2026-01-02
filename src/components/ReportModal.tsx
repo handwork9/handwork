@@ -71,11 +71,19 @@ export const ReportModal: React.FC<ReportModalProps> = ({
         ? `${reason}: ${additionalDetails}` 
         : reason;
 
-      await apiClient.post('/moderation/report', {
+      console.log('[ReportModal] Submitting report:', {
         contentType,
         contentId,
         reason: fullReason,
       });
+
+      const response = await apiClient.post('/moderation/report', {
+        contentType,
+        contentId,
+        reason: fullReason,
+      });
+
+      console.log('[ReportModal] Report submitted successfully:', response.data);
 
       Alert.alert(
         'Report Submitted',
@@ -87,10 +95,23 @@ export const ReportModal: React.FC<ReportModalProps> = ({
       setSelectedReason(null);
       setAdditionalDetails('');
     } catch (error: any) {
-      Alert.alert(
-        'Error',
-        error.response?.data?.message || 'Failed to submit report. Please try again.'
-      );
+      console.error('[ReportModal] Error submitting report:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message,
+      });
+      
+      let errorMessage = 'Failed to submit report. Please try again.';
+      if (error.response?.status === 404) {
+        errorMessage = 'Report endpoint not available. Please update the app.';
+      } else if (error.response?.status === 401) {
+        errorMessage = 'Please log in to submit a report.';
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
+      Alert.alert('Error', errorMessage);
     } finally {
       setLoading(false);
     }

@@ -19,7 +19,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useMutation } from '@tanstack/react-query';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { BuyerStackParamList, DeliveryType } from '../../types';
+import { BuyerStackParamList, DeliveryType, DeliveryMethod, DeliverySpeed, DeliveryTimeSlot, PickupLocationOption } from '../../types';
 import { Button, TextInput } from '../../components/common';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, FONTS } from '../../constants/theme';
 import { useAppSelector, useAppDispatch } from '../../store';
@@ -38,6 +38,7 @@ import {
 import { useTheme } from '../../context/ThemeContext';
 import CouponInput from '../../components/cart/CouponInput';
 import { Coupon, CouponValidationResult } from '../../services/couponService';
+import DeliveryOptions from '../../components/checkout/DeliveryOptions';
 
 type Props = NativeStackScreenProps<BuyerStackParamList, 'Checkout'>;
 
@@ -83,6 +84,14 @@ export default function CheckoutScreen({ navigation }: Props) {
   const [riderNote, setRiderNote] = useState('');
   const [farmerMessage, setFarmerMessage] = useState('');
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  
+  // Enhanced delivery options state
+  const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>('home_delivery');
+  const [deliverySpeed, setDeliverySpeed] = useState<DeliverySpeed>('standard');
+  const [enhancedTimeSlot, setEnhancedTimeSlot] = useState<DeliveryTimeSlot | null>(null);
+  const [selectedPickupPoint, setSelectedPickupPoint] = useState<PickupLocationOption | null>(null);
+  const [deliverySpeedPremium, setDeliverySpeedPremium] = useState(0);
+  const [pickupPointDiscount, setPickupPointDiscount] = useState(0);
   
   // Send as Gift state
   const [isGift, setIsGift] = useState(false);
@@ -241,7 +250,11 @@ export default function CheckoutScreen({ navigation }: Props) {
     return slots;
   }, []);
 
-  const deliveryFee = appliedCoupon?.type === 'free_delivery' ? 0 : deliveryPricing.deliveryFee;
+  // Calculate delivery fee with speed premium and pickup discount
+  const baseDeliveryFee = appliedCoupon?.type === 'free_delivery' ? 0 : deliveryPricing.deliveryFee;
+  const deliveryFee = deliveryMethod === 'pickup_point' 
+    ? Math.max(0, baseDeliveryFee - pickupPointDiscount) 
+    : baseDeliveryFee + deliverySpeedPremium;
   const serviceFee = Math.round(total * 0.02); // 2% service fee
   const discount = couponDiscount;
   const finalTotal = total + deliveryFee + serviceFee - discount;
@@ -383,7 +396,13 @@ export default function CheckoutScreen({ navigation }: Props) {
         console.log('[Checkout] Creating order with wallet payment');
 
         createOrderMutation.mutate({
-          deliveryAddress: {
+          deliveryAddress: deliveryMethod === 'pickup_point' && selectedPickupPoint ? {
+            address: selectedPickupPoint.address,
+            city: selectedPickupPoint.city,
+            state: selectedPickupPoint.state,
+            lat: selectedPickupPoint.latitude,
+            lng: selectedPickupPoint.longitude,
+          } : {
             address: selectedAddress ? `${selectedAddress.addressLine1}${selectedAddress.addressLine2 ? ', ' + selectedAddress.addressLine2 : ''}` : user?.address || 'Unknown address',
             city: selectedAddress?.city || user?.city || 'Unknown city',
             state: selectedAddress?.state || user?.state || 'Unknown state',
@@ -394,6 +413,12 @@ export default function CheckoutScreen({ navigation }: Props) {
           discountAmount: couponDiscount || undefined,
           paymentMethod: 'wallet',
           deliveryType,
+          deliveryMethod,
+          deliverySpeed,
+          selectedPickupPoint: selectedPickupPoint?.id || undefined,
+          selectedTimeSlot: enhancedTimeSlot || undefined,
+          deliverySpeedPremium: deliverySpeedPremium || undefined,
+          pickupPointDiscount: pickupPointDiscount || undefined,
           scheduledDeliveryTime: getScheduledDeliveryTime(),
           notes: orderNotes || undefined,
           riderNote: riderNote || undefined,
@@ -427,7 +452,13 @@ export default function CheckoutScreen({ navigation }: Props) {
       
       // Store order data for after payment verification
       const orderData = {
-        deliveryAddress: {
+        deliveryAddress: deliveryMethod === 'pickup_point' && selectedPickupPoint ? {
+          address: selectedPickupPoint.address,
+          city: selectedPickupPoint.city,
+          state: selectedPickupPoint.state,
+          lat: selectedPickupPoint.latitude,
+          lng: selectedPickupPoint.longitude,
+        } : {
           address: selectedAddress ? `${selectedAddress.addressLine1}${selectedAddress.addressLine2 ? ', ' + selectedAddress.addressLine2 : ''}` : user?.address || 'Unknown address',
           city: selectedAddress?.city || user?.city || 'Unknown city',
           state: selectedAddress?.state || user?.state || 'Unknown state',
@@ -438,6 +469,12 @@ export default function CheckoutScreen({ navigation }: Props) {
         discountAmount: couponDiscount || undefined,
         paymentMethod: 'card',
         deliveryType,
+        deliveryMethod,
+        deliverySpeed,
+        selectedPickupPoint: selectedPickupPoint?.id || undefined,
+        selectedTimeSlot: enhancedTimeSlot || undefined,
+        deliverySpeedPremium: deliverySpeedPremium || undefined,
+        pickupPointDiscount: pickupPointDiscount || undefined,
         scheduledDeliveryTime: getScheduledDeliveryTime(),
         notes: orderNotes || undefined,
         riderNote: riderNote || undefined,
@@ -740,7 +777,13 @@ export default function CheckoutScreen({ navigation }: Props) {
       console.log('[PayForMe] Creating order with reference:', reference);
       
       createOrderMutation.mutate({
-        deliveryAddress: {
+        deliveryAddress: deliveryMethod === 'pickup_point' && selectedPickupPoint ? {
+          address: selectedPickupPoint.address,
+          city: selectedPickupPoint.city,
+          state: selectedPickupPoint.state,
+          lat: selectedPickupPoint.latitude,
+          lng: selectedPickupPoint.longitude,
+        } : {
           address: selectedAddress ? `${selectedAddress.addressLine1}${selectedAddress.addressLine2 ? ', ' + selectedAddress.addressLine2 : ''}` : user?.address || 'Unknown address',
           city: selectedAddress?.city || user?.city || 'Unknown city',
           state: selectedAddress?.state || user?.state || 'Unknown state',
@@ -752,6 +795,12 @@ export default function CheckoutScreen({ navigation }: Props) {
         paymentMethod: 'card',
         paymentReference: reference,
         deliveryType,
+        deliveryMethod,
+        deliverySpeed,
+        selectedPickupPoint: selectedPickupPoint?.id || undefined,
+        selectedTimeSlot: enhancedTimeSlot || undefined,
+        deliverySpeedPremium: deliverySpeedPremium || undefined,
+        pickupPointDiscount: pickupPointDiscount || undefined,
         scheduledDeliveryTime: getScheduledDeliveryTime(),
         notes: orderNotes || undefined,
         riderNote: riderNote || undefined,
@@ -1091,6 +1140,33 @@ export default function CheckoutScreen({ navigation }: Props) {
             </TouchableOpacity>
           </>
         )}
+
+        {/* Enhanced Delivery Options - Speed, Pickup Points */}
+        <DeliveryOptions
+          baseDeliveryFee={deliveryPricing.deliveryFee}
+          userLatitude={selectedAddress?.lat || user?.latitude}
+          userLongitude={selectedAddress?.lng || user?.longitude}
+          userCity={selectedAddress?.city || user?.city}
+          userState={selectedAddress?.state || user?.state}
+          initialMethod={deliveryMethod}
+          initialSpeed={deliverySpeed}
+          onDeliveryMethodChange={(method: DeliveryMethod) => {
+            setDeliveryMethod(method);
+            if (method === 'home_delivery') {
+              setSelectedPickupPoint(null);
+              setPickupPointDiscount(0);
+            }
+          }}
+          onDeliverySpeedChange={(speed: DeliverySpeed, premium: number) => {
+            setDeliverySpeed(speed);
+            setDeliverySpeedPremium(premium);
+          }}
+          onTimeSlotChange={setEnhancedTimeSlot}
+          onPickupPointChange={(pickup: PickupLocationOption | null, discount: number) => {
+            setSelectedPickupPoint(pickup);
+            setPickupPointDiscount(discount);
+          }}
+        />
 
         {/* Payment Method */}
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>PAYMENT METHOD</Text>

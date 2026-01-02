@@ -46,6 +46,28 @@ export interface PickupPoint {
   lng: number;
 }
 
+// Enhanced delivery method types
+export type DeliveryMethod = 'home_delivery' | 'pickup_point';
+export type DeliverySpeed = 'express' | 'same_day' | 'next_day' | 'standard' | 'economy';
+
+export interface PickupPointSelection {
+  pickupLocationId: string;
+  name: string;
+  address: string;
+  city: string;
+  state: string;
+  lat: number;
+  lng: number;
+  code?: string;
+}
+
+export interface DeliveryTimeSlot {
+  date: string; // ISO date
+  startTime: string; // e.g., "09:00"
+  endTime: string; // e.g., "12:00"
+  label: string; // e.g., "Today, 9 AM - 12 PM"
+}
+
 @Entity('orders')
 export class Order {
   @PrimaryGeneratedColumn('uuid')
@@ -139,6 +161,25 @@ export class Order {
 
   @Column({ nullable: true })
   scheduledDeliveryTime: Date;
+
+  // Enhanced delivery options
+  @Column({ type: 'varchar', length: 20, default: 'home_delivery' })
+  deliveryMethod: DeliveryMethod; // home_delivery or pickup_point
+
+  @Column({ type: 'varchar', length: 20, default: 'standard' })
+  deliverySpeed: DeliverySpeed; // express, same_day, next_day, standard, economy
+
+  @Column({ type: 'jsonb', nullable: true })
+  selectedPickupPoint: PickupPointSelection; // For pickup point deliveries
+
+  @Column({ type: 'jsonb', nullable: true })
+  selectedTimeSlot: DeliveryTimeSlot; // Selected time window
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  deliverySpeedPremium: number; // Extra fee for express/same-day
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  pickupPointDiscount: number; // Discount for using pickup point
 
   @Column('uuid', { nullable: true })
   @Index()

@@ -578,6 +578,34 @@ export const adminApi = {
 
   // Shopping Lists (Read Only for Admin)
   getShoppingListsStats: () => api.get('/shopping-lists/admin/stats'),
+
+  // Pickup Locations Management
+  getPickupLocations: (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    type?: string;
+    status?: string;
+    city?: string;
+  }) => api.get('/pickup-locations', { params }),
+  getPickupLocation: (id: string) => api.get(`/pickup-locations/${id}`),
+  createPickupLocation: (data: {
+    name: string;
+    code: string;
+    type: 'locker' | 'pickup_point' | 'partner_store' | 'hub';
+    status?: 'active' | 'inactive' | 'maintenance';
+    address: string;
+    city: string;
+    state: string;
+    latitude: number;
+    longitude: number;
+    capacity?: number;
+    supportsRefrigeration?: boolean;
+    deliveryDiscount?: number;
+  }) => api.post('/pickup-locations', data),
+  updatePickupLocation: (id: string, data: Record<string, unknown>) =>
+    api.patch(`/pickup-locations/${id}`, data),
+  deletePickupLocation: (id: string) => api.delete(`/pickup-locations/${id}`),
 };
 
 // Sessions API

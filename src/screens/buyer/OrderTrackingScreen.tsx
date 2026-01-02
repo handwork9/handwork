@@ -20,6 +20,7 @@ import Constants from 'expo-constants';
 import { BuyerStackParamList, OrderStatus, SocketEvent } from '../../types';
 import { LoadingSpinner, ErrorState } from '../../components/common';
 import { ExpoMapView } from '../../components/common/ExpoMapView';
+import LiveTrackingCard from '../../components/tracking/LiveTrackingCard';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, FONTS } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
 import { orderService } from '../../services/orderService';
@@ -104,6 +105,7 @@ export default function OrderTrackingScreen({ route, navigation }: Props) {
   const scrollY = useRef(new Animated.Value(0)).current;
   const [riderLocation, setRiderLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [eta, setEta] = useState<number | null>(null);
+  const [lastLocationUpdate, setLastLocationUpdate] = useState<Date | null>(null);
   const pulseAnim = useState(new Animated.Value(1))[0];
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
@@ -147,9 +149,11 @@ export default function OrderTrackingScreen({ route, navigation }: Props) {
         lat: event.data.latitude || event.data.lat,
         lng: event.data.longitude || event.data.lng,
       });
+      setLastLocationUpdate(new Date());
     }
     if (event.type === 'rider:location_update' && event.data?.location) {
       setRiderLocation(event.data.location);
+      setLastLocationUpdate(new Date());
     }
     if (event.type === 'eta:update' && event.data.eta) {
       setEta(event.data.eta);
@@ -506,6 +510,22 @@ export default function OrderTrackingScreen({ route, navigation }: Props) {
                 </TouchableOpacity>
               )}
             </View>
+          </View>
+        )}
+
+        {/* Live Tracking Stats Card */}
+        {showMap && (order.status === 'rider_assigned' || order.status === 'picked_up' || order.status === 'in_transit') && (
+          <View style={styles.section}>
+            <LiveTrackingCard
+              riderLocation={riderLocation}
+              deliveryLocation={{
+                lat: order.deliveryAddress.lat,
+                lng: order.deliveryAddress.lng,
+              }}
+              riderName={order.assignedRider?.user?.name || order.assignedRiderName}
+              isOnline={order.assignedRider?.isOnline ?? true}
+              lastUpdateTime={lastLocationUpdate || undefined}
+            />
           </View>
         )}
 

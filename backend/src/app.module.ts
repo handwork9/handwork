@@ -55,6 +55,7 @@ import { ChatbotModule } from './chatbot/chatbot.module';
 import { SocialModule } from './social/social.module';
 import { IntegrationsModule } from './integrations/integrations.module';
 import { ModerationModule } from './moderation/moderation.module';
+import { PickupLocationsModule } from './pickup-locations/pickup-locations.module';
 
 @Module({
   imports: [
@@ -199,6 +200,7 @@ import { ModerationModule } from './moderation/moderation.module';
     SocialModule,
     IntegrationsModule,
     ModerationModule,
+    PickupLocationsModule,
   ],
 })
 export class AppModule {}

@@ -207,6 +207,53 @@ export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
 
 export type DeliveryType = 'ASAP' | 'SCHEDULED';
 
+// Enhanced delivery options
+export type DeliveryMethod = 'home_delivery' | 'pickup_point';
+export type DeliverySpeed = 'express' | 'same_day' | 'next_day' | 'standard' | 'economy';
+
+export interface DeliveryTimeSlot {
+  id: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  label: string;
+  isoDate: string;
+  available?: boolean;
+}
+
+export interface DeliverySpeedOption {
+  speed: DeliverySpeed;
+  label: string;
+  description: string;
+  estimatedTime: string;
+  priceMultiplier: number;
+  icon: string;
+  available: boolean;
+}
+
+export interface PickupLocationOption {
+  id: string;
+  name: string;
+  code: string;
+  type: 'locker' | 'pickup_point' | 'partner_store' | 'hub';
+  address: string;
+  city: string;
+  state: string;
+  latitude: number;
+  longitude: number;
+  distanceKm?: number;
+  operatingHours?: {
+    [key: string]: { open: string; close: string; closed?: boolean };
+  };
+  hasRefrigeration: boolean;
+  hasParking: boolean;
+  deliveryDiscount: number;
+  deliveryDiscountPercent: number;
+  avgRating: number;
+  totalRatings: number;
+  status: 'active' | 'inactive' | 'maintenance' | 'full';
+}
+
 export interface DeliveryAddress {
   address: string;
   city: string;
@@ -430,6 +477,7 @@ export interface SocketEvent {
     | 'order:in_transit'
     | 'order:delivered'
     | 'order:cancelled'
+    | 'rider:location'
     | 'rider:location_update'
     | 'eta:update';
   orderId: string;
