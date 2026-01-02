@@ -11,7 +11,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import apiClient from '../services/api';
+import apiClient from '../services/apiClient';
 
 export type ContentType = 
   | 'product' 
