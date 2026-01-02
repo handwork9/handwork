@@ -627,7 +627,6 @@ export default function SignupScreen({ navigation, route }: Props) {
 
   // Total steps depends on role (riders/farmers: 5, buyers: 4)
   const totalSteps = selectedRole === 'rider' || selectedRole === 'farmer' ? 5 : 4;
-  const totalSteps = selectedRole === 'rider' || selectedRole === 'farmer' ? 5 : 4;
 
   // Handle skip payment - submit without payment validation
   const handleSkipPayment = async () => {
