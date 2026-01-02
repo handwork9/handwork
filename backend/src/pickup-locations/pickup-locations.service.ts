@@ -45,6 +45,7 @@ export interface FindPickupLocationsDto {
   state?: string;
   type?: PickupLocationType;
   status?: PickupLocationStatus;
+  includeAllStatuses?: boolean; // For admin to see all statuses
   latitude?: number;
   longitude?: number;
   radiusKm?: number;
@@ -87,6 +88,7 @@ export class PickupLocationsService {
       state,
       type,
       status,
+      includeAllStatuses,
       latitude,
       longitude,
       radiusKm = 10,
@@ -102,8 +104,16 @@ export class PickupLocationsService {
     if (city) where.city = city;
     if (state) where.state = state;
     if (type) where.type = type;
-    if (status) where.status = status;
-    else where.status = PickupLocationStatus.ACTIVE; // Default to active
+    
+    // Handle status filtering
+    if (status) {
+      where.status = status;
+    } else if (!includeAllStatuses) {
+      // Only default to active if not explicitly including all statuses
+      where.status = PickupLocationStatus.ACTIVE;
+    }
+    // If includeAllStatuses is true and no status specified, don't filter by status
+    
     if (hasRefrigeration !== undefined) where.hasRefrigeration = hasRefrigeration;
 
     // For proximity search with lat/lng, we need a raw query

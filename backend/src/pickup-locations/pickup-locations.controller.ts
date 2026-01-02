@@ -130,7 +130,8 @@ export class PickupLocationsController {
       city,
       state,
       type,
-      status, // Admin can filter by any status or see all
+      status, // Admin can filter by specific status
+      includeAllStatuses: !status, // Include all statuses if no specific status filter
       search,
       page: page ? parseInt(page, 10) : 1,
       limit: limit ? Math.min(parseInt(limit, 10), 100) : 20,
