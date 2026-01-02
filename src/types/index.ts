@@ -21,6 +21,8 @@ export interface User {
   isActive?: boolean;
   isPhoneVerified?: boolean;
   isEmailVerified?: boolean;
+  // Birthday for birthday coupon
+  dateOfBirth?: string;
   // Premium membership fields (buyer)
   isPremium?: boolean;
   premiumTier?: PremiumTier;

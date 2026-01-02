@@ -15,6 +15,7 @@ import {
   Animated,
   StatusBar,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -182,6 +183,10 @@ export default function EditProfileScreen() {
   const [city, setCity] = useState(user?.city || '');
   const [state, setState] = useState(user?.state || '');
   const [avatar, setAvatar] = useState<string | null>(user?.avatar || null);
+  const [dateOfBirth, setDateOfBirth] = useState<Date | null>(
+    user?.dateOfBirth ? new Date(user.dateOfBirth) : null
+  );
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
   // Phone verification state
@@ -278,6 +283,33 @@ export default function EditProfileScreen() {
     }
   };
 
+  // Format date for display
+  const formatDate = (date: Date | null): string => {
+    if (!date) return 'Not set';
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  };
+
+  // Handle date picker change
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+    }
+    if (selectedDate) {
+      setDateOfBirth(selectedDate);
+    }
+  };
+
+  // Check if birthday has changed
+  const birthdayChanged = (() => {
+    const userDob = user?.dateOfBirth ? new Date(user.dateOfBirth).toDateString() : null;
+    const currentDob = dateOfBirth ? dateOfBirth.toDateString() : null;
+    return userDob !== currentDob;
+  })();
+
   const hasChanges = 
     name !== (user?.name || '') ||
     email !== (user?.email || '') ||
@@ -285,7 +317,8 @@ export default function EditProfileScreen() {
     address !== (user?.address || '') ||
     city !== (user?.city || '') ||
     state !== (user?.state || '') ||
-    avatar !== (user?.avatar || null);
+    avatar !== (user?.avatar || null) ||
+    birthdayChanged;
 
   const personalFields: EditField[] = [
     {
@@ -509,6 +542,7 @@ export default function EditProfileScreen() {
       if (city.trim()) updateData.city = city.trim();
       if (state.trim()) updateData.state = state.trim();
       if (avatarUrl) updateData.avatar = avatarUrl;
+      if (dateOfBirth) updateData.dateOfBirth = dateOfBirth.toISOString().split('T')[0]; // Format as YYYY-MM-DD
 
       // Geocode address to get coordinates for farmers and riders
       if ((user?.role === 'farmer' || user?.role === 'rider') && (address.trim() || city.trim() || state.trim())) {
@@ -669,7 +703,75 @@ export default function EditProfileScreen() {
           {personalFields.map((field, index) =>
             renderFieldItem(field, index === personalFields.length - 1)
           )}
+          
+          {/* Birthday Field */}
+          <TouchableOpacity
+            style={[
+              styles.fieldItem,
+              { backgroundColor: isDark ? colors.card : '#FFFFFF' },
+            ]}
+            onPress={() => setShowDatePicker(true)}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.fieldIconContainer, { backgroundColor: 'rgba(255, 149, 0, 0.1)' }]}>
+              <Ionicons name="gift" size={20} color="#FF9500" />
+            </View>
+            <View style={styles.fieldContent}>
+              <Text style={[styles.fieldLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                Birthday
+              </Text>
+              <Text style={[styles.fieldValue, { color: colors.text }]}>
+                {formatDate(dateOfBirth)}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={isDark ? '#4B5563' : '#9CA3AF'} />
+          </TouchableOpacity>
         </View>
+
+        {/* Date Picker Modal for iOS */}
+        {Platform.OS === 'ios' && showDatePicker && (
+          <Modal
+            visible={showDatePicker}
+            transparent
+            animationType="slide"
+            onRequestClose={() => setShowDatePicker(false)}
+          >
+            <View style={styles.datePickerOverlay}>
+              <View style={[styles.datePickerContainer, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+                <View style={styles.datePickerHeader}>
+                  <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                    <Text style={[styles.datePickerCancel, { color: '#FF3B30' }]}>Cancel</Text>
+                  </TouchableOpacity>
+                  <Text style={[styles.datePickerTitle, { color: colors.text }]}>Select Birthday</Text>
+                  <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                    <Text style={[styles.datePickerDone, { color: COLORS.primary }]}>Done</Text>
+                  </TouchableOpacity>
+                </View>
+                <DateTimePicker
+                  value={dateOfBirth || new Date(2000, 0, 1)}
+                  mode="date"
+                  display="spinner"
+                  onChange={handleDateChange}
+                  maximumDate={new Date()}
+                  minimumDate={new Date(1920, 0, 1)}
+                  textColor={colors.text}
+                />
+              </View>
+            </View>
+          </Modal>
+        )}
+
+        {/* Date Picker for Android */}
+        {Platform.OS === 'android' && showDatePicker && (
+          <DateTimePicker
+            value={dateOfBirth || new Date(2000, 0, 1)}
+            mode="date"
+            display="default"
+            onChange={handleDateChange}
+            maximumDate={new Date()}
+            minimumDate={new Date(1920, 0, 1)}
+          />
+        )}
 
         {/* Address Information - for farmers and riders */}
         {addressFields.length > 0 && (
@@ -1141,5 +1243,37 @@ const styles = StyleSheet.create({
   },
   inputLineFocused: {
     height: 2,
+  },
+  // Date Picker Styles
+  datePickerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  datePickerContainer: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 34,
+  },
+  datePickerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  datePickerTitle: {
+    fontSize: 17,
+    fontFamily: FONTS.semiBold,
+  },
+  datePickerCancel: {
+    fontSize: 17,
+    fontFamily: FONTS.regular,
+  },
+  datePickerDone: {
+    fontSize: 17,
+    fontFamily: FONTS.semiBold,
   },
 });
