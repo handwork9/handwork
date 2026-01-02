@@ -417,14 +417,14 @@ export default function PayBillScreen() {
   );
 
   // Render package item (for data plans, TV packages, etc.)
-  const renderPackageItem = (pkg: BillerPackage) => {
+  const renderPackageItem = (pkg: BillerPackage, index: number) => {
     // Paystack returns amount in kobo, convert to naira
     const amountInNaira = pkg.amount / 100;
     const isSelected = selectedPackage?.code === pkg.code;
     
     return (
       <TouchableOpacity
-        key={pkg.code}
+        key={`${pkg.code}-${index}`}
         style={[
           styles.packageItem,
           { backgroundColor: dynamicStyles.secondaryCard },

@@ -500,6 +500,40 @@ export default function ProfileScreen() {
       },
     ];
 
+    // Analytics & Reports based on role
+    if (user?.role === 'buyer') {
+      items.push({
+        icon: 'pie-chart',
+        label: 'Spending Insights',
+        subtitle: 'Track your purchase analytics',
+        action: () => (navigation as any).navigate('SpendingInsights'),
+        iconColor: '#8B5CF6',
+        iconBg: '#EDE9FE',
+      });
+    }
+
+    if (user?.role === 'farmer') {
+      items.push({
+        icon: 'bar-chart',
+        label: 'Business Reports',
+        subtitle: 'View detailed business analytics',
+        action: () => (navigation as any).navigate('BusinessReports'),
+        iconColor: '#059669',
+        iconBg: '#D1FAE5',
+      });
+    }
+
+    if (user?.role === 'rider') {
+      items.push({
+        icon: 'stats-chart',
+        label: 'Performance Dashboard',
+        subtitle: 'Track your delivery metrics',
+        action: () => (navigation as any).navigate('RiderPerformance'),
+        iconColor: '#F59E0B',
+        iconBg: '#FEF3C7',
+      });
+    }
+
     // Coupons - only for buyers
     if (user?.role === 'buyer') {
       items.push({

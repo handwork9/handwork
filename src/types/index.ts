@@ -657,6 +657,8 @@ export type BuyerStackParamList = {
   LiveStreams: undefined;
   SavedPosts: undefined;
   CreateStory: undefined;
+  // Analytics
+  SpendingInsights: undefined;
 };
 
 export type FarmerTabParamList = {
@@ -755,6 +757,8 @@ export type FarmerStackParamList = {
   GoLive: undefined;
   FarmerProfile: { farmerId: string };
   SavedPosts: undefined;
+  // Business Reports
+  BusinessReports: undefined;
 };
 
 export type RiderTabParamList = {
@@ -837,6 +841,8 @@ export type RiderStackParamList = {
     isIncoming?: boolean;
     channelName?: string;
   };
+  // Analytics
+  RiderPerformance: undefined;
 };
 
 // Bank Account & Withdrawal Types

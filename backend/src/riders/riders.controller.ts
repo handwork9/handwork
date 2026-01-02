@@ -8,7 +8,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { RidersService } from './riders.service';
 import { RegisterRiderDto, UpdateRiderLocationDto, UpdateRiderStatusDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -125,6 +125,19 @@ export class RidersController {
     @Query('radius') radius?: number,
   ) {
     return this.ridersService.getAvailableRiders(state, lat, lng, radius);
+  }
+
+  @Get('performance')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.RIDER)
+  @ApiOperation({ summary: 'Get rider performance dashboard' })
+  @ApiQuery({ name: 'period', required: false, enum: ['week', 'month', 'quarter', 'year'] })
+  async getPerformance(
+    @CurrentUser() user: User,
+    @Query('period') period: 'week' | 'month' | 'quarter' | 'year' = 'month',
+  ) {
+    const rider = await this.ridersService.findByUserId(user.id);
+    return this.ridersService.getPerformanceData(rider.id, period);
   }
 
   @Get(':id')

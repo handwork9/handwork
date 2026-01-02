@@ -22,6 +22,7 @@ import DeliveryReceiptScreen from '../screens/rider/DeliveryReceiptScreen';
 import RiderSubscriptionScreen from '../screens/rider/RiderSubscriptionScreen';
 import RiderDisputesScreen from '../screens/rider/RiderDisputesScreen';
 import RiderDisputeDetailScreen from '../screens/rider/RiderDisputeDetailScreen';
+import RiderPerformanceScreen from '../screens/rider/RiderPerformanceScreen';
 import ProfileScreen from '../screens/shared/ProfileScreen';
 import GoPremiumScreen from '../screens/buyer/GoPremiumScreen';
 
@@ -502,6 +503,11 @@ export function RiderNavigator() {
       <Stack.Screen
         name="RiderDisputeDetail"
         component={RiderDisputeDetailScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="RiderPerformance"
+        component={RiderPerformanceScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

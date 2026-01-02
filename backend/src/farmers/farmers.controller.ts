@@ -4,12 +4,17 @@ import {
   Param,
   Query,
   NotFoundException,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiQuery, ApiParam } from '@nestjs/swagger';
-import { Public } from '../common/decorators';
+import { ApiTags, ApiOperation, ApiQuery, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
+import { Public, CurrentUser, Roles } from '../common/decorators';
 import { UsersService } from '../users/users.service';
 import { ProductsService } from '../products/products.service';
+import { FarmersService } from './farmers.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../common/guards/roles.guard';
 import { UserRole } from '../common/enums';
+import { User } from '../database/entities/user.entity';
 
 @ApiTags('Farmers')
 @Controller('farmers')
@@ -17,6 +22,7 @@ export class FarmersController {
   constructor(
     private readonly usersService: UsersService,
     private readonly productsService: ProductsService,
+    private readonly farmersService: FarmersService,
   ) {}
 
   @Public()
@@ -69,5 +75,18 @@ export class FarmersController {
     }
 
     return this.productsService.findByFarmer(farmerId, page || 1, pageSize || 20);
+  }
+
+  @Get('business-reports')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.FARMER)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get business reports for authenticated farmer' })
+  @ApiQuery({ name: 'period', required: false, enum: ['week', 'month', 'quarter', 'year'] })
+  async getBusinessReports(
+    @CurrentUser() user: User,
+    @Query('period') period: 'week' | 'month' | 'quarter' | 'year' = 'month',
+  ) {
+    return this.farmersService.getBusinessReports(user.id, period);
   }
 }

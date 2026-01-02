@@ -8,7 +8,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto, UpdateOrderStatusDto, AssignRiderDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -142,5 +142,17 @@ export class OrdersController {
   @ApiOperation({ summary: 'Fix missing earnings for delivered orders (Admin only)' })
   async fixMissingEarnings() {
     return this.ordersService.fixMissingEarnings();
+  }
+
+  @Get('spending-insights')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.BUYER)
+  @ApiOperation({ summary: 'Get spending insights for buyer' })
+  @ApiQuery({ name: 'period', required: false, enum: ['week', 'month', 'quarter', 'year'] })
+  async getSpendingInsights(
+    @CurrentUser() user: User,
+    @Query('period') period: 'week' | 'month' | 'quarter' | 'year' = 'month',
+  ) {
+    return this.ordersService.getSpendingInsights(user.id, period);
   }
 }

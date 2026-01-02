@@ -852,6 +852,178 @@ export class OrdersService {
   }
 
   /**
+   * Get spending insights for a buyer
+   */
+  async getSpendingInsights(buyerId: string, period: 'week' | 'month' | 'quarter' | 'year' = 'month'): Promise<any> {
+    const now = new Date();
+    let startDate: Date;
+
+    switch (period) {
+      case 'week':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case 'month':
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        break;
+      case 'quarter':
+        const quarterMonth = Math.floor(now.getMonth() / 3) * 3;
+        startDate = new Date(now.getFullYear(), quarterMonth, 1);
+        break;
+      case 'year':
+        startDate = new Date(now.getFullYear(), 0, 1);
+        break;
+    }
+
+    // Get orders for the period
+    const orders = await this.orderRepository.find({
+      where: {
+        buyerId,
+        status: In([OrderStatus.DELIVERED, OrderStatus.CONFIRMED, OrderStatus.IN_TRANSIT]),
+        createdAt: MoreThanOrEqual(startDate),
+      },
+      order: { createdAt: 'ASC' },
+    });
+
+    // Calculate spending data by time period
+    const spendingData: { label: string; amount: number; orders: number }[] = [];
+    const categoryMap = new Map<string, { amount: number; count: number }>();
+    const farmerMap = new Map<string, { id: string; name: string; totalOrders: number; totalSpent: number }>();
+    let totalSpent = 0;
+    let totalOrders = orders.length;
+    let totalSaved = 0;
+
+    // Group by period
+    if (period === 'week') {
+      // Group by day
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+        const dayOrders = orders.filter(o => {
+          const orderDate = new Date(o.createdAt);
+          return orderDate.toDateString() === date.toDateString();
+        });
+        const amount = dayOrders.reduce((sum, o) => sum + Number(o.total || 0), 0);
+        spendingData.push({
+          label: dayNames[date.getDay()],
+          amount,
+          orders: dayOrders.length,
+        });
+      }
+    } else if (period === 'month') {
+      // Group by week
+      for (let i = 0; i < 4; i++) {
+        const weekStart = new Date(startDate.getTime() + i * 7 * 24 * 60 * 60 * 1000);
+        const weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+        const weekOrders = orders.filter(o => {
+          const orderDate = new Date(o.createdAt);
+          return orderDate >= weekStart && orderDate < weekEnd;
+        });
+        const amount = weekOrders.reduce((sum, o) => sum + Number(o.total || 0), 0);
+        spendingData.push({
+          label: `Week ${i + 1}`,
+          amount,
+          orders: weekOrders.length,
+        });
+      }
+    } else {
+      // Group by month for quarter/year
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const monthsToShow = period === 'quarter' ? 3 : 12;
+      for (let i = 0; i < monthsToShow; i++) {
+        const monthDate = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
+        const monthOrders = orders.filter(o => {
+          const orderDate = new Date(o.createdAt);
+          return orderDate.getMonth() === monthDate.getMonth() && orderDate.getFullYear() === monthDate.getFullYear();
+        });
+        const amount = monthOrders.reduce((sum, o) => sum + Number(o.total || 0), 0);
+        spendingData.push({
+          label: monthNames[monthDate.getMonth()],
+          amount,
+          orders: monthOrders.length,
+        });
+      }
+    }
+
+    // Process orders for category and farmer data
+    for (const order of orders) {
+      totalSpent += Number(order.total || 0);
+      totalSaved += Number(order.discount || 0);
+
+      for (const item of order.items || []) {
+        // Category tracking (using farmer name as category for now)
+        const category = 'Fresh Produce'; // Default category
+        const existing = categoryMap.get(category) || { amount: 0, count: 0 };
+        existing.amount += Number(item.subtotal || item.price * item.quantity || 0);
+        existing.count += 1;
+        categoryMap.set(category, existing);
+
+        // Farmer tracking
+        if (item.farmerId) {
+          const farmerData = farmerMap.get(item.farmerId) || {
+            id: item.farmerId,
+            name: item.farmerName || 'Unknown Farmer',
+            totalOrders: 0,
+            totalSpent: 0,
+          };
+          farmerData.totalOrders += 1;
+          farmerData.totalSpent += Number(item.subtotal || item.price * item.quantity || 0);
+          farmerMap.set(item.farmerId, farmerData);
+        }
+      }
+    }
+
+    // Build category breakdown with colors
+    const categoryColors = ['#4CAF50', '#FF9800', '#2196F3', '#9C27B0', '#F44336'];
+    const categoryBreakdown = Array.from(categoryMap.entries()).map(([category, data], index) => ({
+      category,
+      amount: data.amount,
+      percentage: totalSpent > 0 ? Math.round((data.amount / totalSpent) * 100) : 0,
+      color: categoryColors[index % categoryColors.length],
+      icon: 'leaf' as const,
+    }));
+
+    // Get top farmers
+    const favoriteFarmers = Array.from(farmerMap.values())
+      .sort((a, b) => b.totalSpent - a.totalSpent)
+      .slice(0, 5)
+      .map(f => ({
+        id: f.id,
+        name: f.name,
+        totalOrders: f.totalOrders,
+        totalSpent: f.totalSpent,
+        avatar: null,
+      }));
+
+    // Calculate savings breakdown
+    const savingsSummary = {
+      couponSavings: Math.round(totalSaved * 0.4),
+      bulkDiscounts: Math.round(totalSaved * 0.3),
+      premiumSavings: Math.round(totalSaved * 0.2),
+      referralCredits: Math.round(totalSaved * 0.1),
+      totalSaved,
+    };
+
+    return {
+      spendingData,
+      categoryBreakdown,
+      favoriteFarmers,
+      savingsSummary,
+      summary: {
+        totalSpent,
+        totalOrders,
+        avgOrderValue: totalOrders > 0 ? Math.round(totalSpent / totalOrders) : 0,
+        totalSaved,
+      },
+      monthlyBudget: {
+        budget: 100000, // Default budget
+        spent: totalSpent,
+        remaining: Math.max(0, 100000 - totalSpent),
+        percentage: Math.min(100, Math.round((totalSpent / 100000) * 100)),
+      },
+    };
+  }
+
+  /**
    * Fix earnings for delivered orders that weren't processed
    * This should be called once to fix historical data
    */

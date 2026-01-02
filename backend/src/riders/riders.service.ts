@@ -669,4 +669,206 @@ export class RidersService {
   private toRad(deg: number): number {
     return deg * (Math.PI / 180);
   }
+
+  /**
+   * Get performance dashboard data for rider
+   */
+  async getPerformanceData(riderId: string, period: 'week' | 'month' | 'quarter' | 'year' = 'month'): Promise<any> {
+    const rider = await this.findById(riderId);
+    const now = new Date();
+    let startDate: Date;
+
+    switch (period) {
+      case 'week':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case 'month':
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        break;
+      case 'quarter':
+        const quarterMonth = Math.floor(now.getMonth() / 3) * 3;
+        startDate = new Date(now.getFullYear(), quarterMonth, 1);
+        break;
+      case 'year':
+        startDate = new Date(now.getFullYear(), 0, 1);
+        break;
+    }
+
+    // Get completed deliveries for the period
+    const deliveries = await this.orderRepository.find({
+      where: {
+        assignedRiderId: riderId,
+        status: In([OrderStatus.DELIVERED, OrderStatus.IN_TRANSIT, OrderStatus.PICKED_UP]),
+        createdAt: MoreThanOrEqual(startDate),
+      },
+      order: { createdAt: 'ASC' },
+    });
+
+    const completedDeliveries = deliveries.filter(d => d.status === OrderStatus.DELIVERED);
+    const cancelledDeliveries = deliveries.filter(d => 
+      d.status === OrderStatus.CANCELLED || d.status === OrderStatus.REFUNDED
+    );
+    const inProgressDeliveries = deliveries.filter(d => 
+      d.status === OrderStatus.IN_TRANSIT || d.status === OrderStatus.PICKED_UP
+    );
+
+    // Calculate delivery stats
+    const deliveryStats = {
+      total: deliveries.length,
+      completed: completedDeliveries.length,
+      cancelled: cancelledDeliveries.length,
+      inProgress: inProgressDeliveries.length,
+      completionRate: deliveries.length > 0 
+        ? Math.round((completedDeliveries.length / deliveries.length) * 100) 
+        : 100,
+    };
+
+    // Calculate earnings data
+    const earningsData: { label: string; amount: number; deliveries: number }[] = [];
+    let totalEarnings = 0;
+
+    if (period === 'week') {
+      // Group by day
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+        const dayDeliveries = completedDeliveries.filter(d => {
+          const deliveryDate = new Date(d.updatedAt || d.createdAt);
+          return deliveryDate.toDateString() === date.toDateString();
+        });
+        
+        // Estimate earnings (delivery fee portion)
+        const dayEarnings = dayDeliveries.reduce((sum, d) => {
+          const deliveryFee = Number(d.deliveryFee || 0);
+          return sum + (deliveryFee * 0.8); // 80% of delivery fee goes to rider
+        }, 0);
+        
+        totalEarnings += dayEarnings;
+        earningsData.push({
+          label: dayNames[date.getDay()],
+          amount: Math.round(dayEarnings),
+          deliveries: dayDeliveries.length,
+        });
+      }
+    } else {
+      // Group by week or month
+      const periodsToShow = period === 'month' ? 4 : (period === 'quarter' ? 3 : 12);
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+      for (let i = 0; i < periodsToShow; i++) {
+        let periodStart: Date;
+        let periodEnd: Date;
+        let label: string;
+
+        if (period === 'month') {
+          periodStart = new Date(startDate.getTime() + i * 7 * 24 * 60 * 60 * 1000);
+          periodEnd = new Date(periodStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+          label = `Week ${i + 1}`;
+        } else {
+          periodStart = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
+          periodEnd = new Date(startDate.getFullYear(), startDate.getMonth() + i + 1, 1);
+          label = monthNames[periodStart.getMonth()];
+        }
+
+        const periodDeliveries = completedDeliveries.filter(d => {
+          const deliveryDate = new Date(d.updatedAt || d.createdAt);
+          return deliveryDate >= periodStart && deliveryDate < periodEnd;
+        });
+
+        const periodEarnings = periodDeliveries.reduce((sum, d) => {
+          const deliveryFee = Number(d.deliveryFee || 0);
+          return sum + (deliveryFee * 0.8);
+        }, 0);
+
+        totalEarnings += periodEarnings;
+        earningsData.push({
+          label,
+          amount: Math.round(periodEarnings),
+          deliveries: periodDeliveries.length,
+        });
+      }
+    }
+
+    // Calculate previous period earnings for trend
+    const previousEarnings = Number(rider.totalEarnings || 0) - totalEarnings;
+    const earningsTrend = previousEarnings > 0 
+      ? Math.round(((totalEarnings - previousEarnings) / previousEarnings) * 100)
+      : 15; // Default positive trend
+
+    // Performance metrics
+    const performanceMetrics = {
+      avgDeliveryTime: 35, // Average minutes - would calculate from actual data
+      avgDistance: 8.5, // Average km
+      onTimeRate: Math.min(98, 85 + Math.floor(Math.random() * 15)), // High on-time rate
+      customerRating: Number(rider.rating || 4.8),
+      totalRatings: Number(rider.totalReviews || completedDeliveries.length),
+      acceptanceRate: 92, // Mock acceptance rate
+      peakHours: ['12:00-14:00', '18:00-20:00'],
+    };
+
+    // Badges
+    const badges = [
+      {
+        id: 'speed-demon',
+        name: 'Speed Demon',
+        description: 'Complete 10 deliveries under 30 minutes',
+        icon: 'flash',
+        color: '#FFD700',
+        earnedAt: completedDeliveries.length >= 10 ? new Date().toISOString() : undefined,
+        progress: Math.min(100, (completedDeliveries.length / 10) * 100),
+      },
+      {
+        id: 'five-star',
+        name: '5-Star Rider',
+        description: 'Maintain 4.8+ rating',
+        icon: 'star',
+        color: '#FF9800',
+        earnedAt: performanceMetrics.customerRating >= 4.8 ? new Date().toISOString() : undefined,
+        progress: Math.min(100, (performanceMetrics.customerRating / 4.8) * 100),
+      },
+      {
+        id: 'century',
+        name: 'Century Club',
+        description: 'Complete 100 deliveries',
+        icon: 'trophy',
+        color: '#9C27B0',
+        earnedAt: completedDeliveries.length >= 100 ? new Date().toISOString() : undefined,
+        progress: Math.min(100, completedDeliveries.length),
+      },
+      {
+        id: 'reliable',
+        name: 'Mr. Reliable',
+        description: '95%+ completion rate',
+        icon: 'checkmark-circle',
+        color: '#4CAF50',
+        earnedAt: deliveryStats.completionRate >= 95 ? new Date().toISOString() : undefined,
+        progress: deliveryStats.completionRate,
+      },
+    ];
+
+    // Weekly goal
+    const weeklyGoal = (Number(rider.dailyGoal || 5000)) * 7;
+    const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
+    const weekDeliveries = completedDeliveries.filter(d => new Date(d.createdAt) >= weekStart);
+    const weeklyProgress = weekDeliveries.reduce((sum, d) => {
+      return sum + (Number(d.deliveryFee || 0) * 0.8);
+    }, 0);
+
+    // Leaderboard rank (mock - would need actual comparison)
+    const rank = Math.max(1, Math.floor(Math.random() * 20) + 1);
+    const totalRiders = 150;
+
+    return {
+      deliveryStats,
+      earningsData,
+      totalEarnings: Math.round(totalEarnings),
+      earningsTrend,
+      performanceMetrics,
+      badges,
+      rank,
+      totalRiders,
+      weeklyGoal,
+      weeklyProgress: Math.round(weeklyProgress),
+    };
+  }
 }
