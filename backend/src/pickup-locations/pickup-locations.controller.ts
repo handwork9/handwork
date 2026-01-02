@@ -111,6 +111,46 @@ export class PickupLocationsController {
   }
 
   /**
+   * Admin: Get all pickup locations (includes all statuses)
+   * GET /api/v1/pickup-locations/admin/all
+   */
+  @Get('admin/all')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
+  async findAllAdmin(
+    @Query('city') city?: string,
+    @Query('state') state?: string,
+    @Query('type') type?: PickupLocationType,
+    @Query('status') status?: PickupLocationStatus,
+    @Query('search') search?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const dto: FindPickupLocationsDto = {
+      city,
+      state,
+      type,
+      status, // Admin can filter by any status or see all
+      search,
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? Math.min(parseInt(limit, 10), 100) : 20,
+    };
+
+    const result = await this.pickupLocationsService.findAll(dto);
+    
+    return {
+      success: true,
+      data: result.pickupLocations,
+      pagination: {
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        totalPages: result.totalPages,
+      },
+    };
+  }
+
+  /**
    * Get pickup location by code (public)
    * GET /api/v1/pickup-locations/code/:code
    */

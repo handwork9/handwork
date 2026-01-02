@@ -587,7 +587,7 @@ export const adminApi = {
     type?: string;
     status?: string;
     city?: string;
-  }) => api.get('/pickup-locations', { params }),
+  }) => api.get('/pickup-locations/admin/all', { params }),
   getPickupLocation: (id: string) => api.get(`/pickup-locations/${id}`),
   createPickupLocation: (data: {
     name: string;
