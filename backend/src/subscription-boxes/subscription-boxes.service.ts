@@ -880,8 +880,7 @@ export class SubscriptionBoxesService {
         nextDeliveryDate: true,
         user: {
           id: true,
-          firstName: true,
-          lastName: true,
+          name: true,
           email: true,
           phone: true,
           walletBalance: true,
@@ -906,7 +905,7 @@ export class SubscriptionBoxesService {
         nextDeliveryDate: sub.nextDeliveryDate,
         user: sub.user ? {
           id: sub.user.id,
-          name: `${sub.user.firstName} ${sub.user.lastName}`,
+          name: sub.user.name,
           email: sub.user.email,
           phone: sub.user.phone,
           walletBalance: sub.user.walletBalance,
