@@ -76,8 +76,8 @@ const mockCampaigns: Campaign[] = [
     recipients: 2500,
     openRate: 45.2,
     clickRate: 12.8,
-    sentAt: new Date(Date.now() - 86400000).toISOString(),
-    createdAt: new Date(Date.now() - 172800000).toISOString(),
+    sentAt: '2026-01-01T09:00:00.000Z',
+    createdAt: '2025-12-31T09:00:00.000Z',
   },
   {
     id: '2',
@@ -87,8 +87,8 @@ const mockCampaigns: Campaign[] = [
     recipients: 3200,
     openRate: 0,
     clickRate: 0,
-    scheduledAt: new Date(Date.now() + 86400000).toISOString(),
-    createdAt: new Date().toISOString(),
+    scheduledAt: '2026-01-03T09:00:00.000Z',
+    createdAt: '2026-01-02T08:00:00.000Z',
   },
   {
     id: '3',
@@ -98,7 +98,7 @@ const mockCampaigns: Campaign[] = [
     recipients: 150,
     openRate: 38.5,
     clickRate: 22.1,
-    createdAt: new Date().toISOString(),
+    createdAt: '2026-01-02T08:00:00.000Z',
   },
 ];
 
@@ -110,7 +110,7 @@ const mockSubscribers: Subscriber[] = [
     status: 'active',
     newsletterOptIn: true,
     promotionalOptIn: true,
-    createdAt: new Date(Date.now() - 2592000000).toISOString(),
+    createdAt: '2025-12-03T09:00:00.000Z',
   },
   {
     id: '2',
@@ -119,7 +119,7 @@ const mockSubscribers: Subscriber[] = [
     status: 'active',
     newsletterOptIn: true,
     promotionalOptIn: false,
-    createdAt: new Date(Date.now() - 1728000000).toISOString(),
+    createdAt: '2025-12-13T09:00:00.000Z',
   },
 ];
 

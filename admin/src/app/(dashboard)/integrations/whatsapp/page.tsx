@@ -66,7 +66,7 @@ const mockLogs: MessageLog[] = [
     type: 'template',
     templateName: 'order_confirmation',
     status: 'delivered',
-    createdAt: new Date().toISOString(),
+    createdAt: '2026-01-02T08:00:00.000Z',
   },
   {
     id: '2',
@@ -75,7 +75,7 @@ const mockLogs: MessageLog[] = [
     type: 'template',
     templateName: 'delivery_update',
     status: 'read',
-    createdAt: new Date(Date.now() - 3600000).toISOString(),
+    createdAt: '2026-01-02T07:00:00.000Z',
   },
 ];
 
