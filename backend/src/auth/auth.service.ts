@@ -549,7 +549,7 @@ export class AuthService {
     let isNewUser = false;
     
     if (!user) {
-      // User doesn't exist - return flag to redirect to signup
+      // User doesn't exist - this is a truly new user
       isNewUser = true;
       this.logger.warn(`New phone number - redirecting to signup: ${normalizedPhone}`);
       
@@ -562,6 +562,7 @@ export class AuthService {
       });
       await this.userRepository.save(user);
     } else {
+      // Existing user - NOT a new user
       // Update phone to normalized format if different
       if (user.phone !== normalizedPhone) {
         this.logger.log(`Updating phone format from ${user.phone} to ${normalizedPhone}`);
@@ -581,10 +582,8 @@ export class AuthService {
         };
       }
       
-      // Check if user has completed registration (name is still default "User")
-      if (user.name === 'User' || !user.email) {
-        isNewUser = true;
-      }
+      // Existing users are NOT new, even if they haven't set email
+      // isNewUser remains false
     }
 
     // Generate tokens
