@@ -51,3 +51,4 @@ export * from './email-subscription.entity';
 export * from './analytics-event.entity';
 export * from './fraud-alert.entity';
 export * from './content-moderation.entity';
+export * from './coupon.entity';

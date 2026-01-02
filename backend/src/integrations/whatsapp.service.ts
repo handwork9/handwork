@@ -33,6 +33,8 @@ export interface WhatsAppTemplateMessage {
   languageCode: string;
   components?: Array<{
     type: 'header' | 'body' | 'button';
+    sub_type?: 'url' | 'quick_reply';
+    index?: number;
     parameters: Array<{ type: string; text?: string; image?: { link: string } }>;
   }>;
 }
