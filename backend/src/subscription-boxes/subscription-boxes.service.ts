@@ -161,11 +161,7 @@ export class SubscriptionBoxesService {
       subscriptionId: subscription.id,
     });
 
-    return {
-      success: true,
-      message: 'Subscription created successfully',
-      data: subscription,
-    };
+    return subscription;
   }
 
   /**
@@ -178,7 +174,7 @@ export class SubscriptionBoxesService {
     });
 
     if (!subscription) {
-      return { success: true, data: null };
+      return null;
     }
 
     // Get upcoming deliveries
@@ -202,12 +198,9 @@ export class SubscriptionBoxesService {
     });
 
     return {
-      success: true,
-      data: {
-        ...subscription,
-        upcomingDeliveries,
-        pastDeliveries,
-      },
+      ...subscription,
+      upcomingDeliveries,
+      pastDeliveries,
     };
   }
 
@@ -240,11 +233,7 @@ export class SubscriptionBoxesService {
     Object.assign(subscription, dto);
     await this.subscriptionRepository.save(subscription);
 
-    return {
-      success: true,
-      message: 'Subscription updated successfully',
-      data: subscription,
-    };
+    return subscription;
   }
 
   /**
@@ -288,11 +277,7 @@ export class SubscriptionBoxesService {
       data: { subscriptionId },
     });
 
-    return {
-      success: true,
-      message: 'Subscription paused successfully',
-      data: subscription,
-    };
+    return subscription;
   }
 
   /**
@@ -332,11 +317,7 @@ export class SubscriptionBoxesService {
       data: { subscriptionId },
     });
 
-    return {
-      success: true,
-      message: 'Subscription resumed successfully',
-      data: subscription,
-    };
+    return subscription;
   }
 
   /**
@@ -377,11 +358,7 @@ export class SubscriptionBoxesService {
       data: { subscriptionId },
     });
 
-    return {
-      success: true,
-      message: 'Subscription cancelled successfully',
-      data: subscription,
-    };
+    return subscription;
   }
 
   /**
@@ -401,10 +378,7 @@ export class SubscriptionBoxesService {
       throw new BadRequestException('Unauthorized');
     }
 
-    return {
-      success: true,
-      data: delivery,
-    };
+    return delivery;
   }
 
   /**
@@ -434,11 +408,7 @@ export class SubscriptionBoxesService {
     }
     await this.deliveryRepository.save(delivery);
 
-    return {
-      success: true,
-      message: 'Delivery rated successfully',
-      data: delivery,
-    };
+    return delivery;
   }
 
   // ========== Helper Methods ==========
@@ -746,8 +716,7 @@ export class SubscriptionBoxesService {
       .getManyAndCount();
 
     return {
-      success: true,
-      data: subscriptions,
+      subscriptions,
       pagination: {
         total,
         page,
@@ -783,14 +752,11 @@ export class SubscriptionBoxesService {
     }, 0);
 
     return {
-      success: true,
-      data: {
-        total,
-        active,
-        paused,
-        cancelled,
-        estimatedMonthlyRevenue: monthlyRevenue,
-      },
+      total,
+      active,
+      paused,
+      cancelled,
+      estimatedMonthlyRevenue: monthlyRevenue,
     };
   }
 
@@ -817,14 +783,11 @@ export class SubscriptionBoxesService {
     });
 
     return {
-      success: true,
-      data: {
-        templates,
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      },
+      templates,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
     };
   }
 
@@ -836,10 +799,7 @@ export class SubscriptionBoxesService {
     if (!template) {
       throw new NotFoundException('Template not found');
     }
-    return {
-      success: true,
-      data: template,
-    };
+    return template;
   }
 
   /**
@@ -848,11 +808,7 @@ export class SubscriptionBoxesService {
   async createTemplate(data: Partial<SubscriptionBoxTemplate>) {
     const template = this.templateRepository.create(data);
     await this.templateRepository.save(template);
-    return {
-      success: true,
-      message: 'Template created successfully',
-      data: template,
-    };
+    return template;
   }
 
   /**
@@ -865,11 +821,7 @@ export class SubscriptionBoxesService {
     }
     Object.assign(template, data);
     await this.templateRepository.save(template);
-    return {
-      success: true,
-      message: 'Template updated successfully',
-      data: template,
-    };
+    return template;
   }
 
   /**
@@ -881,9 +833,6 @@ export class SubscriptionBoxesService {
       throw new NotFoundException('Template not found');
     }
     await this.templateRepository.remove(template);
-    return {
-      success: true,
-      message: 'Template deleted successfully',
-    };
+    return { deleted: true };
   }
 }

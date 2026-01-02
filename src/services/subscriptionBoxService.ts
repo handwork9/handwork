@@ -114,10 +114,21 @@ export interface UpdateSubscriptionBoxRequest {
   autoRenew?: boolean;
 }
 
-// Helper to unwrap API response
+// Helper to unwrap API response - handles both single and double-wrapped responses
 function unwrap<T>(response: any): T {
+  // Handle null/undefined
+  if (response === null || response === undefined) {
+    return response;
+  }
+  
+  // First level unwrap
   if (response && response.success !== undefined && response.data !== undefined) {
-    return response.data;
+    const data = response.data;
+    // Check for double-wrap (old responses still in flight)
+    if (data && data.success !== undefined && data.data !== undefined) {
+      return data.data;
+    }
+    return data;
   }
   return response;
 }
