@@ -801,7 +801,7 @@ export class RidersService {
       avgDistance: 8.5, // Average km
       onTimeRate: Math.min(98, 85 + Math.floor(Math.random() * 15)), // High on-time rate
       customerRating: Number(rider.rating || 4.8),
-      totalRatings: Number(rider.totalReviews || completedDeliveries.length),
+      totalRatings: completedDeliveries.length,
       acceptanceRate: 92, // Mock acceptance rate
       peakHours: ['12:00-14:00', '18:00-20:00'],
     };

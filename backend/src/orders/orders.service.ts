@@ -8,7 +8,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { Repository, In, MoreThanOrEqual } from 'typeorm';
 import { Order, OrderItem, DeliveryAddress, PickupPoint } from '../database/entities/order.entity';
 import { CartService } from '../cart/cart.service';
 import { ProductsService } from '../products/products.service';
