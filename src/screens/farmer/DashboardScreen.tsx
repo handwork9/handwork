@@ -576,6 +576,7 @@ export default function DashboardScreen() {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
+        contentContainerStyle={{ paddingTop: 12 }}
       >
 
         {/* Activation Banner */}
