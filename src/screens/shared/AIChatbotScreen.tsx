@@ -183,7 +183,7 @@ export default function AIChatbotScreen() {
       // Add bot response
       const botMessage: Message = {
         id: `bot-${Date.now()}`,
-        text: response.message,
+        text: response.response,
         sender: 'bot',
         timestamp: new Date(),
         suggestedActions: response.suggestedActions,
@@ -191,10 +191,10 @@ export default function AIChatbotScreen() {
       setMessages(prev => [...prev, botMessage]);
 
       // Check if escalation is needed
-      if (response.shouldEscalate) {
+      if (response.escalated) {
         Alert.alert(
           'Connect with Support',
-          response.escalationReason || 'Would you like to speak with a human support agent?',
+          'Would you like to speak with a human support agent?',
           [
             { text: 'Continue with AI', style: 'cancel' },
             {

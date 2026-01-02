@@ -23,11 +23,10 @@ export interface ChatbotConversation {
 }
 
 export interface ChatResponse {
-  message: string;
+  response: string;
   conversationId: string;
   suggestedActions?: string[];
-  shouldEscalate?: boolean;
-  escalationReason?: string;
+  escalated?: boolean;
 }
 
 class ChatbotService {
