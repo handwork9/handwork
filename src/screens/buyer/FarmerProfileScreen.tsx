@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, FlatList, ScrollView, TouchableOpacity, Alert, Linking } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BuyerStackParamList, Product } from '../../types';
-import { ProductCard, LoadingSpinner, EmptyState } from '../../components/common';
+import { ProductCard, LoadingSpinner, EmptyState, ReportModal } from '../../components/common';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, FONTS } from '../../constants/theme';
 import { productService } from '../../services/productService';
 import { apiClient } from '../../services/apiClient';
@@ -44,6 +44,7 @@ export default function FarmerProfileScreen({ navigation, route }: Props) {
   const { farmerId } = route.params;
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
+  const [showReportModal, setShowReportModal] = useState(false);
 
   const { data: farmerData, isLoading: farmerLoading } = useQuery({
     queryKey: ['farmer', farmerId],
@@ -131,7 +132,13 @@ export default function FarmerProfileScreen({ navigation, route }: Props) {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Farmer Profile</Text>
-        <View style={styles.placeholder} />
+        <TouchableOpacity
+          style={styles.reportButton}
+          onPress={() => setShowReportModal(true)}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons name="flag-outline" size={22} color={colors.textSecondary} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
@@ -288,6 +295,15 @@ export default function FarmerProfileScreen({ navigation, route }: Props) {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Report Modal */}
+      <ReportModal
+        visible={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        contentType="user"
+        contentId={farmerId}
+        contentTitle={farmer?.name || 'Farmer'}
+      />
     </View>
   );
 }
@@ -315,6 +331,12 @@ const styles = StyleSheet.create({
   },
   placeholder: {
     width: 40,
+  },
+  reportButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   scrollContent: {
     paddingTop: 8,

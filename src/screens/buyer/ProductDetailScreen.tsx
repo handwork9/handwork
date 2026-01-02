@@ -15,7 +15,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BuyerStackParamList } from '../../types';
-import { Button, LoadingSpinner, ErrorState } from '../../components/common';
+import { Button, LoadingSpinner, ErrorState, ReportModal } from '../../components/common';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, FONTS } from '../../constants/theme';
 import { productService } from '../../services/productService';
 import { cartService } from '../../services/cartService';
@@ -33,6 +33,7 @@ export default function ProductDetailScreen({ navigation, route }: Props) {
   const dispatch = useAppDispatch();
   const { items } = useAppSelector((state) => state.cart);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [showReportModal, setShowReportModal] = useState(false);
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -179,7 +180,13 @@ export default function ProductDetailScreen({ navigation, route }: Props) {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Product Details</Text>
-        <View style={styles.placeholder} />
+        <TouchableOpacity
+          style={styles.reportButton}
+          onPress={() => setShowReportModal(true)}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons name="flag-outline" size={22} color={colors.textSecondary} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
@@ -530,6 +537,15 @@ export default function ProductDetailScreen({ navigation, route }: Props) {
           />
         </View>
       )}
+
+      {/* Report Modal */}
+      <ReportModal
+        visible={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        contentType="product"
+        contentId={productId}
+        contentTitle={product.title}
+      />
     </View>
   );
 }
@@ -546,6 +562,12 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  reportButton: {
     width: 40,
     height: 40,
     justifyContent: 'center',

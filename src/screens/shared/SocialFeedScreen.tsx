@@ -33,6 +33,7 @@ import { useAppSelector } from '../../store';
 import { socialService, SocialPost, FarmerStories, PostComment } from '../../services/socialService';
 import { chatService, Conversation } from '../../services/chatService';
 import { BuyerStackParamList } from '../../types';
+import { ReportModal } from '../../components/common';
 
 const { width } = Dimensions.get('window');
 const STORY_SIZE = 72;
@@ -371,11 +372,13 @@ const PostOptionsModal = ({
   onClose,
   post,
   onShare,
+  onReport,
 }: {
   visible: boolean;
   onClose: () => void;
   post: SocialPost | null;
   onShare: () => void;
+  onReport: () => void;
 }) => {
   const { colors, isDark } = useTheme();
 
@@ -388,21 +391,8 @@ const PostOptionsModal = ({
   };
 
   const handleReport = () => {
-    Alert.alert(
-      'Report Post',
-      'Are you sure you want to report this post?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Report', 
-          style: 'destructive',
-          onPress: () => {
-            Alert.alert('Reported', 'Thank you for your report. We will review this post.');
-            onClose();
-          }
-        },
-      ]
-    );
+    onClose();
+    onReport();
   };
 
   const handleSharePost = () => {
@@ -983,6 +973,8 @@ const SocialFeedScreen = () => {
   const [showCommentsModal, setShowCommentsModal] = useState(false);
   const [showOptionsModal, setShowOptionsModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportingPost, setReportingPost] = useState<SocialPost | null>(null);
 
   // Fetch stories
   const { data: storiesData } = useQuery({
@@ -1246,6 +1238,24 @@ const SocialFeedScreen = () => {
         }}
         post={selectedPost}
         onShare={() => selectedPost && handleShare(selectedPost)}
+        onReport={() => {
+          if (selectedPost) {
+            setReportingPost(selectedPost);
+            setShowReportModal(true);
+          }
+        }}
+      />
+
+      {/* Report Modal */}
+      <ReportModal
+        visible={showReportModal}
+        onClose={() => {
+          setShowReportModal(false);
+          setReportingPost(null);
+        }}
+        contentType="social_post"
+        contentId={reportingPost?.id || ''}
+        contentTitle={reportingPost?.content?.substring(0, 50) || 'Post'}
       />
 
       {/* Instagram-style Share Modal */}
