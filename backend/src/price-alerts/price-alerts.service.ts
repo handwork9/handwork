@@ -1,9 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThan, In } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { PriceHistory, Product, Favorite, User } from '../database/entities';
-import { NotificationsService } from '../notifications/notifications.service';
+import { PriceHistory, Product, Favorite } from '../database/entities';
+import { NotificationsService, NotificationType } from '../notifications/notifications.service';
 
 @Injectable()
 export class PriceAlertsService {
@@ -16,8 +16,6 @@ export class PriceAlertsService {
     private readonly productRepository: Repository<Product>,
     @InjectRepository(Favorite)
     private readonly favoriteRepository: Repository<Favorite>,
-    @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
     private readonly notificationsService: NotificationsService,
   ) {}
 
@@ -82,56 +80,17 @@ export class PriceAlertsService {
         return;
       }
 
-      const userIds = favorites.map(f => f.userId);
-      
-      // Get users with push tokens enabled
-      const users = await this.userRepository.find({
-        where: { 
-          id: In(userIds),
-          pushToken: MoreThan('') as any,
-        },
-        select: ['id', 'pushToken', 'name'],
-      });
-
-      if (users.length === 0) {
-        this.logger.log(`No users with push tokens have favorited product ${productId}`);
-        return;
-      }
-
       const discount = Math.abs(percentageChange).toFixed(0);
       
-      // Send notification to each user
-      for (const user of users) {
-        try {
-          await this.notificationsService.sendPushNotification(
-            user.id,
-            `🔥 Price Drop Alert!`,
-            `${product.title} is now ₦${Number(newPrice).toLocaleString()} (${discount}% off)! Was ₦${Number(oldPrice).toLocaleString()}.`,
-            {
-              type: 'price_drop',
-              productId,
-              productTitle: product.title,
-              oldPrice: oldPrice.toString(),
-              newPrice: newPrice.toString(),
-              percentageOff: discount,
-              productImage: product.images?.[0] || '',
-            },
-          );
-          this.logger.log(`Sent price drop notification to user ${user.id} for product ${product.title}`);
-        } catch (error) {
-          this.logger.error(`Failed to send price drop notification to user ${user.id}:`, error);
-        }
-      }
-
-      // Also create in-app notifications
+      // Send notification to each user who favorited this product
       for (const favorite of favorites) {
         try {
-          await this.notificationsService.createNotification(
-            favorite.userId,
-            'price_alert',
-            `Price Drop: ${product.title}`,
-            `${product.title} dropped from ₦${Number(oldPrice).toLocaleString()} to ₦${Number(newPrice).toLocaleString()} (${discount}% off)!`,
-            {
+          await this.notificationsService.sendPushNotification({
+            userId: favorite.userId,
+            type: NotificationType.PROMOTION,
+            title: `🔥 Price Drop Alert!`,
+            body: `${product.title} is now ₦${Number(newPrice).toLocaleString()} (${discount}% off)! Was ₦${Number(oldPrice).toLocaleString()}.`,
+            data: {
               type: 'price_drop',
               productId,
               productTitle: product.title,
@@ -140,13 +99,14 @@ export class PriceAlertsService {
               percentageOff: discount,
               productImage: product.images?.[0] || '',
             },
-          );
+          });
+          this.logger.log(`Sent price drop notification to user ${favorite.userId} for product ${product.title}`);
         } catch (error) {
-          this.logger.error(`Failed to create in-app notification for user ${favorite.userId}:`, error);
+          this.logger.error(`Failed to send price drop notification to user ${favorite.userId}:`, error);
         }
       }
 
-      this.logger.log(`Notified ${users.length} users about price drop for ${product.title}`);
+      this.logger.log(`Notified ${favorites.length} users about price drop for ${product.title}`);
     } catch (error) {
       this.logger.error(`Failed to notify price drop subscribers for product ${productId}:`, error);
     }
