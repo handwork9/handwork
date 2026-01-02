@@ -632,16 +632,37 @@ export class SubscriptionBoxesService {
 
         // Check if user has enough balance for renewal
         if (balance < subscription.price) {
-          // Notify user about insufficient balance
-          await this.notificationsService.sendPushNotification({
-            userId: subscription.userId,
-            type: NotificationType.GENERAL,
-            title: 'Subscription Renewal Failed',
-            body: `Your subscription could not be renewed due to insufficient balance. Please top up your wallet to continue.`,
-            data: { subscriptionId: subscription.id },
-          });
+          // Increment failed payment attempts
+          subscription.failedPaymentAttempts = (subscription.failedPaymentAttempts || 0) + 1;
+          await this.subscriptionRepository.save(subscription);
 
-          this.logger.warn(`Insufficient balance for subscription ${subscription.id}`);
+          // Check if we should auto-pause after 3 failed attempts
+          if (subscription.failedPaymentAttempts >= 3) {
+            subscription.status = SubscriptionBoxStatus.PAUSED;
+            await this.subscriptionRepository.save(subscription);
+
+            // Notify user about auto-pause
+            await this.notificationsService.sendPushNotification({
+              userId: subscription.userId,
+              type: NotificationType.GENERAL,
+              title: 'Subscription Auto-Paused ⚠️',
+              body: `Your subscription has been paused after 3 failed payment attempts. Please top up your wallet and resume.`,
+              data: { subscriptionId: subscription.id },
+            });
+
+            this.logger.warn(`Subscription ${subscription.id} auto-paused after 3 failed payments`);
+          } else {
+            // Notify user about insufficient balance
+            await this.notificationsService.sendPushNotification({
+              userId: subscription.userId,
+              type: NotificationType.GENERAL,
+              title: 'Subscription Renewal Failed',
+              body: `Your subscription could not be renewed due to insufficient balance (Attempt ${subscription.failedPaymentAttempts}/3). Please top up ₦${subscription.price.toLocaleString()} to continue.`,
+              data: { subscriptionId: subscription.id },
+            });
+
+            this.logger.warn(`Insufficient balance for subscription ${subscription.id} (attempt ${subscription.failedPaymentAttempts})`);
+          }
           continue;
         }
 
@@ -655,6 +676,9 @@ export class SubscriptionBoxesService {
           metadata: { subscriptionId: subscription.id },
         };
         await this.walletService.debitWallet(debitDto);
+
+        // Reset failed payment attempts on successful payment
+        subscription.failedPaymentAttempts = 0;
 
         // Update next delivery date based on subscription type
         const daysToAdd = subscription.type === SubscriptionBoxType.WEEKLY
@@ -678,13 +702,83 @@ export class SubscriptionBoxesService {
           userId: subscription.userId,
           type: NotificationType.GENERAL,
           title: 'Subscription Renewed! 🎉',
-          body: `Your subscription has been renewed. Next delivery on ${subscription.nextDeliveryDate.toLocaleDateString()}.`,
+          body: `₦${subscription.price.toLocaleString()} charged. Next delivery on ${subscription.nextDeliveryDate.toLocaleDateString()}.`,
           data: { subscriptionId: subscription.id },
         });
 
         this.logger.log(`Subscription ${subscription.id} renewed successfully`);
       } catch (error) {
         this.logger.error(`Error renewing subscription ${subscription.id}: ${error.message}`);
+      }
+    }
+  }
+
+  /**
+   * Send renewal reminders 2 days before (runs daily at 9 AM)
+   */
+  @Cron('0 9 * * *')
+  async sendRenewalReminders() {
+    this.logger.log('Sending renewal reminders...');
+
+    const today = new Date();
+    const reminderDate = new Date(today);
+    reminderDate.setDate(today.getDate() + 2);
+
+    // Start and end of the reminder day
+    const startOfDay = new Date(reminderDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(reminderDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    // Find subscriptions due in 2 days
+    const subscriptions = await this.subscriptionRepository
+      .createQueryBuilder('sub')
+      .where('sub.status = :status', { status: SubscriptionBoxStatus.ACTIVE })
+      .andWhere('sub.autoRenew = :autoRenew', { autoRenew: true })
+      .andWhere('sub.nextDeliveryDate >= :startOfDay', { startOfDay })
+      .andWhere('sub.nextDeliveryDate <= :endOfDay', { endOfDay })
+      .andWhere('(sub.lastReminderSent IS NULL OR sub.lastReminderSent < :today)', { today: startOfDay })
+      .getMany();
+
+    for (const subscription of subscriptions) {
+      try {
+        // Get user to check balance
+        const user = await this.userRepository.findOne({
+          where: { id: subscription.userId },
+        });
+
+        if (!user) continue;
+
+        const balance = Number(user.walletBalance) || 0;
+        const hasEnoughBalance = balance >= subscription.price;
+
+        // Send reminder notification
+        if (hasEnoughBalance) {
+          await this.notificationsService.sendPushNotification({
+            userId: subscription.userId,
+            type: NotificationType.GENERAL,
+            title: 'Subscription Renewal Coming Up 📦',
+            body: `Your subscription box will renew in 2 days (₦${subscription.price.toLocaleString()}). Your wallet has sufficient balance!`,
+            data: { subscriptionId: subscription.id },
+          });
+        } else {
+          const shortfall = subscription.price - balance;
+          await this.notificationsService.sendPushNotification({
+            userId: subscription.userId,
+            type: NotificationType.GENERAL,
+            title: 'Top Up Needed for Renewal ⚠️',
+            body: `Your subscription renews in 2 days. Please add ₦${shortfall.toLocaleString()} to your wallet to avoid interruption.`,
+            data: { subscriptionId: subscription.id },
+          });
+        }
+
+        // Update last reminder sent
+        subscription.lastReminderSent = new Date();
+        await this.subscriptionRepository.save(subscription);
+
+        this.logger.log(`Reminder sent for subscription ${subscription.id}`);
+      } catch (error) {
+        this.logger.error(`Error sending reminder for ${subscription.id}: ${error.message}`);
       }
     }
   }

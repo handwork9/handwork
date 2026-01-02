@@ -155,6 +155,14 @@ export class SubscriptionBox {
   @Column({ type: 'int', default: 0 })
   deliveriesCompleted: number;
 
+  // Failed payment attempts counter
+  @Column({ type: 'int', default: 0 })
+  failedPaymentAttempts: number;
+
+  // Last reminder sent date
+  @Column({ type: 'timestamp', nullable: true })
+  lastReminderSent: Date;
+
   // Pause until date (if paused)
   @Column({ type: 'timestamp', nullable: true })
   pausedUntil: Date;
