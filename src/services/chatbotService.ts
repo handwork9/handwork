@@ -38,8 +38,13 @@ class ChatbotService {
     if (conversationId) {
       payload.conversationId = conversationId;
     }
+    console.log('[ChatbotService] Sending payload:', JSON.stringify(payload));
     const response = await apiClient.post('/chatbot/chat', payload);
-    return response.data;
+    console.log('[ChatbotService] Raw response:', JSON.stringify(response.data));
+    // Backend wraps response in { success: true, data: ... }
+    const data = response.data?.data || response.data;
+    console.log('[ChatbotService] Extracted data:', JSON.stringify(data));
+    return data;
   }
 
   /**

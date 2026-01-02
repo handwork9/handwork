@@ -1,9 +1,10 @@
-import { IsString, IsOptional, IsUUID, IsNumber, Min, Max, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsUUID, IsNumber, Min, Max, MaxLength, IsNotEmpty } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class SendChatMessageDto {
   @ApiProperty({ description: 'The message to send to the chatbot' })
   @IsString()
+  @IsNotEmpty()
   @MaxLength(1000)
   message: string;
 

@@ -174,7 +174,9 @@ export default function AIChatbotScreen() {
     scrollToBottom();
 
     try {
+      console.log('[AIChatbot] Sending message:', messageText, 'conversationId:', conversationId);
       const response = await chatbotService.sendMessage(messageText, conversationId || undefined);
+      console.log('[AIChatbot] Response:', response);
       
       if (!conversationId) {
         setConversationId(response.conversationId);
