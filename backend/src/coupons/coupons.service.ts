@@ -490,7 +490,7 @@ export class CouponsService {
    */
   async checkAndCreateMilestoneCoupon(userId: string): Promise<Coupon | null> {
     const orderCount = await this.orderRepository.count({
-      where: { userId, status: In(['delivered', 'completed']) },
+      where: { buyerId: userId, status: In(['delivered', 'completed']) },
     });
     
     return this.createMilestoneCoupon(userId, orderCount);
