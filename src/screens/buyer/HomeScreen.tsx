@@ -175,6 +175,7 @@ export default function HomeScreen() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedStateFilter, setSelectedStateFilter] = useState<string | null>(null);
   const [stateFilterModalVisible, setStateFilterModalVisible] = useState(false);
+  const [quickMenuVisible, setQuickMenuVisible] = useState(false);
   const [promoClaimed, setPromoClaimed] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [promoDismissed, setPromoDismissed] = useState(false);
@@ -474,7 +475,7 @@ export default function HomeScreen() {
 
   const renderHeader = () => (
     <View style={[styles.headerContainer, { paddingTop: insets.top, backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
-      {/* Top Bar - Fixed */}
+      {/* Top Bar - Simplified */}
       <View style={[styles.topBar, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
         <View style={styles.headerLeft}>
           <TouchableOpacity 
@@ -503,32 +504,6 @@ export default function HomeScreen() {
         
         <View style={styles.headerActions}>
           <TouchableOpacity
-            style={[styles.stateFilterButton, { backgroundColor: isDark ? '#2C2C2E' : '#F5F5F5' }]}
-            onPress={() => {
-              triggerHaptic();
-              setStateFilterModalVisible(true);
-            }}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="filter" size={18} color={colors.primary} />
-            <Text style={[styles.stateFilterText, { color: colors.text }]} numberOfLines={1}>
-              {selectedStateFilter || 'All States'}
-            </Text>
-            <Ionicons name="chevron-down" size={14} color={colors.textSecondary} />
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[styles.headerIconButton, { backgroundColor: isDark ? '#2C2C2E' : '#F5F5F5' }]}
-            onPress={() => {
-              triggerHaptic();
-              navigation.navigate('NearbyFarmersMap');
-            }}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="map-outline" size={26} color={colors.text} />
-          </TouchableOpacity>
-          
-          <TouchableOpacity
             style={[styles.headerIconButton, { backgroundColor: isDark ? '#2C2C2E' : '#F5F5F5' }]}
             onPress={() => {
               triggerHaptic();
@@ -536,7 +511,7 @@ export default function HomeScreen() {
             }}
             activeOpacity={0.7}
           >
-            <Ionicons name="notifications-outline" size={28} color={colors.text} />
+            <Ionicons name="notifications-outline" size={24} color={colors.text} />
             {unreadCount > 0 && (
               <Animated.View style={[styles.notificationBadge, { transform: [{ scale: pulseAnim }] }]}>
                 <Text style={styles.notificationBadgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
@@ -552,16 +527,161 @@ export default function HomeScreen() {
             }}
             activeOpacity={0.7}
           >
-            <Ionicons name="bag-outline" size={28} color={colors.text} />
+            <Ionicons name="bag-outline" size={24} color={colors.text} />
             {itemCount > 0 && (
               <View style={styles.cartBadge}>
                 <Text style={styles.cartBadgeText}>{itemCount > 9 ? '9+' : itemCount}</Text>
               </View>
             )}
           </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.menuButton, { backgroundColor: colors.primary }]}
+            onPress={() => {
+              triggerHaptic();
+              setQuickMenuVisible(true);
+            }}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="menu" size={22} color="#FFFFFF" />
+          </TouchableOpacity>
         </View>
       </View>
     </View>
+  );
+
+  const renderQuickMenu = () => (
+    <Modal
+      visible={quickMenuVisible}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setQuickMenuVisible(false)}
+    >
+      <TouchableOpacity 
+        style={styles.quickMenuOverlay} 
+        activeOpacity={1} 
+        onPress={() => setQuickMenuVisible(false)}
+      >
+        <View style={[styles.quickMenuContainer, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+          <View style={styles.quickMenuHeader}>
+            <Text style={[styles.quickMenuTitle, { color: colors.text }]}>Quick Menu</Text>
+            <TouchableOpacity onPress={() => setQuickMenuVisible(false)}>
+              <Ionicons name="close" size={24} color={colors.text} />
+            </TouchableOpacity>
+          </View>
+          
+          {/* State Filter */}
+          <TouchableOpacity
+            style={[styles.quickMenuItem, { borderBottomColor: isDark ? '#333' : '#F0F0F0' }]}
+            onPress={() => {
+              setQuickMenuVisible(false);
+              setTimeout(() => setStateFilterModalVisible(true), 300);
+            }}
+          >
+            <View style={[styles.quickMenuIcon, { backgroundColor: isDark ? '#2C2C2E' : '#F0FDF4' }]}>
+              <Ionicons name="filter" size={20} color={colors.primary} />
+            </View>
+            <View style={styles.quickMenuItemContent}>
+              <Text style={[styles.quickMenuItemTitle, { color: colors.text }]}>Filter by State</Text>
+              <Text style={[styles.quickMenuItemSubtitle, { color: colors.textSecondary }]}>
+                {selectedStateFilter || 'All States'}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+          
+          {/* Nearby Farmers Map */}
+          <TouchableOpacity
+            style={[styles.quickMenuItem, { borderBottomColor: isDark ? '#333' : '#F0F0F0' }]}
+            onPress={() => {
+              setQuickMenuVisible(false);
+              navigation.navigate('NearbyFarmersMap');
+            }}
+          >
+            <View style={[styles.quickMenuIcon, { backgroundColor: isDark ? '#2C2C2E' : '#FEF3C7' }]}>
+              <Ionicons name="map" size={20} color="#F59E0B" />
+            </View>
+            <View style={styles.quickMenuItemContent}>
+              <Text style={[styles.quickMenuItemTitle, { color: colors.text }]}>Nearby Farmers</Text>
+              <Text style={[styles.quickMenuItemSubtitle, { color: colors.textSecondary }]}>Find farmers on map</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+          
+          {/* Flash Sales */}
+          <TouchableOpacity
+            style={[styles.quickMenuItem, { borderBottomColor: isDark ? '#333' : '#F0F0F0' }]}
+            onPress={() => {
+              setQuickMenuVisible(false);
+              navigation.navigate('FlashSales');
+            }}
+          >
+            <View style={[styles.quickMenuIcon, { backgroundColor: isDark ? '#2C2C2E' : '#FEE2E2' }]}>
+              <Ionicons name="flash" size={20} color="#EF4444" />
+            </View>
+            <View style={styles.quickMenuItemContent}>
+              <Text style={[styles.quickMenuItemTitle, { color: colors.text }]}>Flash Sales</Text>
+              <Text style={[styles.quickMenuItemSubtitle, { color: colors.textSecondary }]}>Limited time deals</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+          
+          {/* Group Buying */}
+          <TouchableOpacity
+            style={[styles.quickMenuItem, { borderBottomColor: isDark ? '#333' : '#F0F0F0' }]}
+            onPress={() => {
+              setQuickMenuVisible(false);
+              navigation.navigate('GroupBuying');
+            }}
+          >
+            <View style={[styles.quickMenuIcon, { backgroundColor: isDark ? '#2C2C2E' : '#E0E7FF' }]}>
+              <Ionicons name="people" size={20} color="#6366F1" />
+            </View>
+            <View style={styles.quickMenuItemContent}>
+              <Text style={[styles.quickMenuItemTitle, { color: colors.text }]}>Group Buying</Text>
+              <Text style={[styles.quickMenuItemSubtitle, { color: colors.textSecondary }]}>Buy together, save more</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+          
+          {/* Shopping Lists */}
+          <TouchableOpacity
+            style={[styles.quickMenuItem, { borderBottomColor: isDark ? '#333' : '#F0F0F0' }]}
+            onPress={() => {
+              setQuickMenuVisible(false);
+              navigation.navigate('ShoppingLists');
+            }}
+          >
+            <View style={[styles.quickMenuIcon, { backgroundColor: isDark ? '#2C2C2E' : '#F3E8FF' }]}>
+              <Ionicons name="list" size={20} color="#A855F7" />
+            </View>
+            <View style={styles.quickMenuItemContent}>
+              <Text style={[styles.quickMenuItemTitle, { color: colors.text }]}>Shopping Lists</Text>
+              <Text style={[styles.quickMenuItemSubtitle, { color: colors.textSecondary }]}>Manage your lists</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+          
+          {/* Subscription Boxes */}
+          <TouchableOpacity
+            style={[styles.quickMenuItem, { borderBottomWidth: 0 }]}
+            onPress={() => {
+              setQuickMenuVisible(false);
+              navigation.navigate('SubscriptionBoxes');
+            }}
+          >
+            <View style={[styles.quickMenuIcon, { backgroundColor: isDark ? '#2C2C2E' : '#ECFDF5' }]}>
+              <Ionicons name="cube" size={20} color="#10B981" />
+            </View>
+            <View style={styles.quickMenuItemContent}>
+              <Text style={[styles.quickMenuItemTitle, { color: colors.text }]}>Subscription Boxes</Text>
+              <Text style={[styles.quickMenuItemSubtitle, { color: colors.textSecondary }]}>Weekly farm deliveries</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    </Modal>
   );
 
   const renderAdBanner = () => {
@@ -1880,6 +2000,7 @@ export default function HomeScreen() {
         }
       />
       {renderPreviewModal()}
+      {renderQuickMenu()}
       <FloatingSocialMenu isFarmer={false} />
       
       {/* State Filter Modal */}
@@ -2007,6 +2128,71 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
+  },
+  menuButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  quickMenuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-end',
+    paddingTop: 100,
+    paddingRight: 16,
+  },
+  quickMenuContainer: {
+    width: 280,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+    overflow: 'hidden',
+  },
+  quickMenuHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  quickMenuTitle: {
+    fontSize: 16,
+    fontFamily: FONTS.semiBold,
+  },
+  quickMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+  },
+  quickMenuIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  quickMenuItemContent: {
+    flex: 1,
+  },
+  quickMenuItemTitle: {
+    fontSize: 14,
+    fontFamily: FONTS.medium,
+    marginBottom: 2,
+  },
+  quickMenuItemSubtitle: {
+    fontSize: 12,
+    fontFamily: FONTS.regular,
   },
   notificationDot: {
     position: 'absolute',
