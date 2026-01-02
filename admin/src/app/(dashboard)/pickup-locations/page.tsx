@@ -127,7 +127,14 @@ export default function PickupLocationsPage() {
       if (cityFilter !== 'all') params.city = cityFilter;
       
       const response = await adminApi.getPickupLocations(params as any);
-      return response.data;
+      // Handle both wrapped and unwrapped responses
+      const responseData = response.data;
+      // API returns { success, data: { success, data, pagination } } - unwrap it
+      const actualData = responseData?.data || responseData;
+      return {
+        data: actualData?.data || actualData || [],
+        pagination: actualData?.pagination || responseData?.pagination || { total: 0, page: 1, limit: pageSize, totalPages: 0 },
+      };
     },
   });
 
@@ -250,7 +257,8 @@ export default function PickupLocationsPage() {
   // Get unique cities for filter
   const cities = React.useMemo(() => {
     const citySet = new Set<string>();
-    data?.data?.forEach((location: PickupLocation) => {
+    const locations = Array.isArray(data?.data) ? data.data : [];
+    locations.forEach((location: PickupLocation) => {
       if (location.city) citySet.add(location.city);
     });
     return Array.from(citySet).sort();
@@ -258,9 +266,9 @@ export default function PickupLocationsPage() {
 
   // Stats
   const stats = React.useMemo(() => {
-    const locations = data?.data || [];
+    const locations = Array.isArray(data?.data) ? data.data : [];
     return {
-      total: locations.length,
+      total: data?.pagination?.total || locations.length,
       active: locations.filter((l: PickupLocation) => l.status === 'active').length,
       lockers: locations.filter((l: PickupLocation) => l.type === 'locker').length,
       pickupPoints: locations.filter((l: PickupLocation) => l.type === 'pickup_point').length,
@@ -484,13 +492,13 @@ export default function PickupLocationsPage() {
       <Card>
         <Table
           columns={columns}
-          dataSource={data?.data || []}
+          dataSource={Array.isArray(data?.data) ? data.data : []}
           rowKey="id"
           loading={isLoading}
           pagination={{
             current: page,
             pageSize,
-            total: data?.total || 0,
+            total: data?.pagination?.total || 0,
             onChange: (p, ps) => {
               setPage(p);
               setPageSize(ps);
