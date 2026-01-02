@@ -225,16 +225,17 @@ const FarmerBusinessReportsScreen: React.FC = () => {
     }
   };
 
-  // Revenue chart path
-  const maxRevenue = Math.max(...revenueData.map(d => d.revenue));
-  const revenueChartPath = revenueData.map((point, index) => {
-    const x = (index / (revenueData.length - 1)) * CHART_WIDTH;
-    const y = CHART_HEIGHT - (point.revenue / maxRevenue) * CHART_HEIGHT * 0.85;
-    return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
+  // Revenue chart path - with empty data protection
+  const safeRevenueData = revenueData.length > 0 ? revenueData : [{ period: '', revenue: 0 }];
+  const maxRevenue = Math.max(...safeRevenueData.map(d => d.revenue || 0), 1); // Ensure minimum of 1 to avoid division by zero
+  const revenueChartPath = safeRevenueData.map((point, index) => {
+    const x = (index / Math.max(safeRevenueData.length - 1, 1)) * CHART_WIDTH;
+    const y = CHART_HEIGHT - ((point.revenue || 0) / maxRevenue) * CHART_HEIGHT * 0.85;
+    return `${index === 0 ? 'M' : 'L'} ${x.toFixed(0)} ${y.toFixed(0)}`;
   }).join(' ');
 
   // Area chart fill path
-  const areaPath = `${revenueChartPath} L ${CHART_WIDTH} ${CHART_HEIGHT} L 0 ${CHART_HEIGHT} Z`;
+  const areaPath = revenueChartPath ? `${revenueChartPath} L ${CHART_WIDTH} ${CHART_HEIGHT} L 0 ${CHART_HEIGHT} Z` : `M 0 ${CHART_HEIGHT} L ${CHART_WIDTH} ${CHART_HEIGHT} Z`;
 
   // Render header
   const renderHeader = () => (
@@ -393,8 +394,8 @@ const FarmerBusinessReportsScreen: React.FC = () => {
         
         {/* Data points */}
         {revenueData.map((point, index) => {
-          const x = (index / (revenueData.length - 1)) * CHART_WIDTH;
-          const y = CHART_HEIGHT - (point.revenue / maxRevenue) * CHART_HEIGHT * 0.85;
+          const x = (index / Math.max(revenueData.length - 1, 1)) * CHART_WIDTH;
+          const y = CHART_HEIGHT - ((point.revenue || 0) / maxRevenue) * CHART_HEIGHT * 0.85;
           return (
             <G key={index}>
               <Circle cx={x} cy={y} r={6} fill="#fff" />

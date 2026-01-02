@@ -293,7 +293,7 @@ const AnalyticsScreen: React.FC = () => {
   const revenueBreakdown = revenueBreakdownData.breakdown || [];
   const dashboardData = dashboardStats || { totalRevenue: 0, totalOrders: 0, avgOrderValue: 0, revenueGrowth: 0 };
 
-  const maxValue = salesData.length > 0 ? Math.max(...salesData.map(d => d.value)) : 1;
+  const maxValue = salesData.length > 0 ? Math.max(...salesData.map(d => d.value), 1) : 1;
   const totalRevenue = (dashboardData as any).totalRevenue || salesData.reduce((sum, d) => sum + d.value, 0);
   const totalOrders = (dashboardData as any).totalOrders || salesData.reduce((sum, d) => sum + d.orders, 0);
   const avgOrderValue = (dashboardData as any).avgOrderValue || (totalOrders > 0 ? totalRevenue / totalOrders : 0);
@@ -909,19 +909,22 @@ const AnalyticsScreen: React.FC = () => {
     const minVal = Math.min(...salesData.map(d => d.value));
     const range = maxVal - minVal || 1;
 
-    // Generate SVG path points
+    // Generate SVG path points - with division safety
     const points = salesData.map((d, i) => ({
-      x: chartPadding + (i / (salesData.length - 1)) * effectiveWidth,
+      x: chartPadding + (i / Math.max(salesData.length - 1, 1)) * effectiveWidth,
       y: chartPadding + effectiveHeight - ((d.value - minVal) / range) * effectiveHeight,
     }));
 
     // Create SVG path string for the line
     const linePath = points
-      .map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`)
+      .map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(0)} ${p.y.toFixed(0)}`)
       .join(' ');
 
-    // Create path for the gradient fill area
-    const areaPath = `${linePath} L ${points[points.length - 1].x} ${chartHeight - chartPadding} L ${chartPadding} ${chartHeight - chartPadding} Z`;
+    // Create path for the gradient fill area - with empty protection
+    const lastPoint = points[points.length - 1];
+    const areaPath = linePath && lastPoint 
+      ? `${linePath} L ${lastPoint.x.toFixed(0)} ${(chartHeight - chartPadding).toFixed(0)} L ${chartPadding.toFixed(0)} ${(chartHeight - chartPadding).toFixed(0)} Z`
+      : `M ${chartPadding} ${chartHeight - chartPadding} L ${CHART_WIDTH - chartPadding} ${chartHeight - chartPadding} Z`;
 
     return (
       <View style={styles.section}>

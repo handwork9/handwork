@@ -211,19 +211,33 @@ export default function AIChatbotScreen() {
       console.error('Error response:', error.response?.data);
       console.error('Error status:', error.response?.status);
       
-      let errorText = "I'm sorry, I couldn't process your message. Please try again or contact support.";
-      if (error.response?.data?.message) {
-        errorText = `Error: ${error.response.data.message}`;
-      }
+      // Check if conversation was escalated
+      const isEscalated = error.response?.data?.message?.includes('escalated to support');
       
-      const errorMessage: Message = {
-        id: `error-${Date.now()}`,
-        text: errorText,
-        sender: 'bot',
-        timestamp: new Date(),
-        suggestedActions: ['Try Again', 'Contact Support'],
-      };
-      setMessages(prev => [...prev, errorMessage]);
+      if (isEscalated) {
+        const escalatedMessage: Message = {
+          id: `escalated-${Date.now()}`,
+          text: "This conversation has been escalated to our support team. You can continue chatting with a human agent or start a new AI conversation.",
+          sender: 'bot',
+          timestamp: new Date(),
+          suggestedActions: ['Talk to Support', 'Start New Conversation'],
+        };
+        setMessages(prev => [...prev, escalatedMessage]);
+      } else {
+        let errorText = "I'm sorry, I couldn't process your message. Please try again or contact support.";
+        if (error.response?.data?.message) {
+          errorText = `Error: ${error.response.data.message}`;
+        }
+        
+        const errorMessage: Message = {
+          id: `error-${Date.now()}`,
+          text: errorText,
+          sender: 'bot',
+          timestamp: new Date(),
+          suggestedActions: ['Try Again', 'Contact Support'],
+        };
+        setMessages(prev => [...prev, errorMessage]);
+      }
     } finally {
       setIsSending(false);
       scrollToBottom();
@@ -248,9 +262,25 @@ export default function AIChatbotScreen() {
     handleSend(query);
   };
 
+  const handleStartNewConversation = () => {
+    // Clear current conversation and start fresh
+    setConversationId(null);
+    const welcomeMessage: Message = {
+      id: 'welcome-new',
+      text: "Starting a new conversation! 👋 How can I help you today?",
+      sender: 'bot',
+      timestamp: new Date(),
+      suggestedActions: ['Track Order', 'Get Refund', 'Contact Support'],
+    };
+    setMessages([welcomeMessage]);
+    setShowQuickQuestions(true);
+  };
+
   const handleSuggestedAction = (action: string) => {
-    if (action === 'Contact Support' || action === 'Talk to Human') {
+    if (action === 'Contact Support' || action === 'Talk to Human' || action === 'Talk to Support') {
       handleEscalate();
+    } else if (action === 'Start New Conversation') {
+      handleStartNewConversation();
     } else if (action === 'Try Again') {
       inputRef.current?.focus();
     } else {

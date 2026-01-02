@@ -869,7 +869,7 @@ export default function DashboardScreen() {
                   const hour = peak.hour;
                   const period = hour >= 12 ? 'PM' : 'AM';
                   const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
-                  const maxRevenue = Math.max(...peakHoursData.slice(0, 3).map((p: any) => p.revenue || 0));
+                  const maxRevenue = Math.max(...peakHoursData.slice(0, 3).map((p: any) => p.revenue || 0), 1);
                   const barWidth = maxRevenue > 0 ? ((peak.revenue || 0) / maxRevenue) * 100 : 0;
                   const rankColors = ['#FFB300', '#94A3B8', '#CD7F32'];
                   const rankIcons = ['trophy', 'medal', 'ribbon'] as const;

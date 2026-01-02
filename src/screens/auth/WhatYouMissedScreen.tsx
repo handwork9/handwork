@@ -104,8 +104,8 @@ const AnimatedBar = ({ value, month, index, maxValue, isDark }: { value: number;
 // Line Chart Component using SVG
 const LineChart = ({ isDark }: { isDark?: boolean }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const maxValue = Math.max(...GROWTH_DATA);
-  const minValue = Math.min(...GROWTH_DATA);
+  const maxValue = Math.max(...GROWTH_DATA, 1);
+  const minValue = Math.min(...GROWTH_DATA, 0);
   const chartWidth = width - 80;
   const chartHeight = 120;
   const padding = 10;
@@ -122,17 +122,20 @@ const LineChart = ({ isDark }: { isDark?: boolean }) => {
   }, []);
 
   const points = GROWTH_DATA.map((value, index) => ({
-    x: padding + (index / (GROWTH_DATA.length - 1)) * effectiveWidth,
+    x: padding + (index / Math.max(GROWTH_DATA.length - 1, 1)) * effectiveWidth,
     y: padding + effectiveHeight - ((value - minValue) / range) * effectiveHeight,
   }));
 
   // Create SVG path string
   const linePath = points
-    .map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`)
+    .map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(0)} ${p.y.toFixed(0)}`)
     .join(' ');
 
-  // Create path for gradient fill
-  const areaPath = `${linePath} L ${points[points.length - 1].x} ${chartHeight - padding} L ${padding} ${chartHeight - padding} Z`;
+  // Create path for gradient fill - with empty data protection
+  const lastPoint = points[points.length - 1];
+  const areaPath = linePath && lastPoint 
+    ? `${linePath} L ${lastPoint.x.toFixed(0)} ${(chartHeight - padding).toFixed(0)} L ${padding.toFixed(0)} ${(chartHeight - padding).toFixed(0)} Z`
+    : `M ${padding} ${chartHeight - padding} L ${chartWidth - padding} ${chartHeight - padding} Z`;
 
   return (
     <Animated.View style={[styles.lineChartContainer, { opacity: fadeAnim }]}>
@@ -287,7 +290,7 @@ export default function WhatYouMissedScreen({ navigation }: Props) {
   const { colors, isDark } = useTheme();
   const scrollY = useRef(new Animated.Value(0)).current;
 
-  const maxValue = Math.max(...MONTHLY_DATA.map(d => d.value));
+  const maxValue = Math.max(...MONTHLY_DATA.map(d => d.value), 1);
 
   // Check if we can go back
   const canGoBack = navigation.canGoBack();

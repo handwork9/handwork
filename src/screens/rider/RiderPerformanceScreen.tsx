@@ -188,7 +188,7 @@ export default function RiderPerformanceScreen() {
 
     const data = performance.earningsData;
     const maxValue = Math.max(...data.map(d => d.amount), 1);
-    const barWidth = (CHART_WIDTH - (data.length - 1) * 8) / data.length;
+    const barWidth = Math.max((CHART_WIDTH - Math.max(data.length - 1, 0) * 8) / Math.max(data.length, 1), 20);
 
     return (
       <View style={styles.chartContainer}>
