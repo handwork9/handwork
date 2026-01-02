@@ -18,3 +18,5 @@ export type { ToastType } from './Toast';
 export { default as IncomingCallOverlay } from './IncomingCallOverlay';
 export { OfflineBanner } from './OfflineBanner';
 export { default as StateFilterModal } from './StateFilterModal';
+export { ReportModal } from '../ReportModal';
+export type { ContentType } from '../ReportModal';
