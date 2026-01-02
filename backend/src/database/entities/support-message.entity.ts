@@ -37,8 +37,8 @@ export class SupportMessage {
   @JoinColumn({ name: 'ticketId' })
   ticket: SupportTicket;
 
-  @Column('uuid')
-  senderId: string;
+  @Column({ type: 'uuid', nullable: true })
+  senderId: string | null;
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'senderId' })

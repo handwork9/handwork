@@ -48,9 +48,9 @@ export class SupportTicket {
   @Index()
   ticketNumber: string;
 
-  @Column('uuid')
+  @Column({ type: 'uuid', nullable: true })
   @Index()
-  userId: string;
+  userId: string | null;
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'userId' })

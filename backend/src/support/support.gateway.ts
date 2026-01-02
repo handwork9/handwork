@@ -247,6 +247,22 @@ export class SupportGateway implements OnGatewayInit, OnGatewayConnection, OnGat
   }
 
   /**
+   * Send message to a specific ticket room
+   */
+  sendMessageToTicket(ticketId: string, message: any): void {
+    this.server.to(`ticket:${ticketId}`).emit('support:message', {
+      ticketId,
+      message,
+    });
+    // Also notify admins
+    this.server.to('admins').emit('support:message', {
+      ticketId,
+      message,
+    });
+    this.logger.log(`Message sent to ticket ${ticketId}`);
+  }
+
+  /**
    * Notify user that ticket is assigned
    */
   notifyTicketAssigned(ticket: SupportTicket, adminId: string): void {
