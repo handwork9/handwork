@@ -216,7 +216,32 @@ export default function OTPVerificationScreen({ navigation, route }: Props) {
             user: any;
             accessToken: string;
             refreshToken: string;
+            isNewUser?: boolean;
           };
+          
+          // Check if this is a new user who needs to complete registration
+          if (loginData.isNewUser) {
+            setIsSuccess(true);
+            triggerSuccessHaptic();
+            Animated.spring(successScale, {
+              toValue: 1,
+              tension: 50,
+              friction: 3,
+              useNativeDriver: true,
+            }).start();
+            
+            // Redirect to signup to complete registration
+            setTimeout(() => {
+              navigation.replace('Signup', { 
+                phone: phone,
+                fromPhoneLogin: true,
+                accessToken: loginData.accessToken,
+                refreshToken: loginData.refreshToken,
+                userId: loginData.user?.id,
+              });
+            }, 1500);
+            return;
+          }
           
           setIsSuccess(true);
           triggerSuccessHaptic();

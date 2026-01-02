@@ -543,13 +543,18 @@ export class AuthService {
       where: phoneVariations.map(p => ({ phone: p }))
     });
     
-    this.logger.log(`User found: ${user ? `ID: ${user.id}, Name: ${user.name}, Phone: ${user.phone}` : 'NOT FOUND - will create new'}`);
+    this.logger.log(`User found: ${user ? `ID: ${user.id}, Name: ${user.name}, Phone: ${user.phone}` : 'NOT FOUND - will redirect to signup'}`);
+    
+    let isNewUser = false;
     
     if (!user) {
-      // Create new user with phone only
-      this.logger.warn(`Creating new user for phone: ${normalizedPhone}`);
+      // User doesn't exist - return flag to redirect to signup
+      isNewUser = true;
+      this.logger.warn(`New phone number - redirecting to signup: ${normalizedPhone}`);
+      
+      // Create placeholder user (will be completed during signup)
       user = this.userRepository.create({
-        phone: normalizedPhone, // Use normalized format
+        phone: normalizedPhone,
         name: 'User',
         password: await bcrypt.hash(Math.random().toString(36), BCRYPT_ROUNDS),
         isPhoneVerified: true,
@@ -574,13 +579,18 @@ export class AuthService {
           message: 'Two-factor authentication required',
         };
       }
+      
+      // Check if user has completed registration (name is still default "User")
+      if (user.name === 'User' || !user.email) {
+        isNewUser = true;
+      }
     }
 
     // Generate tokens
     const tokens = await this.generateTokens(user);
     await this.updateRefreshToken(user.id, tokens.refreshToken);
 
-    return { user, tokens, requiresTwoFactor: false };
+    return { user, tokens, requiresTwoFactor: false, isNewUser };
   }
 
   /**

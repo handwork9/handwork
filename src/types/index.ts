@@ -513,7 +513,7 @@ export type AuthStackParamList = {
   Maintenance: undefined;
   WhatYouMissed: undefined;
   Login: undefined;
-  Signup: undefined;
+  Signup: { phone?: string; fromPhoneLogin?: boolean; accessToken?: string; refreshToken?: string; userId?: string } | undefined;
   PhoneLogin: undefined;
   OTPVerification: { phone: string; mode?: 'verify' | 'login' };
   ForgotPassword: undefined;

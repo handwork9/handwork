@@ -450,7 +450,14 @@ const NIGERIAN_STATES: { [key: string]: string[] } = {
 
 const STATES = Object.keys(NIGERIAN_STATES).sort();
 
-export default function SignupScreen({ navigation }: Props) {
+export default function SignupScreen({ navigation, route }: Props) {
+  // Check if user is coming from phone login (new user)
+  const fromPhoneLogin = route.params?.fromPhoneLogin;
+  const prefilledPhone = route.params?.phone;
+  const existingAccessToken = route.params?.accessToken;
+  const existingRefreshToken = route.params?.refreshToken;
+  const existingUserId = route.params?.userId;
+  
   const [isLoading, setIsLoading] = useState(false);
   const [selectedRole, setSelectedRole] = useState<UserRole>('buyer');
   const [showPassword, setShowPassword] = useState(false);
@@ -568,7 +575,7 @@ export default function SignupScreen({ navigation }: Props) {
     defaultValues: {
       name: '',
       email: '',
-      phone: '',
+      phone: prefilledPhone || '',
       password: '',
       confirmPassword: '',
       state: '',
@@ -620,6 +627,7 @@ export default function SignupScreen({ navigation }: Props) {
 
   // Total steps depends on role (riders/farmers: 5, buyers: 4)
   const totalSteps = selectedRole === 'rider' || selectedRole === 'farmer' ? 5 : 4;
+  const totalSteps = selectedRole === 'rider' || selectedRole === 'farmer' ? 5 : 4;
 
   // Handle skip payment - submit without payment validation
   const handleSkipPayment = async () => {
@@ -638,11 +646,71 @@ export default function SignupScreen({ navigation }: Props) {
   const onSubmit = async (data: any) => {
     setIsLoading(true);
     try {
-      // Basic signup data only - no riderData or farmerData
+      // Check if coming from phone login (user already created, just needs profile update)
+      if (fromPhoneLogin && existingAccessToken && existingUserId) {
+        // Update existing user profile
+        const updateData = {
+          name: data.name,
+          email: data.email,
+          role: selectedRole,
+          state: data.state,
+          city: data.city,
+          address: data.address,
+        };
+
+        try {
+          const response = await apiClient.patch(`/users/${existingUserId}`, updateData, {
+            headers: {
+              Authorization: `Bearer ${existingAccessToken}`,
+            },
+          });
+
+          if (response.data) {
+            // Fetch updated user
+            const userResponse = await apiClient.get('/users/me', {
+              headers: {
+                Authorization: `Bearer ${existingAccessToken}`,
+              },
+            });
+
+            dispatch(setAuth({
+              user: userResponse.data,
+              accessToken: existingAccessToken,
+              refreshToken: existingRefreshToken || '',
+            }));
+
+            // Handle role-specific registrations
+            if (selectedRole === 'rider') {
+              try {
+                await apiClient.post('/riders/register', {
+                  state: data.state,
+                  city: data.city,
+                  vehicleType: 'motorcycle',
+                  vehicleModel: data.bikeModel,
+                  vehiclePlate: data.bikePlateNumber,
+                  licenseNumber: data.driversLicense,
+                }, {
+                  headers: { Authorization: `Bearer ${existingAccessToken}` },
+                });
+              } catch (riderError: any) {
+                console.warn('Failed to register rider profile:', riderError?.response?.data?.message);
+              }
+            }
+
+            return; // Success - auth dispatch will navigate user
+          }
+        } catch (updateError: any) {
+          console.error('Profile update error:', updateError);
+          Alert.alert('Update Failed', updateError?.response?.data?.message || 'Failed to complete registration');
+          return;
+        }
+      }
+
+      // Normal signup flow for new users
       const signupData: any = {
         name: data.name,
         email: data.email,
-        phone: data.phone,
+        phone: fromPhoneLogin && prefilledPhone ? prefilledPhone : data.phone,
         password: data.password,
         role: selectedRole,
         state: data.state,
@@ -959,7 +1027,7 @@ export default function SignupScreen({ navigation }: Props) {
                 render={({ field: { onChange, onBlur, value } }) => (
                   <FloatingInput
                     label="Phone Number"
-                    value={value}
+                    value={fromPhoneLogin && prefilledPhone ? prefilledPhone : value}
                     onChangeText={onChange}
                     onBlur={onBlur}
                     icon="phone-outline"
@@ -1033,51 +1101,56 @@ export default function SignupScreen({ navigation }: Props) {
                 )}
               />
 
-              <View style={styles.divider}>
-                <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-                <Text style={[styles.dividerText, { color: colors.textSecondary }]}>Security</Text>
-                <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-              </View>
+              {/* Password section - hidden for phone login users (already authenticated) */}
+              {!fromPhoneLogin && (
+                <>
+                  <View style={styles.divider}>
+                    <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+                    <Text style={[styles.dividerText, { color: colors.textSecondary }]}>Security</Text>
+                    <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+                  </View>
 
-              <Controller
-                control={control}
-                name="password"
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <FloatingInput
-                    label="Password"
-                    value={value}
-                    onChangeText={onChange}
-                    onBlur={onBlur}
-                    secureTextEntry={!showPassword}
-                    error={errors.password?.message}
-                    rightIcon={
-                      <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                        <Ionicons name={showPassword ? 'eye' : 'eye-off'} size={22} color={isDark ? '#6B7280' : '#9CA3AF'} />
-                      </TouchableOpacity>
-                    }
+                  <Controller
+                    control={control}
+                    name="password"
+                    render={({ field: { onChange, onBlur, value } }) => (
+                      <FloatingInput
+                        label="Password"
+                        value={value}
+                        onChangeText={onChange}
+                        onBlur={onBlur}
+                        secureTextEntry={!showPassword}
+                        error={errors.password?.message}
+                        rightIcon={
+                          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                            <Ionicons name={showPassword ? 'eye' : 'eye-off'} size={22} color={isDark ? '#6B7280' : '#9CA3AF'} />
+                          </TouchableOpacity>
+                        }
+                      />
+                    )}
                   />
-                )}
-              />
 
-              <Controller
-                control={control}
-                name="confirmPassword"
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <FloatingInput
-                    label="Confirm Password"
-                    value={value}
-                    onChangeText={onChange}
-                    onBlur={onBlur}
-                    secureTextEntry={!showPassword}
-                    error={errors.confirmPassword?.message}
-                    rightIcon={
-                      <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                        <Ionicons name={showPassword ? 'eye' : 'eye-off'} size={22} color={isDark ? '#6B7280' : '#9CA3AF'} />
-                      </TouchableOpacity>
-                    }
+                  <Controller
+                    control={control}
+                    name="confirmPassword"
+                    render={({ field: { onChange, onBlur, value } }) => (
+                      <FloatingInput
+                        label="Confirm Password"
+                        value={value}
+                        onChangeText={onChange}
+                        onBlur={onBlur}
+                        secureTextEntry={!showPassword}
+                        error={errors.confirmPassword?.message}
+                        rightIcon={
+                          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                            <Ionicons name={showPassword ? 'eye' : 'eye-off'} size={22} color={isDark ? '#6B7280' : '#9CA3AF'} />
+                          </TouchableOpacity>
+                        }
+                      />
+                    )}
                   />
-                )}
-              />
+                </>
+              )}
 
               {/* All roles continue to step 4 */}
               <TouchableOpacity
