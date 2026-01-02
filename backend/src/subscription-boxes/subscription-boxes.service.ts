@@ -456,12 +456,12 @@ export class SubscriptionBoxesService {
   }
 
   /**
-   * Select products for a subscription box based on preferences
+   * Select products for a subscription box based on preferences and budget
    */
   private async selectProductsForBox(
     subscription: SubscriptionBox,
   ): Promise<any[]> {
-    // Determine item count based on box size
+    // Target item count based on box size
     const itemCounts = {
       [BoxSize.SMALL]: 6,
       [BoxSize.MEDIUM]: 10,
@@ -469,13 +469,21 @@ export class SubscriptionBoxesService {
       [BoxSize.FAMILY]: 22,
     };
 
-    const itemCount = itemCounts[subscription.size];
+    const targetItemCount = itemCounts[subscription.size];
+    const budget = subscription.price;
+    
+    // Calculate average price per item (with 10% buffer for value-add)
+    const avgPricePerItem = (budget * 1.1) / targetItemCount;
+    const minPrice = avgPricePerItem * 0.3; // Min 30% of average
+    const maxPrice = avgPricePerItem * 2.5;  // Max 250% of average
 
-    // Build query for products
+    // Build query for products within price range
     let query = this.productRepository
       .createQueryBuilder('product')
       .where('product.isActive = :isActive', { isActive: true })
-      .andWhere('product.stockQuantity > :minStock', { minStock: 0 });
+      .andWhere('product.stockQuantity > :minStock', { minStock: 0 })
+      .andWhere('product.price >= :minPrice', { minPrice })
+      .andWhere('product.price <= :maxPrice', { maxPrice });
 
     // Filter by preferred categories if specified
     if (
@@ -494,14 +502,49 @@ export class SubscriptionBoxesService {
       });
     }
 
-    // Get random products
-    const products = await query
+    // Get more products than needed for selection flexibility
+    const availableProducts = await query
       .orderBy('RANDOM()')
-      .take(itemCount)
+      .take(targetItemCount * 3)
       .getMany();
 
+    // Select products to match budget (greedy algorithm)
+    const selectedProducts: any[] = [];
+    let totalValue = 0;
+    const targetValue = budget * 1.1; // Give 10% more value than paid
+
+    // Sort by price to mix different price points
+    const shuffled = availableProducts.sort(() => Math.random() - 0.5);
+
+    for (const product of shuffled) {
+      if (selectedProducts.length >= targetItemCount) break;
+      
+      // Check if adding this product keeps us within reasonable budget
+      if (totalValue + product.price <= targetValue * 1.2) {
+        selectedProducts.push(product);
+        totalValue += product.price;
+      }
+    }
+
+    // If we don't have enough products, fill with any available
+    if (selectedProducts.length < targetItemCount) {
+      const remainingProducts = availableProducts.filter(
+        p => !selectedProducts.find(sp => sp.id === p.id)
+      );
+      
+      for (const product of remainingProducts) {
+        if (selectedProducts.length >= targetItemCount) break;
+        selectedProducts.push(product);
+        totalValue += product.price;
+      }
+    }
+
+    this.logger.log(
+      `Box ${subscription.id}: Selected ${selectedProducts.length} items worth ₦${totalValue.toLocaleString()} (paid ₦${budget.toLocaleString()})`
+    );
+
     // Format for storage
-    return products.map((product) => ({
+    return selectedProducts.map((product) => ({
       id: product.id,
       name: product.title,
       quantity: 1,
