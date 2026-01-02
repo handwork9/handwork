@@ -608,20 +608,20 @@ export default function HomeScreen() {
             <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
           
-          {/* Flash Sales */}
+          {/* Coupons & Deals */}
           <TouchableOpacity
             style={[styles.quickMenuItem, { borderBottomColor: isDark ? '#333' : '#F0F0F0' }]}
             onPress={() => {
               setQuickMenuVisible(false);
-              navigation.navigate('FlashSales');
+              navigation.navigate('Coupons');
             }}
           >
             <View style={[styles.quickMenuIcon, { backgroundColor: isDark ? '#2C2C2E' : '#FEE2E2' }]}>
-              <Ionicons name="flash" size={20} color="#EF4444" />
+              <Ionicons name="pricetag" size={20} color="#EF4444" />
             </View>
             <View style={styles.quickMenuItemContent}>
-              <Text style={[styles.quickMenuItemTitle, { color: colors.text }]}>Flash Sales</Text>
-              <Text style={[styles.quickMenuItemSubtitle, { color: colors.textSecondary }]}>Limited time deals</Text>
+              <Text style={[styles.quickMenuItemTitle, { color: colors.text }]}>Coupons & Deals</Text>
+              <Text style={[styles.quickMenuItemSubtitle, { color: colors.textSecondary }]}>Save with discounts</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
@@ -667,7 +667,7 @@ export default function HomeScreen() {
             style={[styles.quickMenuItem, { borderBottomWidth: 0 }]}
             onPress={() => {
               setQuickMenuVisible(false);
-              navigation.navigate('SubscriptionBoxes');
+              navigation.navigate('SubscriptionBox');
             }}
           >
             <View style={[styles.quickMenuIcon, { backgroundColor: isDark ? '#2C2C2E' : '#ECFDF5' }]}>
