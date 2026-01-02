@@ -8,6 +8,7 @@ import { calculateDistance } from '../common/utils/helpers';
 import { NotificationsService, NotificationType } from '../notifications/notifications.service';
 import { ContentModerationService } from '../admin/content-moderation.service';
 import { ContentType } from '../database/entities/content-moderation.entity';
+import { PriceAlertsService } from '../price-alerts/price-alerts.service';
 
 // Low stock threshold - notify farmer when stock falls below this
 const LOW_STOCK_THRESHOLD = 10;
@@ -33,6 +34,8 @@ export class ProductsService {
     private readonly notificationsService: NotificationsService,
     @Inject(forwardRef(() => ContentModerationService))
     private readonly moderationService: ContentModerationService,
+    @Inject(forwardRef(() => PriceAlertsService))
+    private readonly priceAlertsService: PriceAlertsService,
   ) {}
 
   /**
@@ -206,8 +209,23 @@ export class ProductsService {
       throw new ForbiddenException('You can only update your own products');
     }
 
+    // Track price changes for price drop alerts
+    const oldPrice = Number(product.price);
+    const newPrice = dto.price !== undefined ? Number(dto.price) : oldPrice;
+
     Object.assign(product, dto);
-    return this.productRepository.save(product);
+    const updatedProduct = await this.productRepository.save(product);
+
+    // Record price change if price was updated
+    if (dto.price !== undefined && oldPrice !== newPrice) {
+      try {
+        await this.priceAlertsService.recordPriceChange(id, oldPrice, newPrice);
+      } catch (error) {
+        this.logger.error(`Failed to record price change for product ${id}:`, error);
+      }
+    }
+
+    return updatedProduct;
   }
 
   async delete(id: string, farmerId: string): Promise<void> {

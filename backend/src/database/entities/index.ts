@@ -53,3 +53,4 @@ export * from './fraud-alert.entity';
 export * from './content-moderation.entity';
 export * from './coupon.entity';
 export * from './pickup-location.entity';
+export * from './price-history.entity';

@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { NavigationContainer, LinkingOptions, DefaultTheme, DarkTheme, NavigationContainerRef, CommonActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AppState, AppStateStatus, View, ActivityIndicator, StyleSheet } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import { useAppSelector, useAppDispatch } from '../store';
 import { RootStackParamList } from '../types';
 import { useTheme } from '../context/ThemeContext';
@@ -14,6 +15,7 @@ import { notificationService } from '../services/notificationService';
 import { setNotificationSettings } from '../store/slices/notificationSettingsSlice';
 import { authService } from '../services/authService';
 import { updateUser } from '../store/slices/authSlice';
+import { setNavigationRef, processNotificationResponse } from '../services/deepLinkService';
 
 import { AuthNavigator } from './AuthNavigator';
 import { BuyerNavigator } from './BuyerNavigator';
@@ -184,6 +186,36 @@ export function RootNavigator() {
     setTimeout(() => setIsUnlocking(false), 300);
   };
 
+  // Handle push notification taps - navigate to appropriate screen
+  useEffect(() => {
+    // Handle notification taps when app is in background
+    const responseSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      console.log('[RootNavigator] Notification tapped:', response.notification.request.content.data);
+      processNotificationResponse(response, user?.role);
+    });
+
+    // Handle initial notification (app opened from closed state via notification)
+    const checkInitialNotification = async () => {
+      const lastResponse = await Notifications.getLastNotificationResponseAsync();
+      if (lastResponse) {
+        console.log('[RootNavigator] App opened from notification:', lastResponse.notification.request.content.data);
+        // Small delay to ensure navigation is ready
+        setTimeout(() => {
+          processNotificationResponse(lastResponse, user?.role);
+        }, 500);
+      }
+    };
+
+    // Only check initial notification after navigation is ready
+    if (navigationRef.current) {
+      checkInitialNotification();
+    }
+
+    return () => {
+      responseSubscription.remove();
+    };
+  }, [user?.role]);
+
   // Create custom navigation theme based on our theme
   const navigationTheme = {
     dark: isDark,
@@ -237,7 +269,16 @@ export function RootNavigator() {
   return (
     <View style={[styles.rootContainer, { backgroundColor: colors.background }]}>
       <MessageBannerProvider>
-        <NavigationContainer ref={navigationRef} linking={linking} theme={navigationTheme}>
+        <NavigationContainer 
+          ref={navigationRef} 
+          linking={linking} 
+          theme={navigationTheme}
+          onReady={() => {
+            // Store navigation reference for deep link handling
+            setNavigationRef(navigationRef.current);
+            console.log('[RootNavigator] Navigation ready, ref set for deep linking');
+          }}
+        >
           <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
             {getNavigator()}
           </Stack.Navigator>

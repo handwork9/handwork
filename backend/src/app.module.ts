@@ -56,6 +56,7 @@ import { SocialModule } from './social/social.module';
 import { IntegrationsModule } from './integrations/integrations.module';
 import { ModerationModule } from './moderation/moderation.module';
 import { PickupLocationsModule } from './pickup-locations/pickup-locations.module';
+import { PriceAlertsModule } from './price-alerts/price-alerts.module';
 
 @Module({
   imports: [
@@ -201,6 +202,7 @@ import { PickupLocationsModule } from './pickup-locations/pickup-locations.modul
     IntegrationsModule,
     ModerationModule,
     PickupLocationsModule,
+    PriceAlertsModule,
   ],
 })
 export class AppModule {}

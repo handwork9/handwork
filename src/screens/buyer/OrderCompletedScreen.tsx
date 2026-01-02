@@ -16,6 +16,7 @@ import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../const
 import { useTheme } from '../../context/ThemeContext';
 import RatingModal from '../../components/common/RatingModal';
 import reviewService from '../../services/reviewService';
+import { appReviewService } from '../../services/appReviewService';
 
 type Props = NativeStackScreenProps<BuyerStackParamList, 'OrderCompleted'>;
 
@@ -103,6 +104,9 @@ export default function OrderCompletedScreen({ route, navigation }: Props) {
       delay: 600,
       useNativeDriver: true,
     }).start();
+
+    // Record positive experience for app review prompt
+    appReviewService.recordPositiveExperience('order_delivered');
   }, []);
 
   const canRateFarmer = ratingStatus?.canRateFarmer && !hasRatedFarmer;
@@ -119,10 +123,14 @@ export default function OrderCompletedScreen({ route, navigation }: Props) {
 
   const handleFarmerRatingSuccess = () => {
     setHasRatedFarmer(true);
+    // Record positive experience for app review
+    appReviewService.recordPositiveExperience('review_submitted');
   };
 
   const handleRiderRatingSuccess = () => {
     setHasRatedRider(true);
+    // Record positive experience for app review
+    appReviewService.recordPositiveExperience('review_submitted');
   };
 
   const handleDone = () => {
