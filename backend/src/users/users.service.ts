@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, Logger, ConflictException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger, ConflictException, ForbiddenException, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User, PlatformRevenue, RevenueType, RevenueStatus, WalletOwnerType, TransactionCategory, FarmerProfile, AccountDeletionRequest, DeletionRequestStatus, DeletionReason } from '../database/entities';
@@ -6,6 +6,7 @@ import { UpdateUserDto, ApplyAsFarmerDto, RequestAccountDeletionDto, ReviewDelet
 import { WalletService } from '../wallet/wallet.service';
 import { NotificationsService, NotificationType } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
+import { CouponsService } from '../coupons/coupons.service';
 import { generateReference } from '../common/utils/helpers';
 import { FarmerApplicationStatus, UserRole } from '../common/enums';
 import * as bcrypt from 'bcrypt';
@@ -47,6 +48,8 @@ export class UsersService {
     private readonly walletService: WalletService,
     private readonly notificationsService: NotificationsService,
     private readonly notificationsGateway: NotificationsGateway,
+    @Inject(forwardRef(() => CouponsService))
+    private readonly couponsService: CouponsService,
   ) {}
 
   async findById(id: string): Promise<User> {
@@ -79,10 +82,33 @@ export class UsersService {
   async update(id: string, dto: UpdateUserDto): Promise<User> {
     this.logger.log(`Updating user ${id} with: ${JSON.stringify(dto)}`);
     const user = await this.findById(id);
+    
+    // Check if birthday is being updated to today's date
+    const isBirthdayUpdate = dto.dateOfBirth && !user.dateOfBirth;
+    const isBirthdayToday = dto.dateOfBirth ? this.isBirthdayToday(dto.dateOfBirth) : false;
+    
     Object.assign(user, dto);
     const saved = await this.userRepository.save(user);
     this.logger.log(`User ${id} updated, avatar is now: ${saved.avatar}`);
+    
+    // Create birthday coupon if birthday is today
+    if ((isBirthdayUpdate || this.isBirthdayToday(saved.dateOfBirth)) && isBirthdayToday) {
+      try {
+        const coupon = await this.couponsService.createBirthdayCoupon(saved.id, saved.name);
+        this.logger.log(`Birthday coupon ${coupon.code} created for user ${saved.id}`);
+      } catch (error) {
+        this.logger.error(`Failed to create birthday coupon: ${error.message}`);
+      }
+    }
+    
     return saved;
+  }
+  
+  private isBirthdayToday(dateOfBirth: string | Date | null): boolean {
+    if (!dateOfBirth) return false;
+    const today = new Date();
+    const dob = new Date(dateOfBirth);
+    return dob.getDate() === today.getDate() && dob.getMonth() === today.getMonth();
   }
 
   async updateDeviceToken(userId: string, token: string): Promise<void> {

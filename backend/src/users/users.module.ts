@@ -10,12 +10,14 @@ import { User, PlatformRevenue, FarmerSubscription, Order, Product, FarmerProfil
 import { WalletModule } from '../wallet/wallet.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { EmailModule } from '../email/email.module';
+import { CouponsModule } from '../coupons/coupons.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([User, PlatformRevenue, FarmerSubscription, Order, Product, FarmerProfile, AccountDeletionRequest]),
     forwardRef(() => WalletModule),
     forwardRef(() => NotificationsModule),
+    forwardRef(() => CouponsModule),
     EmailModule,
   ],
   controllers: [UsersController, FarmerSubscriptionController, FarmerAnalyticsController],
