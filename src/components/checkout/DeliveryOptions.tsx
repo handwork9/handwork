@@ -192,55 +192,95 @@ export default function DeliveryOptions({
     <View style={styles.container}>
       {/* Delivery Method Selection */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Delivery Method</Text>
+        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Choose delivery method</Text>
         <View style={styles.methodOptions}>
+          {/* Home Delivery Card */}
           <TouchableOpacity
             style={[
               styles.methodOption,
               {
-                backgroundColor: deliveryMethod === 'home_delivery' ? colors.primary + '15' : colors.card,
+                backgroundColor: deliveryMethod === 'home_delivery' 
+                  ? (isDark ? 'rgba(0, 122, 255, 0.15)' : '#E5F1FF') 
+                  : colors.card,
                 borderColor: deliveryMethod === 'home_delivery' ? colors.primary : colors.border,
               },
             ]}
             onPress={() => handleMethodChange('home_delivery')}
+            activeOpacity={0.7}
           >
-            <Ionicons
-              name="home"
-              size={28}
-              color={deliveryMethod === 'home_delivery' ? colors.primary : colors.textSecondary}
-            />
+            <View style={[
+              styles.methodIconWrapper,
+              { backgroundColor: deliveryMethod === 'home_delivery' 
+                ? colors.primary 
+                : (isDark ? 'rgba(255,255,255,0.1)' : '#F2F2F7') 
+              }
+            ]}>
+              <Ionicons
+                name="home"
+                size={22}
+                color={deliveryMethod === 'home_delivery' ? '#FFFFFF' : colors.textSecondary}
+              />
+            </View>
             <Text style={[
               styles.methodLabel,
               { color: deliveryMethod === 'home_delivery' ? colors.primary : colors.text }
             ]}>
               Home Delivery
             </Text>
+            <Text style={[styles.methodDescription, { color: colors.textSecondary }]}>
+              Delivered to your door
+            </Text>
+            {deliveryMethod === 'home_delivery' && (
+              <View style={[styles.methodCheckmark, { backgroundColor: colors.primary }]}>
+                <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+              </View>
+            )}
           </TouchableOpacity>
           
+          {/* Pickup Point Card */}
           <TouchableOpacity
             style={[
               styles.methodOption,
               {
-                backgroundColor: deliveryMethod === 'pickup_point' ? colors.primary + '15' : colors.card,
-                borderColor: deliveryMethod === 'pickup_point' ? colors.primary : colors.border,
+                backgroundColor: deliveryMethod === 'pickup_point' 
+                  ? (isDark ? 'rgba(76, 175, 80, 0.15)' : '#E8F5E9') 
+                  : colors.card,
+                borderColor: deliveryMethod === 'pickup_point' ? colors.success : colors.border,
               },
             ]}
             onPress={() => handleMethodChange('pickup_point')}
+            activeOpacity={0.7}
           >
-            <Ionicons
-              name="location"
-              size={28}
-              color={deliveryMethod === 'pickup_point' ? colors.primary : colors.textSecondary}
-            />
+            <View style={[
+              styles.methodIconWrapper,
+              { backgroundColor: deliveryMethod === 'pickup_point' 
+                ? colors.success 
+                : (isDark ? 'rgba(255,255,255,0.1)' : '#F2F2F7') 
+              }
+            ]}>
+              <Ionicons
+                name="location"
+                size={22}
+                color={deliveryMethod === 'pickup_point' ? '#FFFFFF' : colors.textSecondary}
+              />
+            </View>
             <Text style={[
               styles.methodLabel,
-              { color: deliveryMethod === 'pickup_point' ? colors.primary : colors.text }
+              { color: deliveryMethod === 'pickup_point' ? colors.success : colors.text }
             ]}>
               Pickup Point
+            </Text>
+            <Text style={[styles.methodDescription, { color: colors.textSecondary }]}>
+              Collect from a location
             </Text>
             <View style={[styles.saveBadge, { backgroundColor: colors.success }]}>
               <Text style={styles.saveBadgeText}>Save 20%</Text>
             </View>
+            {deliveryMethod === 'pickup_point' && (
+              <View style={[styles.methodCheckmark, { backgroundColor: colors.success }]}>
+                <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+              </View>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -464,8 +504,11 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
   },
   sectionTitle: {
-    fontSize: FONT_SIZES.md,
+    fontSize: FONT_SIZES.xs,
     fontFamily: FONTS.semiBold,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: SPACING.xs,
   },
   methodOptions: {
     flexDirection: 'row',
@@ -476,26 +519,54 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
+    borderRadius: BORDER_RADIUS.lg,
     borderWidth: 2,
     gap: SPACING.xs,
-    minHeight: 100,
+    minHeight: 130,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  methodIconWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.xs,
   },
   methodLabel: {
     fontSize: FONT_SIZES.sm,
-    fontFamily: FONTS.medium,
+    fontFamily: FONTS.semiBold,
     textAlign: 'center',
   },
+  methodDescription: {
+    fontSize: FONT_SIZES.xs,
+    fontFamily: FONTS.regular,
+    textAlign: 'center',
+    marginTop: 2,
+  },
+  methodCheckmark: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   saveBadge: {
-    paddingHorizontal: SPACING.xs,
-    paddingVertical: 2,
-    borderRadius: BORDER_RADIUS.sm,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 4,
+    borderRadius: 50,
     marginTop: SPACING.xs,
   },
   saveBadgeText: {
     color: '#FFFFFF',
     fontSize: 10,
-    fontFamily: FONTS.semiBold,
+    fontFamily: FONTS.bold,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
   speedOptions: {
     gap: SPACING.xs,

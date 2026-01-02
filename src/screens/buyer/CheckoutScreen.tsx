@@ -1360,31 +1360,41 @@ export default function CheckoutScreen({ navigation }: Props) {
         </Section>
 
         {/* Enhanced Delivery Options - Speed, Pickup Points */}
-        <DeliveryOptions
-          baseDeliveryFee={deliveryPricing.deliveryFee}
-          userLatitude={selectedAddress?.lat || user?.latitude}
-          userLongitude={selectedAddress?.lng || user?.longitude}
-          userCity={selectedAddress?.city || user?.city}
-          userState={selectedAddress?.state || user?.state}
-          initialMethod={deliveryMethod}
-          initialSpeed={deliverySpeed}
-          onDeliveryMethodChange={(method: DeliveryMethod) => {
-            setDeliveryMethod(method);
-            if (method === 'home_delivery') {
-              setSelectedPickupPoint(null);
-              setPickupPointDiscount(0);
-            }
-          }}
-          onDeliverySpeedChange={(speed: DeliverySpeed, premium: number) => {
-            setDeliverySpeed(speed);
-            setDeliverySpeedPremium(premium);
-          }}
-          onTimeSlotChange={setEnhancedTimeSlot}
-          onPickupPointChange={(pickup: PickupLocationOption | null, discount: number) => {
-            setSelectedPickupPoint(pickup);
-            setPickupPointDiscount(discount);
-          }}
-        />
+        <Section
+          title="Delivery Options"
+          icon="car"
+          iconColor="#8E44AD"
+          iconBgColor={isDark ? 'rgba(142, 68, 173, 0.15)' : '#F5EEF8'}
+          badge={deliveryMethod === 'pickup_point' ? 'Save 20%' : undefined}
+          colors={colors}
+          isDark={isDark}
+        >
+          <DeliveryOptions
+            baseDeliveryFee={deliveryPricing.deliveryFee}
+            userLatitude={selectedAddress?.lat || user?.latitude}
+            userLongitude={selectedAddress?.lng || user?.longitude}
+            userCity={selectedAddress?.city || user?.city}
+            userState={selectedAddress?.state || user?.state}
+            initialMethod={deliveryMethod}
+            initialSpeed={deliverySpeed}
+            onDeliveryMethodChange={(method: DeliveryMethod) => {
+              setDeliveryMethod(method);
+              if (method === 'home_delivery') {
+                setSelectedPickupPoint(null);
+                setPickupPointDiscount(0);
+              }
+            }}
+            onDeliverySpeedChange={(speed: DeliverySpeed, premium: number) => {
+              setDeliverySpeed(speed);
+              setDeliverySpeedPremium(premium);
+            }}
+            onTimeSlotChange={setEnhancedTimeSlot}
+            onPickupPointChange={(pickup: PickupLocationOption | null, discount: number) => {
+              setSelectedPickupPoint(pickup);
+              setPickupPointDiscount(discount);
+            }}
+          />
+        </Section>
 
         {/* Payment Method Section */}
         <Section
