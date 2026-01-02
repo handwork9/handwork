@@ -108,6 +108,48 @@ const categoryOptions = [
   { value: 'others', label: '📦 Other' },
 ];
 
+// Nigerian States for filtering
+const stateOptions = [
+  { value: '', label: '📍 All States' },
+  { value: 'Abia', label: 'Abia' },
+  { value: 'Adamawa', label: 'Adamawa' },
+  { value: 'Akwa Ibom', label: 'Akwa Ibom' },
+  { value: 'Anambra', label: 'Anambra' },
+  { value: 'Bauchi', label: 'Bauchi' },
+  { value: 'Bayelsa', label: 'Bayelsa' },
+  { value: 'Benue', label: 'Benue' },
+  { value: 'Borno', label: 'Borno' },
+  { value: 'Cross River', label: 'Cross River' },
+  { value: 'Delta', label: 'Delta' },
+  { value: 'Ebonyi', label: 'Ebonyi' },
+  { value: 'Edo', label: 'Edo' },
+  { value: 'Ekiti', label: 'Ekiti' },
+  { value: 'Enugu', label: 'Enugu' },
+  { value: 'FCT', label: 'FCT (Abuja)' },
+  { value: 'Gombe', label: 'Gombe' },
+  { value: 'Imo', label: 'Imo' },
+  { value: 'Jigawa', label: 'Jigawa' },
+  { value: 'Kaduna', label: 'Kaduna' },
+  { value: 'Kano', label: 'Kano' },
+  { value: 'Katsina', label: 'Katsina' },
+  { value: 'Kebbi', label: 'Kebbi' },
+  { value: 'Kogi', label: 'Kogi' },
+  { value: 'Kwara', label: 'Kwara' },
+  { value: 'Lagos', label: 'Lagos' },
+  { value: 'Nasarawa', label: 'Nasarawa' },
+  { value: 'Niger', label: 'Niger' },
+  { value: 'Ogun', label: 'Ogun' },
+  { value: 'Ondo', label: 'Ondo' },
+  { value: 'Osun', label: 'Osun' },
+  { value: 'Oyo', label: 'Oyo' },
+  { value: 'Plateau', label: 'Plateau' },
+  { value: 'Rivers', label: 'Rivers' },
+  { value: 'Sokoto', label: 'Sokoto' },
+  { value: 'Taraba', label: 'Taraba' },
+  { value: 'Yobe', label: 'Yobe' },
+  { value: 'Zamfara', label: 'Zamfara' },
+];
+
 // Product Card Component for Grid View (Buyer Preview Style)
 function ProductCard({ 
   product, 
@@ -280,6 +322,7 @@ function ProductCard({
 export default function ProductsPage() {
   const [searchText, setSearchText] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [stateFilter, setStateFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(12);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -317,12 +360,13 @@ export default function ProductsPage() {
   const farmers = Array.isArray(farmersData) ? farmersData : [];
 
   const { data, isLoading } = useQuery<ProductsResponse>({
-    queryKey: ['products', currentPage, pageSize, categoryFilter, searchText],
+    queryKey: ['products', currentPage, pageSize, categoryFilter, stateFilter, searchText],
     queryFn: async () => {
       const response = await adminApi.getProducts({
         page: currentPage,
         limit: pageSize,
         category: categoryFilter || undefined,
+        state: stateFilter || undefined,
         search: searchText || undefined,
       });
       const apiResponse = response.data;
@@ -824,6 +868,17 @@ export default function ProductsPage() {
               onChange={setCategoryFilter}
               options={categoryOptions}
               style={{ width: 180 }}
+            />
+            <Select
+              value={stateFilter}
+              onChange={setStateFilter}
+              options={stateOptions}
+              style={{ width: 180 }}
+              showSearch
+              filterOption={(input, option) =>
+                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+              }
+              placeholder="Filter by State"
             />
           </div>
           <Segmented

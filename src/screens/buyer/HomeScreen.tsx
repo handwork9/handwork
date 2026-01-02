@@ -24,7 +24,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { BuyerStackParamList, BuyerTabParamList, Product } from '../../types';
-import { ProductCard, LoadingSpinner, EmptyState, Button } from '../../components/common';
+import { ProductCard, LoadingSpinner, EmptyState, Button, StateFilterModal } from '../../components/common';
 import { COLORS, SPACING, FONT_SIZES, FONTS } from '../../constants/theme';
 import { productService } from '../../services/productService';
 import { notificationService } from '../../services/notificationService';
@@ -173,6 +173,8 @@ export default function HomeScreen() {
   const userState = defaultAddress?.state || user?.state;
   
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedStateFilter, setSelectedStateFilter] = useState<string | null>(null);
+  const [stateFilterModalVisible, setStateFilterModalVisible] = useState(false);
   const [promoClaimed, setPromoClaimed] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [promoDismissed, setPromoDismissed] = useState(false);
@@ -253,11 +255,11 @@ export default function HomeScreen() {
     refetch,
     isRefetching,
   } = useQuery({
-    queryKey: ['products', selectedCategory],
+    queryKey: ['products', selectedCategory, selectedStateFilter],
     queryFn: () =>
       productService.getProducts({
         category: selectedCategory?.toLowerCase() || undefined,
-        // Don't filter by state - show all products nationwide
+        state: selectedStateFilter || undefined,
         lat: location?.latitude,
         lng: location?.longitude,
         limit: 20,
@@ -267,145 +269,145 @@ export default function HomeScreen() {
 
   // Fetch products for different category sections
   const { data: vegetablesData } = useQuery({
-    queryKey: ['products', 'vegetables'],
-    queryFn: () => productService.getProducts({ category: 'vegetables', limit: 6 }),
+    queryKey: ['products', 'vegetables', selectedStateFilter],
+    queryFn: () => productService.getProducts({ category: 'vegetables', state: selectedStateFilter || undefined, limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: fruitsData } = useQuery({
-    queryKey: ['products', 'fruits'],
-    queryFn: () => productService.getProducts({ category: 'fruits', limit: 6 }),
+    queryKey: ['products', 'fruits', selectedStateFilter],
+    queryFn: () => productService.getProducts({ category: 'fruits', state: selectedStateFilter || undefined, limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: grainsData } = useQuery({
-    queryKey: ['products', 'grains'],
-    queryFn: () => productService.getProducts({ category: 'grains', limit: 6 }),
+    queryKey: ['products', 'grains', selectedStateFilter],
+    queryFn: () => productService.getProducts({ category: 'grains', state: selectedStateFilter || undefined, limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: dairyData } = useQuery({
-    queryKey: ['products', 'dairy'],
-    queryFn: () => productService.getProducts({ category: 'dairy', limit: 6 }),
+    queryKey: ['products', 'dairy', selectedStateFilter],
+    queryFn: () => productService.getProducts({ category: 'dairy', state: selectedStateFilter || undefined, limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: meatData } = useQuery({
-    queryKey: ['products', 'meat'],
-    queryFn: () => productService.getProducts({ category: 'meat', limit: 6 }),
+    queryKey: ['products', 'meat', selectedStateFilter],
+    queryFn: () => productService.getProducts({ category: 'meat', state: selectedStateFilter || undefined, limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: seafoodData } = useQuery({
-    queryKey: ['products', 'seafood'],
-    queryFn: () => productService.getProducts({ category: 'seafood', limit: 6 }),
+    queryKey: ['products', 'seafood', selectedStateFilter],
+    queryFn: () => productService.getProducts({ category: 'seafood', state: selectedStateFilter || undefined, limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   // Additional category queries
   const { data: eggsData } = useQuery({
-    queryKey: ['products', 'eggs'],
-    queryFn: () => productService.getProducts({ category: 'eggs', limit: 6 }),
+    queryKey: ['products', 'eggs', selectedStateFilter],
+    queryFn: () => productService.getProducts({ category: 'eggs', state: selectedStateFilter || undefined, limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: poultryData } = useQuery({
-    queryKey: ['products', 'poultry'],
-    queryFn: () => productService.getProducts({ category: 'poultry', limit: 6 }),
+    queryKey: ['products', 'poultry', selectedStateFilter],
+    queryFn: () => productService.getProducts({ category: 'poultry', state: selectedStateFilter || undefined, limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: herbsData } = useQuery({
-    queryKey: ['products', 'herbs_spices'],
-    queryFn: () => productService.getProducts({ category: 'herbs_spices', limit: 6 }),
+    queryKey: ['products', 'herbs_spices', selectedStateFilter],
+    queryFn: () => productService.getProducts({ category: 'herbs_spices', state: selectedStateFilter || undefined, limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: honeyData } = useQuery({
-    queryKey: ['products', 'honey'],
-    queryFn: () => productService.getProducts({ category: 'honey', limit: 6 }),
+    queryKey: ['products', 'honey', selectedStateFilter],
+    queryFn: () => productService.getProducts({ category: 'honey', state: selectedStateFilter || undefined, limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: nutsData } = useQuery({
-    queryKey: ['products', 'nuts'],
-    queryFn: () => productService.getProducts({ category: 'nuts', limit: 6 }),
+    queryKey: ['products', 'nuts', selectedStateFilter],
+    queryFn: () => productService.getProducts({ category: 'nuts', state: selectedStateFilter || undefined, limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: tubersData } = useQuery({
-    queryKey: ['products', 'tubers'],
-    queryFn: () => productService.getProducts({ category: 'tubers', limit: 6 }),
+    queryKey: ['products', 'tubers', selectedStateFilter],
+    queryFn: () => productService.getProducts({ category: 'tubers', state: selectedStateFilter || undefined, limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: oilsData } = useQuery({
-    queryKey: ['products', 'oils'],
-    queryFn: () => productService.getProducts({ category: 'oils', limit: 6 }),
+    queryKey: ['products', 'oils', selectedStateFilter],
+    queryFn: () => productService.getProducts({ category: 'oils', state: selectedStateFilter || undefined, limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: legumesData } = useQuery({
-    queryKey: ['products', 'legumes'],
-    queryFn: () => productService.getProducts({ category: 'legumes', limit: 6 }),
+    queryKey: ['products', 'legumes', selectedStateFilter],
+    queryFn: () => productService.getProducts({ category: 'legumes', state: selectedStateFilter || undefined, limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: processedData } = useQuery({
-    queryKey: ['products', 'processed'],
-    queryFn: () => productService.getProducts({ category: 'processed', limit: 6 }),
+    queryKey: ['products', 'processed', selectedStateFilter],
+    queryFn: () => productService.getProducts({ category: 'processed', state: selectedStateFilter || undefined, limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: livestockData } = useQuery({
-    queryKey: ['products', 'livestock'],
-    queryFn: () => productService.getProducts({ category: 'livestock', limit: 6 }),
+    queryKey: ['products', 'livestock', selectedStateFilter],
+    queryFn: () => productService.getProducts({ category: 'livestock', state: selectedStateFilter || undefined, limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: seedsData } = useQuery({
-    queryKey: ['products', 'seeds'],
-    queryFn: () => productService.getProducts({ category: 'seeds', limit: 6 }),
+    queryKey: ['products', 'seeds', selectedStateFilter],
+    queryFn: () => productService.getProducts({ category: 'seeds', state: selectedStateFilter || undefined, limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: beveragesData } = useQuery({
-    queryKey: ['products', 'beverages'],
-    queryFn: () => productService.getProducts({ category: 'beverages', limit: 6 }),
+    queryKey: ['products', 'beverages', selectedStateFilter],
+    queryFn: () => productService.getProducts({ category: 'beverages', state: selectedStateFilter || undefined, limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: othersData } = useQuery({
-    queryKey: ['products', 'others'],
-    queryFn: () => productService.getProducts({ category: 'others', limit: 6 }),
+    queryKey: ['products', 'others', selectedStateFilter],
+    queryFn: () => productService.getProducts({ category: 'others', state: selectedStateFilter || undefined, limit: 6 }),
     staleTime: 5 * 60 * 1000,
   });
 
-  // Fetch promoted products - show all promoted products nationwide
+  // Fetch promoted products
   const { data: promotedData } = useQuery({
-    queryKey: ['products', 'promoted'],
-    queryFn: () => productService.getPromotedProducts(undefined, 6),
+    queryKey: ['products', 'promoted', selectedStateFilter],
+    queryFn: () => productService.getPromotedProducts(selectedStateFilter || undefined, 6),
     staleTime: 5 * 60 * 1000,
   });
 
-  // Fetch sponsored products from verified/premium sellers - show nationwide
+  // Fetch sponsored products from verified/premium sellers
   const { data: sponsoredData } = useQuery({
-    queryKey: ['products', 'sponsored'],
-    queryFn: () => productService.getSponsoredProducts(undefined, 12),
+    queryKey: ['products', 'sponsored', selectedStateFilter],
+    queryFn: () => productService.getSponsoredProducts(selectedStateFilter || undefined, 12),
     staleTime: 5 * 60 * 1000,
   });
 
-  // Fetch admin-curated official store products - show nationwide
+  // Fetch admin-curated official store products
   const { data: adminProductsData } = useQuery({
-    queryKey: ['products', 'admin-products'],
-    queryFn: () => productService.getAdminProducts(undefined, 6),
+    queryKey: ['products', 'admin-products', selectedStateFilter],
+    queryFn: () => productService.getAdminProducts(selectedStateFilter || undefined, 6),
     staleTime: 5 * 60 * 1000,
   });
 
-  // Fetch recommended products - show nationwide
+  // Fetch recommended products
   const { data: recommendedData } = useQuery({
-    queryKey: ['products', 'recommended'],
-    queryFn: () => productService.getRecommendedProducts(undefined, 20),
+    queryKey: ['products', 'recommended', selectedStateFilter],
+    queryFn: () => productService.getRecommendedProducts(selectedStateFilter || undefined, 20),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -500,6 +502,21 @@ export default function HomeScreen() {
         </View>
         
         <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={[styles.stateFilterButton, { backgroundColor: isDark ? '#2C2C2E' : '#F5F5F5' }]}
+            onPress={() => {
+              triggerHaptic();
+              setStateFilterModalVisible(true);
+            }}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="filter" size={18} color={colors.primary} />
+            <Text style={[styles.stateFilterText, { color: colors.text }]} numberOfLines={1}>
+              {selectedStateFilter || 'All States'}
+            </Text>
+            <Ionicons name="chevron-down" size={14} color={colors.textSecondary} />
+          </TouchableOpacity>
+          
           <TouchableOpacity
             style={[styles.headerIconButton, { backgroundColor: isDark ? '#2C2C2E' : '#F5F5F5' }]}
             onPress={() => {
@@ -1864,6 +1881,17 @@ export default function HomeScreen() {
       />
       {renderPreviewModal()}
       <FloatingSocialMenu isFarmer={false} />
+      
+      {/* State Filter Modal */}
+      <StateFilterModal
+        visible={stateFilterModalVisible}
+        onClose={() => setStateFilterModalVisible(false)}
+        selectedState={selectedStateFilter}
+        onSelectState={(state) => {
+          setSelectedStateFilter(state);
+          setStateFilterModalVisible(false);
+        }}
+      />
     </View>
   );
 }
@@ -1956,6 +1984,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+  },
+  stateFilterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+    maxWidth: 140,
+  },
+  stateFilterText: {
+    fontSize: 13,
+    fontFamily: FONTS.medium,
+    maxWidth: 80,
   },
   headerIconButton: {
     width: 40,

@@ -191,6 +191,7 @@ export const adminApi = {
     page?: number;
     limit?: number;
     category?: string;
+    state?: string;
     search?: string;
     farmerId?: string;
   }) => api.get('/products', { params }),
