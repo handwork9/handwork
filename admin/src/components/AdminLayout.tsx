@@ -276,23 +276,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       type: 'divider',
     },
     {
-      key: 'security',
-      icon: <SafetyOutlined />,
-      label: 'Security',
-      children: [
-        {
-          key: '/fraud-detection',
-          icon: <SafetyOutlined />,
-          label: 'Fraud Detection',
-        },
-        {
-          key: '/content-moderation',
-          icon: <FileTextOutlined />,
-          label: 'Content Moderation',
-        },
-      ],
-    },
-    {
       key: 'integrations',
       icon: <ApiOutlined />,
       label: 'Integrations',
