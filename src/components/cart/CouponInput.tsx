@@ -13,6 +13,30 @@ import { Ionicons } from '@expo/vector-icons';
 import couponService, { Coupon, CouponValidationResult, CartItem } from '../../services/couponService';
 import { useTheme } from '../../context/ThemeContext';
 
+// Source colors for coupon badges
+const sourceColors: Record<string, string> = {
+  admin: '#3B82F6',
+  referral: '#8B5CF6',
+  birthday: '#EC4899',
+  loyalty: '#F59E0B',
+  welcome: '#10B981',
+  flash_sale: '#EF4444',
+  promo: '#6366F1',
+  milestone: '#14B8A6',
+};
+
+// Source labels with emojis
+const sourceLabels: Record<string, string> = {
+  admin: '',
+  referral: '🎁 ',
+  birthday: '🎂 ',
+  loyalty: '⭐ ',
+  welcome: '👋 ',
+  flash_sale: '⚡ ',
+  promo: '🏷️ ',
+  milestone: '🏆 ',
+};
+
 interface CouponInputProps {
   subtotal: number;
   deliveryFee?: number;
@@ -115,19 +139,34 @@ const CouponInput: React.FC<CouponInputProps> = ({
   const renderCouponItem = ({ item }: { item: Coupon }) => {
     const isExpiringSoon = couponService.isExpiringSoon(item);
     const discount = couponService.calculateDiscount(item, subtotal, deliveryFee);
+    const source = item.source || 'admin';
+    const badgeColor = sourceColors[source] || sourceColors.admin;
+    const emojiPrefix = sourceLabels[source] || '';
+    const isSpecial = source !== 'admin'; // Non-admin coupons get special styling
 
     return (
       <TouchableOpacity
-        style={[styles.couponItem, { 
-          backgroundColor: isDark ? colors.surface : '#F9FAFB',
-          borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : '#E5E7EB'
-        }]}
+        style={[
+          styles.couponItem, 
+          { 
+            backgroundColor: isSpecial 
+              ? (isDark ? `${badgeColor}20` : `${badgeColor}10`)
+              : (isDark ? colors.surface : '#F9FAFB'),
+            borderColor: isSpecial 
+              ? badgeColor
+              : (isDark ? 'rgba(255, 255, 255, 0.15)' : '#E5E7EB')
+          }
+        ]}
         onPress={() => handleSelectCoupon(item)}
       >
         <View style={styles.couponLeft}>
-          <View style={[styles.couponBadge, isExpiringSoon && styles.expiringBadge]}>
+          <View style={[
+            styles.couponBadge, 
+            isExpiringSoon && styles.expiringBadge,
+            isSpecial && { backgroundColor: badgeColor }
+          ]}>
             <Text style={styles.couponBadgeText}>
-              {couponService.formatCouponValue(item)}
+              {emojiPrefix}{couponService.formatCouponValue(item)}
             </Text>
           </View>
           {isExpiringSoon && (
@@ -138,13 +177,13 @@ const CouponInput: React.FC<CouponInputProps> = ({
           )}
         </View>
         <View style={styles.couponRight}>
-          <Text style={[styles.couponName, { color: colors.text }]}>{item.name}</Text>
+          <Text style={[styles.couponName, { color: isSpecial ? badgeColor : colors.text }]}>{item.name}</Text>
           {item.description && (
             <Text style={[styles.couponDescription, { color: colors.textSecondary }]} numberOfLines={2}>
               {item.description}
             </Text>
           )}
-          {item.minOrderAmount && (
+          {item.minOrderAmount && item.minOrderAmount > 0 && (
             <Text style={[styles.couponCondition, { color: isDark ? colors.textSecondary : '#9CA3AF' }]}>
               Min. order: ₦{item.minOrderAmount.toLocaleString()}
             </Text>
@@ -153,12 +192,12 @@ const CouponInput: React.FC<CouponInputProps> = ({
             {couponService.formatExpiryDate(item)}
           </Text>
           {subtotal >= (item.minOrderAmount || 0) && (
-            <Text style={styles.savings}>
+            <Text style={[styles.savings, isSpecial && { color: badgeColor }]}>
               You'll save: ₦{discount.discountAmount.toLocaleString()}
             </Text>
           )}
         </View>
-        <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+        <Ionicons name="chevron-forward" size={20} color={isSpecial ? badgeColor : colors.textSecondary} />
       </TouchableOpacity>
     );
   };

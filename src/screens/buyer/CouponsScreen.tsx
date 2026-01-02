@@ -8,11 +8,13 @@ import {
   RefreshControl,
   Alert,
   Share,
+  ImageBackground,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
 import { COLORS, SPACING, FONT_SIZES, FONTS } from '../../constants/theme';
 import { LoadingSpinner, EmptyState } from '../../components/common';
@@ -24,6 +26,7 @@ import { triggerSuccessHaptic, triggerHaptic } from '../../utils/haptics';
 interface Coupon {
   id: string;
   code: string;
+  name?: string;
   description?: string;
   discountType: 'percentage' | 'fixed';
   discountValue: number;
@@ -35,26 +38,51 @@ interface Coupon {
   startDate?: string;
   endDate?: string;
   isActive: boolean;
-  type: 'general' | 'first_order' | 'referral' | 'loyalty' | 'seasonal' | 'flash';
+  source?: 'admin' | 'referral' | 'birthday' | 'loyalty' | 'welcome' | 'flash_sale' | 'promo' | 'milestone';
 }
 
-const typeLabels: Record<string, string> = {
-  general: 'General',
-  first_order: 'First Order',
-  referral: 'Referral Bonus',
-  loyalty: 'Loyalty Reward',
-  seasonal: 'Seasonal',
-  flash: 'Flash Sale',
+// Map source to display labels
+const sourceLabels: Record<string, string> = {
+  admin: 'General',
+  referral: '🎁 Referral Bonus',
+  birthday: '🎂 Birthday',
+  loyalty: '⭐ Loyalty Reward',
+  welcome: '👋 Welcome',
+  flash_sale: '⚡ Flash Sale',
+  promo: '🏷️ Promo',
+  milestone: '🏆 Milestone',
 };
 
-const typeColors: Record<string, string> = {
-  general: '#3B82F6',
-  first_order: '#10B981',
+// Map source to colors
+const sourceColors: Record<string, string> = {
+  admin: '#3B82F6',
   referral: '#8B5CF6',
+  birthday: '#EC4899',
   loyalty: '#F59E0B',
-  seasonal: '#EC4899',
-  flash: '#EF4444',
+  welcome: '#10B981',
+  flash_sale: '#EF4444',
+  promo: '#6366F1',
+  milestone: '#14B8A6',
 };
+
+// Helper to map backend response to frontend interface
+const mapBackendCoupon = (coupon: any): Coupon => ({
+  id: coupon.id,
+  code: coupon.code,
+  name: coupon.name,
+  description: coupon.description,
+  discountType: coupon.type === 'percentage' ? 'percentage' : 'fixed',
+  discountValue: parseFloat(coupon.value) || 0,
+  minimumOrderAmount: parseFloat(coupon.minOrderAmount) || 0,
+  maximumDiscount: parseFloat(coupon.maxDiscountAmount) || undefined,
+  usageLimit: coupon.usageLimit,
+  usageLimitPerUser: coupon.usageLimitPerUser,
+  usageCount: coupon.usageCount || 0,
+  startDate: coupon.startDate,
+  endDate: coupon.endDate,
+  isActive: coupon.status === 'active',
+  source: coupon.source || 'admin',
+});
 
 export default function CouponsScreen() {
   const navigation = useNavigation();
@@ -66,12 +94,14 @@ export default function CouponsScreen() {
     queryKey: ['availableCoupons'],
     queryFn: async () => {
       const response = await couponService.getAvailableCoupons();
-      // Handle different response formats
-      if (Array.isArray(response)) return response;
-      if (response && typeof response === 'object') {
-        return (response as any).coupons || (response as any).data || [];
+      // Handle different response formats and map to frontend interface
+      let rawCoupons: any[] = [];
+      if (Array.isArray(response)) {
+        rawCoupons = response;
+      } else if (response && typeof response === 'object') {
+        rawCoupons = (response as any).coupons || (response as any).data || [];
       }
-      return [];
+      return rawCoupons.map(mapBackendCoupon);
     },
   });
 
@@ -109,8 +139,110 @@ export default function CouponsScreen() {
   const renderCoupon = ({ item }: { item: Coupon }) => {
     const expired = isExpired(item.endDate);
     const notStarted = isNotStarted(item.startDate);
-    const typeColor = typeColors[item.type] || typeColors.general;
+    const badgeColor = sourceColors[item.source || 'admin'] || sourceColors.admin;
+    const isBirthday = item.source === 'birthday';
 
+    // Special birthday coupon card
+    if (isBirthday && !expired && !notStarted) {
+      return (
+        <TouchableOpacity
+          style={styles.birthdayCard}
+          onPress={() => copyCode(item.code)}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={['#EC4899', '#F472B6', '#FB7185']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.birthdayGradient}
+          >
+            {/* Confetti decorations */}
+            <View style={styles.confettiContainer}>
+              <Text style={[styles.confetti, { top: 10, left: 15 }]}>🎉</Text>
+              <Text style={[styles.confetti, { top: 5, right: 20 }]}>🎂</Text>
+              <Text style={[styles.confetti, { bottom: 50, left: 25 }]}>🎁</Text>
+              <Text style={[styles.confetti, { bottom: 15, right: 15 }]}>🎈</Text>
+              <Text style={[styles.confetti, { top: 40, right: 50 }]}>✨</Text>
+              <Text style={[styles.confetti, { bottom: 80, left: 50 }]}>🎊</Text>
+            </View>
+
+            {/* Content */}
+            <View style={styles.birthdayContent}>
+              {/* Birthday badge */}
+              <View style={styles.birthdayBadge}>
+                <Text style={styles.birthdayBadgeEmoji}>🎂</Text>
+                <Text style={styles.birthdayBadgeText}>BIRTHDAY SPECIAL</Text>
+              </View>
+
+              {/* Main title */}
+              <Text style={styles.birthdayTitle}>Happy Birthday! 🥳</Text>
+
+              {/* Discount */}
+              <View style={styles.birthdayDiscountContainer}>
+                <Text style={styles.birthdayDiscount}>
+                  {item.discountType === 'percentage'
+                    ? `${item.discountValue}%`
+                    : formatCurrency(item.discountValue)}
+                </Text>
+                <Text style={styles.birthdayDiscountLabel}>OFF</Text>
+              </View>
+
+              {/* Description */}
+              {item.description && (
+                <Text style={styles.birthdayDescription}>{item.description}</Text>
+              )}
+
+              {/* Conditions */}
+              <View style={styles.birthdayConditions}>
+                {item.minimumOrderAmount && item.minimumOrderAmount > 0 && (
+                  <View style={styles.birthdayConditionItem}>
+                    <Ionicons name="cart-outline" size={14} color="rgba(255,255,255,0.9)" />
+                    <Text style={styles.birthdayConditionText}>
+                      Min. {formatCurrency(item.minimumOrderAmount)}
+                    </Text>
+                  </View>
+                )}
+                {item.maximumDiscount && (
+                  <View style={styles.birthdayConditionItem}>
+                    <Ionicons name="pricetag-outline" size={14} color="rgba(255,255,255,0.9)" />
+                    <Text style={styles.birthdayConditionText}>
+                      Max {formatCurrency(item.maximumDiscount)}
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Validity */}
+              {item.endDate && (
+                <View style={styles.birthdayValidityRow}>
+                  <Ionicons name="time-outline" size={14} color="rgba(255,255,255,0.8)" />
+                  <Text style={styles.birthdayValidityText}>
+                    Valid until {formatDate(item.endDate)}
+                  </Text>
+                </View>
+              )}
+
+              {/* Code section */}
+              <View style={styles.birthdayCodeSection}>
+                <View style={styles.birthdayCodeBox}>
+                  <Text style={styles.birthdayCodeLabel}>YOUR CODE</Text>
+                  <Text style={styles.birthdayCodeText}>{item.code}</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.birthdayCopyButton}
+                  onPress={() => copyCode(item.code)}
+                >
+                  <Ionicons name="copy" size={18} color="#EC4899" />
+                  <Text style={styles.birthdayCopyText}>Copy</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+      );
+    }
+
+    // Regular coupon card
     return (
       <TouchableOpacity
         style={[
@@ -123,14 +255,14 @@ export default function CouponsScreen() {
         disabled={expired || notStarted}
       >
         {/* Left accent */}
-        <View style={[styles.couponAccent, { backgroundColor: typeColor }]} />
+        <View style={[styles.couponAccent, { backgroundColor: badgeColor }]} />
 
         {/* Content */}
         <View style={styles.couponContent}>
           {/* Type badge */}
-          <View style={[styles.typeBadge, { backgroundColor: typeColor + '20' }]}>
-            <Text style={[styles.typeBadgeText, { color: typeColor }]}>
-              {typeLabels[item.type]}
+          <View style={[styles.typeBadge, { backgroundColor: badgeColor + '20' }]}>
+            <Text style={[styles.typeBadgeText, { color: badgeColor }]}>
+              {sourceLabels[item.source || 'admin'] || 'General'}
             </Text>
           </View>
 
@@ -182,7 +314,7 @@ export default function CouponsScreen() {
               <Text style={[styles.codeText, { color: colors.text }]}>{item.code}</Text>
             </View>
             <TouchableOpacity
-              style={[styles.copyButton, { backgroundColor: typeColor }]}
+              style={[styles.copyButton, { backgroundColor: badgeColor }]}
               onPress={() => copyCode(item.code)}
             >
               <Ionicons name="copy-outline" size={16} color="#FFFFFF" />
@@ -406,5 +538,170 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.lg,
     fontFamily: FONTS.bold,
     letterSpacing: 2,
+  },
+  // Birthday card styles
+  birthdayCard: {
+    borderRadius: 16,
+    marginBottom: SPACING.md,
+    overflow: 'hidden',
+    shadowColor: '#EC4899',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  birthdayGradient: {
+    padding: 20,
+    minHeight: 280,
+    width: '100%',
+  },
+  confettiContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  confetti: {
+    position: 'absolute',
+    fontSize: 24,
+    opacity: 0.6,
+  },
+  birthdayContent: {
+    alignItems: 'center',
+    zIndex: 1,
+    width: '100%',
+  },
+  birthdayBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+    marginBottom: 12,
+  },
+  birthdayBadgeEmoji: {
+    fontSize: 16,
+  },
+  birthdayBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontFamily: FONTS.bold,
+    letterSpacing: 1.5,
+  },
+  birthdayTitle: {
+    color: '#FFFFFF',
+    fontSize: 26,
+    fontFamily: FONTS.bold,
+    marginBottom: 8,
+    textShadowColor: 'rgba(0,0,0,0.2)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  birthdayDiscountContainer: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: 8,
+  },
+  birthdayDiscount: {
+    color: '#FFFFFF',
+    fontSize: 48,
+    fontFamily: FONTS.bold,
+    textShadowColor: 'rgba(0,0,0,0.2)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  birthdayDiscountLabel: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontFamily: FONTS.bold,
+    marginLeft: 6,
+    opacity: 0.9,
+  },
+  birthdayDescription: {
+    color: 'rgba(255,255,255,0.95)',
+    fontSize: 14,
+    fontFamily: FONTS.medium,
+    textAlign: 'center',
+    marginBottom: 12,
+    paddingHorizontal: 20,
+  },
+  birthdayConditions: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 8,
+  },
+  birthdayConditionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  birthdayConditionText: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 12,
+    fontFamily: FONTS.medium,
+  },
+  birthdayValidityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 16,
+  },
+  birthdayValidityText: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 12,
+    fontFamily: FONTS.regular,
+  },
+  birthdayCodeSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    width: '100%',
+  },
+  birthdayCodeBox: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
+    borderStyle: 'dashed',
+  },
+  birthdayCodeLabel: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 10,
+    fontFamily: FONTS.semiBold,
+    letterSpacing: 1,
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  birthdayCodeText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontFamily: FONTS.bold,
+    letterSpacing: 2,
+    textAlign: 'center',
+  },
+  birthdayCopyButton: {
+    backgroundColor: '#FFFFFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  birthdayCopyText: {
+    color: '#EC4899',
+    fontSize: 14,
+    fontFamily: FONTS.bold,
   },
 });

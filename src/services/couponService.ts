@@ -20,6 +20,7 @@ export interface Coupon {
   applicableCategories?: string[];
   applicableProductIds?: string[];
   excludedProductIds?: string[];
+  source?: 'admin' | 'referral' | 'birthday' | 'loyalty' | 'welcome' | 'flash_sale' | 'promo' | 'milestone';
 }
 
 export interface CouponValidationResult {
@@ -43,10 +44,39 @@ export interface ValidateCouponRequest {
   cartItems: CartItem[];
 }
 
+// Helper to map backend response to frontend Coupon interface
+const mapBackendCoupon = (coupon: any): Coupon => ({
+  id: coupon.id,
+  code: coupon.code,
+  name: coupon.name || 'Coupon',
+  description: coupon.description,
+  type: coupon.type === 'percentage' ? 'percentage' : coupon.type === 'free_delivery' ? 'free_delivery' : 'fixed_amount',
+  value: parseFloat(coupon.value) || 0,
+  minOrderAmount: parseFloat(coupon.minOrderAmount) || undefined,
+  maxDiscountAmount: parseFloat(coupon.maxDiscountAmount) || undefined,
+  startDate: coupon.startDate,
+  endDate: coupon.endDate,
+  usageLimit: coupon.usageLimit,
+  usageLimitPerUser: coupon.usageLimitPerUser,
+  usedCount: coupon.usageCount || 0,
+  status: coupon.status || 'active',
+  firstOrderOnly: coupon.firstOrderOnly,
+  newUsersOnly: coupon.newUsersOnly,
+  applicableCategories: coupon.applicableCategories,
+  applicableProductIds: coupon.applicableProductIds,
+  excludedProductIds: coupon.excludedProductIds,
+  source: coupon.source || 'admin',
+});
+
 class CouponService {
   // Get available coupons for current user
   async getAvailableCoupons(): Promise<Coupon[]> {
-    return apiClient.get<Coupon[]>('/coupons/available');
+    const response = await apiClient.get<any[]>('/coupons/available');
+    // Map backend response to frontend interface
+    if (Array.isArray(response)) {
+      return response.map(mapBackendCoupon);
+    }
+    return [];
   }
 
   // Validate a coupon code
