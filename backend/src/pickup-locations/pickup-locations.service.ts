@@ -124,13 +124,23 @@ export class PickupLocationsService {
     // Standard query with pagination
     const queryBuilder = this.pickupLocationRepository.createQueryBuilder('pl');
     
-    queryBuilder.where(where);
+    // Only apply where conditions if there are any
+    if (Object.keys(where).length > 0) {
+      queryBuilder.where(where);
+    }
 
     if (search) {
-      queryBuilder.andWhere(
-        '(pl.name ILIKE :search OR pl.address ILIKE :search OR pl.city ILIKE :search)',
-        { search: `%${search}%` },
-      );
+      if (Object.keys(where).length > 0) {
+        queryBuilder.andWhere(
+          '(pl.name ILIKE :search OR pl.address ILIKE :search OR pl.city ILIKE :search)',
+          { search: `%${search}%` },
+        );
+      } else {
+        queryBuilder.where(
+          '(pl.name ILIKE :search OR pl.address ILIKE :search OR pl.city ILIKE :search)',
+          { search: `%${search}%` },
+        );
+      }
     }
 
     queryBuilder
