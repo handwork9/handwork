@@ -150,3 +150,4 @@ The admin panel connects to the Handwork backend API. Ensure the backend is runn
 ## License
 
 Copyright © 2024 Handwork. All rights reserved.
+Deployment trigger
