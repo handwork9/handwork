@@ -30,10 +30,7 @@ export class GroupBuyingController {
   // Get discount tiers info (public)
   @Get('tiers')
   getTiers() {
-    return {
-      success: true,
-      data: GROUP_BUY_TIERS,
-    };
+    return GROUP_BUY_TIERS;
   }
 
   // Create a new group buy (auth required)
@@ -47,12 +44,7 @@ export class GroupBuyingController {
       throw new BadRequestException('User ID not found in request');
     }
     
-    const groupBuy = await this.groupBuyingService.create(userId, dto);
-    return {
-      success: true,
-      message: 'Group buy created successfully',
-      data: groupBuy,
-    };
+    return this.groupBuyingService.create(userId, dto);
   }
 
   // Get all active group buys (public)
@@ -60,8 +52,7 @@ export class GroupBuyingController {
   async findAll(@Query() query: QueryGroupBuysDto) {
     const result = await this.groupBuyingService.findAll(query);
     return {
-      success: true,
-      data: result.groupBuys,
+      groupBuys: result.groupBuys,
       total: result.total,
     };
   }
@@ -70,31 +61,19 @@ export class GroupBuyingController {
   @UseGuards(JwtAuthGuard)
   @Get('my')
   async getMyGroupBuys(@Request() req: AuthenticatedRequest) {
-    const result = await this.groupBuyingService.getMyGroupBuys(req.user.id);
-    return {
-      success: true,
-      data: result,
-    };
+    return this.groupBuyingService.getMyGroupBuys(req.user.id);
   }
 
   // Get group buy by share code (public)
   @Get('code/:shareCode')
   async findByShareCode(@Param('shareCode') shareCode: string) {
-    const groupBuy = await this.groupBuyingService.findByShareCode(shareCode);
-    return {
-      success: true,
-      data: groupBuy,
-    };
+    return this.groupBuyingService.findByShareCode(shareCode);
   }
 
   // Get single group buy (public)
   @Get(':id')
   async findOne(@Param('id') id: string) {
-    const groupBuy = await this.groupBuyingService.findOne(id);
-    return {
-      success: true,
-      data: groupBuy,
-    };
+    return this.groupBuyingService.findOne(id);
   }
 
   // Update group buy (organizer only) - auth required
@@ -105,12 +84,7 @@ export class GroupBuyingController {
     @Request() req: AuthenticatedRequest,
     @Body() dto: UpdateGroupBuyDto,
   ) {
-    const groupBuy = await this.groupBuyingService.update(id, req.user.id, dto);
-    return {
-      success: true,
-      message: 'Group buy updated successfully',
-      data: groupBuy,
-    };
+    return this.groupBuyingService.update(id, req.user.id, dto);
   }
 
   // Join a group buy - auth required
@@ -121,12 +95,7 @@ export class GroupBuyingController {
     @Request() req: AuthenticatedRequest,
     @Body() dto: JoinGroupBuyDto,
   ) {
-    const participant = await this.groupBuyingService.join(id, req.user.id, dto);
-    return {
-      success: true,
-      message: 'Successfully joined the group buy',
-      data: participant,
-    };
+    return this.groupBuyingService.join(id, req.user.id, dto);
   }
 
   // Leave a group buy - auth required
@@ -134,10 +103,7 @@ export class GroupBuyingController {
   @Delete(':id/leave')
   async leave(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     await this.groupBuyingService.leave(id, req.user.id);
-    return {
-      success: true,
-      message: 'Successfully left the group buy',
-    };
+    return { message: 'Successfully left the group buy' };
   }
 
   // Pay for group buy - auth required
@@ -148,33 +114,19 @@ export class GroupBuyingController {
     @Request() req: AuthenticatedRequest,
     @Body() dto: PayGroupBuyDto,
   ) {
-    const participant = await this.groupBuyingService.pay(id, req.user.id, dto);
-    return {
-      success: true,
-      message: 'Payment successful',
-      data: participant,
-    };
+    return this.groupBuyingService.pay(id, req.user.id, dto);
   }
 
   // Cancel group buy (organizer only) - auth required
   @UseGuards(JwtAuthGuard)
   @Delete(':id')
   async cancel(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
-    const groupBuy = await this.groupBuyingService.cancel(id, req.user.id);
-    return {
-      success: true,
-      message: 'Group buy cancelled and refunds processed',
-      data: groupBuy,
-    };
+    return this.groupBuyingService.cancel(id, req.user.id);
   }
 
   // Get participants of a group buy (public)
   @Get(':id/participants')
   async getParticipants(@Param('id') id: string) {
-    const participants = await this.groupBuyingService.getParticipants(id);
-    return {
-      success: true,
-      data: participants,
-    };
+    return this.groupBuyingService.getParticipants(id);
   }
 }

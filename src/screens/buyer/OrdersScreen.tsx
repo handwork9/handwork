@@ -345,18 +345,22 @@ const OrdersScreen: React.FC = () => {
           <View style={styles.statsRow}>
             <View style={[styles.smallStatCard, dynamicStyles.smallStatCard]}>
               <View style={[styles.smallStatIcon, { backgroundColor: '#3B82F6' }]}>
-                <Ionicons name="sync" size={16} color="#fff" />
+                <Ionicons name="sync" size={14} color="#fff" />
               </View>
-              <Text style={[styles.smallStatNumber, { color: '#3B82F6' }]}>{stats.active}</Text>
-              <Text style={[styles.smallStatLabel, dynamicStyles.smallStatLabel]}>Active</Text>
+              <View style={styles.smallStatContent}>
+                <Text style={[styles.smallStatLabel, dynamicStyles.smallStatLabel]}>Active</Text>
+                <Text style={[styles.smallStatNumber, { color: '#3B82F6' }]}>{stats.active}</Text>
+              </View>
             </View>
 
             <View style={[styles.smallStatCard, dynamicStyles.smallStatCardGreen]}>
               <View style={[styles.smallStatIcon, { backgroundColor: '#22C55E' }]}>
-                <Ionicons name="checkmark-done" size={16} color="#fff" />
+                <Ionicons name="checkmark-done" size={14} color="#fff" />
               </View>
-              <Text style={[styles.smallStatNumber, { color: '#22C55E' }]}>{stats.delivered}</Text>
-              <Text style={[styles.smallStatLabel, dynamicStyles.smallStatLabel]}>Delivered</Text>
+              <View style={styles.smallStatContent}>
+                <Text style={[styles.smallStatLabel, dynamicStyles.smallStatLabel]}>Delivered</Text>
+                <Text style={[styles.smallStatNumber, { color: '#22C55E' }]}>{stats.delivered}</Text>
+              </View>
             </View>
           </View>
         </View>
@@ -673,7 +677,7 @@ const OrdersScreen: React.FC = () => {
       </Text>
       <TouchableOpacity
         style={styles.shopButton}
-        onPress={() => navigation.navigate('BuyerTabs')}
+        onPress={() => navigation.navigate('Home')}
       >
         <LinearGradient
           colors={['#22C55E', '#16A34A']}
@@ -860,52 +864,63 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 16,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   statIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.25)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
   },
   statNumber: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '800',
     color: '#fff',
   },
   statLabel: {
-    fontSize: 13,
+    fontSize: 12,
     color: 'rgba(255,255,255,0.9)',
     marginTop: 2,
   },
   statsRow: {
     flex: 1,
-    gap: 12,
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    gap: 6,
   },
   smallStatCard: {
     flex: 1,
-    padding: 12,
-    borderRadius: 12,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
   },
   smallStatIcon: {
     width: 28,
     height: 28,
-    borderRadius: 14,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
+    marginRight: 10,
+  },
+  smallStatContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   smallStatNumber: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '700',
   },
   smallStatLabel: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#6B7280',
+    fontWeight: '500',
   },
   liveIndicator: {
     flexDirection: 'row',

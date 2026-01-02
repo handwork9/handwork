@@ -1115,9 +1115,9 @@ export default function CheckoutScreen({ navigation }: Props) {
             {items.reduce((sum, i) => sum + i.quantity, 0)} items • ₦{total.toLocaleString()}
           </Text>
         </View>
-        <TouchableOpacity style={styles.headerSecureIcon}>
-          <Ionicons name="shield-checkmark" size={20} color={colors.primary} />
-        </TouchableOpacity>
+        <View style={[styles.headerSecureIcon, { backgroundColor: isDark ? 'rgba(0, 122, 255, 0.2)' : 'rgba(0, 122, 255, 0.1)' }]}>
+          <Ionicons name="shield-checkmark" size={18} color={colors.primary} />
+        </View>
       </View>
 
       <ScrollView 
@@ -1233,7 +1233,8 @@ export default function CheckoutScreen({ navigation }: Props) {
                     value={giftRecipientName}
                     onChangeText={setGiftRecipientName}
                     style={[styles.giftInput, { color: colors.text }]}
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={isDark ? 'rgba(255, 255, 255, 0.4)' : colors.textSecondary}
+                    keyboardAppearance={isDark ? 'dark' : 'light'}
                   />
                 </View>
               </View>
@@ -1248,7 +1249,8 @@ export default function CheckoutScreen({ navigation }: Props) {
                     onChangeText={setGiftRecipientPhone}
                     keyboardType="phone-pad"
                     style={[styles.giftInput, { color: colors.text }]}
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={isDark ? 'rgba(255, 255, 255, 0.4)' : colors.textSecondary}
+                    keyboardAppearance={isDark ? 'dark' : 'light'}
                   />
                 </View>
               </View>
@@ -1264,7 +1266,8 @@ export default function CheckoutScreen({ navigation }: Props) {
                     multiline
                     numberOfLines={3}
                     style={[styles.giftMessageInput, { color: colors.text }]}
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={isDark ? 'rgba(255, 255, 255, 0.4)' : colors.textSecondary}
+                    keyboardAppearance={isDark ? 'dark' : 'light'}
                     textAlignVertical="top"
                   />
                 </View>
@@ -1288,8 +1291,13 @@ export default function CheckoutScreen({ navigation }: Props) {
                   key={option.type}
                   style={[
                     styles.deliveryOption,
-                    { backgroundColor: isDark ? colors.card : '#FFFFFF' },
-                    isSelected && { borderColor: colors.primary, borderWidth: 2 },
+                    { 
+                      backgroundColor: isDark ? colors.card : '#FFFFFF',
+                      borderColor: isSelected 
+                        ? colors.primary 
+                        : (isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.08)'),
+                    },
+                    isSelected && { borderWidth: 2 },
                   ]}
                   onPress={() => setDeliveryType(option.type)}
                   activeOpacity={0.7}
@@ -1782,7 +1790,8 @@ export default function CheckoutScreen({ navigation }: Props) {
                       value={payForMeName}
                       onChangeText={setPayForMeName}
                       style={[styles.payForMeInput, { color: colors.text }]}
-                      placeholderTextColor={colors.textSecondary}
+                      placeholderTextColor={isDark ? 'rgba(255, 255, 255, 0.4)' : colors.textSecondary}
+                      keyboardAppearance={isDark ? 'dark' : 'light'}
                     />
                   </View>
                 </View>
@@ -1798,7 +1807,8 @@ export default function CheckoutScreen({ navigation }: Props) {
                       keyboardType="email-address"
                       autoCapitalize="none"
                       style={[styles.payForMeInput, { color: colors.text }]}
-                      placeholderTextColor={colors.textSecondary}
+                      placeholderTextColor={isDark ? 'rgba(255, 255, 255, 0.4)' : colors.textSecondary}
+                      keyboardAppearance={isDark ? 'dark' : 'light'}
                     />
                   </View>
                 </View>
@@ -1813,7 +1823,8 @@ export default function CheckoutScreen({ navigation }: Props) {
                       onChangeText={setPayForMePhone}
                       keyboardType="phone-pad"
                       style={[styles.payForMeInput, { color: colors.text }]}
-                      placeholderTextColor={colors.textSecondary}
+                      placeholderTextColor={isDark ? 'rgba(255, 255, 255, 0.4)' : colors.textSecondary}
+                      keyboardAppearance={isDark ? 'dark' : 'light'}
                     />
                   </View>
                 </View>
@@ -2254,6 +2265,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  headerSecureIcon: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    borderRadius: 20,
+  },
   placeholder: {
     width: 40,
   },
@@ -2333,8 +2352,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.08)',
   },
   deliveryIconContainer: {
     width: 44,

@@ -139,6 +139,7 @@ export const groupBuyingService = {
   // Get discount tiers
   async getTiers(): Promise<GroupBuyTier[]> {
     const response = await apiClient.get<any>('/group-buying/tiers');
+    // Response is { success: true, data: tiers[] }
     return unwrap<GroupBuyTier[]>(response);
   },
 
@@ -151,21 +152,22 @@ export const groupBuyingService = {
   // Get all active group buys
   async getAll(params?: QueryGroupBuysParams): Promise<{ groupBuys: GroupBuy[]; total: number }> {
     const response = await apiClient.get<any>('/group-buying', { params });
-    // Backend returns { success, data, total } where data is the array of group buys
-    if (response && response.success !== undefined) {
-      // Response is wrapped - extract data and total
-      const data = response.data;
-      const total = response.total ?? 0;
-      return { groupBuys: Array.isArray(data) ? data : [], total };
-    }
-    // Response is already unwrapped
-    return { groupBuys: Array.isArray(response) ? response : [], total: 0 };
+    // Response is { success: true, data: { groupBuys: [...], total: number } }
+    const unwrapped = unwrap<{ groupBuys: GroupBuy[]; total: number }>(response);
+    return {
+      groupBuys: Array.isArray(unwrapped?.groupBuys) ? unwrapped.groupBuys : [],
+      total: unwrapped?.total ?? 0,
+    };
   },
 
   // Get my group buys
   async getMyGroupBuys(): Promise<{ organized: GroupBuy[]; joined: GroupBuy[] }> {
     const response = await apiClient.get<any>('/group-buying/my');
-    return unwrap<{ organized: GroupBuy[]; joined: GroupBuy[] }>(response);
+    const unwrapped = unwrap<{ organized: GroupBuy[]; joined: GroupBuy[] }>(response);
+    return {
+      organized: Array.isArray(unwrapped?.organized) ? unwrapped.organized : [],
+      joined: Array.isArray(unwrapped?.joined) ? unwrapped.joined : [],
+    };
   },
 
   // Get group buy by ID

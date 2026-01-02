@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import couponService, { Coupon, CouponValidationResult, CartItem } from '../../services/couponService';
+import { useTheme } from '../../context/ThemeContext';
 
 interface CouponInputProps {
   subtotal: number;
@@ -29,6 +30,7 @@ const CouponInput: React.FC<CouponInputProps> = ({
   onRemoveCoupon,
   appliedCoupon,
 }) => {
+  const { colors, isDark } = useTheme();
   const [couponCode, setCouponCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -116,7 +118,10 @@ const CouponInput: React.FC<CouponInputProps> = ({
 
     return (
       <TouchableOpacity
-        style={styles.couponItem}
+        style={[styles.couponItem, { 
+          backgroundColor: isDark ? colors.surface : '#F9FAFB',
+          borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : '#E5E7EB'
+        }]}
         onPress={() => handleSelectCoupon(item)}
       >
         <View style={styles.couponLeft}>
@@ -133,18 +138,18 @@ const CouponInput: React.FC<CouponInputProps> = ({
           )}
         </View>
         <View style={styles.couponRight}>
-          <Text style={styles.couponName}>{item.name}</Text>
+          <Text style={[styles.couponName, { color: colors.text }]}>{item.name}</Text>
           {item.description && (
-            <Text style={styles.couponDescription} numberOfLines={2}>
+            <Text style={[styles.couponDescription, { color: colors.textSecondary }]} numberOfLines={2}>
               {item.description}
             </Text>
           )}
           {item.minOrderAmount && (
-            <Text style={styles.couponCondition}>
+            <Text style={[styles.couponCondition, { color: isDark ? colors.textSecondary : '#9CA3AF' }]}>
               Min. order: ₦{item.minOrderAmount.toLocaleString()}
             </Text>
           )}
-          <Text style={styles.couponExpiry}>
+          <Text style={[styles.couponExpiry, { color: colors.textSecondary }]}>
             {couponService.formatExpiryDate(item)}
           </Text>
           {subtotal >= (item.minOrderAmount || 0) && (
@@ -153,7 +158,7 @@ const CouponInput: React.FC<CouponInputProps> = ({
             </Text>
           )}
         </View>
-        <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+        <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
       </TouchableOpacity>
     );
   };
@@ -162,13 +167,15 @@ const CouponInput: React.FC<CouponInputProps> = ({
     const discount = couponService.calculateDiscount(appliedCoupon, subtotal, deliveryFee);
     
     return (
-      <View style={styles.appliedContainer}>
+      <View style={[styles.appliedContainer, { 
+        backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : '#ECFDF5'
+      }]}>
         <View style={styles.appliedInfo}>
           <View style={styles.appliedHeader}>
             <Ionicons name="pricetag" size={20} color="#10B981" />
-            <Text style={styles.appliedCode}>{appliedCoupon.code}</Text>
+            <Text style={[styles.appliedCode, { color: isDark ? '#34D399' : '#065F46' }]}>{appliedCoupon.code}</Text>
           </View>
-          <Text style={styles.appliedDiscount}>
+          <Text style={[styles.appliedDiscount, { color: isDark ? '#34D399' : '#059669' }]}>
             -{couponService.formatCouponValue(appliedCoupon)} (₦{discount.discountAmount.toLocaleString()})
           </Text>
         </View>
@@ -183,13 +190,19 @@ const CouponInput: React.FC<CouponInputProps> = ({
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.inputContainer}>
-        <Ionicons name="pricetag-outline" size={20} color="#6B7280" style={styles.inputIcon} />
+    <View style={[styles.container, { 
+      backgroundColor: isDark ? colors.card : '#fff',
+      shadowColor: isDark ? '#000' : '#000',
+    }]}>
+      <View style={[styles.inputContainer, { 
+        backgroundColor: isDark ? colors.surface : '#F9FAFB',
+        borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : '#E5E7EB'
+      }]}>
+        <Ionicons name="pricetag-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
         <TextInput
-          style={styles.input}
+          style={[styles.input, { color: colors.text }]}
           placeholder="Enter coupon code"
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor={isDark ? 'rgba(255, 255, 255, 0.4)' : '#9CA3AF'}
           value={couponCode}
           onChangeText={(text) => {
             setCouponCode(text.toUpperCase());
@@ -197,6 +210,7 @@ const CouponInput: React.FC<CouponInputProps> = ({
           }}
           autoCapitalize="characters"
           editable={!loading}
+          keyboardAppearance={isDark ? 'dark' : 'light'}
         />
         <TouchableOpacity
           style={[styles.applyButton, !couponCode.trim() && styles.applyButtonDisabled]}
@@ -222,9 +236,9 @@ const CouponInput: React.FC<CouponInputProps> = ({
         style={styles.viewCouponsButton}
         onPress={handleShowCoupons}
       >
-        <Ionicons name="gift-outline" size={18} color="#4F46E5" />
-        <Text style={styles.viewCouponsText}>View available coupons</Text>
-        <Ionicons name="chevron-forward" size={18} color="#4F46E5" />
+        <Ionicons name="gift-outline" size={18} color={colors.primary} />
+        <Text style={[styles.viewCouponsText, { color: colors.primary }]}>View available coupons</Text>
+        <Ionicons name="chevron-forward" size={18} color={colors.primary} />
       </TouchableOpacity>
 
       <Modal
@@ -233,27 +247,27 @@ const CouponInput: React.FC<CouponInputProps> = ({
         presentationStyle="pageSheet"
         onRequestClose={() => setShowAvailableCoupons(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Available Coupons</Text>
+        <View style={[styles.modalContainer, { backgroundColor: isDark ? colors.background : '#fff' }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#E5E7EB' }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Available Coupons</Text>
             <TouchableOpacity
               onPress={() => setShowAvailableCoupons(false)}
               style={styles.closeButton}
             >
-              <Ionicons name="close" size={24} color="#374151" />
+              <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
           </View>
 
           {loadingCoupons ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#4F46E5" />
-              <Text style={styles.loadingText}>Loading coupons...</Text>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading coupons...</Text>
             </View>
           ) : availableCoupons.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Ionicons name="pricetag-outline" size={64} color="#D1D5DB" />
-              <Text style={styles.emptyTitle}>No coupons available</Text>
-              <Text style={styles.emptyText}>
+              <Ionicons name="pricetag-outline" size={64} color={isDark ? colors.textSecondary : '#D1D5DB'} />
+              <Text style={[styles.emptyTitle, { color: colors.text }]}>No coupons available</Text>
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
                 Check back later for special offers and discounts!
               </Text>
             </View>

@@ -52,8 +52,8 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
           style={[
             styles.inputContainer,
             { 
-              backgroundColor: isDark ? colors.card : COLORS.surface,
-              borderColor: isDark ? 'rgba(60, 60, 67, 0.29)' : COLORS.border,
+              backgroundColor: isDark ? colors.surface : COLORS.surface,
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : COLORS.border,
             },
             hasError && styles.inputError,
             disabled && [styles.inputDisabled, { backgroundColor: isDark ? 'rgba(60, 60, 67, 0.12)' : COLORS.grayLight }],
@@ -69,10 +69,11 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
               rightIcon ? styles.inputWithRightIcon : undefined,
               style,
             ]}
-            placeholderTextColor={colors.textSecondary}
+            placeholderTextColor={isDark ? 'rgba(255, 255, 255, 0.4)' : colors.textSecondary}
             editable={!disabled}
             accessibilityLabel={label}
             accessibilityHint={helper}
+            keyboardAppearance={isDark ? 'dark' : 'light'}
             {...props}
           />
           {rightIcon && (
