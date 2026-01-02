@@ -1,9 +1,9 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, MoreThanOrEqual, LessThanOrEqual, IsNull, Or } from 'typeorm';
+import { Repository, MoreThanOrEqual, In } from 'typeorm';
 import { DeliverySlot } from './entities/delivery-slot.entity';
 import { ScheduledDelivery } from './entities/scheduled-delivery.entity';
-import { Order } from '../orders/entities/order.entity';
+import { Order } from '../database/entities/order.entity';
 import { ScheduleDeliveryDto, UpdateScheduledDeliveryDto } from './dto/delivery-scheduling.dto';
 
 @Injectable()
@@ -21,7 +21,7 @@ export class DeliverySchedulingService {
    * Get available delivery slots for a specific date
    */
   async getAvailableSlots(date: string, state?: string, city?: string) {
-    const dayOfWeek = new Date(date).toLocaleDateString('en-US', { weekday: 'lowercase' });
+    const dayOfWeek = new Date(date).toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
     
     // Get all active slots
     const slots = await this.deliverySlotRepository.find({
@@ -55,7 +55,7 @@ export class DeliverySchedulingService {
           where: {
             slotId: slot.id,
             scheduledDate: new Date(date),
-            status: Or('pending', 'confirmed'),
+            status: In(['pending', 'confirmed']),
           },
         });
 
@@ -104,7 +104,7 @@ export class DeliverySchedulingService {
       where: {
         slotId: dto.slotId,
         scheduledDate: new Date(dto.scheduledDate),
-        status: Or('pending', 'confirmed'),
+        status: In(['pending', 'confirmed']),
       },
     });
 
@@ -263,7 +263,7 @@ export class DeliverySchedulingService {
       where: {
         order: { buyerId: userId },
         scheduledDate: MoreThanOrEqual(today),
-        status: Or('pending', 'confirmed'),
+        status: In(['pending', 'confirmed']),
       },
       relations: ['order', 'slot'],
       order: { scheduledDate: 'ASC' },

@@ -8,7 +8,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { DeliverySlot } from './delivery-slot.entity';
-import { Order } from '../../orders/entities/order.entity';
+import { Order } from '../../database/entities/order.entity';
 
 @Entity('scheduled_deliveries')
 export class ScheduledDelivery {
