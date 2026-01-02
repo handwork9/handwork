@@ -145,8 +145,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           icon: <FileTextOutlined />,
           label: 'Content Moderation',
         },
-          label: 'Disputes',
-        },
       ],
     },
     {
