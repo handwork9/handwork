@@ -5,7 +5,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThanOrEqual, In, DataSource } from 'typeorm';
+import { Repository, LessThanOrEqual, In, DataSource, MoreThan } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import {
   SubscriptionBox,
@@ -824,11 +824,30 @@ export class SubscriptionBoxesService {
    * Get subscription stats (admin)
    */
   async getStats() {
-    const [active, paused, cancelled, total] = await Promise.all([
+    const today = new Date();
+    const nextWeek = new Date(today);
+    nextWeek.setDate(today.getDate() + 7);
+
+    const [active, paused, cancelled, total, failedPayments, upcomingRenewals] = await Promise.all([
       this.subscriptionRepository.count({ where: { status: SubscriptionBoxStatus.ACTIVE } }),
       this.subscriptionRepository.count({ where: { status: SubscriptionBoxStatus.PAUSED } }),
       this.subscriptionRepository.count({ where: { status: SubscriptionBoxStatus.CANCELLED } }),
       this.subscriptionRepository.count(),
+      // Count subscriptions with failed payment attempts
+      this.subscriptionRepository.count({
+        where: {
+          status: SubscriptionBoxStatus.ACTIVE,
+          failedPaymentAttempts: MoreThan(0),
+        },
+      }),
+      // Count upcoming renewals in next 7 days
+      this.subscriptionRepository.count({
+        where: {
+          status: SubscriptionBoxStatus.ACTIVE,
+          autoRenew: true,
+          nextDeliveryDate: LessThanOrEqual(nextWeek),
+        },
+      }),
     ]);
 
     // Calculate revenue
@@ -845,12 +864,54 @@ export class SubscriptionBoxesService {
       return sum + sub.price * multiplier;
     }, 0);
 
+    // Get subscriptions at risk (1-2 failed attempts)
+    const atRiskSubscriptions = await this.subscriptionRepository.find({
+      where: {
+        status: SubscriptionBoxStatus.ACTIVE,
+        failedPaymentAttempts: MoreThan(0),
+      },
+      relations: ['user'],
+      select: {
+        id: true,
+        size: true,
+        type: true,
+        price: true,
+        failedPaymentAttempts: true,
+        nextDeliveryDate: true,
+        user: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          phone: true,
+          walletBalance: true,
+        },
+      },
+    });
+
     return {
       total,
       active,
       paused,
       cancelled,
+      failedPayments,
+      upcomingRenewals,
       estimatedMonthlyRevenue: monthlyRevenue,
+      atRiskSubscriptions: atRiskSubscriptions.map(sub => ({
+        id: sub.id,
+        size: sub.size,
+        type: sub.type,
+        price: sub.price,
+        failedAttempts: sub.failedPaymentAttempts,
+        nextDeliveryDate: sub.nextDeliveryDate,
+        user: sub.user ? {
+          id: sub.user.id,
+          name: `${sub.user.firstName} ${sub.user.lastName}`,
+          email: sub.user.email,
+          phone: sub.user.phone,
+          walletBalance: sub.user.walletBalance,
+        } : null,
+      })),
     };
   }
 
