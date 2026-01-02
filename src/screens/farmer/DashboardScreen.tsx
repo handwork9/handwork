@@ -36,6 +36,7 @@ import { useFarmerSocket, useNewOrderNotifications } from '../../hooks/useFarmer
 import { fetchDashboardStats, setEarnings } from '../../store/slices/farmerSlice';
 import { API_CONFIG } from '../../constants/config';
 import LiveSupportBanner from '../../components/common/LiveSupportBanner';
+import { triggerHaptic } from '../../utils/haptics';
 import {
   PendingOrdersIllustration,
   ProcessingOrdersIllustration,
@@ -228,9 +229,29 @@ export default function DashboardScreen() {
   const { t } = useTranslation();
   const [refreshing, setRefreshing] = useState(false);
   const { user } = useAppSelector((state) => state.auth);
+  const defaultAddress = useAppSelector((state) => state.address.addresses.find(a => a.isDefault));
   const { dashboardStats, pendingOrdersCount, unreadOrdersCount } = useAppSelector((state) => state.farmer);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [verifiedBannerDismissed, setVerifiedBannerDismissed] = useState(false);
+  
+  // Get location text for header
+  const getLocationText = () => {
+    if (defaultAddress) {
+      const parts = [
+        defaultAddress.addressLine1,
+        defaultAddress.city,
+        defaultAddress.state,
+      ].filter(Boolean);
+      return parts.join(', ');
+    }
+    if (user?.businessAddress) {
+      return user.businessAddress;
+    }
+    if (user?.city && user?.state) {
+      return `${user.city}, ${user.state}`;
+    }
+    return user?.city || t('home.selectLocation');
+  };
   
   // Storage key for verified banner dismissal
   const VERIFIED_BANNER_STORAGE_KEY = 'verified_banner_dismissed';
@@ -501,21 +522,44 @@ export default function DashboardScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
-      {/* Fixed Header */}
-      <View style={[styles.fixedHeader, { paddingTop: insets.top, backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
-        <View style={styles.greetingRow}>
-          <Text style={[styles.greeting, { color: colors.textSecondary }]}>{greeting.text}!</Text>
-          <Ionicons name={greeting.icon} size={24} color={greeting.icon === 'moon' ? '#9CA3AF' : COLORS.secondary} style={styles.greetingIcon} />
-        </View>
-        <View style={styles.headerRow}>
-          <Text style={[styles.fixedHeaderTitle, { color: colors.text }]}>{t('farmer.dashboard')}</Text>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
+      {/* Fixed Header - Address Style */}
+      <View style={[styles.fixedHeader, { paddingTop: insets.top, backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+        <View style={styles.topBar}>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity 
+              style={styles.locationButton}
+              activeOpacity={0.7}
+              onPress={() => {
+                triggerHaptic();
+                navigation.navigate('MyAddress' as never);
+              }}
+            >
+              <Ionicons name="location" size={20} color={colors.primary} />
+              <View style={styles.locationTextContainer}>
+                <View style={styles.locationRow}>
+                  <Text 
+                    style={[styles.locationText, { color: colors.text }]}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
+                    {getLocationText()}
+                  </Text>
+                  <Ionicons name="chevron-down" size={14} color={colors.textSecondary} style={{ marginLeft: 4 }} />
+                </View>
+              </View>
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.headerActions}>
             <TouchableOpacity
-              style={[styles.notificationButton, { backgroundColor: isDark ? '#2C2C2E' : '#DEDEE0' }]}
-              onPress={() => navigation.navigate('Notifications')}
+              style={[styles.headerIconButton, { backgroundColor: isDark ? '#2C2C2E' : '#F5F5F5' }]}
+              onPress={() => {
+                triggerHaptic();
+                navigation.navigate('Notifications');
+              }}
               activeOpacity={0.7}
             >
-              <Ionicons name="notifications-outline" size={28} color={colors.text} />
+              <Ionicons name="notifications-outline" size={24} color={colors.text} />
               {unreadOrdersCount > 0 && (
                 <View style={styles.notificationBadge}>
                   <Text style={styles.notificationBadgeText}>
@@ -1310,27 +1354,48 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   fixedHeader: {
-    paddingHorizontal: SPACING.md,
-    paddingBottom: SPACING.sm,
-    backgroundColor: COLORS.background,
+    backgroundColor: '#FFFFFF',
   },
-  fixedHeaderTitle: {
-    fontSize: FONT_SIZES.xxl,
-    fontWeight: '700',
-    fontFamily: FONTS.bold,
-    color: COLORS.textPrimary,
-  },
-  headerRow: {
+  topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 12,
   },
-  notificationButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+  headerLeft: {
+    flex: 1,
+    marginRight: 12,
+  },
+  locationButton: {
+    flexDirection: 'row',
     alignItems: 'center',
+  },
+  locationTextContainer: {
+    flex: 1,
+    marginLeft: 8,
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  locationText: {
+    fontSize: 14,
+    fontFamily: FONTS.semiBold,
+    maxWidth: 200,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  headerIconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     justifyContent: 'center',
+    alignItems: 'center',
     position: 'relative',
   },
   notificationBadge: {
