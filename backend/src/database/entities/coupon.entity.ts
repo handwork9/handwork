@@ -22,6 +22,15 @@ export enum CouponStatus {
   DISABLED = 'disabled',
 }
 
+export enum CouponSource {
+  ADMIN = 'admin',           // Created by admin
+  WELCOME = 'welcome',       // New user welcome coupon
+  REFERRAL = 'referral',     // Referral reward
+  MILESTONE = 'milestone',   // Order milestone reward
+  BIRTHDAY = 'birthday',     // Birthday coupon
+  LOYALTY = 'loyalty',       // Loyalty points redemption
+}
+
 @Entity('coupons')
 @Index(['code'], { unique: true })
 export class Coupon {
@@ -97,6 +106,13 @@ export class Coupon {
 
   @Column({ nullable: true })
   userId: string;
+
+  @Column({
+    type: 'enum',
+    enum: CouponSource,
+    default: CouponSource.ADMIN,
+  })
+  source: CouponSource;
 
   @CreateDateColumn()
   createdAt: Date;

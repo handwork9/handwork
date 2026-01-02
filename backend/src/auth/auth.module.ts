@@ -25,6 +25,7 @@ import { EmailModule } from '../email/email.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { ReferralsModule } from '../referrals/referrals.module';
 import { IntegrationsModule } from '../integrations/integrations.module';
+import { CouponsModule } from '../coupons/coupons.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { IntegrationsModule } from '../integrations/integrations.module';
     forwardRef(() => PaymentsModule),
     forwardRef(() => ReferralsModule),
     forwardRef(() => IntegrationsModule),
+    forwardRef(() => CouponsModule),
   ],
   controllers: [AuthController, SessionsController, PinController],
   providers: [AuthService, OtpService, TwoFactorService, PinService, SessionsService, JwtStrategy, JwtRefreshStrategy, LocalStrategy],

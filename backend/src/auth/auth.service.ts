@@ -23,6 +23,7 @@ import { EmailService } from '../email/email.service';
 import { PaystackService } from '../payments/paystack.service';
 import { SessionsService } from './sessions.service';
 import { ReferralsService } from '../referrals/referrals.service';
+import { CouponsService } from '../coupons/coupons.service';
 import { DeviceType } from '../database/entities/session.entity';
 import { SignupDto, LoginDto, RefreshTokenDto, VerifyOtpDto, TwoFactorLoginDto, GoogleLoginDto, VerifyEmailOtpDto, VerifyPhoneOtpDto, VerifyWhatsAppOtpDto } from './dto';
 import { JwtPayload, AuthTokens } from './interfaces';
@@ -70,6 +71,8 @@ export class AuthService {
     private readonly sessionsService: SessionsService,
     @Inject(forwardRef(() => ReferralsService))
     private readonly referralsService: ReferralsService,
+    @Inject(forwardRef(() => CouponsService))
+    private readonly couponsService: CouponsService,
   ) {
     // Initialize Google OAuth client
     const googleClientId = this.configService.get<string>('GOOGLE_CLIENT_ID');
@@ -162,6 +165,11 @@ export class AuthService {
     // Send welcome email (async, don't block response)
     this.emailService.sendWelcomeEmail(user, deviceInfo).catch((err) => {
       console.error('Failed to send welcome email:', err);
+    });
+
+    // Create welcome coupon for new user (async, don't block response)
+    this.couponsService.createWelcomeCoupon(user.id).catch((err) => {
+      this.logger.error(`Failed to create welcome coupon for user ${user.id}: ${err.message}`);
     });
 
     return { user, tokens: tokensWithSession };

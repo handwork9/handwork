@@ -12,6 +12,7 @@ import { WalletModule } from '../wallet/wallet.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { EmailModule } from '../email/email.module';
 import { RecommendationModule } from '../recommendations/recommendation.module';
+import { CouponsModule } from '../coupons/coupons.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { RecommendationModule } from '../recommendations/recommendation.module';
     forwardRef(() => DispatchModule),
     forwardRef(() => RidersModule),
     forwardRef(() => WalletModule),
+    forwardRef(() => CouponsModule),
     NotificationsModule,
     EmailModule,
     RecommendationModule,

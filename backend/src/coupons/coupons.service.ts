@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThanOrEqual, MoreThanOrEqual, In } from 'typeorm';
-import { Coupon, CouponUsage, CouponType, CouponStatus } from '../database/entities/coupon.entity';
+import { Coupon, CouponUsage, CouponType, CouponStatus, CouponSource } from '../database/entities/coupon.entity';
 import { Order } from '../database/entities/order.entity';
 import { User } from '../database/entities/user.entity';
 import { CreateCouponDto, UpdateCouponDto, ValidateCouponDto } from './dto';
@@ -340,5 +340,159 @@ export class CouponsService {
       totalUsage: coupon.usageCount,
       totalDiscount,
     };
+  }
+
+  // ==================== AUTO-GENERATED COUPONS ====================
+
+  /**
+   * Generate a unique coupon code
+   */
+  private generateCouponCode(prefix: string): string {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = prefix;
+    for (let i = 0; i < 6; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+  }
+
+  /**
+   * Create welcome coupon for new users (10% off first order)
+   */
+  async createWelcomeCoupon(userId: string): Promise<Coupon> {
+    const code = this.generateCouponCode('WELCOME');
+    
+    // Check if user already has a welcome coupon
+    const existing = await this.couponRepository.findOne({
+      where: { userId, source: CouponSource.WELCOME },
+    });
+    
+    if (existing) {
+      this.logger.log(`User ${userId} already has welcome coupon: ${existing.code}`);
+      return existing;
+    }
+
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + 30); // Valid for 30 days
+
+    const coupon = this.couponRepository.create({
+      code,
+      name: 'Welcome Discount',
+      description: 'Welcome to Handwork! Enjoy 10% off your first order.',
+      type: CouponType.PERCENTAGE,
+      value: 10,
+      minOrderAmount: 5000, // Minimum ₦5,000
+      maxDiscountAmount: 5000, // Max ₦5,000 discount
+      startDate: new Date(),
+      endDate,
+      usageLimit: 1,
+      usageLimitPerUser: 1,
+      firstOrderOnly: true,
+      newUsersOnly: true,
+      userId,
+      source: CouponSource.WELCOME,
+      status: CouponStatus.ACTIVE,
+    });
+
+    await this.couponRepository.save(coupon);
+    this.logger.log(`Created welcome coupon ${code} for user ${userId}`);
+    return coupon;
+  }
+
+  /**
+   * Create referral coupon for user who referred someone
+   */
+  async createReferralCoupon(referrerId: string, referredUserName: string): Promise<Coupon> {
+    const code = this.generateCouponCode('REF');
+    
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + 60); // Valid for 60 days
+
+    const coupon = this.couponRepository.create({
+      code,
+      name: 'Referral Reward',
+      description: `Thanks for referring ${referredUserName}! Enjoy ₦500 off your next order.`,
+      type: CouponType.FIXED_AMOUNT,
+      value: 500,
+      minOrderAmount: 3000, // Minimum ₦3,000
+      startDate: new Date(),
+      endDate,
+      usageLimit: 1,
+      usageLimitPerUser: 1,
+      userId: referrerId,
+      source: CouponSource.REFERRAL,
+      status: CouponStatus.ACTIVE,
+    });
+
+    await this.couponRepository.save(coupon);
+    this.logger.log(`Created referral coupon ${code} for referrer ${referrerId}`);
+    return coupon;
+  }
+
+  /**
+   * Create milestone coupon when user reaches order milestones
+   */
+  async createMilestoneCoupon(userId: string, orderCount: number): Promise<Coupon | null> {
+    // Define milestone rewards
+    const milestones: Record<number, { discount: number; type: CouponType; name: string }> = {
+      5: { discount: 500, type: CouponType.FIXED_AMOUNT, name: '5th Order Reward' },
+      10: { discount: 15, type: CouponType.PERCENTAGE, name: '10th Order Reward' },
+      25: { discount: 2000, type: CouponType.FIXED_AMOUNT, name: '25th Order Reward' },
+      50: { discount: 20, type: CouponType.PERCENTAGE, name: '50th Order Reward' },
+      100: { discount: 5000, type: CouponType.FIXED_AMOUNT, name: '100th Order Reward' },
+    };
+
+    const milestone = milestones[orderCount];
+    if (!milestone) return null;
+
+    // Check if user already received this milestone coupon
+    const existingCount = await this.couponRepository.count({
+      where: { 
+        userId, 
+        source: CouponSource.MILESTONE,
+        name: milestone.name,
+      },
+    });
+
+    if (existingCount > 0) {
+      this.logger.log(`User ${userId} already received ${milestone.name} coupon`);
+      return null;
+    }
+
+    const code = this.generateCouponCode('MILE');
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + 90); // Valid for 90 days
+
+    const coupon = this.couponRepository.create({
+      code,
+      name: milestone.name,
+      description: `Congratulations on ${orderCount} orders! Here's a special reward.`,
+      type: milestone.type,
+      value: milestone.discount,
+      minOrderAmount: 3000,
+      maxDiscountAmount: milestone.type === CouponType.PERCENTAGE ? 3000 : undefined,
+      startDate: new Date(),
+      endDate,
+      usageLimit: 1,
+      usageLimitPerUser: 1,
+      userId,
+      source: CouponSource.MILESTONE,
+      status: CouponStatus.ACTIVE,
+    });
+
+    await this.couponRepository.save(coupon);
+    this.logger.log(`Created milestone coupon ${code} for user ${userId} (${orderCount} orders)`);
+    return coupon;
+  }
+
+  /**
+   * Check and create milestone coupon after order completion
+   */
+  async checkAndCreateMilestoneCoupon(userId: string): Promise<Coupon | null> {
+    const orderCount = await this.orderRepository.count({
+      where: { userId, status: In(['delivered', 'completed']) },
+    });
+    
+    return this.createMilestoneCoupon(userId, orderCount);
   }
 }

@@ -19,6 +19,7 @@ import { NotificationsService, NotificationType } from '../notifications/notific
 import { EmailService } from '../email/email.service';
 import { RecommendationService } from '../recommendations/recommendation.service';
 import { RidersService } from '../riders/riders.service';
+import { CouponsService } from '../coupons/coupons.service';
 import { CreateOrderDto, UpdateOrderStatusDto } from './dto';
 import { OrderStatus, UserRole, PaymentStatus } from '../common/enums';
 import { generateOrderNumber, isSameState } from '../common/utils/helpers';
@@ -40,6 +41,8 @@ export class OrdersService {
     private readonly recommendationService: RecommendationService,
     @Inject(forwardRef(() => RidersService))
     private readonly ridersService: RidersService,
+    @Inject(forwardRef(() => CouponsService))
+    private readonly couponsService: CouponsService,
   ) {}
 
   async create(buyerId: string, dto: CreateOrderDto): Promise<Order> {
@@ -369,6 +372,20 @@ export class OrdersService {
         // Update user preferences for recommendations (async, don't block)
         this.recommendationService.updatePreferencesFromOrder(order.buyerId, order).catch((err) => {
           this.logger.warn(`Failed to update recommendations: ${err.message}`);
+        });
+        // Check for milestone coupon reward (async, don't block)
+        this.couponsService.checkAndCreateMilestoneCoupon(order.buyerId).then((coupon) => {
+          if (coupon) {
+            this.notificationsService.sendPushNotification({
+              userId: order.buyerId,
+              type: NotificationType.GENERAL,
+              title: '🎁 You Earned a Reward!',
+              body: `Congrats! You've unlocked the "${coupon.name}" coupon. Use code ${coupon.code} on your next order!`,
+              data: { couponCode: coupon.code },
+            });
+          }
+        }).catch((err) => {
+          this.logger.warn(`Failed to check milestone coupon: ${err.message}`);
         });
         break;
       case OrderStatus.CANCELLED:

@@ -1,10 +1,12 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Referral, ReferralStatus } from '../database/entities/referral.entity';
 import { User } from '../database/entities/user.entity';
 import { CreateReferralInviteDto } from './dto';
+import { CouponsService } from '../coupons/coupons.service';
+import { NotificationsService, NotificationType } from '../notifications/notifications.service';
 
 @Injectable()
 export class ReferralsService {
@@ -16,6 +18,9 @@ export class ReferralsService {
     private referralsRepository: Repository<Referral>,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    @Inject(forwardRef(() => CouponsService))
+    private couponsService: CouponsService,
+    private notificationsService: NotificationsService,
   ) {}
 
   // Generate unique referral code for user
@@ -235,6 +240,21 @@ export class ReferralsService {
     await this.usersRepository.increment({ id: referral.referrerId }, 'walletBalance', this.REFERRAL_REWARD);
     await this.usersRepository.increment({ id: referral.referrerId }, 'referralEarnings', this.REFERRAL_REWARD);
     await this.usersRepository.increment({ id: userId }, 'walletBalance', this.REFERRAL_REWARD);
+
+    // Create referral coupon for the referrer
+    try {
+      const coupon = await this.couponsService.createReferralCoupon(referral.referrerId, user.name);
+      // Notify referrer about the coupon
+      await this.notificationsService.sendPushNotification({
+        userId: referral.referrerId,
+        type: NotificationType.GENERAL,
+        title: '🎉 Referral Reward!',
+        body: `${user.name} made their first order! You earned ₦${this.REFERRAL_REWARD} + a ₦500 coupon (${coupon.code})`,
+        data: { couponCode: coupon.code },
+      });
+    } catch (err) {
+      console.error('Failed to create referral coupon:', err);
+    }
 
     return { referrerId: referral.referrerId, referredUserId: userId, reward: this.REFERRAL_REWARD };
   }
