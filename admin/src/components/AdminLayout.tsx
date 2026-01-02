@@ -135,6 +135,18 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           icon: <SafetyOutlined />,
           label: 'Disputes',
         },
+        {
+          key: '/fraud-detection',
+          icon: <SafetyOutlined />,
+          label: 'Fraud Detection',
+        },
+        {
+          key: '/content-moderation',
+          icon: <FileTextOutlined />,
+          label: 'Content Moderation',
+        },
+          label: 'Disputes',
+        },
       ],
     },
     {
@@ -264,6 +276,23 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     },
     {
       type: 'divider',
+    },
+    {
+      key: 'security',
+      icon: <SafetyOutlined />,
+      label: 'Security',
+      children: [
+        {
+          key: '/fraud-detection',
+          icon: <SafetyOutlined />,
+          label: 'Fraud Detection',
+        },
+        {
+          key: '/content-moderation',
+          icon: <FileTextOutlined />,
+          label: 'Content Moderation',
+        },
+      ],
     },
     {
       key: 'integrations',

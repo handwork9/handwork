@@ -6,8 +6,19 @@ import { AdminWithdrawalsController } from './admin-withdrawals.controller';
 import { AdminBuyerPremiumController } from './admin-buyer-premium.controller';
 import { AdminTeamController } from './admin-team.controller';
 import { AdminTeamService } from './admin-team.service';
-import { User, Order, Product, Rider, Payment, DispatchLog, FarmerProfile, AuditLog, AppSettings, PlatformRevenue, FarmerSubscription, RiderSubscription, BankAccount, AdminInvite } from '../database/entities';
+import { FraudDetectionService } from './fraud-detection.service';
+import { FraudDetectionController } from './fraud-detection.controller';
+import { ContentModerationService } from './content-moderation.service';
+import { ContentModerationController } from './content-moderation.controller';
+import { 
+  User, Order, Product, Rider, Payment, DispatchLog, FarmerProfile, 
+  AuditLog, AppSettings, PlatformRevenue, FarmerSubscription, RiderSubscription, 
+  BankAccount, AdminInvite, Review, SocialPost, FarmStory, PostComment,
+  CouponUsage,
+} from '../database/entities';
 import { WalletTransaction } from '../database/entities/wallet-transaction.entity';
+import { FraudAlert } from '../database/entities/fraud-alert.entity';
+import { ContentModeration } from '../database/entities/content-moderation.entity';
 import { UsersModule } from '../users/users.module';
 import { OrdersModule } from '../orders/orders.module';
 import { ProductsModule } from '../products/products.module';
@@ -19,7 +30,12 @@ import { EmailModule } from '../email/email.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Order, Product, Rider, Payment, DispatchLog, FarmerProfile, AuditLog, AppSettings, PlatformRevenue, FarmerSubscription, RiderSubscription, WalletTransaction, BankAccount, AdminInvite]),
+    TypeOrmModule.forFeature([
+      User, Order, Product, Rider, Payment, DispatchLog, FarmerProfile, 
+      AuditLog, AppSettings, PlatformRevenue, FarmerSubscription, RiderSubscription, 
+      WalletTransaction, BankAccount, AdminInvite, Review, SocialPost, FarmStory, 
+      PostComment, CouponUsage, FraudAlert, ContentModeration,
+    ]),
     forwardRef(() => UsersModule),
     forwardRef(() => OrdersModule),
     forwardRef(() => ProductsModule),
@@ -29,8 +45,15 @@ import { EmailModule } from '../email/email.module';
     forwardRef(() => NotificationsModule),
     EmailModule,
   ],
-  controllers: [AdminController, AdminWithdrawalsController, AdminBuyerPremiumController, AdminTeamController],
-  providers: [AdminService, AdminTeamService],
-  exports: [AdminService, AdminTeamService],
+  controllers: [
+    AdminController, 
+    AdminWithdrawalsController, 
+    AdminBuyerPremiumController, 
+    AdminTeamController,
+    FraudDetectionController,
+    ContentModerationController,
+  ],
+  providers: [AdminService, AdminTeamService, FraudDetectionService, ContentModerationService],
+  exports: [AdminService, AdminTeamService, FraudDetectionService, ContentModerationService],
 })
 export class AdminModule {}
