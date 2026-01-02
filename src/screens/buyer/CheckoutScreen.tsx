@@ -2277,7 +2277,6 @@ const styles = StyleSheet.create({
   addressRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
   },
   addressIconContainer: {
     width: 40,
@@ -2288,17 +2287,41 @@ const styles = StyleSheet.create({
   },
   addressDetails: {
     flex: 1,
-    marginLeft: 12,
-    marginRight: 8,
   },
   addressLabel: {
     fontSize: 15,
-    fontFamily: FONTS.medium,
+    fontFamily: FONTS.semiBold,
+    marginBottom: 2,
   },
   addressText: {
     fontSize: 13,
     fontFamily: FONTS.regular,
-    marginTop: 2,
+  },
+  changeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 4,
+  },
+  changeText: {
+    fontSize: 13,
+    fontFamily: FONTS.semiBold,
+  },
+  errorMessage: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(239, 68, 68, 0.2)',
+    gap: 6,
+  },
+  errorText: {
+    fontSize: 12,
+    fontFamily: FONTS.medium,
+    color: '#EF4444',
   },
   deliveryOptionsRow: {
     flexDirection: 'row',
@@ -2532,10 +2555,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: FONTS.regular,
     textAlign: 'center',
-  },
-  changeText: {
-    fontSize: 14,
-    fontFamily: FONTS.semiBold,
   },
   notesInput: {
     marginBottom: 0,
