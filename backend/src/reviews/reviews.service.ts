@@ -1,9 +1,11 @@
-import { Injectable, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException, ForbiddenException, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Review, ReviewType, Order, User, Rider, FarmerProfile } from '../database/entities';
 import { OrderStatus } from '../common/enums';
 import { CreateReviewDto, ReviewResponseDto, ReviewStatsDto } from './dto';
+import { ContentModerationService } from '../admin/content-moderation.service';
+import { ContentType } from '../database/entities/content-moderation.entity';
 
 @Injectable()
 export class ReviewsService {
@@ -20,6 +22,8 @@ export class ReviewsService {
     private riderRepository: Repository<Rider>,
     @InjectRepository(FarmerProfile)
     private farmerProfileRepository: Repository<FarmerProfile>,
+    @Inject(forwardRef(() => ContentModerationService))
+    private moderationService: ContentModerationService,
   ) {}
 
   /**
@@ -70,6 +74,28 @@ export class ReviewsService {
     });
 
     await this.reviewRepository.save(review);
+
+    // Submit review for moderation if it has a comment
+    if (dto.comment) {
+      try {
+        await this.moderationService.submitForModeration({
+          contentType: ContentType.REVIEW,
+          contentId: review.id,
+          authorId: buyerId,
+          title: `Farmer Review - ${dto.rating} stars`,
+          contentPreview: dto.comment,
+          contentSnapshot: {
+            rating: dto.rating,
+            comment: dto.comment,
+            tags: dto.tags,
+            orderId,
+            farmerId,
+          },
+        });
+      } catch (error) {
+        this.logger.warn(`Failed to submit review ${review.id} for moderation: ${error.message}`);
+      }
+    }
 
     // Update order
     order.hasRatedFarmer = true;
@@ -130,6 +156,28 @@ export class ReviewsService {
     });
 
     await this.reviewRepository.save(review);
+
+    // Submit review for moderation if it has a comment
+    if (dto.comment) {
+      try {
+        await this.moderationService.submitForModeration({
+          contentType: ContentType.REVIEW,
+          contentId: review.id,
+          authorId: buyerId,
+          title: `Rider Review - ${dto.rating} stars`,
+          contentPreview: dto.comment,
+          contentSnapshot: {
+            rating: dto.rating,
+            comment: dto.comment,
+            tags: dto.tags,
+            orderId,
+            riderId: order.assignedRiderId,
+          },
+        });
+      } catch (error) {
+        this.logger.warn(`Failed to submit review ${review.id} for moderation: ${error.message}`);
+      }
+    }
 
     // Update order
     order.hasRatedRider = true;

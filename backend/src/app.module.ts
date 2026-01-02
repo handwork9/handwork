@@ -54,6 +54,7 @@ import { LeaderboardModule } from './leaderboard/leaderboard.module';
 import { ChatbotModule } from './chatbot/chatbot.module';
 import { SocialModule } from './social/social.module';
 import { IntegrationsModule } from './integrations/integrations.module';
+import { ModerationModule } from './moderation/moderation.module';
 
 @Module({
   imports: [
@@ -197,6 +198,7 @@ import { IntegrationsModule } from './integrations/integrations.module';
     ChatbotModule,
     SocialModule,
     IntegrationsModule,
+    ModerationModule,
   ],
 })
 export class AppModule {}

@@ -1,5 +1,5 @@
 // Social Service - handles posts, comments, stories, live streams
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Inject, forwardRef, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, Not, LessThan, MoreThan, IsNull } from 'typeorm';
 import { SocialPost, PostType, PostVisibility } from '../database/entities/social-post.entity';
@@ -22,9 +22,13 @@ import {
   UpdateLiveStreamDto,
 } from './dto';
 import { v4 as uuidv4 } from 'uuid';
+import { ContentModerationService } from '../admin/content-moderation.service';
+import { ContentType } from '../database/entities/content-moderation.entity';
 
 @Injectable()
 export class SocialService {
+  private readonly logger = new Logger(SocialService.name);
+
   constructor(
     @InjectRepository(SocialPost)
     private readonly postRepository: Repository<SocialPost>,
@@ -46,6 +50,8 @@ export class SocialService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(FarmerProfile)
     private readonly farmerRepository: Repository<FarmerProfile>,
+    @Inject(forwardRef(() => ContentModerationService))
+    private readonly moderationService: ContentModerationService,
   ) {}
 
   // ==================== POSTS ====================
@@ -64,7 +70,28 @@ export class SocialService {
       visibility: dto.visibility || PostVisibility.PUBLIC,
     });
 
-    return this.postRepository.save(post);
+    const savedPost = await this.postRepository.save(post);
+
+    // Submit post for moderation
+    try {
+      await this.moderationService.submitForModeration({
+        contentType: ContentType.SOCIAL_POST,
+        contentId: savedPost.id,
+        authorId: userId,
+        title: 'Social Post',
+        contentPreview: savedPost.content,
+        contentSnapshot: {
+          content: savedPost.content,
+          images: savedPost.images,
+          videoUrl: savedPost.videoUrl,
+          type: savedPost.type,
+        },
+      });
+    } catch (error) {
+      this.logger.warn(`Failed to submit post ${savedPost.id} for moderation: ${error.message}`);
+    }
+
+    return savedPost;
   }
 
   async updatePost(userId: string, postId: string, dto: UpdatePostDto): Promise<SocialPost> {
@@ -292,6 +319,24 @@ export class SocialService {
       });
 
       const savedComment = await this.commentRepository.save(comment);
+
+      // Submit comment for moderation
+      try {
+        await this.moderationService.submitForModeration({
+          contentType: ContentType.COMMENT,
+          contentId: savedComment.id,
+          authorId: userId,
+          title: 'Comment on post',
+          contentPreview: dto.content,
+          contentSnapshot: {
+            content: dto.content,
+            postId,
+            parentCommentId: dto.parentCommentId,
+          },
+        });
+      } catch (error) {
+        this.logger.warn(`Failed to submit comment ${savedComment.id} for moderation: ${error.message}`);
+      }
 
       // Update comment count
       post.commentCount += 1;
@@ -532,7 +577,27 @@ export class SocialService {
       duration: dto.duration || 5,
     });
 
-    return this.storyRepository.save(story);
+    const savedStory = await this.storyRepository.save(story);
+
+    // Submit story for moderation
+    try {
+      await this.moderationService.submitForModeration({
+        contentType: ContentType.FARM_STORY,
+        contentId: savedStory.id,
+        authorId: userId,
+        title: savedStory.caption || 'Farm Story',
+        contentPreview: savedStory.caption,
+        contentSnapshot: {
+          mediaUrl: savedStory.mediaUrl,
+          type: savedStory.type,
+          caption: savedStory.caption,
+        },
+      });
+    } catch (error) {
+      this.logger.warn(`Failed to submit story ${savedStory.id} for moderation: ${error.message}`);
+    }
+
+    return savedStory;
   }
 
   async getStories(userId: string): Promise<any[]> {

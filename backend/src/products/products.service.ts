@@ -6,6 +6,8 @@ import { CreateProductDto, UpdateProductDto, QueryProductsDto } from './dto';
 import { PaginatedResponseDto } from '../common/dto';
 import { calculateDistance } from '../common/utils/helpers';
 import { NotificationsService, NotificationType } from '../notifications/notifications.service';
+import { ContentModerationService } from '../admin/content-moderation.service';
+import { ContentType } from '../database/entities/content-moderation.entity';
 
 // Low stock threshold - notify farmer when stock falls below this
 const LOW_STOCK_THRESHOLD = 10;
@@ -29,6 +31,8 @@ export class ProductsService {
     private readonly productRepository: Repository<Product>,
     @Inject(forwardRef(() => NotificationsService))
     private readonly notificationsService: NotificationsService,
+    @Inject(forwardRef(() => ContentModerationService))
+    private readonly moderationService: ContentModerationService,
   ) {}
 
   /**
@@ -61,7 +65,29 @@ export class ProductsService {
       ...dto,
       farmerId,
     });
-    return this.productRepository.save(product);
+    const savedProduct = await this.productRepository.save(product);
+
+    // Submit product for moderation
+    try {
+      await this.moderationService.submitForModeration({
+        contentType: ContentType.PRODUCT,
+        contentId: savedProduct.id,
+        authorId: farmerId,
+        title: savedProduct.title,
+        contentPreview: savedProduct.description,
+        contentSnapshot: {
+          title: savedProduct.title,
+          description: savedProduct.description,
+          price: savedProduct.price,
+          category: savedProduct.category,
+          images: savedProduct.images,
+        },
+      });
+    } catch (error) {
+      this.logger.warn(`Failed to submit product ${savedProduct.id} for moderation: ${error.message}`);
+    }
+
+    return savedProduct;
   }
 
   async findAll(query: QueryProductsDto): Promise<PaginatedResponseDto<ProductWithFarmerInfo & { distance?: number }>> {

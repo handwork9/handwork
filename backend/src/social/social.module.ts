@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { SocialService } from './social.service';
 import { SocialController } from './social.controller';
@@ -13,6 +13,7 @@ import { FarmLiveStream } from '../database/entities/farm-live-stream.entity';
 import { SavedPost } from '../database/entities/saved-post.entity';
 import { User } from '../database/entities/user.entity';
 import { FarmerProfile } from '../database/entities/farmer-profile.entity';
+import { AdminModule } from '../admin/admin.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { FarmerProfile } from '../database/entities/farmer-profile.entity';
       User,
       FarmerProfile,
     ]),
+    forwardRef(() => AdminModule),
   ],
   controllers: [SocialController],
   providers: [SocialService, LiveStreamGateway],
