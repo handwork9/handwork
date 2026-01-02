@@ -41,6 +41,7 @@ export interface LoginSuccessResponse {
   user: User;
   tokens: AuthTokens;
   requiresTwoFactor?: false;
+  isNewUser?: boolean;
 }
 
 export type LoginResponse = LoginSuccessResponse | TwoFactorRequiredResponse;
