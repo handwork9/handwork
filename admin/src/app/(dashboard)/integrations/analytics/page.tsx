@@ -34,7 +34,7 @@ import {
   FallOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
-import { format, subDays } from 'date-fns';
+import dayjs from 'dayjs';
 
 const { Title, Text, Paragraph } = Typography;
 const { RangePicker } = DatePicker;
@@ -207,7 +207,7 @@ export default function AnalyticsPage() {
 
   // Initialize date range on client side to avoid hydration mismatch
   useEffect(() => {
-    setDateRange([subDays(new Date(), 30), new Date()]);
+    setDateRange([dayjs().subtract(30, 'day'), dayjs()]);
   }, []);
 
   return (
