@@ -212,12 +212,25 @@ const FavoritesScreen: React.FC = () => {
         { text: t('common.cancel'), style: 'cancel' },
         {
           text: t('favorites.addAll'),
-          onPress: () => {
+          onPress: async () => {
             // Add each in-stock item to cart
             inStockItems.forEach((product) => {
               dispatch(addToCart({ product, quantity: 1 }));
             });
-            Alert.alert(t('common.success'), t('favorites.successAddedItems', { count: inStockItems.length }));
+            
+            // Clear all favorites after adding to cart
+            try {
+              await dispatch(clearAllFavorites()).unwrap();
+              Alert.alert(
+                t('common.success'), 
+                t('favorites.successAddedItems', { count: inStockItems.length })
+              );
+            } catch (error) {
+              Alert.alert(
+                t('common.success'), 
+                t('favorites.successAddedItems', { count: inStockItems.length })
+              );
+            }
           },
         },
       ]
