@@ -83,18 +83,21 @@ export default function DeliveryOptions({
       let points: PickupLocationOption[] = [];
       
       if (userLatitude && userLongitude) {
-        points = await deliveryService.getPickupLocations({
+        const result = await deliveryService.getPickupLocations({
           latitude: userLatitude,
           longitude: userLongitude,
           radiusKm: 15,
         });
+        points = Array.isArray(result) ? result : [];
       } else if (userState) {
-        points = await deliveryService.getPickupLocationsByArea(userState, userCity);
+        const result = await deliveryService.getPickupLocationsByArea(userState, userCity);
+        points = Array.isArray(result) ? result : [];
       }
       
       setPickupPoints(points);
     } catch (error) {
       console.error('Error loading pickup points:', error);
+      setPickupPoints([]);
     } finally {
       setIsLoadingPickupPoints(false);
     }

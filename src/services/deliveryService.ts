@@ -166,15 +166,13 @@ export async function getPickupLocations(params: {
       queryParams.append('hasRefrigeration', params.hasRefrigeration.toString());
     }
     
-    const response = await apiClient.get<{ success: boolean; data: PickupLocationOption[] }>(
+    const response = await apiClient.get<any>(
       `/pickup-locations/nearby?${queryParams.toString()}`
     );
     
-    if (response.success) {
-      return response.data;
-    }
-    
-    return [];
+    // Handle nested response structure
+    const data = response?.data?.data || response?.data || response || [];
+    return Array.isArray(data) ? data : [];
   } catch (error) {
     console.error('Error fetching pickup locations:', error);
     return [];
@@ -190,15 +188,13 @@ export async function getPickupLocationsByArea(state: string, city?: string): Pr
     queryParams.append('state', state);
     if (city) queryParams.append('city', city);
     
-    const response = await apiClient.get<{ success: boolean; data: PickupLocationOption[] }>(
+    const response = await apiClient.get<any>(
       `/pickup-locations?${queryParams.toString()}`
     );
     
-    if (response.success) {
-      return response.data;
-    }
-    
-    return [];
+    // Handle nested response structure
+    const data = response?.data?.data || response?.data || response || [];
+    return Array.isArray(data) ? data : [];
   } catch (error) {
     console.error('Error fetching pickup locations:', error);
     return [];
