@@ -547,6 +547,7 @@ export type BuyerStackParamList = {
   RateApp: undefined;
   TermsPrivacy: undefined;
   LiveChat: undefined;
+  AIChatbot: undefined;
   MyReports: undefined;
   PayBill: undefined;
   PaymentHistory: { payments: any[] };
@@ -665,6 +666,7 @@ export type FarmerStackParamList = {
   Notifications: undefined;
   NotificationDetail: { notification: any };
   LiveChat: undefined;
+  AIChatbot: undefined;
   MyReports: undefined;
   PayBill: undefined;
   PaymentHistory: { payments: any[] };
@@ -753,6 +755,7 @@ export type RiderStackParamList = {
   Notifications: undefined;
   NotificationDetail: { notification: any };
   LiveChat: undefined;
+  AIChatbot: undefined;
   MyReports: undefined;
   PayBill: undefined;
   PaymentHistory: { payments: any[] };

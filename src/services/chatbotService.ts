@@ -1,0 +1,106 @@
+/**
+ * Chatbot Service
+ * Handles AI chatbot interactions
+ */
+
+import apiClient from './apiClient';
+
+export interface ChatbotMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
+  suggestedActions?: string[];
+}
+
+export interface ChatbotConversation {
+  id: string;
+  userId: string;
+  messages: ChatbotMessage[];
+  topic?: string;
+  status: 'active' | 'ended' | 'escalated';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ChatResponse {
+  message: string;
+  conversationId: string;
+  suggestedActions?: string[];
+  shouldEscalate?: boolean;
+  escalationReason?: string;
+}
+
+class ChatbotService {
+  /**
+   * Send a message to the AI chatbot
+   */
+  async sendMessage(message: string, conversationId?: string): Promise<ChatResponse> {
+    const response = await apiClient.post('/chatbot/chat', {
+      message,
+      conversationId,
+    });
+    return response.data;
+  }
+
+  /**
+   * Get user's chatbot conversations
+   */
+  async getConversations(limit: number = 10): Promise<ChatbotConversation[]> {
+    const response = await apiClient.get('/chatbot/conversations', {
+      params: { limit },
+    });
+    return response.data;
+  }
+
+  /**
+   * Get active conversation if any
+   */
+  async getActiveConversation(): Promise<ChatbotConversation | null> {
+    try {
+      const response = await apiClient.get('/chatbot/conversations/active');
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Get a specific conversation
+   */
+  async getConversation(conversationId: string): Promise<ChatbotConversation> {
+    const response = await apiClient.get(`/chatbot/conversations/${conversationId}`);
+    return response.data;
+  }
+
+  /**
+   * End a conversation
+   */
+  async endConversation(conversationId: string): Promise<void> {
+    await apiClient.put(`/chatbot/conversations/${conversationId}/end`);
+  }
+
+  /**
+   * Escalate conversation to human support
+   */
+  async escalateToSupport(conversationId: string, reason?: string): Promise<void> {
+    await apiClient.post(`/chatbot/conversations/${conversationId}/escalate`, {
+      reason,
+    });
+  }
+
+  /**
+   * Rate a conversation
+   */
+  async rateConversation(conversationId: string, rating: number, feedback?: string): Promise<void> {
+    await apiClient.post(`/chatbot/conversations/${conversationId}/rate`, {
+      rating,
+      feedback,
+    });
+  }
+}
+
+export const chatbotService = new ChatbotService();
+export default chatbotService;

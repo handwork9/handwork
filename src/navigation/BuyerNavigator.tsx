@@ -67,6 +67,7 @@ import ContactUsScreen from '../screens/shared/ContactUsScreen';
 import RateAppScreen from '../screens/shared/RateAppScreen';
 import TermsPrivacyScreen from '../screens/shared/TermsPrivacyScreen';
 import LiveChatScreen from '../screens/shared/LiveChatScreen';
+import AIChatbotScreen from '../screens/shared/AIChatbotScreen';
 import MyReportsScreen from '../screens/shared/MyReportsScreen';
 import PayBillScreen from '../screens/shared/PayBillScreen';
 import PaymentHistoryScreen from '../screens/shared/PaymentHistoryScreen';
@@ -482,6 +483,11 @@ export function BuyerNavigator() {
       <Stack.Screen
         name="LiveChat"
         component={LiveChatScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="AIChatbot"
+        component={AIChatbotScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen

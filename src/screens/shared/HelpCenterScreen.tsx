@@ -177,13 +177,25 @@ export default function HelpCenterScreen() {
           <TouchableOpacity
             style={[styles.quickActionCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}
             activeOpacity={0.7}
+            onPress={() => (navigation as any).navigate('AIChatbot')}
+          >
+            <View style={[styles.quickActionIcon, { backgroundColor: isDark ? 'rgba(22, 163, 74, 0.2)' : '#DCFCE7' }]}>
+              <Ionicons name="chatbox-ellipses" size={22} color="#16A34A" />
+            </View>
+            <Text style={[styles.quickActionTitle, { color: colors.text }]}>AI Assistant</Text>
+            <Text style={[styles.quickActionSubtitle, { color: isDark ? '#9CA3AF' : '#9CA3AF' }]}>Instant help</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.quickActionCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}
+            activeOpacity={0.7}
             onPress={() => (navigation as any).navigate('LiveChat')}
           >
             <View style={[styles.quickActionIcon, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.2)' : '#DBEAFE' }]}>
               <Ionicons name="chatbubbles" size={22} color="#3B82F6" />
             </View>
             <Text style={[styles.quickActionTitle, { color: colors.text }]}>Live Chat</Text>
-            <Text style={[styles.quickActionSubtitle, { color: isDark ? '#9CA3AF' : '#9CA3AF' }]}>24/7 support</Text>
+            <Text style={[styles.quickActionSubtitle, { color: isDark ? '#9CA3AF' : '#9CA3AF' }]}>Human support</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -197,19 +209,23 @@ export default function HelpCenterScreen() {
             <Text style={[styles.quickActionTitle, { color: colors.text }]}>My Reports</Text>
             <Text style={[styles.quickActionSubtitle, { color: isDark ? '#9CA3AF' : '#9CA3AF' }]}>Track status</Text>
           </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.quickActionCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}
-            activeOpacity={0.7}
-            onPress={() => (navigation as any).navigate('ContactUs')}
-          >
-            <View style={[styles.quickActionIcon, { backgroundColor: isDark ? 'rgba(22, 163, 74, 0.2)' : '#DCFCE7' }]}>
-              <Ionicons name="call" size={22} color="#16A34A" />
-            </View>
-            <Text style={[styles.quickActionTitle, { color: colors.text }]}>Call Us</Text>
-            <Text style={[styles.quickActionSubtitle, { color: isDark ? '#9CA3AF' : '#9CA3AF' }]}>Talk to us</Text>
-          </TouchableOpacity>
         </View>
+
+        {/* Extra support options */}
+        <TouchableOpacity
+          style={[styles.contactUsCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}
+          activeOpacity={0.7}
+          onPress={() => (navigation as any).navigate('ContactUs')}
+        >
+          <View style={[styles.quickActionIcon, { backgroundColor: isDark ? 'rgba(249, 115, 22, 0.2)' : '#FFF7ED' }]}>
+            <Ionicons name="call" size={22} color="#F97316" />
+          </View>
+          <View style={styles.contactUsText}>
+            <Text style={[styles.quickActionTitle, { color: colors.text }]}>Contact Us</Text>
+            <Text style={[styles.quickActionSubtitle, { color: isDark ? '#9CA3AF' : '#9CA3AF' }]}>Email, phone & more</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+        </TouchableOpacity>
 
         {/* Categories */}
         <Text style={[styles.sectionLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>Browse by topic</Text>
@@ -423,6 +439,23 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#9CA3AF',
     fontFamily: FONTS.regular,
+  },
+  contactUsCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 28,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  contactUsText: {
+    flex: 1,
+    marginLeft: 12,
   },
   sectionLabel: {
     fontSize: 15,

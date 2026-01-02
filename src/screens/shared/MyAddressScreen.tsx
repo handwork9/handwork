@@ -324,7 +324,7 @@ export default function MyAddressScreen() {
     });
   };
 
-  const renderAddressCard = (address: Address) => {
+  const renderAddressCard = (address: Address, index: number) => {
     const isExpanded = expandedAddressId === address.id;
 
     const toggleExpand = () => {
@@ -359,7 +359,7 @@ export default function MyAddressScreen() {
 
     return (
       <View
-        key={address.id}
+        key={`${address.id}_${index}`}
         style={[
           styles.addressCard,
           { backgroundColor: isDark ? colors.card : '#FFFFFF' },
@@ -472,7 +472,7 @@ export default function MyAddressScreen() {
         {addresses.length > 0 ? (
           <>
             <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>SAVED ADDRESSES</Text>
-            {addresses.map(renderAddressCard)}
+            {addresses.map((addr, idx) => renderAddressCard(addr, idx))}
           </>
         ) : (
           <View style={styles.emptyState}>

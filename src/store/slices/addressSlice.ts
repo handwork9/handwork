@@ -57,6 +57,9 @@ const addressSlice = createSlice({
     },
     addAddress: (state, action: PayloadAction<Address>) => {
       if (!action.payload?.id) return;
+      // Check if address already exists (prevent duplicates)
+      const exists = state.addresses.some(a => a?.id === action.payload.id);
+      if (exists) return;
       // If this is the first address, make it default
       if (state.addresses.length === 0) {
         action.payload.isDefault = true;
@@ -101,7 +104,11 @@ const addressSlice = createSlice({
         state.loading = true;
       })
       .addCase(loadAddresses.fulfilled, (state, action) => {
-        state.addresses = action.payload;
+        // Filter out duplicates by id
+        const uniqueAddresses = action.payload.filter((addr, index, self) =>
+          index === self.findIndex(a => a.id === addr.id)
+        );
+        state.addresses = uniqueAddresses;
         state.loading = false;
       })
       .addCase(loadAddresses.rejected, (state, action) => {
