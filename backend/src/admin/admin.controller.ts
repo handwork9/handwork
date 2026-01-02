@@ -1028,6 +1028,30 @@ export class AdminController {
     return this.usersService.completeAccountDeletion(requestId, adminId);
   }
 
+  // ==================== FREE DELIVERY PROMO ADMIN ENDPOINTS ====================
+
+  @Get('promo/free-delivery/stats')
+  @ApiOperation({ summary: 'Get free delivery promo statistics' })
+  @ApiResponse({ status: 200, description: 'Promo statistics' })
+  async getFreeDeliveryPromoStats() {
+    return this.usersService.getFreeDeliveryPromoStats();
+  }
+
+  @Get('promo/free-delivery/users')
+  @ApiOperation({ summary: 'Get users who claimed free delivery promo' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiResponse({ status: 200, description: 'List of users who claimed the promo' })
+  async getFreeDeliveryPromoUsers(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.usersService.getFreeDeliveryPromoUsers(
+      page ? parseInt(page) : 1,
+      limit ? parseInt(limit) : 20,
+    );
+  }
+
   @Post('notifications/broadcast')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Send broadcast notification to users' })

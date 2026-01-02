@@ -734,4 +734,132 @@ export class UsersService {
       reasonBreakdown,
     };
   }
+
+  // ==================== FREE DELIVERY PROMO ====================
+
+  /**
+   * Check if user has claimed free delivery promo
+   */
+  async getFreeDeliveryPromoStatus(userId: string) {
+    const user = await this.findById(userId);
+    return {
+      hasClaimed: user.hasClaimedFreeDeliveryPromo,
+      claimedAt: user.freeDeliveryClaimedAt,
+      ordersRemaining: user.freeDeliveryOrdersRemaining,
+      isEligible: !user.hasClaimedFreeDeliveryPromo,
+    };
+  }
+
+  /**
+   * Claim free delivery promo for new users
+   */
+  async claimFreeDeliveryPromo(userId: string) {
+    const user = await this.findById(userId);
+
+    if (user.hasClaimedFreeDeliveryPromo) {
+      throw new BadRequestException('You have already claimed the free delivery promo');
+    }
+
+    // Check if user has any completed orders (they should be new)
+    const orderCount = await this.userRepository.manager
+      .createQueryBuilder()
+      .from('orders', 'o')
+      .where('o."buyerId" = :userId', { userId })
+      .andWhere('o.status NOT IN (:...statuses)', { statuses: ['CANCELLED', 'REFUNDED'] })
+      .getCount();
+
+    if (orderCount > 0) {
+      throw new BadRequestException('This promo is only available for new users with no previous orders');
+    }
+
+    user.hasClaimedFreeDeliveryPromo = true;
+    user.freeDeliveryClaimedAt = new Date();
+    user.freeDeliveryOrdersRemaining = 3;
+
+    await this.userRepository.save(user);
+
+    this.logger.log(`User ${userId} claimed free delivery promo`);
+
+    return {
+      success: true,
+      message: 'Free delivery promo claimed successfully! You get free delivery on your next 3 orders.',
+      ordersRemaining: 3,
+      claimedAt: user.freeDeliveryClaimedAt,
+    };
+  }
+
+  /**
+   * Use one free delivery (called when order is placed)
+   */
+  async useFreeDelivery(userId: string): Promise<boolean> {
+    const user = await this.findById(userId);
+
+    if (!user.hasClaimedFreeDeliveryPromo || user.freeDeliveryOrdersRemaining <= 0) {
+      return false;
+    }
+
+    user.freeDeliveryOrdersRemaining -= 1;
+    await this.userRepository.save(user);
+
+    this.logger.log(`User ${userId} used free delivery. Remaining: ${user.freeDeliveryOrdersRemaining}`);
+
+    return true;
+  }
+
+  /**
+   * Get all users who claimed free delivery promo (Admin)
+   */
+  async getFreeDeliveryPromoUsers(page = 1, limit = 20) {
+    const [users, total] = await this.userRepository.findAndCount({
+      where: { hasClaimedFreeDeliveryPromo: true },
+      select: ['id', 'name', 'email', 'phone', 'freeDeliveryClaimedAt', 'freeDeliveryOrdersRemaining', 'createdAt'],
+      order: { freeDeliveryClaimedAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    return {
+      users,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  /**
+   * Get free delivery promo statistics (Admin)
+   */
+  async getFreeDeliveryPromoStats() {
+    const [totalClaimed, fullyUsed, partiallyUsed, unused] = await Promise.all([
+      this.userRepository.count({ where: { hasClaimedFreeDeliveryPromo: true } }),
+      this.userRepository.count({ where: { hasClaimedFreeDeliveryPromo: true, freeDeliveryOrdersRemaining: 0 } }),
+      this.userRepository
+        .createQueryBuilder('user')
+        .where('user.hasClaimedFreeDeliveryPromo = :claimed', { claimed: true })
+        .andWhere('user.freeDeliveryOrdersRemaining > 0')
+        .andWhere('user.freeDeliveryOrdersRemaining < 3')
+        .getCount(),
+      this.userRepository.count({ where: { hasClaimedFreeDeliveryPromo: true, freeDeliveryOrdersRemaining: 3 } }),
+    ]);
+
+    // Total free deliveries given
+    const totalFreeDeliveries = (totalClaimed * 3) - await this.userRepository
+      .createQueryBuilder('user')
+      .select('SUM(user.freeDeliveryOrdersRemaining)', 'remaining')
+      .where('user.hasClaimedFreeDeliveryPromo = :claimed', { claimed: true })
+      .getRawOne()
+      .then(r => parseInt(r?.remaining || '0'));
+
+    return {
+      totalClaimed,
+      fullyUsed,
+      partiallyUsed,
+      unused,
+      totalFreeDeliveriesUsed: totalFreeDeliveries,
+      totalFreeDeliveriesRemaining: (totalClaimed * 3) - totalFreeDeliveries,
+    };
+  }
 }

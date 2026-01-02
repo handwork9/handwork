@@ -677,7 +677,7 @@ const OrdersScreen: React.FC = () => {
       </Text>
       <TouchableOpacity
         style={styles.shopButton}
-        onPress={() => navigation.navigate('Home')}
+        onPress={() => navigation.navigate('BuyerTabs', { screen: 'Home' } as any)}
       >
         <LinearGradient
           colors={['#22C55E', '#16A34A']}

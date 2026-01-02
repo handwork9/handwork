@@ -83,7 +83,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
         reason: fullReason,
       });
 
-      console.log('[ReportModal] Report submitted successfully:', response.data);
+      console.log('[ReportModal] Report submitted successfully:', (response as any).data);
 
       Alert.alert(
         'Report Submitted',

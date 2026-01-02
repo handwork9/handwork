@@ -205,6 +205,16 @@ export class User {
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   referralEarnings: number;
 
+  // Free Delivery Promo for new users
+  @Column({ default: false })
+  hasClaimedFreeDeliveryPromo: boolean;
+
+  @Column({ type: 'timestamp', nullable: true })
+  freeDeliveryClaimedAt: Date;
+
+  @Column({ type: 'int', default: 3 })
+  freeDeliveryOrdersRemaining: number;
+
   @OneToMany(() => Product, (product: Product) => product.farmer)
   products: Product[];
 

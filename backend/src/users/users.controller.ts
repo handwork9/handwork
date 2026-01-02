@@ -227,6 +227,24 @@ export class UsersController {
     return this.usersService.cancelDeletionRequest(userId, requestId);
   }
 
+  // ==================== FREE DELIVERY PROMO ENDPOINTS ====================
+
+  @Get('promo/free-delivery/status')
+  @ApiOperation({ summary: 'Get free delivery promo status for current user' })
+  @ApiResponse({ status: 200, description: 'Promo status returned' })
+  async getFreeDeliveryPromoStatus(@CurrentUser('id') userId: string) {
+    return this.usersService.getFreeDeliveryPromoStatus(userId);
+  }
+
+  @Post('promo/free-delivery/claim')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Claim free delivery promo (new users only)' })
+  @ApiResponse({ status: 200, description: 'Promo claimed successfully' })
+  @ApiResponse({ status: 400, description: 'Already claimed or not eligible' })
+  async claimFreeDeliveryPromo(@CurrentUser('id') userId: string) {
+    return this.usersService.claimFreeDeliveryPromo(userId);
+  }
+
   private sanitizeUser(user: User) {
     const { password, refreshToken, deviceTokens, ...sanitized } = user;
     return sanitized;

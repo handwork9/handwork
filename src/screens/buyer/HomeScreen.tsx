@@ -14,6 +14,7 @@ import {
   Modal,
   Image,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CompositeNavigationProp } from '@react-navigation/native';
@@ -28,6 +29,7 @@ import { ProductCard, LoadingSpinner, EmptyState, Button, StateFilterModal } fro
 import { COLORS, SPACING, FONT_SIZES, FONTS } from '../../constants/theme';
 import { productService } from '../../services/productService';
 import { notificationService } from '../../services/notificationService';
+import apiClient from '../../services/apiClient';
 import { useAppSelector, useAppDispatch } from '../../store';
 import { fetchFavoriteIds } from '../../store/slices/favoritesSlice';
 import { addToCart } from '../../store/slices/cartSlice';
@@ -182,6 +184,7 @@ export default function HomeScreen() {
   const [promoIndex, setPromoIndex] = useState(0);
   const [previewProduct, setPreviewProduct] = useState<Product | null>(null);
   const [previewModalVisible, setPreviewModalVisible] = useState(false);
+  const [freeDeliveryRemaining, setFreeDeliveryRemaining] = useState(0);
   const insets = useSafeAreaInsets();
   const scrollY = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -190,6 +193,31 @@ export default function HomeScreen() {
   useEffect(() => {
     dispatch(fetchFavoriteIds());
   }, [dispatch]);
+
+  // Load promo claimed state from backend on mount and when user changes
+  useEffect(() => {
+    const loadPromoClaimedState = async () => {
+      if (!user?.id) return;
+      try {
+        const response = await apiClient.get('/users/promo/free-delivery/status');
+        const data = (response as any).data;
+        console.log('[HomeScreen] Loaded promo status from backend:', data);
+        setPromoClaimed(data.hasClaimed);
+        setFreeDeliveryRemaining(data.ordersRemaining || 0);
+      } catch (error) {
+        console.error('Error loading promo claimed state from backend:', error);
+        // Fallback to AsyncStorage for offline support
+        try {
+          const promoClaimedKey = `@handwork_free_delivery_claimed_${user.id}`;
+          const claimed = await AsyncStorage.getItem(promoClaimedKey);
+          setPromoClaimed(claimed === 'true');
+        } catch (e) {
+          console.error('Error loading from AsyncStorage:', e);
+        }
+      }
+    };
+    loadPromoClaimedState();
+  }, [user?.id]);
 
   const getSelectedAddressText = () => {
     if (defaultAddress) {
@@ -434,12 +462,14 @@ export default function HomeScreen() {
     setPreviewProduct(null);
   }, []);
 
-  const handleClaimPromo = () => {
+  const handleClaimPromo = async () => {
     triggerHaptic();
     if (promoClaimed) {
       Alert.alert(
         t('home.alreadyClaimed'),
-        t('home.alreadyClaimedDesc'),
+        freeDeliveryRemaining > 0 
+          ? `${t('home.alreadyClaimedDesc')} (${freeDeliveryRemaining} orders remaining)`
+          : t('home.alreadyClaimedDesc'),
         [{ text: t('common.ok'), style: 'default' }]
       );
     } else {
@@ -451,14 +481,31 @@ export default function HomeScreen() {
           { 
             text: t('home.claimNow'), 
             style: 'default',
-            onPress: () => {
-              triggerSuccessHaptic();
-              setPromoClaimed(true);
-              Alert.alert(
-                t('home.congratulations'),
-                t('home.freeDeliveryActivated'),
-                [{ text: t('home.startShopping'), style: 'default' }]
-              );
+            onPress: async () => {
+              try {
+                // Call backend API to claim promo
+                const response = await apiClient.post('/users/promo/free-delivery/claim');
+                const data = (response as any).data;
+                console.log('[HomeScreen] Promo claimed via backend:', data);
+                
+                triggerSuccessHaptic();
+                setPromoClaimed(true);
+                setFreeDeliveryRemaining(data.ordersRemaining || 3);
+                
+                // Also save to AsyncStorage for offline support
+                const promoClaimedKey = `@handwork_free_delivery_claimed_${user?.id}`;
+                await AsyncStorage.setItem(promoClaimedKey, 'true');
+                
+                Alert.alert(
+                  t('home.congratulations'),
+                  t('home.freeDeliveryActivated'),
+                  [{ text: t('home.startShopping'), style: 'default' }]
+                );
+              } catch (error: any) {
+                console.error('Error claiming promo:', error);
+                const message = error.response?.data?.message || 'Failed to claim promo. Please try again.';
+                Alert.alert('Error', message);
+              }
             }
           }
         ]

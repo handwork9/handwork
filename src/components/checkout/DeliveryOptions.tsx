@@ -668,6 +668,7 @@ const styles = StyleSheet.create({
   },
   modalScroll: {
     paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.md,
   },
   slotOption: {
     flexDirection: 'row',

@@ -210,6 +210,15 @@ export default function BiometricLockScreen({ onUnlock, userName, userAvatar }: 
           }
         ]}
       >
+        {/* App Logo */}
+        <View style={styles.logoContainer}>
+          <Image 
+            source={require('../../../assets/logo-dark.png')} 
+            style={styles.appLogo}
+            resizeMode="contain"
+          />
+        </View>
+
         {/* Lock Icon with Pulse */}
         <Animated.View style={[styles.lockIconContainer, { transform: [{ scale: pulseAnim }] }]}>
           <View style={styles.lockIconOuter}>
@@ -315,6 +324,14 @@ export default function BiometricLockScreen({ onUnlock, userName, userAvatar }: 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: SPACING.xl,
+  },
+  appLogo: {
+    width: 140,
+    height: 70,
   },
   decorativeCircle: {
     position: 'absolute',

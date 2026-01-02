@@ -2484,8 +2484,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     paddingHorizontal: 16,
-    paddingBottom: 12,
-    marginTop: -4,
+    paddingVertical: 8,
+    marginTop: 4,
   },
   freeDeliveryHintText: {
     fontSize: 12,
@@ -3087,12 +3087,14 @@ const styles = StyleSheet.create({
     maxHeight: '80%',
   },
   timeSlotModalList: {
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
   },
   timeSlotModalDescription: {
     fontSize: 14,
     fontFamily: FONTS.regular,
     lineHeight: 20,
+    marginTop: 16,
     marginBottom: 20,
   },
   timeSlotDateGroup: {
