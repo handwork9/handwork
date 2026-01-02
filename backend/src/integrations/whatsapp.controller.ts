@@ -12,8 +12,9 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles } from '../common/decorators/roles.decorator';
+import { UserRole } from '../common/enums';
 import { WhatsAppService } from './whatsapp.service';
 
 @ApiTags('WhatsApp Integration')
@@ -23,7 +24,7 @@ export class WhatsAppController {
 
   @Post('send-message')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @Roles(UserRole.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Send a WhatsApp text message (Admin only)' })
   @ApiBody({
@@ -43,7 +44,7 @@ export class WhatsAppController {
 
   @Post('send-template')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @Roles(UserRole.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Send a WhatsApp template message (Admin only)' })
   async sendTemplateMessage(
@@ -66,7 +67,7 @@ export class WhatsAppController {
 
   @Post('send-promo')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @Roles(UserRole.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Send promotional WhatsApp message (Admin only)' })
   @ApiBody({
@@ -104,7 +105,7 @@ export class WhatsAppController {
 
   @Post('send-bulk')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @Roles(UserRole.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Send bulk WhatsApp messages (Admin only)' })
   @ApiBody({

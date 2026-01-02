@@ -39,7 +39,7 @@ class ChatbotService {
       payload.conversationId = conversationId;
     }
     console.log('[ChatbotService] Sending payload:', JSON.stringify(payload));
-    const response = await apiClient.post('/chatbot/chat', payload);
+    const response: any = await apiClient.post('/chatbot/chat', payload);
     console.log('[ChatbotService] Raw response:', JSON.stringify(response.data));
     // Backend wraps response in { success: true, data: ... }
     const data = response.data?.data || response.data;
@@ -51,7 +51,7 @@ class ChatbotService {
    * Get user's chatbot conversations
    */
   async getConversations(limit: number = 10): Promise<ChatbotConversation[]> {
-    const response = await apiClient.get('/chatbot/conversations', {
+    const response: any = await apiClient.get('/chatbot/conversations', {
       params: { limit },
     });
     return response.data;
@@ -62,7 +62,7 @@ class ChatbotService {
    */
   async getActiveConversation(): Promise<ChatbotConversation | null> {
     try {
-      const response = await apiClient.get('/chatbot/conversations/active');
+      const response: any = await apiClient.get('/chatbot/conversations/active');
       return response.data;
     } catch (error: any) {
       if (error.response?.status === 404) {
@@ -76,7 +76,7 @@ class ChatbotService {
    * Get a specific conversation
    */
   async getConversation(conversationId: string): Promise<ChatbotConversation> {
-    const response = await apiClient.get(`/chatbot/conversations/${conversationId}`);
+    const response: any = await apiClient.get(`/chatbot/conversations/${conversationId}`);
     return response.data;
   }
 

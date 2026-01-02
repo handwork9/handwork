@@ -45,7 +45,7 @@ const QUICK_QUESTIONS = [
 ];
 
 export default function AIChatbotScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
   const flatListRef = useRef<FlatList>(null);
