@@ -76,7 +76,7 @@ const KNOWLEDGE_BASE = {
     keywords: ['farmer', 'sell', 'vendor', 'become farmer', 'register as farmer', 'start selling'],
     response: '👨‍🌾 **Become a Handwork Farmer**\n\n**Benefits:**\n• Earn up to 90% per sale\n• Reach thousands of customers\n• Free listing & promotion tools\n• Flexible schedule\n\n**How to Register:**\n1. Go to Profile → Become a Farmer\n2. Fill in your farm details\n3. Upload documents (ID + farm photos)\n4. Submit for review\n\n**Approval Time:** 24-48 hours\n\n**Requirements:**\n• Valid ID\n• Farm/business registration (optional)\n• Quality product photos\n\n👇 Tap the button below to start your farmer registration!',
     action: {
-      type: 'navigate',
+      type: 'navigate' as const,
       screen: 'BecomeFarmer',
       label: '🚀 Start Farmer Registration',
     },
@@ -86,7 +86,7 @@ const KNOWLEDGE_BASE = {
     keywords: ['rider', 'dispatch', 'driver', 'become rider', 'delivery job', 'deliver for handwork'],
     response: '🚴 **Become a Handwork Rider**\n\n**Earnings:**\n• Competitive pay per delivery\n• Keep 100% of tips\n• Weekly bonuses\n• Flexible hours\n\n**Requirements:**\n• Valid ID\n• Smartphone with internet\n• Own vehicle (bike/motorcycle)\n• Guarantor information\n\n**How to Apply:**\n1. Profile → Become a Rider\n2. Complete application form\n3. Upload documents\n4. Background verification\n\n**Approval:** Usually 2-3 days\n\n👇 Tap the button below to start your rider application!',
     action: {
-      type: 'navigate',
+      type: 'navigate' as const,
       screen: 'BecomeRider',
       label: '🚀 Start Rider Application',
     },
@@ -222,6 +222,12 @@ export class ChatbotService {
     response: string;
     suggestedActions?: string[];
     escalated?: boolean;
+    action?: {
+      type: 'navigate' | 'link' | 'call';
+      screen?: string;
+      url?: string;
+      label: string;
+    };
   }> {
     let conversation: ChatbotConversation | null = null;
 
