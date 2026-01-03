@@ -222,6 +222,9 @@ export default function AIChatbotScreen() {
       const isEscalated = error.response?.data?.message?.includes('escalated to support');
       
       if (isEscalated) {
+        // Clear the conversation ID so user can start fresh
+        setConversationId(null);
+        
         const escalatedMessage: Message = {
           id: `escalated-${Date.now()}`,
           text: "This conversation has been escalated to our support team. You can continue chatting with a human agent or start a new AI conversation.",
