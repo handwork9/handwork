@@ -458,7 +458,7 @@ export default function ProductDetailScreen({ route, navigation }: Props) {
             <View style={[styles.statDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E5E5' }]} />
             <View style={styles.statItem}>
               <Text style={[styles.statValue, { color: colors.text }]}>
-                {product.rating ? product.rating.toFixed(1) : '-'}
+                {typeof product.rating === 'number' ? product.rating.toFixed(1) : '-'}
               </Text>
               <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Rating</Text>
             </View>
