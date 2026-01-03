@@ -23,6 +23,12 @@ interface ChatResponse {
   suggestedActions?: string[];
   shouldEscalate?: boolean;
   escalationReason?: string;
+  action?: {
+    type: 'navigate' | 'link' | 'call';
+    screen?: string;
+    url?: string;
+    label: string;
+  };
 }
 
 // Knowledge base for common questions
@@ -68,12 +74,28 @@ const KNOWLEDGE_BASE = {
 
   farmer: {
     keywords: ['farmer', 'sell', 'vendor', 'become farmer', 'register as farmer', 'start selling'],
-    response: '👨‍🌾 **Become a Handwork Farmer**\n\n**Benefits:**\n• Earn up to 90% per sale\n• Reach thousands of customers\n• Free listing & promotion tools\n• Flexible schedule\n\n**How to Register:**\n1. Go to Profile → Become a Farmer\n2. Fill in your farm details\n3. Upload documents (ID + farm photos)\n4. Submit for review\n\n**Approval Time:** 24-48 hours\n\n**Requirements:**\n• Valid ID\n• Farm/business registration (optional)\n• Quality product photos\n\nReady to start selling?',
+    response: '👨‍🌾 **Become a Handwork Farmer**\n\n**Benefits:**\n• Earn up to 90% per sale\n• Reach thousands of customers\n• Free listing & promotion tools\n• Flexible schedule\n\n**How to Register:**\n1. Go to Profile → Become a Farmer\n2. Fill in your farm details\n3. Upload documents (ID + farm photos)\n4. Submit for review\n\n**Approval Time:** 24-48 hours\n\n**Requirements:**\n• Valid ID\n• Farm/business registration (optional)\n• Quality product photos\n\n👇 Tap the button below to start your farmer registration!',
+    action: {
+      type: 'navigate',
+      screen: 'BecomeFarmer',
+      label: '🚀 Start Farmer Registration',
+    },
   },
 
   rider: {
     keywords: ['rider', 'dispatch', 'driver', 'become rider', 'delivery job', 'deliver for handwork'],
-    response: '🚴 **Become a Handwork Rider**\n\n**Earnings:**\n• Competitive pay per delivery\n• Keep 100% of tips\n• Weekly bonuses\n• Flexible hours\n\n**Requirements:**\n• Valid ID\n• Smartphone with internet\n• Own vehicle (bike/motorcycle)\n• Guarantor information\n\n**How to Apply:**\n1. Profile → Become a Rider\n2. Complete application form\n3. Upload documents\n4. Background verification\n\n**Approval:** Usually 2-3 days\n\nReady to ride with us?',
+    response: '🚴 **Become a Handwork Rider**\n\n**Earnings:**\n• Competitive pay per delivery\n• Keep 100% of tips\n• Weekly bonuses\n• Flexible hours\n\n**Requirements:**\n• Valid ID\n• Smartphone with internet\n• Own vehicle (bike/motorcycle)\n• Guarantor information\n\n**How to Apply:**\n1. Profile → Become a Rider\n2. Complete application form\n3. Upload documents\n4. Background verification\n\n**Approval:** Usually 2-3 days\n\n👇 Tap the button below to start your rider application!',
+    action: {
+      type: 'navigate',
+      screen: 'BecomeRider',
+      label: '🚀 Start Rider Application',
+    },
+  },
+
+  // Sign up / Registration
+  signup: {
+    keywords: ['sign up', 'signup', 'register', 'create account', 'new account', 'join', 'get started'],
+    response: '🎉 **Join Handwork!**\n\n**Account Types:**\n\n🛒 **Buyer Account**\nShop fresh produce from local farmers\n• Free to join\n• Instant access\n• Start shopping immediately\n\n👨‍🌾 **Farmer/Seller Account**\nSell your products on Handwork\n• Earn up to 90% per sale\n• Reach thousands of customers\n• Requires approval (24-48 hours)\n\n🚴 **Rider Account**\nDeliver orders and earn money\n• Flexible hours\n• Keep 100% of tips\n• Requires verification (2-3 days)\n\n**Already have an account?**\nJust log in and you\'re ready to go!\n\nWhich type of account would you like to create?',
   },
 
   account: {
@@ -268,6 +290,7 @@ export class ChatbotService {
       response: chatResponse.message,
       suggestedActions: chatResponse.suggestedActions,
       escalated: chatResponse.shouldEscalate,
+      action: chatResponse.action,
     };
   }
 
@@ -395,6 +418,7 @@ Never share sensitive information or make promises outside policy.`;
       return {
         message: KNOWLEDGE_BASE.rider.response,
         suggestedActions: ['Start rider registration', 'Learn more'],
+        action: KNOWLEDGE_BASE.rider.action,
       };
     }
 
@@ -408,6 +432,18 @@ Never share sensitive information or make promises outside policy.`;
       return {
         message: KNOWLEDGE_BASE.farmer.response,
         suggestedActions: ['Start farmer registration', 'Learn more'],
+        action: KNOWLEDGE_BASE.farmer.action,
+      };
+    }
+
+    // Check for sign up / registration queries
+    if (this.matchesKeywords(lowerMessage, KNOWLEDGE_BASE.signup.keywords) ||
+        lowerMessage.includes('how to join') ||
+        lowerMessage.includes('how do i join') ||
+        lowerMessage.includes('i want to join')) {
+      return {
+        message: KNOWLEDGE_BASE.signup.response,
+        suggestedActions: ['Become a Farmer', 'Become a Rider', 'Already have account'],
       };
     }
 

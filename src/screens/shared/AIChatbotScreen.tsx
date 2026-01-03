@@ -33,6 +33,12 @@ interface Message {
   timestamp: Date;
   suggestedActions?: string[];
   isTyping?: boolean;
+  action?: {
+    type: 'navigate' | 'link' | 'call';
+    screen?: string;
+    url?: string;
+    label: string;
+  };
 }
 
 const QUICK_QUESTIONS = [
@@ -189,6 +195,7 @@ export default function AIChatbotScreen() {
         sender: 'bot',
         timestamp: new Date(),
         suggestedActions: response.suggestedActions,
+        action: response.action,
       };
       setMessages(prev => [...prev, botMessage]);
 
@@ -283,8 +290,25 @@ export default function AIChatbotScreen() {
       handleStartNewConversation();
     } else if (action === 'Try Again') {
       inputRef.current?.focus();
+    } else if (action === 'Become a Farmer' || action === 'Start farmer registration') {
+      navigation.navigate('BecomeFarmer' as any);
+    } else if (action === 'Become a Rider' || action === 'Start rider registration') {
+      navigation.navigate('BecomeRider' as any);
     } else {
       handleSend(action);
+    }
+  };
+
+  const handleActionButton = (action: Message['action']) => {
+    if (!action) return;
+    
+    if (action.type === 'navigate' && action.screen) {
+      navigation.navigate(action.screen as any);
+    } else if (action.type === 'link' && action.url) {
+      // Open URL in browser
+      import('react-native').then(({ Linking }) => {
+        Linking.openURL(action.url!);
+      });
     }
   };
 
@@ -337,6 +361,24 @@ export default function AIChatbotScreen() {
               </TouchableOpacity>
             ))}
           </View>
+        )}
+
+        {/* Navigation Action Button */}
+        {isBot && item.action && (
+          <TouchableOpacity
+            style={styles.navigationActionButton}
+            onPress={() => handleActionButton(item.action)}
+          >
+            <LinearGradient
+              colors={['#16A34A', '#15803D']}
+              style={styles.navigationActionGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <Text style={styles.navigationActionText}>{item.action.label}</Text>
+              <Ionicons name="arrow-forward" size={18} color="#FFF" />
+            </LinearGradient>
+          </TouchableOpacity>
         )}
       </View>
     );
@@ -613,6 +655,24 @@ const styles = StyleSheet.create({
   actionText: {
     fontSize: 13,
     fontFamily: FONTS.medium,
+  },
+  navigationActionButton: {
+    marginTop: 12,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  navigationActionGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    gap: 8,
+  },
+  navigationActionText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontFamily: FONTS.semiBold,
   },
   typingBubble: {
     flexDirection: 'row',

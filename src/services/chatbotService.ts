@@ -27,6 +27,12 @@ export interface ChatResponse {
   conversationId: string;
   suggestedActions?: string[];
   escalated?: boolean;
+  action?: {
+    type: 'navigate' | 'link' | 'call';
+    screen?: string;
+    url?: string;
+    label: string;
+  };
 }
 
 class ChatbotService {
