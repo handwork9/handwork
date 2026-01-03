@@ -55,4 +55,23 @@ export class PriceAlertsController {
       data: history,
     };
   }
+
+  /**
+   * Get all price alerts (admin)
+   */
+  @Get('admin/all')
+  async getAllPriceAlerts() {
+    const alerts = await this.priceAlertsService.getAllAlerts();
+    return alerts;
+  }
+
+  /**
+   * Get all price history (admin)
+   */
+  @Get('admin/history')
+  async getAllPriceHistory(@Query('limit') limit?: string) {
+    const limitNum = limit ? parseInt(limit, 10) : 50;
+    const history = await this.priceAlertsService.getAllPriceHistory(limitNum);
+    return history;
+  }
 }

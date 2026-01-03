@@ -179,4 +179,63 @@ export class PriceAlertsService {
 
     this.logger.log(`Cleaned up ${result.affected || 0} old price history records`);
   }
+
+  /**
+   * Get all alerts for admin (price drops with user info)
+   */
+  async getAllAlerts(): Promise<any[]> {
+    // Get all recent price drops with favorited product info
+    const priceDrops = await this.priceHistoryRepository
+      .createQueryBuilder('ph')
+      .leftJoinAndSelect('ph.product', 'product')
+      .where('ph.percentageChange < 0')
+      .orderBy('ph.createdAt', 'DESC')
+      .take(100)
+      .getMany();
+
+    // For each price drop, count how many users were notified (have it favorited)
+    const alerts = [];
+    for (const ph of priceDrops) {
+      const favCount = await this.favoriteRepository.count({
+        where: { productId: ph.productId },
+      });
+
+      alerts.push({
+        id: ph.id,
+        productId: ph.productId,
+        productName: ph.product?.title || 'Unknown',
+        productImage: ph.product?.images?.[0] || null,
+        originalPrice: ph.oldPrice,
+        currentPrice: ph.newPrice,
+        dropPercentage: Math.abs(ph.percentageChange),
+        notified: favCount > 0,
+        notifiedCount: favCount,
+        createdAt: ph.createdAt,
+      });
+    }
+
+    return alerts;
+  }
+
+  /**
+   * Get all price history for admin
+   */
+  async getAllPriceHistory(limit = 50): Promise<any[]> {
+    const history = await this.priceHistoryRepository
+      .createQueryBuilder('ph')
+      .leftJoinAndSelect('ph.product', 'product')
+      .orderBy('ph.createdAt', 'DESC')
+      .take(limit)
+      .getMany();
+
+    return history.map(h => ({
+      id: h.id,
+      productId: h.productId,
+      productName: h.product?.title || 'Unknown',
+      oldPrice: h.oldPrice,
+      newPrice: h.newPrice,
+      changePercentage: h.percentageChange,
+      changedAt: h.createdAt,
+    }));
+  }
 }

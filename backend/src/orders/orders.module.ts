@@ -13,6 +13,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { EmailModule } from '../email/email.module';
 import { RecommendationModule } from '../recommendations/recommendation.module';
 import { CouponsModule } from '../coupons/coupons.module';
+import { RewardsModule } from '../rewards/rewards.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { CouponsModule } from '../coupons/coupons.module';
     NotificationsModule,
     EmailModule,
     RecommendationModule,
+    RewardsModule,
   ],
   controllers: [OrdersController],
   providers: [OrdersService],

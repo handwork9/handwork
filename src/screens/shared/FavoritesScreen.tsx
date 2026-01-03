@@ -10,6 +10,7 @@ import {
   Animated,
   Dimensions,
   Image,
+  Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -246,6 +247,40 @@ const FavoritesScreen: React.FC = () => {
   const handleStartShopping = useCallback(() => {
     navigation.navigate('BuyerTabs', { screen: 'Home' } as any);
   }, [navigation]);
+
+  // Share wishlist with friends
+  const handleShareWishlist = useCallback(async () => {
+    if (favorites.length === 0) {
+      Alert.alert(t('favorites.empty'), t('favorites.nothingToShare'));
+      return;
+    }
+
+    try {
+      // Create a shareable text version of the wishlist
+      const wishlistItems = favorites.map((item, index) => {
+        const price = typeof item.price === 'string' ? parseFloat(item.price) : item.price;
+        return `${index + 1}. ${item.title} - ${formatCurrency(price)}/${item.unit}`;
+      }).join('\n');
+
+      const shareMessage = `🛒 ${t('favorites.myWishlist')}\n\n${wishlistItems}\n\n📱 ${t('favorites.shareFooter')}`;
+
+      // Use native share
+      const result = await Share.share({
+        message: shareMessage,
+        title: t('favorites.shareTitle'),
+      });
+
+      if (result.action === Share.sharedAction) {
+        // Track share for rewards
+        if (result.activityType) {
+          console.log(`Shared via: ${result.activityType}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error sharing wishlist:', error);
+      Alert.alert(t('common.error'), t('favorites.shareError'));
+    }
+  }, [favorites, t]);
 
   // Render favorite item
   const renderItem = useCallback(
@@ -512,9 +547,17 @@ const FavoritesScreen: React.FC = () => {
         <Text style={[styles.headerTitle, { color: theme.text }]}>{t('favorites.myFavorites')}</Text>
         <View style={styles.headerRight}>
           {favorites.length > 0 && (
-            <View style={[styles.countBadge, { backgroundColor: theme.primary }]}>
-              <Text style={styles.countText}>{favorites.length}</Text>
-            </View>
+            <>
+              <TouchableOpacity 
+                style={[styles.shareButton, { backgroundColor: theme.primary + '15' }]}
+                onPress={handleShareWishlist}
+              >
+                <Ionicons name="share-social" size={20} color={theme.primary} />
+              </TouchableOpacity>
+              <View style={[styles.countBadge, { backgroundColor: theme.primary }]}>
+                <Text style={styles.countText}>{favorites.length}</Text>
+              </View>
+            </>
           )}
         </View>
       </View>
@@ -570,8 +613,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   headerRight: {
-    width: 40,
-    alignItems: 'flex-end',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  shareButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   countBadge: {
     paddingHorizontal: 8,

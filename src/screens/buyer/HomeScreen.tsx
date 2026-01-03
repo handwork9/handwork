@@ -62,6 +62,7 @@ import ProcessedIllustration from '../../assets/illustrations/categories/Process
 import SeedsIllustration from '../../assets/illustrations/categories/SeedsIllustration';
 import { FarmerActivationIllustration, GoPremiumIllustration, VerifiedSellerIllustration, LiveSupportIllustration } from '../../assets/illustrations/hero';
 import LiveSupportBanner from '../../components/common/LiveSupportBanner';
+import FlashSaleBanner from '../../components/common/FlashSaleBanner';
 
 type NavigationProp = CompositeNavigationProp<
   BottomTabNavigationProp<BuyerTabParamList, 'Home'>,
@@ -440,10 +441,35 @@ export default function HomeScreen() {
     staleTime: 5 * 60 * 1000,
   });
 
+  // Fetch active flash sales
+  const { data: flashSalesData } = useQuery({
+    queryKey: ['flashSales', 'active'],
+    queryFn: async () => {
+      const response = await apiClient.get('/flash-sales');
+      return (response as any).data || [];
+    },
+    staleTime: 30 * 1000, // 30 seconds for live updates
+  });
+
   const promotedProducts = promotedData?.products || [];
   const sponsoredProducts = sponsoredData?.products || [];
   const adminProducts = adminProductsData?.products || [];
   const recommendedProducts = recommendedData?.products || [];
+  
+  // Transform flash sales data for the FlashSaleBanner component
+  const flashSales = (flashSalesData || []).map((sale: any) => ({
+    id: sale.id,
+    productId: sale.product?.id || sale.productId,
+    productTitle: sale.product?.title || 'Product',
+    productImage: sale.product?.images?.[0] || sale.product?.image || '',
+    originalPrice: Number(sale.originalPrice || sale.product?.price || 0),
+    salePrice: Number(sale.salePrice || 0),
+    discountPercentage: Number(sale.discountPercentage || 0),
+    soldCount: Number(sale.soldCount || 0),
+    stockLimit: Number(sale.stockLimit || 100),
+    startTime: sale.startTime,
+    endTime: sale.endTime,
+  }));
 
   const products = productsData?.products || [];
 
@@ -1946,12 +1972,26 @@ export default function HomeScreen() {
     <LiveSupportBanner variant="compact" style={{ marginHorizontal: 8, marginTop: 8 }} />
   );
 
+  // Render Flash Sales Banner with countdown
+  const renderFlashSales = () => {
+    if (!flashSales || flashSales.length === 0) return null;
+    
+    return (
+      <FlashSaleBanner
+        flashSales={flashSales}
+        onSeeAll={() => navigation.navigate('Search', { category: 'flash-sales' })}
+        onProductPress={(productId) => navigation.navigate('ProductDetail', { productId })}
+      />
+    );
+  };
+
   const renderListHeader = () => (
     <>
       <View style={[styles.mainContentCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
         {renderAdBanner()}
         {renderCategories()}
-        {renderLiveSupportBanner()}
+        {renderFlashSales()}
+        {renderLiveSupportBanner()}}
         {renderPromoBanner()}
         {renderCategorySections()}
       </View>

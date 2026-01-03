@@ -54,3 +54,4 @@ export * from './content-moderation.entity';
 export * from './coupon.entity';
 export * from './pickup-location.entity';
 export * from './price-history.entity';
+export * from './product-bundle.entity';

@@ -381,6 +381,82 @@ export class ReviewsService {
     );
   }
 
+  /**
+   * Get all reviews (admin)
+   */
+  async getAllReviews(page = 1, limit = 20, rating?: number) {
+    const queryBuilder = this.reviewRepository
+      .createQueryBuilder('review')
+      .leftJoinAndSelect('review.reviewer', 'reviewer')
+      .leftJoinAndSelect('review.order', 'order');
+
+    if (rating) {
+      queryBuilder.andWhere('review.rating = :rating', { rating });
+    }
+
+    const [reviews, total] = await queryBuilder
+      .orderBy('review.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+
+    return {
+      reviews: reviews.map(r => ({
+        id: r.id,
+        userId: r.reviewerId,
+        userName: r.reviewer?.name || 'Anonymous',
+        userAvatar: r.reviewer?.avatar || null,
+        productId: r.order?.items?.[0]?.productId || null,
+        productName: r.order?.items?.[0]?.title || 'N/A',
+        productImage: r.order?.items?.[0]?.image || null,
+        rating: r.rating,
+        comment: r.comment,
+        helpful: 0,
+        status: 'approved',
+        createdAt: r.createdAt,
+      })),
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  /**
+   * Get admin stats for reviews
+   */
+  async getAdminStats() {
+    const totalReviews = await this.reviewRepository.count();
+    
+    const avgResult = await this.reviewRepository
+      .createQueryBuilder('review')
+      .select('AVG(review.rating)', 'avg')
+      .getRawOne();
+    
+    const averageRating = parseFloat(avgResult?.avg || '0').toFixed(1);
+
+    // Get rating distribution
+    const distribution = await this.reviewRepository
+      .createQueryBuilder('review')
+      .select('review.rating', 'rating')
+      .addSelect('COUNT(*)', 'count')
+      .groupBy('review.rating')
+      .getRawMany();
+
+    const ratingDistribution: { [key: number]: number } = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    distribution.forEach(d => {
+      ratingDistribution[d.rating] = parseInt(d.count);
+    });
+
+    return {
+      totalReviews,
+      averageRating: parseFloat(averageRating),
+      ratingDistribution,
+      promptsShown: 0, // App prompts tracked client-side
+      promptsAccepted: 0,
+      conversionRate: 0,
+    };
+  }
+
   private transformReview(review: Review): ReviewResponseDto {
     return {
       id: review.id,

@@ -122,4 +122,36 @@ export class ReviewsController {
   ) {
     return this.reviewsService.respondToReview(reviewId, req.user.id, dto.response);
   }
+
+  /**
+   * Get all reviews (admin)
+   * GET /reviews/admin/all
+   */
+  @Get('admin/all')
+  async getAllReviews(
+    @Query('page') page = 1,
+    @Query('limit') limit = 20,
+    @Query('rating') rating?: string,
+  ) {
+    return this.reviewsService.getAllReviews(+page, +limit, rating ? +rating : undefined);
+  }
+
+  /**
+   * Get review stats (admin)
+   * GET /reviews/admin/stats
+   */
+  @Get('admin/stats')
+  async getReviewStats() {
+    return this.reviewsService.getAdminStats();
+  }
+
+  /**
+   * Get app review prompts (admin)
+   * GET /reviews/admin/app-prompts
+   */
+  @Get('admin/app-prompts')
+  async getAppReviewPrompts() {
+    // Return empty array for now - app review prompts are handled client-side
+    return [];
+  }
 }

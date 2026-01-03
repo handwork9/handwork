@@ -331,6 +331,85 @@ export class DeliverySchedulingService {
     return { message: 'Default slots initialized', count: defaultSlots.length };
   }
 
+  /**
+   * Get all scheduled deliveries (admin)
+   */
+  async getAllScheduledDeliveries(status?: string, date?: string) {
+    const queryBuilder = this.scheduledDeliveryRepository
+      .createQueryBuilder('sd')
+      .leftJoinAndSelect('sd.slot', 'slot')
+      .leftJoinAndSelect('sd.order', 'order')
+      .leftJoinAndSelect('order.buyer', 'buyer');
+
+    if (status) {
+      queryBuilder.andWhere('sd.status = :status', { status });
+    }
+
+    if (date) {
+      queryBuilder.andWhere('DATE(sd.scheduledDate) = :date', { date });
+    }
+
+    queryBuilder.orderBy('sd.scheduledDate', 'DESC');
+
+    const deliveries = await queryBuilder.getMany();
+
+    return deliveries.map(d => ({
+      id: d.id,
+      orderId: d.orderId,
+      orderNumber: d.order?.orderNumber || 'N/A',
+      slotId: d.slotId,
+      slotName: d.slot?.name || 'Unknown',
+      scheduledDate: d.scheduledDate,
+      status: d.status,
+      buyerName: d.order?.buyer?.name || 'Unknown',
+      createdAt: d.createdAt,
+    }));
+  }
+
+  /**
+   * Create or update a delivery slot (admin)
+   */
+  async createOrUpdateSlot(dto: any) {
+    if (dto.id) {
+      const existing = await this.deliverySlotRepository.findOne({ where: { id: dto.id } });
+      if (!existing) {
+        throw new NotFoundException('Slot not found');
+      }
+      Object.assign(existing, {
+        name: dto.name ?? existing.name,
+        startTime: dto.startTime ?? existing.startTime,
+        endTime: dto.endTime ?? existing.endTime,
+        maxCapacity: dto.maxOrders ?? existing.maxCapacity,
+        additionalFee: dto.extraFee ?? existing.additionalFee,
+        isActive: dto.isActive ?? existing.isActive,
+        availableDays: dto.daysAvailable ?? existing.availableDays,
+      });
+      return this.deliverySlotRepository.save(existing);
+    }
+
+    const slot = this.deliverySlotRepository.create({
+      name: dto.name,
+      startTime: dto.startTime,
+      endTime: dto.endTime,
+      maxCapacity: dto.maxOrders || 50,
+      additionalFee: dto.extraFee || 0,
+      isActive: dto.isActive ?? true,
+      availableDays: dto.daysAvailable || ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+    });
+    return this.deliverySlotRepository.save(slot);
+  }
+
+  /**
+   * Delete a delivery slot (admin)
+   */
+  async deleteSlot(id: string) {
+    const slot = await this.deliverySlotRepository.findOne({ where: { id } });
+    if (!slot) {
+      throw new NotFoundException('Slot not found');
+    }
+    await this.deliverySlotRepository.remove(slot);
+  }
+
   private formatTime(time: string): string {
     const [hours, minutes] = time.split(':');
     const hour = parseInt(hours);

@@ -20,6 +20,8 @@ import { EmailService } from '../email/email.service';
 import { RecommendationService } from '../recommendations/recommendation.service';
 import { RidersService } from '../riders/riders.service';
 import { CouponsService } from '../coupons/coupons.service';
+import { RewardsService } from '../rewards/rewards.service';
+import { PointSource } from '../database/entities/loyalty-points.entity';
 import { CreateOrderDto, UpdateOrderStatusDto } from './dto';
 import { OrderStatus, UserRole, PaymentStatus } from '../common/enums';
 import { generateOrderNumber, isSameState } from '../common/utils/helpers';
@@ -43,6 +45,7 @@ export class OrdersService {
     private readonly ridersService: RidersService,
     @Inject(forwardRef(() => CouponsService))
     private readonly couponsService: CouponsService,
+    private readonly rewardsService: RewardsService,
   ) {}
 
   async create(buyerId: string, dto: CreateOrderDto): Promise<Order> {
@@ -372,6 +375,10 @@ export class OrdersService {
         // Update user preferences for recommendations (async, don't block)
         this.recommendationService.updatePreferencesFromOrder(order.buyerId, order).catch((err) => {
           this.logger.warn(`Failed to update recommendations: ${err.message}`);
+        });
+        // Award loyalty points for purchase (async, don't block)
+        this.awardPurchasePoints(order).catch((err) => {
+          this.logger.warn(`Failed to award loyalty points: ${err.message}`);
         });
         // Check for milestone coupon reward (async, don't block)
         this.couponsService.checkAndCreateMilestoneCoupon(order.buyerId).then((coupon) => {
@@ -1038,6 +1045,54 @@ export class OrdersService {
         percentage: Math.min(100, Math.round((totalSpent / 100000) * 100)),
       },
     };
+  }
+
+  /**
+   * Award loyalty points for a completed purchase
+   */
+  private async awardPurchasePoints(order: Order): Promise<void> {
+    try {
+      // Calculate points based on order total (1 point per ₦100)
+      const pointsToAward = Math.floor(Number(order.totalAmount) / 100);
+      
+      if (pointsToAward <= 0) {
+        return;
+      }
+
+      // Check if this is user's first order
+      const orderCount = await this.orderRepository.count({
+        where: { 
+          buyerId: order.buyerId,
+          status: OrderStatus.DELIVERED,
+        },
+      });
+
+      const isFirstOrder = orderCount === 1;
+
+      // Award points through rewards service
+      const transaction = await this.rewardsService.earnPoints(order.buyerId, {
+        points: pointsToAward,
+        source: PointSource.PURCHASE,
+        referenceId: order.id,
+        description: `Points for order ${order.orderNumber}`,
+      });
+
+      // Send notification about earned points
+      await this.notificationsService.sendPushNotification({
+        userId: order.buyerId,
+        type: NotificationType.GENERAL,
+        title: '🎉 Points Earned!',
+        body: isFirstOrder 
+          ? `Congrats on your first order! You earned ${transaction.points} loyalty points. Check your rewards!`
+          : `You earned ${transaction.points} loyalty points for your purchase!`,
+        data: { screen: 'Rewards', pointsEarned: transaction.points },
+      });
+
+      this.logger.log(`Awarded ${transaction.points} points to user ${order.buyerId} for order ${order.orderNumber}`);
+    } catch (error) {
+      this.logger.error(`Failed to award points for order ${order.id}: ${error.message}`);
+      throw error;
+    }
   }
 
   /**

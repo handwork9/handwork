@@ -294,7 +294,12 @@
     "by": "by",
     "startShopping": "Start Shopping",
     "failedRemove": "Failed to remove from favorites",
-    "failedClear": "Failed to clear favorites"
+    "failedClear": "Failed to clear favorites",
+    "myWishlist": "My Wishlist from Handwork 🌾",
+    "shareTitle": "Share My Wishlist",
+    "shareFooter": "Download Handwork to shop fresh farm produce!",
+    "nothingToShare": "Add some items to share your wishlist",
+    "shareError": "Could not share wishlist"
   },
   "invite": {
     "title": "Invite Friends",

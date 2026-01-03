@@ -140,4 +140,62 @@ export class DeliverySchedulingController {
       data: result,
     };
   }
+
+  /**
+   * Get all scheduled deliveries (admin)
+   * GET /delivery-scheduling/scheduled
+   */
+  @Get('scheduled')
+  async getAllScheduledDeliveries(
+    @Query('status') status?: string,
+    @Query('date') date?: string,
+  ) {
+    const deliveries = await this.deliverySchedulingService.getAllScheduledDeliveries(status, date);
+    return {
+      success: true,
+      data: deliveries,
+    };
+  }
+
+  /**
+   * Create or update a delivery slot (admin)
+   * POST /delivery-scheduling/slots
+   */
+  @Post('slots')
+  async createSlot(@Body() dto: any) {
+    const slot = await this.deliverySchedulingService.createOrUpdateSlot(dto);
+    return {
+      success: true,
+      data: slot,
+    };
+  }
+
+  /**
+   * Update a delivery slot (admin)
+   * PUT /delivery-scheduling/slots/:id
+   */
+  @Put('slots/:id')
+  async updateSlot(
+    @Param('id') id: string,
+    @Body() dto: any,
+  ) {
+    const slot = await this.deliverySchedulingService.createOrUpdateSlot({ ...dto, id });
+    return {
+      success: true,
+      data: slot,
+    };
+  }
+
+  /**
+   * Delete a delivery slot (admin)
+   * DELETE /delivery-scheduling/slots/:id
+   */
+  @Delete('slots/:id')
+  async deleteSlot(@Param('id') id: string) {
+    await this.deliverySchedulingService.deleteSlot(id);
+    return {
+      success: true,
+      message: 'Slot deleted',
+    };
+  }
 }
