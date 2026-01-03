@@ -660,17 +660,21 @@ export default function FarmerOrdersScreen() {
     
     const actions = getOrderActions(item);
     const statusStyle = getStatusColor(item.status);
-    const statusGradient = getStatusGradient(item.status);
     const statusIcon = getStatusIcon(item.status);
     const isSelected = selectedOrders.includes(item.id);
-    const firstItemImage = item.items?.[0]?.image || item.items?.[0]?.productImage;
+    const isFirst = index === 0;
+    const isLast = index === filteredOrders.length - 1;
+    const itemCount = item.items?.length || 0;
+    const primaryAction = actions.find(a => a.variant === 'primary');
     
     return (
       <TouchableOpacity
         style={[
-          styles.orderMediaCard,
+          styles.orderListRow,
           { backgroundColor: isDark ? colors.card : '#FFFFFF' },
-          isSelected && styles.orderMediaCardSelected,
+          isFirst && styles.orderListRowFirst,
+          isLast && styles.orderListRowLast,
+          isSelected && styles.orderListRowSelected,
         ]}
         onPress={() => {
           if (selectionMode) {
@@ -687,149 +691,91 @@ export default function FarmerOrdersScreen() {
         }}
         activeOpacity={0.7}
       >
-        {/* Status Header with Gradient */}
-        <LinearGradient
-          colors={statusGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.orderMediaHeader}
-        >
-          {/* Decorative circles */}
-          <View style={[styles.orderDecorCircle, { top: -15, right: -15, opacity: 0.15 }]} />
-          <View style={[styles.orderDecorCircle, { bottom: -20, left: 30, width: 50, height: 50, opacity: 0.1 }]} />
-          
-          {/* Selection checkbox overlay */}
-          {selectionMode && (
-            <TouchableOpacity
-              style={styles.mediaOrderCheckbox}
-              onPress={() => toggleOrderSelection(item.id)}
-            >
-              <View style={[
-                styles.mediaOrderCheckboxCircle,
-                isSelected && styles.mediaOrderCheckboxSelected,
-              ]}>
-                {isSelected && (
-                  <Ionicons name="checkmark" size={16} color="#FFFFFF" />
-                )}
-              </View>
-            </TouchableOpacity>
-          )}
-          
-          <View style={styles.orderMediaHeaderContent}>
-            <View style={styles.orderMediaHeaderLeft}>
-              <View style={styles.orderMediaBadge}>
-                <Ionicons name={statusIcon} size={12} color="#FFFFFF" />
-                <Text style={styles.orderMediaBadgeText}>{(getStatusLabel(item.status) || item.status || 'Unknown').toUpperCase()}</Text>
-              </View>
-              <View style={styles.orderMediaOrderInfo}>
-                <Text style={styles.orderMediaOrderNumber}>#{item.orderNumber || item.id.slice(-6)}</Text>
-                <Text style={styles.orderMediaDate}>{formatDate(item.createdAt)}</Text>
-              </View>
-            </View>
-            {/* Print button in header */}
-            {!selectionMode && (
-              <TouchableOpacity 
-                style={styles.orderMediaHeaderPrintBtn}
-                onPress={() => handlePrintPackingSlip(item)}
-              >
-                <Ionicons name="print-outline" size={18} color="#FFFFFF" />
-              </TouchableOpacity>
-            )}
-            <View style={styles.orderMediaTotalContainer}>
-              <Text style={styles.orderMediaTotalLabel}>Total</Text>
-              <Text style={styles.orderMediaTotalValue}>{formatCurrency(Number(item.total || 0))}</Text>
-            </View>
-          </View>
-        </LinearGradient>
-        
-        {/* Content Section */}
-        <View style={styles.orderMediaContent}>
-          {/* Buyer Info Row */}
-          {item.buyerName && (
-            <View style={styles.orderMediaBuyerRow}>
-              <View style={[styles.orderMediaBuyerAvatar, { backgroundColor: isDark ? '#3A3A3C' : '#E8F5E9' }]}>
-                <Ionicons name="person" size={14} color="#34C759" />
-              </View>
-              <View style={styles.orderMediaBuyerInfo}>
-                <Text style={[styles.orderMediaBuyerName, { color: colors.text }]} numberOfLines={1}>
-                  {item.buyerName}
-                </Text>
-                {item.buyerPhone && (
-                  <Text style={[styles.orderMediaBuyerPhone, { color: colors.textSecondary }]}>
-                    {item.buyerPhone}
-                  </Text>
-                )}
-              </View>
-            </View>
-          )}
-          
-          {/* Items Preview */}
-          <View style={[styles.orderMediaItemsSection, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F8F9FA' }]}>
-            <View style={styles.orderMediaItemsHeader}>
-              <Ionicons name="cube-outline" size={16} color={statusStyle.color} />
-              <Text style={[styles.orderMediaItemsCount, { color: colors.text }]}>
-                {item.items.length} item{item.items.length > 1 ? 's' : ''}
-              </Text>
-            </View>
-            <View style={styles.orderMediaItemsList}>
-              {item.items.slice(0, 3).map((orderItem: any, idx: number) => (
-                <View key={idx} style={styles.orderMediaItemRow}>
-                  <View style={[styles.orderMediaItemDot, { backgroundColor: statusStyle.color }]} />
-                  <Text style={[styles.orderMediaItemText, { color: colors.textSecondary }]} numberOfLines={1}>
-                    {orderItem.quantity}× {orderItem.title || orderItem.productName || 'Item'}
-                  </Text>
-                </View>
-              ))}
-              {item.items.length > 3 && (
-                <Text style={[styles.orderMediaMoreItems, { color: colors.textSecondary }]}>
-                  +{item.items.length - 3} more items
-                </Text>
+        {/* Selection Checkbox */}
+        {selectionMode && (
+          <TouchableOpacity
+            style={styles.orderListCheckbox}
+            onPress={() => toggleOrderSelection(item.id)}
+          >
+            <View style={[
+              styles.orderListCheckboxCircle,
+              isSelected && styles.orderListCheckboxSelected,
+            ]}>
+              {isSelected && (
+                <Ionicons name="checkmark" size={14} color="#FFFFFF" />
               )}
             </View>
+          </TouchableOpacity>
+        )}
+        
+        {/* Status Indicator */}
+        <View style={[styles.orderListStatusIndicator, { backgroundColor: statusStyle.bg }]}>
+          <Ionicons name={statusIcon} size={20} color={statusStyle.color} />
+        </View>
+        
+        {/* Order Info */}
+        <View style={styles.orderListContent}>
+          <View style={styles.orderListTopRow}>
+            <View style={styles.orderListTitleRow}>
+              <Text style={[styles.orderListOrderNumber, { color: colors.text }]}>
+                #{item.orderNumber || item.id.slice(-6)}
+              </Text>
+              <View style={[styles.orderListStatusBadge, { backgroundColor: statusStyle.bg }]}>
+                <Text style={[styles.orderListStatusText, { color: statusStyle.color }]}>
+                  {getStatusLabel(item.status)}
+                </Text>
+              </View>
+            </View>
+            <Text style={[styles.orderListTotal, { color: colors.text }]}>
+              {formatCurrency(Number(item.total || 0))}
+            </Text>
           </View>
           
-          {/* Action Buttons */}
-          {actions.length > 0 && !selectionMode && (
-            <View style={styles.orderMediaActions}>
-              {actions.map((action) => (
-                <TouchableOpacity
-                  key={action.status}
-                  style={[
-                    styles.orderMediaActionBtn,
-                    action.variant === 'primary' 
-                      ? { backgroundColor: '#34C759' }
-                      : { backgroundColor: isDark ? '#3A3A3C' : '#F2F2F7' },
-                  ]}
-                  onPress={() => handleUpdateStatus(item, action.status)}
-                  disabled={updateStatusMutation.isPending}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons 
-                    name={action.variant === 'primary' ? 'checkmark-circle' : 'close-circle'} 
-                    size={16} 
-                    color={action.variant === 'primary' ? '#FFFFFF' : '#FF3B30'} 
-                  />
-                  <Text style={[
-                    styles.orderMediaActionText,
-                    action.variant === 'primary' 
-                      ? { color: '#FFFFFF' }
-                      : { color: colors.text },
-                  ]}>
-                    {action.label}
+          <View style={styles.orderListBottomRow}>
+            <View style={styles.orderListMeta}>
+              {item.buyerName && (
+                <View style={styles.orderListMetaItem}>
+                  <Ionicons name="person-outline" size={12} color={colors.textSecondary} />
+                  <Text style={[styles.orderListMetaText, { color: colors.textSecondary }]} numberOfLines={1}>
+                    {item.buyerName}
                   </Text>
-                </TouchableOpacity>
-              ))}
+                </View>
+              )}
+              <View style={styles.orderListMetaItem}>
+                <Ionicons name="cube-outline" size={12} color={colors.textSecondary} />
+                <Text style={[styles.orderListMetaText, { color: colors.textSecondary }]}>
+                  {itemCount} item{itemCount !== 1 ? 's' : ''}
+                </Text>
+              </View>
+              <Text style={[styles.orderListTime, { color: colors.textSecondary }]}>
+                {formatDate(item.createdAt)}
+              </Text>
             </View>
-          )}
-          
-          {/* View Details Arrow */}
-          {!selectionMode && (
-            <View style={styles.orderMediaViewDetails}>
-              <Text style={[styles.orderMediaViewDetailsText, { color: '#007AFF' }]}>View Details</Text>
-              <Ionicons name="chevron-forward" size={16} color="#007AFF" />
-            </View>
-          )}
+          </View>
         </View>
+        
+        {/* Quick Action Button */}
+        {primaryAction && !selectionMode && (
+          <TouchableOpacity
+            style={[styles.orderListActionBtn, { backgroundColor: '#34C759' }]}
+            onPress={(e) => {
+              e.stopPropagation?.();
+              handleUpdateStatus(item, primaryAction.status);
+            }}
+            disabled={updateStatusMutation.isPending}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+          </TouchableOpacity>
+        )}
+        
+        {/* Chevron */}
+        <Ionicons 
+          name="chevron-forward" 
+          size={18} 
+          color={colors.textSecondary} 
+          style={styles.orderListChevron}
+        />
       </TouchableOpacity>
     );
   };
@@ -1243,7 +1189,129 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: SPACING.sm,
   },
-  // Enhanced Media Card Styles for Orders
+  // Compact List Row Styles for Orders
+  orderListRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: SPACING.sm,
+    marginHorizontal: 4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(0,0,0,0.08)',
+  },
+  orderListRowFirst: {
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    marginTop: 4,
+  },
+  orderListRowLast: {
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+    borderBottomWidth: 0,
+    marginBottom: 4,
+  },
+  orderListRowSelected: {
+    backgroundColor: 'rgba(52, 199, 89, 0.08)',
+    borderLeftWidth: 3,
+    borderLeftColor: '#34C759',
+  },
+  orderListCheckbox: {
+    marginRight: 10,
+  },
+  orderListCheckboxCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: '#C7C7CC',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  orderListCheckboxSelected: {
+    backgroundColor: '#34C759',
+    borderColor: '#34C759',
+  },
+  orderListStatusIndicator: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  orderListContent: {
+    flex: 1,
+    marginRight: 8,
+  },
+  orderListTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 4,
+  },
+  orderListTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 8,
+    gap: 8,
+  },
+  orderListOrderNumber: {
+    fontSize: 15,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
+  },
+  orderListStatusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  orderListStatusText: {
+    fontSize: 10,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+  },
+  orderListTotal: {
+    fontSize: 15,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
+  },
+  orderListBottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  orderListMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 12,
+  },
+  orderListMetaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  orderListMetaText: {
+    fontSize: 12,
+    fontFamily: FONTS.regular,
+    maxWidth: 100,
+  },
+  orderListTime: {
+    fontSize: 11,
+    fontFamily: FONTS.regular,
+  },
+  orderListActionBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  orderListChevron: {
+    opacity: 0.4,
+  },
+  // Enhanced Media Card Styles for Orders (Legacy)
   orderMediaCard: {
     width: '100%',
     borderRadius: 16,
