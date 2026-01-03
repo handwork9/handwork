@@ -531,7 +531,8 @@ export default function DashboardScreen() {
               activeOpacity={0.7}
               onPress={() => {
                 triggerHaptic();
-                navigation.navigate('MyAddress' as never);
+                // Navigate to edit profile where farmers can edit their business address
+                navigation.navigate('EditProfile' as never);
               }}
             >
               <Ionicons name="location" size={20} color={colors.primary} />
@@ -811,7 +812,29 @@ export default function DashboardScreen() {
             
             {/* Main Earnings Amount */}
             <View style={styles.earningsMainAmount}>
-              <View>
+              {/* SVG Background for Month Amount */}
+              <View style={styles.earningsMainAmountSvgBg}>
+                <Svg width="100%" height="100%" viewBox="0 0 300 100" preserveAspectRatio="xMidYMid slice">
+                  <Defs>
+                    <SvgLinearGradient id="monthEarningsGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <Stop offset="0%" stopColor="#10B981" stopOpacity="0.06" />
+                      <Stop offset="50%" stopColor="#34D399" stopOpacity="0.12" />
+                      <Stop offset="100%" stopColor="#6EE7B7" stopOpacity="0.08" />
+                    </SvgLinearGradient>
+                  </Defs>
+                  <Circle cx="50" cy="20" r="60" fill="url(#monthEarningsGradient)" />
+                  <Circle cx="250" cy="80" r="45" fill="url(#monthEarningsGradient)" />
+                  <Circle cx="150" cy="50" r="30" fill="url(#monthEarningsGradient)" />
+                  <Path 
+                    d="M0 70 Q75 40 150 60 T300 50" 
+                    stroke="#10B981" 
+                    strokeWidth="2" 
+                    strokeOpacity="0.15" 
+                    fill="none"
+                  />
+                </Svg>
+              </View>
+              <View style={styles.earningsMainAmountContent}>
                 <Text style={[styles.earningsAmountLabel, { color: colors.textSecondary }]}>This Month</Text>
                 <Text style={[styles.earningsAmountValue, { color: colors.text }]}>{formatCurrency(monthEarnings)}</Text>
               </View>
@@ -1805,8 +1828,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.md,
+    paddingVertical: SPACING.lg,
     gap: 12,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  earningsMainAmountSvgBg: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    opacity: 1,
+  },
+  earningsMainAmountContent: {
+    zIndex: 1,
   },
   earningsAmountBadge: {
     width: 40,
