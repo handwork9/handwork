@@ -186,7 +186,7 @@ export const adminApi = {
   rejectFarmerApplication: (id: string, reason: string) => 
     api.patch(`/admin/farmer-applications/${id}/reject`, { reason }),
   
-  // Products (use public endpoint for listing, admin endpoint for updates)
+  // Products (use admin endpoint for all operations)
   getProducts: (params?: {
     page?: number;
     limit?: number;
@@ -194,7 +194,7 @@ export const adminApi = {
     state?: string;
     search?: string;
     farmerId?: string;
-  }) => api.get('/products', { params }),
+  }) => api.get('/admin/products', { params }),
   createProduct: (data: {
     farmerId: string;
     title: string;

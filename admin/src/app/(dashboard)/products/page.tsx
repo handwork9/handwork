@@ -33,6 +33,7 @@ import {
   EditOutlined,
   DeleteOutlined,
   EyeOutlined,
+  EyeInvisibleOutlined,
   ExclamationCircleOutlined,
   AppstoreOutlined,
   UnorderedListOutlined,
@@ -647,6 +648,7 @@ export default function ProductsPage() {
   const outOfStockProducts = products.filter(p => p.stock === 0).length;
   const promotedProducts = products.filter(p => p.isPromoted).length;
   const officialProducts = products.filter(p => p.isAdminProduct).length;
+  const hiddenProducts = products.filter(p => !p.isAvailable).length;
 
   const columns: ColumnsType<Product> = [
     {
@@ -826,6 +828,16 @@ export default function ProductsPage() {
               value={outOfStockProducts} 
               prefix={<InboxOutlined />}
               styles={{ content: { color: '#ff4d4f' } }}
+            />
+          </Card>
+        </Col>
+        <Col xs={12} sm={6} md={4}>
+          <Card size="small">
+            <Statistic 
+              title="Hidden" 
+              value={hiddenProducts} 
+              prefix={<EyeInvisibleOutlined />}
+              styles={{ content: { color: '#8c8c8c' } }}
             />
           </Card>
         </Col>
