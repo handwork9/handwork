@@ -360,60 +360,74 @@ export default function ProductsPage() {
 
   const farmers = Array.isArray(farmersData) ? farmersData : [];
 
-  const { data, isLoading } = useQuery<ProductsResponse>({
+  const { data, isLoading, error } = useQuery<ProductsResponse>({
     queryKey: ['products', currentPage, pageSize, categoryFilter, stateFilter, searchText],
     queryFn: async () => {
-      const response = await adminApi.getProducts({
-        page: currentPage,
-        limit: pageSize,
-        category: categoryFilter || undefined,
-        state: stateFilter || undefined,
-        search: searchText || undefined,
-      });
-      const apiResponse = response.data;
-      
-      // Handle admin endpoint format: { products: [...], total, pages }
-      if (apiResponse?.products && Array.isArray(apiResponse.products)) {
-        return { 
-          data: apiResponse.products, 
-          total: apiResponse.total || apiResponse.products.length, 
-          page: currentPage, 
-          limit: pageSize 
-        };
-      }
-      
-      // Handle public endpoint: { success: true, data: { data: [...] } }
-      if (apiResponse?.success && apiResponse?.data) {
-        const innerData = apiResponse.data;
-        if (Array.isArray(innerData.data)) {
+      try {
+        const response = await adminApi.getProducts({
+          page: currentPage,
+          limit: pageSize,
+          category: categoryFilter || undefined,
+          state: stateFilter || undefined,
+          search: searchText || undefined,
+        });
+        const apiResponse = response.data;
+        
+        console.log('Products API response:', apiResponse);
+        
+        // Handle admin endpoint format: { products: [...], total, pages }
+        if (apiResponse?.products && Array.isArray(apiResponse.products)) {
           return { 
-            data: innerData.data, 
-            total: innerData.total || innerData.data.length, 
-            page: innerData.page || currentPage, 
-            limit: innerData.limit || pageSize 
+            data: apiResponse.products, 
+            total: apiResponse.total || apiResponse.products.length, 
+            page: currentPage, 
+            limit: pageSize 
           };
         }
-        if (Array.isArray(innerData)) {
-          return { data: innerData, total: innerData.length, page: currentPage, limit: pageSize };
+        
+        // Handle public endpoint: { success: true, data: { data: [...] } }
+        if (apiResponse?.success && apiResponse?.data) {
+          const innerData = apiResponse.data;
+          if (Array.isArray(innerData.data)) {
+            return { 
+              data: innerData.data, 
+              total: innerData.total || innerData.data.length, 
+              page: innerData.page || currentPage, 
+              limit: innerData.limit || pageSize 
+            };
+          }
+          if (Array.isArray(innerData)) {
+            return { data: innerData, total: innerData.length, page: currentPage, limit: pageSize };
+          }
         }
+        
+        if (Array.isArray(apiResponse)) {
+          return { data: apiResponse, total: apiResponse.length, page: currentPage, limit: pageSize };
+        }
+        
+        if (apiResponse?.data && Array.isArray(apiResponse.data)) {
+          return { 
+            data: apiResponse.data, 
+            total: apiResponse.total || apiResponse.data.length, 
+            page: apiResponse.page || currentPage, 
+            limit: apiResponse.limit || pageSize 
+          };
+        }
+        
+        console.warn('Unexpected API response format:', apiResponse);
+        return { data: [], total: 0, page: currentPage, limit: pageSize };
+      } catch (err) {
+        console.error('Products fetch error:', err);
+        throw err;
       }
-      
-      if (Array.isArray(apiResponse)) {
-        return { data: apiResponse, total: apiResponse.length, page: currentPage, limit: pageSize };
-      }
-      
-      if (apiResponse?.data && Array.isArray(apiResponse.data)) {
-        return { 
-          data: apiResponse.data, 
-          total: apiResponse.total || apiResponse.data.length, 
-          page: apiResponse.page || currentPage, 
-          limit: apiResponse.limit || pageSize 
-        };
-      }
-      
-      return { data: [], total: 0, page: currentPage, limit: pageSize };
     },
+    retry: 1,
   });
+
+  // Log error if present
+  if (error) {
+    console.error('Products query error:', error);
+  }
 
   const products = Array.isArray(data?.data) ? data.data : [];
 
