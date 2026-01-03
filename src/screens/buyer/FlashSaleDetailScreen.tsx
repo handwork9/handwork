@@ -150,7 +150,7 @@ export default function FlashSaleDetailScreen() {
 
   const addToCartMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiClient.post('/cart/items', {
+      const response = await apiClient.post('/cart', {
         productId: flashSale?.product.id,
         quantity,
         flashSaleId: saleId,
