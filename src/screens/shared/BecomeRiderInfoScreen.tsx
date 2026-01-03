@@ -11,7 +11,6 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Circle } from 'react-native-svg';
 import { useTheme } from '../../context/ThemeContext';
 import { FONTS } from '../../constants/theme';
 
@@ -159,31 +158,23 @@ export default function BecomeRiderInfoScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       
-      {/* Header with SVG Background */}
-      <View style={[styles.header, { paddingTop: insets.top }]}>
-        <View style={styles.headerBackground}>
-          <Svg height="100%" width="100%" style={StyleSheet.absoluteFill}>
-            <Circle cx={width * 0.8} cy={-50} r={200} fill="rgba(255,255,255,0.08)" />
-            <Circle cx={-50} cy={150} r={150} fill="rgba(255,255,255,0.05)" />
-            <Circle cx={width} cy={200} r={100} fill="rgba(255,255,255,0.06)" />
-          </Svg>
-        </View>
-        
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top, backgroundColor: colors.background, borderBottomColor: colors.border }]}>
         <TouchableOpacity
-          style={styles.backButton}
+          style={[styles.backButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color="#FFF" />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
 
         <View style={styles.headerContent}>
-          <View style={styles.headerIconContainer}>
-            <MaterialCommunityIcons name="motorbike" size={48} color="#FFF" />
+          <View style={[styles.headerIconContainer, { backgroundColor: `${PRIMARY_COLOR}15` }]}>
+            <MaterialCommunityIcons name="motorbike" size={48} color={PRIMARY_COLOR} />
           </View>
-          <Text style={styles.headerTitle}>Become a Rider</Text>
-          <Text style={styles.headerSubtitle}>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Become a Rider</Text>
+          <Text style={[styles.headerSubtitle, { color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }]}>
             Deliver with Handwork and earn money on your own schedule
           </Text>
         </View>
@@ -276,18 +267,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    backgroundColor: PRIMARY_COLOR,
-    paddingBottom: 30,
-    overflow: 'hidden',
-  },
-  headerBackground: {
-    ...StyleSheet.absoluteFillObject,
+    paddingBottom: 24,
+    borderBottomWidth: 1,
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 16,
@@ -302,7 +288,6 @@ const styles = StyleSheet.create({
     width: 90,
     height: 90,
     borderRadius: 45,
-    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
@@ -310,13 +295,11 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontFamily: FONTS.bold,
-    color: '#FFFFFF',
     marginBottom: 8,
   },
   headerSubtitle: {
     fontSize: 16,
     fontFamily: FONTS.regular,
-    color: 'rgba(255,255,255,0.9)',
     textAlign: 'center',
     lineHeight: 24,
   },
