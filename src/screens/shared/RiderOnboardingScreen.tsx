@@ -640,12 +640,12 @@ export default function RiderOnboardingScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top }]}>
+      <View style={[styles.header, { paddingTop: insets.top, backgroundColor: colors.background, borderBottomColor: colors.border }]}>
         <TouchableOpacity
-          style={styles.backButton}
+          style={[styles.backButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}
           onPress={() => {
             if (currentStep === 0) {
               navigation.goBack();
@@ -654,9 +654,9 @@ export default function RiderOnboardingScreen() {
             }
           }}
         >
-          <Ionicons name="arrow-back" size={24} color="#FFF" />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Rider Application</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Rider Application</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -714,25 +714,23 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    backgroundColor: PRIMARY_COLOR,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingBottom: 16,
+    borderBottomWidth: 1,
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
     fontSize: 18,
     fontFamily: FONTS.semiBold,
-    color: '#FFFFFF',
   },
   content: {
     flex: 1,
