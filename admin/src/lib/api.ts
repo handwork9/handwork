@@ -46,13 +46,16 @@ const api = axios.create({
 // Request interceptor
 api.interceptors.request.use(
   (config) => {
-    const token = Cookies.get('admin_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    // Debug logging for API calls
+    // Only access cookies on client side
     if (typeof window !== 'undefined') {
-      console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`, { hasToken: !!token });
+      const token = Cookies.get('admin_token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+      console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`, { 
+        hasToken: !!token,
+        tokenPreview: token ? `${token.substring(0, 20)}...` : 'none'
+      });
     }
     return config;
   },
@@ -63,10 +66,14 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
+    console.error('[API Error]', error.response?.status, error.config?.url, error.response?.data);
+    
     if (error.response?.status === 401) {
-      Cookies.remove('admin_token');
-      Cookies.remove('admin_refresh_token');
+      // Only clear tokens and redirect if we're on client side and not already on login page
       if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+        console.warn('[API] 401 received - clearing auth and redirecting to login');
+        Cookies.remove('admin_token');
+        Cookies.remove('admin_refresh_token');
         window.location.href = '/login';
       }
     }

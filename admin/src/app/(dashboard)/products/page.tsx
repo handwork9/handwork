@@ -339,7 +339,7 @@ export default function ProductsPage() {
   const [createForm] = Form.useForm();
   const queryClient = useQueryClient();
   const { message, modal } = App.useApp();
-  const { user: adminUser } = useAuthStore();
+  const { user: adminUser, isAuthenticated } = useAuthStore();
 
   // Fetch farmers for dropdown
   const { data: farmersData } = useQuery({
@@ -356,12 +356,14 @@ export default function ProductsPage() {
       }
       return [];
     },
+    enabled: isAuthenticated,
   });
 
   const farmers = Array.isArray(farmersData) ? farmersData : [];
 
   const { data, isLoading, error } = useQuery<ProductsResponse>({
     queryKey: ['products', currentPage, pageSize, categoryFilter, stateFilter, searchText],
+    enabled: isAuthenticated,
     queryFn: async () => {
       try {
         const response = await adminApi.getProducts({
