@@ -316,45 +316,47 @@ export default function AIChatbotScreen() {
     const isBot = item.sender === 'bot';
 
     return (
-      <View style={[styles.messageRow, isBot ? styles.botRow : styles.userRow]}>
-        {isBot && (
-          <View style={[styles.avatarContainer, { backgroundColor: '#16A34A' }]}>
-            <MaterialCommunityIcons name="robot" size={20} color="#FFF" />
+      <View style={[styles.messageWrapper, !isBot && { alignSelf: 'flex-end' }]}>
+        <View style={[styles.messageRow, isBot ? styles.botRow : styles.userRow]}>
+          {isBot && (
+            <View style={[styles.avatarContainer, { backgroundColor: '#16A34A' }]}>
+              <MaterialCommunityIcons name="robot" size={20} color="#FFF" />
+            </View>
+          )}
+          <View
+            style={[
+              styles.messageBubble,
+              isBot
+                ? [styles.botBubble, { backgroundColor: isDark ? colors.card : '#F3F4F6' }]
+                : [styles.userBubble, { backgroundColor: '#16A34A' }],
+            ]}
+          >
+            <Text
+              style={[
+                styles.messageText,
+                { color: isBot ? colors.text : '#FFFFFF' },
+              ]}
+            >
+              {item.text}
+            </Text>
+            <Text
+              style={[
+                styles.timestamp,
+                { color: isBot ? colors.textSecondary : 'rgba(255,255,255,0.7)' },
+              ]}
+            >
+              {item.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </Text>
           </View>
-        )}
-        <View
-          style={[
-            styles.messageBubble,
-            isBot
-              ? [styles.botBubble, { backgroundColor: isDark ? colors.card : '#F3F4F6' }]
-              : [styles.userBubble, { backgroundColor: '#16A34A' }],
-          ]}
-        >
-          <Text
-            style={[
-              styles.messageText,
-              { color: isBot ? colors.text : '#FFFFFF' },
-            ]}
-          >
-            {item.text}
-          </Text>
-          <Text
-            style={[
-              styles.timestamp,
-              { color: isBot ? colors.textSecondary : 'rgba(255,255,255,0.7)' },
-            ]}
-          >
-            {item.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </Text>
         </View>
 
-        {/* Suggested Actions */}
+        {/* Suggested Actions - Below message */}
         {isBot && item.suggestedActions && item.suggestedActions.length > 0 && (
-          <View style={styles.suggestedActionsContainer}>
+          <View style={[styles.suggestedActionsContainer, { marginLeft: 48 }]}>
             {item.suggestedActions.map((action, index) => (
               <TouchableOpacity
                 key={index}
-                style={[styles.actionButton, { borderColor: colors.border }]}
+                style={[styles.actionButton, { borderColor: colors.border, backgroundColor: isDark ? colors.card : '#FFF' }]}
                 onPress={() => handleSuggestedAction(action)}
               >
                 <Text style={[styles.actionText, { color: '#16A34A' }]}>{action}</Text>
@@ -363,22 +365,25 @@ export default function AIChatbotScreen() {
           </View>
         )}
 
-        {/* Navigation Action Button */}
+        {/* Navigation Action Button - Below message */}
         {isBot && item.action && (
-          <TouchableOpacity
-            style={styles.navigationActionButton}
-            onPress={() => handleActionButton(item.action)}
-          >
-            <LinearGradient
-              colors={['#16A34A', '#15803D']}
-              style={styles.navigationActionGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
+          <View style={{ marginLeft: 48, marginTop: 12 }}>
+            <TouchableOpacity
+              style={styles.navigationActionButton}
+              onPress={() => handleActionButton(item.action)}
+              activeOpacity={0.8}
             >
-              <Text style={styles.navigationActionText}>{item.action.label}</Text>
-              <Ionicons name="arrow-forward" size={18} color="#FFF" />
-            </LinearGradient>
-          </TouchableOpacity>
+              <LinearGradient
+                colors={['#16A34A', '#15803D']}
+                style={styles.navigationActionGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Text style={styles.navigationActionText}>{item.action.label}</Text>
+                <Ionicons name="arrow-forward" size={18} color="#FFF" />
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
         )}
       </View>
     );
@@ -601,9 +606,14 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 8,
   },
-  messageRow: {
+  messageWrapper: {
     marginBottom: 16,
     maxWidth: '85%',
+    alignSelf: 'flex-start',
+  },
+  messageRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
   },
   botRow: {
     alignSelf: 'flex-start',
@@ -657,21 +667,21 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.medium,
   },
   navigationActionButton: {
-    marginTop: 12,
     borderRadius: 12,
     overflow: 'hidden',
+    alignSelf: 'flex-start',
   },
   navigationActionGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    gap: 10,
   },
   navigationActionText: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 16,
     fontFamily: FONTS.semiBold,
   },
   typingBubble: {
