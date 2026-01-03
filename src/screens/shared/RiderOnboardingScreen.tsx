@@ -22,7 +22,8 @@ import { useTheme } from '../../context/ThemeContext';
 import { FONTS } from '../../constants/theme';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
-import api from '../../services/api';
+import api from '../../services/apiClient';
+import { uploadService } from '../../services/uploadService';
 
 const { width } = Dimensions.get('window');
 const PRIMARY_COLOR = '#FF6B00';
@@ -176,12 +177,16 @@ export default function RiderOnboardingScreen() {
       allowsEditing: true,
       aspect: [4, 3],
       quality: 0.8,
+      base64: true,
     });
 
     if (!result.canceled && result.assets[0]) {
+      const asset = result.assets[0];
+      // Store both URI (for display) and base64 (for upload)
+      const imageData = asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri;
       setFormData(prev => ({
         ...prev,
-        [type === 'license' ? 'licenseImage' : 'idCardImage']: result.assets[0].uri,
+        [type === 'license' ? 'licenseImage' : 'idCardImage']: imageData,
       }));
     }
   };
@@ -193,52 +198,48 @@ export default function RiderOnboardingScreen() {
     setIsSubmitting(true);
 
     try {
-      // Create form data for file upload
-      const formDataToSend = new FormData();
-      formDataToSend.append('state', formData.state);
-      formDataToSend.append('city', formData.city);
-      formDataToSend.append('vehicleType', formData.vehicleType);
-      formDataToSend.append('vehiclePlate', formData.vehiclePlate);
-      formDataToSend.append('vehicleModel', formData.vehicleModel);
-      formDataToSend.append('vehicleColor', formData.vehicleColor);
-      formDataToSend.append('licenseNumber', formData.licenseNumber);
-      formDataToSend.append('guarantorName', formData.guarantorName);
-      formDataToSend.append('guarantorPhone', formData.guarantorPhone);
-      formDataToSend.append('guarantorAddress', formData.guarantorAddress);
-      formDataToSend.append('guarantorRelationship', formData.guarantorRelationship);
+      // Upload images first if they exist
+      let idCardImageUrl: string | undefined;
+      let licenseImageUrl: string | undefined;
 
       if (formData.idCardImage) {
-        const idCardUri = formData.idCardImage;
-        const idCardName = idCardUri.split('/').pop() || 'idcard.jpg';
-        formDataToSend.append('idCardImage', {
-          uri: idCardUri,
-          name: idCardName,
-          type: 'image/jpeg',
-        } as any);
+        const uploadResult = await uploadService.uploadImage(formData.idCardImage, 'riders');
+        if (uploadResult.success && uploadResult.data) {
+          idCardImageUrl = uploadResult.data.url;
+        } else {
+          throw new Error(uploadResult.error || 'Failed to upload ID card image');
+        }
       }
 
       if (formData.licenseImage) {
-        const licenseUri = formData.licenseImage;
-        const licenseName = licenseUri.split('/').pop() || 'license.jpg';
-        formDataToSend.append('licenseImage', {
-          uri: licenseUri,
-          name: licenseName,
-          type: 'image/jpeg',
-        } as any);
+        const uploadResult = await uploadService.uploadImage(formData.licenseImage, 'riders');
+        if (uploadResult.success && uploadResult.data) {
+          licenseImageUrl = uploadResult.data.url;
+        } else {
+          throw new Error(uploadResult.error || 'Failed to upload license image');
+        }
       }
 
-      const response = await api.post('/users/rider/apply', formDataToSend, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+      // Register as rider with uploaded image URLs
+      const response = await api.post('/riders/register', {
+        state: formData.state,
+        city: formData.city,
+        vehicleType: formData.vehicleType.toLowerCase(),
+        vehiclePlate: formData.vehiclePlate,
+        vehicleModel: formData.vehicleModel,
+        licenseNumber: formData.licenseNumber,
+        licenseImage: licenseImageUrl,
+        idCardImage: idCardImageUrl,
       });
 
       Alert.alert(
-        'Application Submitted! 🎉',
-        response.data?.message || 'Your rider application has been submitted. We\'ll review it within 2-3 days and notify you of the result.',
+        'Registration Successful! 🎉',
+        'You are now registered as a Handwork rider. Start accepting delivery requests to earn!',
         [{ text: 'OK', onPress: () => navigation.goBack() }]
       );
     } catch (error: any) {
       const errorMessage = error?.response?.data?.message || error?.message || 'Something went wrong. Please try again.';
-      Alert.alert('Submission Failed', errorMessage);
+      Alert.alert('Registration Failed', errorMessage);
     } finally {
       setIsSubmitting(false);
     }
