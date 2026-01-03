@@ -429,15 +429,17 @@ export default function ProductsScreen() {
     return (
       <TouchableOpacity 
         style={[
-          styles.productMediaCard,
+          styles.productListRow,
           { backgroundColor: isDark ? colors.card : '#FFFFFF' },
-          isSelected && styles.productMediaCardSelected,
+          isFirst && styles.productListRowFirst,
+          isLast && styles.productListRowLast,
+          isSelected && styles.productListRowSelected,
         ]}
         onPress={() => {
           if (selectionMode) {
             toggleProductSelection(item.id);
           } else {
-            navigation.navigate('EditProduct', { productId: item.id });
+            navigation.navigate('ProductDetail', { productId: item.id });
           }
         }}
         onLongPress={() => {
@@ -448,139 +450,107 @@ export default function ProductsScreen() {
         }}
         activeOpacity={0.7}
       >
-        {/* Image Section with Gradient Overlay */}
-        <View style={styles.productMediaImageSection}>
+        {/* Selection Checkbox */}
+        {selectionMode && (
+          <TouchableOpacity
+            style={styles.listRowCheckbox}
+            onPress={() => toggleProductSelection(item.id)}
+          >
+            <View style={[
+              styles.listRowCheckboxCircle,
+              isSelected && styles.listRowCheckboxSelected,
+            ]}>
+              {isSelected && (
+                <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+              )}
+            </View>
+          </TouchableOpacity>
+        )}
+        
+        {/* Thumbnail */}
+        <View style={styles.listRowThumbnailContainer}>
           {imageUri ? (
             <Image 
               source={{ uri: imageUri }} 
-              style={styles.productMediaImage}
+              style={styles.listRowThumbnail}
               resizeMode="cover"
             />
           ) : (
-            <LinearGradient
-              colors={['#E8F5E9', '#C8E6C9']}
-              style={styles.productMediaImage}
-            >
-              <View style={styles.productMediaPlaceholder}>
-                <Ionicons name="leaf" size={40} color="#34C759" />
-              </View>
-            </LinearGradient>
-          )}
-          
-          {/* Gradient overlay for text readability */}
-          <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.6)']}
-            style={styles.productMediaGradientOverlay}
-          />
-          
-          {/* Selection checkbox overlay */}
-          {selectionMode && (
-            <TouchableOpacity
-              style={styles.mediaSelectionCheckbox}
-              onPress={() => toggleProductSelection(item.id)}
-            >
-              <View style={[
-                styles.mediaCheckboxCircle,
-                isSelected && styles.mediaCheckboxCircleSelected,
-              ]}>
-                {isSelected && (
-                  <Ionicons name="checkmark" size={16} color="#FFFFFF" />
-                )}
-              </View>
-            </TouchableOpacity>
-          )}
-          
-          {/* Featured badge */}
-          {item.featured && (
-            <View style={styles.mediaFeaturedBadge}>
-              <LinearGradient
-                colors={['#FFD700', '#FFA000']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.mediaFeaturedGradient}
-              >
-                <Ionicons name="star" size={12} color="#FFFFFF" />
-                <Text style={styles.mediaFeaturedText}>Featured</Text>
-              </LinearGradient>
+            <View style={[styles.listRowThumbnail, styles.listRowThumbnailPlaceholder]}>
+              <Ionicons name="leaf" size={24} color="#34C759" />
             </View>
           )}
-          
-          {/* Stock status badge on image */}
-          <View style={[styles.mediaStockBadge, { backgroundColor: stockBadge.bgColor }]}>
-            <View style={[styles.mediaStockDot, { backgroundColor: stockBadge.color }]} />
-            <Text style={[styles.mediaStockText, { color: stockBadge.color }]}>
-              {item.stock} {item.unit}
+          {/* Image count badge */}
+          {hasMultipleImages && (
+            <View style={styles.listRowImageCount}>
+              <Text style={styles.listRowImageCountText}>{allImages.length}</Text>
+            </View>
+          )}
+        </View>
+        
+        {/* Content */}
+        <View style={styles.listRowContent}>
+          <View style={styles.listRowTop}>
+            <View style={styles.listRowTitleRow}>
+              <Text style={[styles.listRowTitle, { color: colors.text }]} numberOfLines={1}>
+                {item.title || item.name}
+              </Text>
+              {item.featured && (
+                <View style={styles.listRowFeaturedBadge}>
+                  <Ionicons name="star" size={10} color="#FFA000" />
+                </View>
+              )}
+            </View>
+            <Text style={[styles.listRowPrice, { color: colors.text }]}>
+              {formatCurrency(Number(item.price))}
+              <Text style={styles.listRowPriceUnit}>/{item.unit}</Text>
             </Text>
           </View>
           
-          {/* Image count indicator */}
-          {hasMultipleImages && (
-            <View style={styles.mediaImageCountBadge}>
-              <Ionicons name="images" size={12} color="#FFFFFF" />
-              <Text style={styles.mediaImageCountText}>{allImages.length}</Text>
+          <View style={styles.listRowBottom}>
+            <View style={styles.listRowMeta}>
+              <View style={[styles.listRowCategoryBadge, { backgroundColor: isDark ? 'rgba(52, 199, 89, 0.15)' : '#E8F5E9' }]}>
+                <Text style={styles.listRowCategoryText}>{item.category}</Text>
+              </View>
+              <View style={[styles.listRowStockBadge, { backgroundColor: stockBadge.bgColor }]}>
+                <View style={[styles.listRowStockDot, { backgroundColor: stockBadge.color }]} />
+                <Text style={[styles.listRowStockText, { color: stockBadge.color }]}>
+                  {item.stock}
+                </Text>
+              </View>
             </View>
-          )}
-          
-          {/* Price overlay on image */}
-          <View style={styles.mediaPriceOverlay}>
-            <Text style={styles.mediaPriceText}>
-              {formatCurrency(Number(item.price))}
-            </Text>
-            <Text style={styles.mediaPriceUnit}>/{item.unit}</Text>
           </View>
         </View>
         
-        {/* Content Section */}
-        <View style={styles.productMediaContent}>
-          <View style={styles.productMediaHeader}>
-            <Text style={[styles.productMediaName, { color: colors.text }]} numberOfLines={2}>
-              {item.title || item.name}
-            </Text>
-          </View>
+        {/* Quick Actions */}
+        <View style={styles.listRowActions}>
+          <TouchableOpacity
+            style={[styles.listRowActionBtn, { backgroundColor: isDark ? 'rgba(0, 122, 255, 0.12)' : '#EEF6FF' }]}
+            onPress={() => handleQuickStockUpdate(item)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="cube-outline" size={18} color="#007AFF" />
+          </TouchableOpacity>
           
-          <View style={styles.productMediaMeta}>
-            <View style={[styles.mediaCategoryBadge, { backgroundColor: isDark ? 'rgba(52, 199, 89, 0.2)' : 'rgba(52, 199, 89, 0.1)' }]}>
-              <Ionicons name="pricetag" size={10} color="#34C759" />
-              <Text style={styles.mediaCategoryText}>{item.category}</Text>
-            </View>
-          </View>
-          
-          {/* Quick Actions Row */}
-          <View style={styles.productMediaActions}>
-            <TouchableOpacity
-              style={[styles.mediaActionButton, { backgroundColor: isDark ? 'rgba(0, 122, 255, 0.15)' : '#E3F2FD' }]}
-              onPress={() => handleQuickStockUpdate(item)}
-            >
-              <Ionicons name="cube-outline" size={20} color="#007AFF" />
-              <Text style={[styles.mediaActionText, { color: '#007AFF' }]}>Stock</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={[styles.mediaActionButton, { backgroundColor: isDark ? 'rgba(52, 199, 89, 0.15)' : '#E8F5E9' }]}
-              onPress={() => navigation.navigate('EditProduct', { productId: item.id })}
-            >
-              <Ionicons name="create-outline" size={20} color="#34C759" />
-              <Text style={[styles.mediaActionText, { color: '#34C759' }]}>Edit</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={[styles.mediaActionButton, { backgroundColor: isDark ? 'rgba(255, 59, 48, 0.15)' : '#FFEBEE' }]}
-              onPress={(e) => {
-                e.stopPropagation?.();
-                handleDelete(item.id, item.title || item.name || 'Product');
-              }}
-            >
-              <Ionicons name="trash-outline" size={20} color="#FF3B30" />
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={[styles.mediaActionButton, styles.mediaActionButtonMore, { backgroundColor: isDark ? 'rgba(142, 142, 147, 0.15)' : '#F2F2F7' }]}
-              onPress={() => handleDuplicateProduct(item)}
-            >
-              <Ionicons name="copy-outline" size={20} color={colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            style={[styles.listRowActionBtn, { backgroundColor: isDark ? 'rgba(255, 59, 48, 0.12)' : '#FFF1F0' }]}
+            onPress={(e) => {
+              e.stopPropagation?.();
+              handleDelete(item.id, item.title || item.name || 'Product');
+            }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="trash-outline" size={18} color="#FF3B30" />
+          </TouchableOpacity>
         </View>
+        
+        {/* Chevron for navigation hint */}
+        <Ionicons 
+          name="chevron-forward" 
+          size={18} 
+          color={colors.textSecondary} 
+          style={styles.listRowChevron}
+        />
       </TouchableOpacity>
     );
   };
@@ -1275,7 +1245,171 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: SPACING.sm,
   },
-  // Enhanced Media Card Styles - Full Width List
+  // Compact List Row Styles
+  productListRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: SPACING.sm,
+    marginHorizontal: 4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(0,0,0,0.08)',
+  },
+  productListRowFirst: {
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    marginTop: 4,
+  },
+  productListRowLast: {
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+    borderBottomWidth: 0,
+    marginBottom: 4,
+  },
+  productListRowSelected: {
+    backgroundColor: 'rgba(52, 199, 89, 0.08)',
+    borderLeftWidth: 3,
+    borderLeftColor: '#34C759',
+  },
+  listRowCheckbox: {
+    marginRight: 8,
+  },
+  listRowCheckboxCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: '#C7C7CC',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  listRowCheckboxSelected: {
+    backgroundColor: '#34C759',
+    borderColor: '#34C759',
+  },
+  listRowThumbnailContainer: {
+    position: 'relative',
+    marginRight: 12,
+  },
+  listRowThumbnail: {
+    width: 56,
+    height: 56,
+    borderRadius: 10,
+    backgroundColor: '#E8F5E9',
+  },
+  listRowThumbnailPlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  listRowImageCount: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    borderRadius: 8,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    minWidth: 16,
+    alignItems: 'center',
+  },
+  listRowImageCountText: {
+    fontSize: 9,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+    color: '#FFFFFF',
+  },
+  listRowContent: {
+    flex: 1,
+    marginRight: 8,
+  },
+  listRowTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 4,
+  },
+  listRowTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 8,
+  },
+  listRowTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+    flex: 1,
+  },
+  listRowFeaturedBadge: {
+    marginLeft: 6,
+    padding: 2,
+  },
+  listRowPrice: {
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
+  },
+  listRowPriceUnit: {
+    fontSize: 11,
+    fontWeight: '400',
+    fontFamily: FONTS.regular,
+    color: '#8E8E93',
+  },
+  listRowBottom: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  listRowMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  listRowCategoryBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  listRowCategoryText: {
+    fontSize: 10,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+    color: '#34C759',
+  },
+  listRowStockBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    gap: 4,
+  },
+  listRowStockDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+  },
+  listRowStockText: {
+    fontSize: 10,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+  },
+  listRowActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginRight: 4,
+  },
+  listRowActionBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  listRowChevron: {
+    opacity: 0.4,
+  },
+  // Enhanced Media Card Styles - Full Width List (Legacy)
   productMediaCard: {
     width: '100%',
     borderRadius: 16,
