@@ -81,7 +81,7 @@ const Stack = createNativeStackNavigator<RiderStackParamList>();
 
 const TAB_ICONS: Record<string, { active: keyof typeof Ionicons.glyphMap; inactive: keyof typeof Ionicons.glyphMap }> = {
   AvailableJobs: { active: 'briefcase', inactive: 'briefcase-outline' },
-  ActiveDelivery: { active: 'compass', inactive: 'compass-outline' },
+  ActiveDelivery: { active: 'map', inactive: 'map-outline' },
   Earnings: { active: 'stats-chart', inactive: 'stats-chart-outline' },
   Profile: { active: 'person', inactive: 'person-outline' },
 };

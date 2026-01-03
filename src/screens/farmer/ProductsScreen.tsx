@@ -24,7 +24,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, FONTS } from '../../constants/theme';
+import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
+import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, FONTS, SHADOWS } from '../../constants/theme';
 import { LoadingState, Button } from '../../components/common';
 import { productService } from '../../services/productService';
 import { Product, FarmerStackParamList } from '../../types';
@@ -774,9 +775,28 @@ export default function ProductsScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
         ListEmptyComponent={
-          <View style={[styles.emptyState, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
-            <View style={[styles.emptyIconBg, { backgroundColor: isDark ? '#3A3A3C' : '#F2F2F7' }]}>
-              <Ionicons name="cube-outline" size={48} color={colors.textSecondary} />
+          <View style={[
+            styles.emptyState, 
+            { 
+              backgroundColor: isDark ? colors.card : '#FFFFFF',
+              borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+            }
+          ]}>
+            {/* SVG Background */}
+            <View style={styles.emptyBackground}>
+              <Svg width={200} height={200}>
+                <Defs>
+                  <SvgLinearGradient id="emptyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <Stop offset="0%" stopColor="#4CAF50" stopOpacity="0.15" />
+                    <Stop offset="100%" stopColor="#81C784" stopOpacity="0.08" />
+                  </SvgLinearGradient>
+                </Defs>
+                <Circle cx="100" cy="100" r="90" fill="url(#emptyGrad)" />
+                <Circle cx="100" cy="100" r="60" fill="url(#emptyGrad)" />
+              </Svg>
+            </View>
+            <View style={[styles.emptyIconBg, { backgroundColor: '#E8F5E9' }]}>
+              <Ionicons name="cube" size={40} color="#4CAF50" />
             </View>
             <Text style={[styles.emptyTitle, { color: colors.text }]}>No products found</Text>
             <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
@@ -1658,8 +1678,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: SPACING.xxl,
     paddingHorizontal: SPACING.lg,
-    borderRadius: 12,
+    borderRadius: BORDER_RADIUS.lg,
     marginTop: SPACING.md,
+    borderWidth: 1,
+    ...SHADOWS.small,
+  },
+  emptyBackground: {
+    position: 'absolute',
+    opacity: 0.8,
   },
   emptyIconBg: {
     width: 80,

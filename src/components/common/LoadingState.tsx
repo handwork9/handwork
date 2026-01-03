@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
-import { COLORS, SPACING, FONT_SIZES } from '../../constants/theme';
+import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
+import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
 
 interface LoadingSpinnerProps {
@@ -46,14 +47,46 @@ interface EmptyStateProps {
   title: string;
   description?: string;
   action?: React.ReactNode;
+  iconBackgroundColor?: string;
+  gradientColors?: [string, string];
 }
 
-export function EmptyState({ icon, title, description, action }: EmptyStateProps) {
-  const { colors } = useTheme();
+export function EmptyState({ 
+  icon, 
+  title, 
+  description, 
+  action,
+  iconBackgroundColor = '#E8F5E9',
+  gradientColors = ['#4CAF50', '#81C784'],
+}: EmptyStateProps) {
+  const { colors, isDark } = useTheme();
   
   return (
-    <View style={styles.emptyContainer}>
-      {icon && <View style={styles.emptyIcon}>{icon}</View>}
+    <View style={[
+      styles.emptyContainer,
+      {
+        backgroundColor: isDark ? colors.card : '#FFFFFF',
+        borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+      }
+    ]}>
+      {/* SVG Background */}
+      <View style={styles.emptyBackground}>
+        <Svg width={200} height={200}>
+          <Defs>
+            <SvgLinearGradient id="emptyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <Stop offset="0%" stopColor={gradientColors[0]} stopOpacity="0.15" />
+              <Stop offset="100%" stopColor={gradientColors[1]} stopOpacity="0.08" />
+            </SvgLinearGradient>
+          </Defs>
+          <Circle cx="100" cy="100" r="90" fill="url(#emptyGrad)" />
+          <Circle cx="100" cy="100" r="60" fill="url(#emptyGrad)" />
+        </Svg>
+      </View>
+      {icon && (
+        <View style={[styles.emptyIconContainer, { backgroundColor: iconBackgroundColor }]}>
+          {icon}
+        </View>
+      )}
       <Text style={[styles.emptyTitle, { color: colors.text }]}>{title}</Text>
       {description && <Text style={[styles.emptyDescription, { color: colors.textSecondary }]}>{description}</Text>}
       {action && <View style={styles.emptyAction}>{action}</View>}
@@ -106,6 +139,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: SPACING.xl,
+    margin: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    ...SHADOWS.small,
+  },
+  emptyBackground: {
+    position: 'absolute',
+    opacity: 0.8,
+  },
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
   },
   emptyIcon: {
     marginBottom: SPACING.md,

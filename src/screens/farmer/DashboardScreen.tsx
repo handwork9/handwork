@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import Svg, { Circle, Path, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, FONTS } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
 import { LoadingState, OrderCard } from '../../components/common';
@@ -602,64 +603,86 @@ export default function DashboardScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Verified Seller Banner - Clean Card */}
+        {/* Verified Seller Banner - White Card with SVG */}
         {!user?.isPremium && !needsActivation && !verifiedBannerDismissed && (
           <View style={styles.section}>
-            <View style={[styles.verifiedCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+            <TouchableOpacity
+              style={[styles.verifiedCard, { 
+                backgroundColor: isDark ? colors.card : '#FFFFFF',
+                borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
+              }]}
+              onPress={() => navigation.navigate('FarmerSubscription')}
+              activeOpacity={0.9}
+            >
+              {/* Background SVG Pattern */}
+              <View style={styles.verifiedCardSvgContainer}>
+                <Svg width="200" height="200" viewBox="0 0 200 200">
+                  <Defs>
+                    <SvgLinearGradient id="verifiedBgGrad" x1="0" y1="0" x2="1" y2="1">
+                      <Stop offset="0" stopColor="#0EA5E9" stopOpacity={0.12} />
+                      <Stop offset="1" stopColor="#0284C7" stopOpacity={0.06} />
+                    </SvgLinearGradient>
+                  </Defs>
+                  {/* Main decorative circle */}
+                  <Circle cx="140" cy="60" r="90" fill="url(#verifiedBgGrad)" />
+                  {/* Secondary circle */}
+                  <Circle cx="100" cy="140" r="50" fill="#06B6D4" fillOpacity={0.08} />
+                  {/* Small accent dots */}
+                  <Circle cx="60" cy="40" r="6" fill="#0EA5E9" fillOpacity={0.15} />
+                  <Circle cx="160" cy="120" r="4" fill="#0284C7" fillOpacity={0.2} />
+                  <Circle cx="80" cy="100" r="3" fill="#06B6D4" fillOpacity={0.18} />
+                </Svg>
+              </View>
+              
+              {/* Close Button */}
               <TouchableOpacity
-                onPress={() => navigation.navigate('FarmerSubscription')}
-                activeOpacity={0.9}
+                style={[styles.verifiedCloseButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#F5F5F5' }]}
+                onPress={handleDismissVerifiedBanner}
+                hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
               >
-                {/* Close Button */}
-                <TouchableOpacity
-                  style={[styles.verifiedCloseButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#F5F5F5' }]}
-                  onPress={handleDismissVerifiedBanner}
-                  hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
-                >
-                  <Ionicons name="close" size={16} color={colors.textSecondary} />
-                </TouchableOpacity>
-                
-                <View style={styles.verifiedCardContent}>
-                  <View style={styles.verifiedCardLeft}>
-                    {/* Premium Badge */}
-                    <View style={[styles.verifiedPremiumBadge, { backgroundColor: '#E3F2FD' }]}>
-                      <Ionicons name="star" size={10} color="#1976D2" />
-                      <Text style={[styles.verifiedPremiumBadgeText, { color: '#1976D2' }]}>PREMIUM</Text>
+                <Ionicons name="close" size={16} color={colors.textSecondary} />
+              </TouchableOpacity>
+              
+              <View style={styles.verifiedCardContent}>
+                <View style={styles.verifiedCardLeft}>
+                  {/* Premium Badge */}
+                  <View style={[styles.verifiedPremiumBadge, { backgroundColor: '#E0F2FE' }]}>
+                    <Ionicons name="star" size={10} color="#0284C7" />
+                    <Text style={[styles.verifiedPremiumBadgeText, { color: '#0284C7' }]}>PREMIUM</Text>
+                  </View>
+                  
+                  <Text style={[styles.verifiedCardTitle, { color: colors.text }]}>Become a Verified Seller</Text>
+                  <Text style={[styles.verifiedCardSubtitle, { color: colors.textSecondary }]}>
+                    Stand out and build customer trust
+                  </Text>
+                  
+                  {/* Benefits */}
+                  <View style={styles.verifiedBenefitsRow}>
+                    <View style={[styles.verifiedBenefitItem, { backgroundColor: '#E0F2FE' }]}>
+                      <Ionicons name="checkmark-circle" size={12} color="#0284C7" />
+                      <Text style={[styles.verifiedBenefitText, { color: '#0284C7' }]}>Blue Badge</Text>
                     </View>
-                    
-                    <Text style={[styles.verifiedCardTitle, { color: colors.text }]}>Become a Verified Seller</Text>
-                    <Text style={[styles.verifiedCardSubtitle, { color: colors.textSecondary }]}>
-                      Stand out and build customer trust
-                    </Text>
-                    
-                    {/* Benefits */}
-                    <View style={styles.verifiedBenefitsRow}>
-                      <View style={[styles.verifiedBenefitItem, { backgroundColor: '#E3F2FD' }]}>
-                        <Ionicons name="checkmark-circle" size={12} color="#1976D2" />
-                        <Text style={[styles.verifiedBenefitText, { color: '#1976D2' }]}>Blue Badge</Text>
-                      </View>
-                      <View style={[styles.verifiedBenefitItem, { backgroundColor: '#E8F5E9' }]}>
-                        <Ionicons name="trending-up" size={12} color="#388E3C" />
-                        <Text style={[styles.verifiedBenefitText, { color: '#388E3C' }]}>Top Search</Text>
-                      </View>
-                    </View>
-                    
-                    {/* CTA Button */}
-                    <View style={[styles.verifiedCtaButton, { backgroundColor: '#0284C7' }]}>
-                      <Text style={[styles.verifiedCtaText, { color: '#FFFFFF' }]}>Get Verified</Text>
-                      <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
+                    <View style={[styles.verifiedBenefitItem, { backgroundColor: '#DCFCE7' }]}>
+                      <Ionicons name="trending-up" size={12} color="#16A34A" />
+                      <Text style={[styles.verifiedBenefitText, { color: '#16A34A' }]}>Top Search</Text>
                     </View>
                   </View>
                   
-                  {/* Illustration */}
-                  <View style={styles.verifiedIllustrationContainer}>
-                    <View style={[styles.verifiedBadgeIllustration, { backgroundColor: '#E3F2FD' }]}>
-                      <Ionicons name="shield-checkmark" size={36} color="#0284C7" />
-                    </View>
+                  {/* CTA Button */}
+                  <View style={[styles.verifiedCtaButton, { backgroundColor: '#0284C7' }]}>
+                    <Text style={[styles.verifiedCtaText, { color: '#FFFFFF' }]}>Get Verified</Text>
+                    <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
                   </View>
                 </View>
-              </TouchableOpacity>
-            </View>
+                
+                {/* Illustration */}
+                <View style={styles.verifiedIllustrationContainer}>
+                  <View style={[styles.verifiedBadgeIllustration, { backgroundColor: '#E0F2FE' }]}>
+                    <Ionicons name="shield-checkmark" size={40} color="#0284C7" />
+                  </View>
+                </View>
+              </View>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -689,18 +712,25 @@ export default function DashboardScreen() {
         {revenueGoal > 0 && (
           <View style={styles.section}>
             <TouchableOpacity 
-              style={[styles.goalCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}
+              style={[styles.goalCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.04)' }]}
               onPress={() => navigation.navigate('Analytics')}
               activeOpacity={0.8}
             >
+              {/* SVG Background */}
+              <View style={styles.goalCardSvgBackground}>
+                <Svg width="100%" height="100%" viewBox="0 0 400 150" preserveAspectRatio="xMaxYMid slice">
+                  <Defs>
+                    <SvgLinearGradient id="goalGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <Stop offset="0%" stopColor={goalProgress >= 100 ? '#4CAF50' : '#667eea'} stopOpacity="0.08" />
+                      <Stop offset="100%" stopColor={goalProgress >= 100 ? '#81C784' : '#764ba2'} stopOpacity="0.15" />
+                    </SvgLinearGradient>
+                  </Defs>
+                  <Circle cx="380" cy="20" r="80" fill="url(#goalGradient)" />
+                  <Circle cx="350" cy="120" r="50" fill="url(#goalGradient)" />
+                  <Path d="M320,0 Q400,75 320,150" fill="url(#goalGradient)" />
+                </Svg>
+              </View>
               <View style={[styles.goalCardHeader, { borderBottomColor: isDark ? '#2D2D2D' : '#F0F0F0' }]}>
-                <View style={[styles.goalIconBadge, { backgroundColor: goalProgress >= 100 ? '#E8F5E9' : '#EDE7F6' }]}>
-                  <Ionicons 
-                    name={goalProgress >= 100 ? 'trophy' : 'flag'} 
-                    size={18} 
-                    color={goalProgress >= 100 ? '#4CAF50' : '#667eea'} 
-                  />
-                </View>
                 <View style={styles.goalCardHeaderInfo}>
                   <Text style={[styles.goalCardTitle, { color: colors.text }]}>
                     {goalProgress >= 100 ? '🎉 Goal Achieved!' : 'Monthly Revenue Goal'}
@@ -738,7 +768,7 @@ export default function DashboardScreen() {
         {pendingBalance > 0 && (
           <View style={styles.section}>
             <TouchableOpacity 
-              style={[styles.pendingBalanceCard, { backgroundColor: isDark ? '#1A3A1A' : '#E8F5E9' }]}
+              style={[styles.pendingBalanceCard, { backgroundColor: isDark ? '#1A3A1A' : '#E8F5E9', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.04)' }]}
               onPress={() => navigation.navigate('Withdraw')}
               activeOpacity={0.8}
             >
@@ -767,7 +797,7 @@ export default function DashboardScreen() {
 
         {/* Earnings Summary - Clean White Card */}
         <View style={styles.section}>
-          <View style={[styles.earningsMediaCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+          <View style={[styles.earningsMediaCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.04)' }]}>
             {/* Header with Illustration */}
             <View style={[styles.earningsCardHeader, { borderBottomColor: isDark ? '#2D2D2D' : '#F0F0F0' }]}>
               <View style={styles.earningsHeaderLeft}>
@@ -791,8 +821,17 @@ export default function DashboardScreen() {
             <View style={[styles.earningsStatsGrid, { borderTopColor: isDark ? '#2D2D2D' : '#F0F0F0' }]}>
               {/* Today's Earnings */}
               <View style={[styles.earningsStatItem, { borderRightWidth: 1, borderRightColor: isDark ? '#2D2D2D' : '#F0F0F0' }]}>
-                <View style={[styles.earningsStatIcon, { backgroundColor: '#FEF3C7' }]}>
-                  <Ionicons name="today" size={16} color="#F59E0B" />
+                <View style={styles.earningsStatSvgBackground}>
+                  <Svg width="100%" height="100%" viewBox="0 0 150 80" preserveAspectRatio="xMaxYMid slice">
+                    <Defs>
+                      <SvgLinearGradient id="todayGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <Stop offset="0%" stopColor="#F59E0B" stopOpacity="0.08" />
+                        <Stop offset="100%" stopColor="#FBBF24" stopOpacity="0.15" />
+                      </SvgLinearGradient>
+                    </Defs>
+                    <Circle cx="130" cy="10" r="40" fill="url(#todayGradient)" />
+                    <Circle cx="120" cy="60" r="25" fill="url(#todayGradient)" />
+                  </Svg>
                 </View>
                 <Text style={[styles.earningsStatLabel, { color: colors.textSecondary }]}>Today</Text>
                 <Text style={[styles.earningsStatValue, { color: colors.text }]}>{formatCurrency(todayEarnings)}</Text>
@@ -800,8 +839,17 @@ export default function DashboardScreen() {
               
               {/* This Week */}
               <View style={styles.earningsStatItem}>
-                <View style={[styles.earningsStatIcon, { backgroundColor: '#EFF6FF' }]}>
-                  <Ionicons name="calendar" size={16} color="#3B82F6" />
+                <View style={styles.earningsStatSvgBackground}>
+                  <Svg width="100%" height="100%" viewBox="0 0 150 80" preserveAspectRatio="xMaxYMid slice">
+                    <Defs>
+                      <SvgLinearGradient id="weekGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <Stop offset="0%" stopColor="#3B82F6" stopOpacity="0.08" />
+                        <Stop offset="100%" stopColor="#60A5FA" stopOpacity="0.15" />
+                      </SvgLinearGradient>
+                    </Defs>
+                    <Circle cx="130" cy="10" r="40" fill="url(#weekGradient)" />
+                    <Circle cx="120" cy="60" r="25" fill="url(#weekGradient)" />
+                  </Svg>
                 </View>
                 <Text style={[styles.earningsStatLabel, { color: colors.textSecondary }]}>This Week</Text>
                 <Text style={[styles.earningsStatValue, { color: colors.text }]}>{formatCurrency(weekEarnings)}</Text>
@@ -824,7 +872,7 @@ export default function DashboardScreen() {
         {/* Peak Hours Widget - Clean White Card */}
         {peakHoursData && peakHoursData.length > 0 && (
           <View style={styles.section}>
-            <View style={[styles.peakHoursEnhancedCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+            <View style={[styles.peakHoursEnhancedCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.04)' }]}>
               {/* Header with Illustration */}
               <View style={[styles.peakHoursCardHeader, { borderBottomColor: isDark ? '#2D2D2D' : '#F0F0F0' }]}>
                 <View style={styles.peakHoursHeaderLeft}>
@@ -923,27 +971,27 @@ export default function DashboardScreen() {
         )}
 
         {/* Top Selling Products - Clean White Card */}
-        {topProducts.length > 0 && (
-          <View style={styles.section}>
-            <View style={[styles.topSellersCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
-              {/* Header */}
-              <View style={[styles.topSellersCardHeader, { borderBottomColor: isDark ? '#2D2D2D' : '#F0F0F0' }]}>
-                <View style={styles.topSellersHeaderLeft}>
-                  <View style={[styles.topSellersBadge, { backgroundColor: '#FFF3E0' }]}>
-                    <Ionicons name="trophy" size={12} color="#FF8F00" />
-                    <Text style={[styles.topSellersBadgeText, { color: '#FF8F00' }]}>TOP PERFORMERS</Text>
-                  </View>
-                  <Text style={[styles.topSellersCardTitle, { color: colors.text }]}>Best Sellers</Text>
-                  <Text style={[styles.topSellersCardSubtitle, { color: colors.textSecondary }]}>Highest performing products</Text>
+        <View style={styles.section}>
+          <View style={[styles.topSellersCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.04)' }]}>
+            {/* Header */}
+            <View style={[styles.topSellersCardHeader, { borderBottomColor: isDark ? '#2D2D2D' : '#F0F0F0' }]}>
+              <View style={styles.topSellersHeaderLeft}>
+                <View style={[styles.topSellersBadge, { backgroundColor: '#FFF3E0' }]}>
+                  <Ionicons name="trophy" size={12} color="#FF8F00" />
+                  <Text style={[styles.topSellersBadgeText, { color: '#FF8F00' }]}>TOP PERFORMERS</Text>
                 </View>
-                <View style={styles.topSellersIllustrationWrapper}>
-                  <TopSellersIllustration width={65} height={65} />
-                </View>
+                <Text style={[styles.topSellersCardTitle, { color: colors.text }]}>Best Sellers</Text>
+                <Text style={[styles.topSellersCardSubtitle, { color: colors.textSecondary }]}>Highest performing products</Text>
               </View>
-              
-              {/* Products List */}
-              <View style={styles.topSellersProductsList}>
-                {topProducts.slice(0, 3).map((product: any, index: number) => {
+              <View style={styles.topSellersIllustrationWrapper}>
+                <TopSellersIllustration width={65} height={65} />
+              </View>
+            </View>
+            
+            {/* Products List */}
+            <View style={styles.topSellersProductsList}>
+              {topProducts.length > 0 ? (
+                topProducts.slice(0, 3).map((product: any, index: number) => {
                   if (!product || !product.id) return null;
                   
                   // Handle image URL
@@ -1056,15 +1104,39 @@ export default function DashboardScreen() {
                       <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} style={{ marginLeft: 4 }} />
                     </TouchableOpacity>
                   );
-                })}
-              </View>
+                })
+              ) : (
+                <View style={styles.bestSellersEmpty}>
+                  <View style={styles.bestSellersEmptySvgBackground}>
+                    <Svg width="120" height="120" viewBox="0 0 120 120">
+                      <Defs>
+                        <SvgLinearGradient id="bestSellersEmptyGradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <Stop offset="0%" stopColor="#FF8F00" stopOpacity={0.15} />
+                          <Stop offset="100%" stopColor="#FFB300" stopOpacity={0.08} />
+                        </SvgLinearGradient>
+                        <SvgLinearGradient id="bestSellersEmptyGradient2" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <Stop offset="0%" stopColor="#FFB300" stopOpacity={0.12} />
+                          <Stop offset="100%" stopColor="#FF8F00" stopOpacity={0.05} />
+                        </SvgLinearGradient>
+                      </Defs>
+                      <Circle cx="60" cy="60" r="50" fill="url(#bestSellersEmptyGradient1)" />
+                      <Circle cx="85" cy="35" r="25" fill="url(#bestSellersEmptyGradient2)" />
+                      <Circle cx="35" cy="80" r="18" fill="url(#bestSellersEmptyGradient2)" />
+                    </Svg>
+                  </View>
+                  <Text style={[styles.bestSellersEmptyTitle, { color: colors.text }]}>No sales yet</Text>
+                  <Text style={[styles.bestSellersEmptyText, { color: colors.textSecondary }]}>
+                    Your best selling products will appear here
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
-        )}
+        </View>
 
         {/* Recent Orders - Clean White Card */}
         <View style={styles.section}>
-          <View style={[styles.recentOrdersCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+          <View style={[styles.recentOrdersCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.04)' }]}>
             {/* Header */}
             <View style={[styles.recentOrdersCardHeader, { borderBottomColor: isDark ? '#2D2D2D' : '#F0F0F0' }]}>
               <View style={styles.recentOrdersHeaderLeft}>
@@ -1179,8 +1251,18 @@ export default function DashboardScreen() {
                 })
               ) : (
                 <View style={styles.recentOrdersEmpty}>
-                  <View style={[styles.recentOrdersEmptyIcon, { backgroundColor: isDark ? 'rgba(33, 150, 243, 0.15)' : 'rgba(33, 150, 243, 0.1)' }]}>
-                    <Ionicons name="cube-outline" size={32} color="#1E88E5" />
+                  <View style={styles.recentOrdersEmptySvgBackground}>
+                    <Svg width="100%" height="100%" viewBox="0 0 300 150" preserveAspectRatio="xMidYMid slice">
+                      <Defs>
+                        <SvgLinearGradient id="emptyOrdersGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <Stop offset="0%" stopColor="#2196F3" stopOpacity="0.06" />
+                          <Stop offset="100%" stopColor="#64B5F6" stopOpacity="0.12" />
+                        </SvgLinearGradient>
+                      </Defs>
+                      <Circle cx="50" cy="30" r="60" fill="url(#emptyOrdersGradient)" />
+                      <Circle cx="250" cy="120" r="50" fill="url(#emptyOrdersGradient)" />
+                      <Circle cx="150" cy="80" r="35" fill="url(#emptyOrdersGradient)" />
+                    </Svg>
                   </View>
                   <Text style={[styles.recentOrdersEmptyTitle, { color: colors.text }]}>No orders yet</Text>
                   <Text style={[styles.recentOrdersEmptyText, { color: colors.textSecondary }]}>
@@ -1221,12 +1303,24 @@ export default function DashboardScreen() {
               <View style={styles.quickActionsRow}>
                 {/* Add Product */}
                 <TouchableOpacity
-                  style={styles.quickActionItem}
+                  style={[styles.quickActionItem, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
                   onPress={() => navigation.navigate('AddProduct')}
                   activeOpacity={0.7}
                 >
-                  <View style={[styles.quickActionIconClean, { backgroundColor: '#E8F5E9' }]}>
-                    <Ionicons name="add-circle" size={22} color="#4CAF50" />
+                  <View style={styles.quickActionIconWrapper}>
+                    <Svg width="48" height="48" viewBox="0 0 48 48">
+                      <Defs>
+                        <SvgLinearGradient id="addGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <Stop offset="0%" stopColor="#4CAF50" stopOpacity={0.15} />
+                          <Stop offset="100%" stopColor="#2E7D32" stopOpacity={0.25} />
+                        </SvgLinearGradient>
+                      </Defs>
+                      <Circle cx="24" cy="24" r="22" fill="url(#addGrad)" />
+                      <Circle cx="24" cy="24" r="16" fill="#E8F5E9" />
+                    </Svg>
+                    <View style={styles.quickActionIconOverlay}>
+                      <Ionicons name="add-circle" size={22} color="#4CAF50" />
+                    </View>
                   </View>
                   <Text style={[styles.quickActionLabel, { color: colors.text }]}>Add Product</Text>
                   <Text style={[styles.quickActionHint, { color: colors.textSecondary }]}>New listing</Text>
@@ -1234,12 +1328,24 @@ export default function DashboardScreen() {
                 
                 {/* View Orders */}
                 <TouchableOpacity
-                  style={styles.quickActionItem}
+                  style={[styles.quickActionItem, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
                   onPress={() => navigation.navigate('FarmerOrders')}
                   activeOpacity={0.7}
                 >
-                  <View style={[styles.quickActionIconClean, { backgroundColor: '#E3F2FD' }]}>
-                    <Ionicons name="clipboard" size={20} color="#1976D2" />
+                  <View style={styles.quickActionIconWrapper}>
+                    <Svg width="48" height="48" viewBox="0 0 48 48">
+                      <Defs>
+                        <SvgLinearGradient id="orderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <Stop offset="0%" stopColor="#2196F3" stopOpacity={0.15} />
+                          <Stop offset="100%" stopColor="#1565C0" stopOpacity={0.25} />
+                        </SvgLinearGradient>
+                      </Defs>
+                      <Circle cx="24" cy="24" r="22" fill="url(#orderGrad)" />
+                      <Circle cx="24" cy="24" r="16" fill="#E3F2FD" />
+                    </Svg>
+                    <View style={styles.quickActionIconOverlay}>
+                      <Ionicons name="clipboard" size={20} color="#1976D2" />
+                    </View>
                   </View>
                   <Text style={[styles.quickActionLabel, { color: colors.text }]}>Orders</Text>
                   <Text style={[styles.quickActionHint, { color: colors.textSecondary }]}>View all</Text>
@@ -1247,31 +1353,52 @@ export default function DashboardScreen() {
                 
                 {/* Withdraw */}
                 <TouchableOpacity
-                  style={styles.quickActionItem}
+                  style={[styles.quickActionItem, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
                   onPress={() => navigation.navigate('Withdraw')}
                   activeOpacity={0.7}
                 >
-                  <View style={[styles.quickActionIconClean, { backgroundColor: '#FFF3E0' }]}>
-                    <Ionicons name="wallet" size={20} color="#F57C00" />
+                  <View style={styles.quickActionIconWrapper}>
+                    <Svg width="48" height="48" viewBox="0 0 48 48">
+                      <Defs>
+                        <SvgLinearGradient id="withdrawGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <Stop offset="0%" stopColor="#FF9800" stopOpacity={0.15} />
+                          <Stop offset="100%" stopColor="#E65100" stopOpacity={0.25} />
+                        </SvgLinearGradient>
+                      </Defs>
+                      <Circle cx="24" cy="24" r="22" fill="url(#withdrawGrad)" />
+                      <Circle cx="24" cy="24" r="16" fill="#FFF3E0" />
+                    </Svg>
+                    <View style={styles.quickActionIconOverlay}>
+                      <Ionicons name="wallet" size={20} color="#F57C00" />
+                    </View>
                   </View>
                   <Text style={[styles.quickActionLabel, { color: colors.text }]}>Withdraw</Text>
                   <Text style={[styles.quickActionHint, { color: colors.textSecondary }]}>Get paid</Text>
                 </TouchableOpacity>
               </View>
               
-              {/* Separator */}
-              <View style={[styles.quickActionsGridSeparator, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]} />
-              
               {/* Row 2 */}
               <View style={styles.quickActionsRow}>
                 {/* Analytics */}
                 <TouchableOpacity
-                  style={styles.quickActionItem}
+                  style={[styles.quickActionItem, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
                   onPress={() => navigation.navigate('Analytics')}
                   activeOpacity={0.7}
                 >
-                  <View style={[styles.quickActionIconClean, { backgroundColor: '#F3E5F5' }]}>
-                    <Ionicons name="stats-chart" size={20} color="#8E24AA" />
+                  <View style={styles.quickActionIconWrapper}>
+                    <Svg width="48" height="48" viewBox="0 0 48 48">
+                      <Defs>
+                        <SvgLinearGradient id="analyticsGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <Stop offset="0%" stopColor="#9C27B0" stopOpacity={0.15} />
+                          <Stop offset="100%" stopColor="#6A1B9A" stopOpacity={0.25} />
+                        </SvgLinearGradient>
+                      </Defs>
+                      <Circle cx="24" cy="24" r="22" fill="url(#analyticsGrad)" />
+                      <Circle cx="24" cy="24" r="16" fill="#F3E5F5" />
+                    </Svg>
+                    <View style={styles.quickActionIconOverlay}>
+                      <Ionicons name="stats-chart" size={20} color="#8E24AA" />
+                    </View>
                   </View>
                   <Text style={[styles.quickActionLabel, { color: colors.text }]}>Analytics</Text>
                   <Text style={[styles.quickActionHint, { color: colors.textSecondary }]}>Insights</Text>
@@ -1279,12 +1406,24 @@ export default function DashboardScreen() {
                 
                 {/* Products */}
                 <TouchableOpacity
-                  style={styles.quickActionItem}
+                  style={[styles.quickActionItem, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
                   onPress={() => navigation.navigate('FarmerProducts')}
                   activeOpacity={0.7}
                 >
-                  <View style={[styles.quickActionIconClean, { backgroundColor: '#E0F7FA' }]}>
-                    <Ionicons name="leaf" size={20} color="#00ACC1" />
+                  <View style={styles.quickActionIconWrapper}>
+                    <Svg width="48" height="48" viewBox="0 0 48 48">
+                      <Defs>
+                        <SvgLinearGradient id="productsGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <Stop offset="0%" stopColor="#00BCD4" stopOpacity={0.15} />
+                          <Stop offset="100%" stopColor="#00838F" stopOpacity={0.25} />
+                        </SvgLinearGradient>
+                      </Defs>
+                      <Circle cx="24" cy="24" r="22" fill="url(#productsGrad)" />
+                      <Circle cx="24" cy="24" r="16" fill="#E0F7FA" />
+                    </Svg>
+                    <View style={styles.quickActionIconOverlay}>
+                      <Ionicons name="storefront" size={20} color="#00ACC1" />
+                    </View>
                   </View>
                   <Text style={[styles.quickActionLabel, { color: colors.text }]}>Products</Text>
                   <Text style={[styles.quickActionHint, { color: colors.textSecondary }]}>Manage</Text>
@@ -1292,31 +1431,52 @@ export default function DashboardScreen() {
                 
                 {/* Support */}
                 <TouchableOpacity
-                  style={styles.quickActionItem}
+                  style={[styles.quickActionItem, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
                   onPress={() => navigation.navigate('LiveChat' as any)}
                   activeOpacity={0.7}
                 >
-                  <View style={[styles.quickActionIconClean, { backgroundColor: '#FCE4EC' }]}>
-                    <Ionicons name="headset" size={20} color="#D81B60" />
+                  <View style={styles.quickActionIconWrapper}>
+                    <Svg width="48" height="48" viewBox="0 0 48 48">
+                      <Defs>
+                        <SvgLinearGradient id="supportGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <Stop offset="0%" stopColor="#E91E63" stopOpacity={0.15} />
+                          <Stop offset="100%" stopColor="#AD1457" stopOpacity={0.25} />
+                        </SvgLinearGradient>
+                      </Defs>
+                      <Circle cx="24" cy="24" r="22" fill="url(#supportGrad)" />
+                      <Circle cx="24" cy="24" r="16" fill="#FCE4EC" />
+                    </Svg>
+                    <View style={styles.quickActionIconOverlay}>
+                      <Ionicons name="headset" size={20} color="#D81B60" />
+                    </View>
                   </View>
                   <Text style={[styles.quickActionLabel, { color: colors.text }]}>Support</Text>
                   <Text style={[styles.quickActionHint, { color: colors.textSecondary }]}>Get help</Text>
                 </TouchableOpacity>
               </View>
               
-              {/* Separator */}
-              <View style={[styles.quickActionsGridSeparator, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]} />
-              
               {/* Row 3 - Flash Sales */}
               <View style={styles.quickActionsRow}>
                 {/* Flash Sales */}
                 <TouchableOpacity
-                  style={styles.quickActionItem}
+                  style={[styles.quickActionItem, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
                   onPress={() => navigation.navigate('FlashSales' as any)}
                   activeOpacity={0.7}
                 >
-                  <View style={[styles.quickActionIconClean, { backgroundColor: '#FFEBEE' }]}>
-                    <Ionicons name="flash" size={20} color="#EF4444" />
+                  <View style={styles.quickActionIconWrapper}>
+                    <Svg width="48" height="48" viewBox="0 0 48 48">
+                      <Defs>
+                        <SvgLinearGradient id="flashGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <Stop offset="0%" stopColor="#F44336" stopOpacity={0.15} />
+                          <Stop offset="100%" stopColor="#C62828" stopOpacity={0.25} />
+                        </SvgLinearGradient>
+                      </Defs>
+                      <Circle cx="24" cy="24" r="22" fill="url(#flashGrad)" />
+                      <Circle cx="24" cy="24" r="16" fill="#FFEBEE" />
+                    </Svg>
+                    <View style={styles.quickActionIconOverlay}>
+                      <Ionicons name="flash" size={20} color="#EF4444" />
+                    </View>
                   </View>
                   <Text style={[styles.quickActionLabel, { color: colors.text }]}>Flash Sales</Text>
                   <Text style={[styles.quickActionHint, { color: colors.textSecondary }]}>Create deals</Text>
@@ -1324,12 +1484,24 @@ export default function DashboardScreen() {
                 
                 {/* Messages */}
                 <TouchableOpacity
-                  style={styles.quickActionItem}
+                  style={[styles.quickActionItem, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
                   onPress={() => navigation.navigate('FarmerMessages')}
                   activeOpacity={0.7}
                 >
-                  <View style={[styles.quickActionIconClean, { backgroundColor: '#E8F5E9' }]}>
-                    <Ionicons name="chatbubbles" size={20} color="#4CAF50" />
+                  <View style={styles.quickActionIconWrapper}>
+                    <Svg width="48" height="48" viewBox="0 0 48 48">
+                      <Defs>
+                        <SvgLinearGradient id="msgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <Stop offset="0%" stopColor="#4CAF50" stopOpacity={0.15} />
+                          <Stop offset="100%" stopColor="#2E7D32" stopOpacity={0.25} />
+                        </SvgLinearGradient>
+                      </Defs>
+                      <Circle cx="24" cy="24" r="22" fill="url(#msgGrad)" />
+                      <Circle cx="24" cy="24" r="16" fill="#E8F5E9" />
+                    </Svg>
+                    <View style={styles.quickActionIconOverlay}>
+                      <Ionicons name="chatbubbles" size={20} color="#4CAF50" />
+                    </View>
                   </View>
                   <Text style={[styles.quickActionLabel, { color: colors.text }]}>Messages</Text>
                   <Text style={[styles.quickActionHint, { color: colors.textSecondary }]}>Chat</Text>
@@ -1337,15 +1509,27 @@ export default function DashboardScreen() {
                 
                 {/* Reports */}
                 <TouchableOpacity
-                  style={styles.quickActionItem}
+                  style={[styles.quickActionItem, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
                   onPress={() => navigation.navigate('BusinessReports' as any)}
                   activeOpacity={0.7}
                 >
-                  <View style={[styles.quickActionIconClean, { backgroundColor: '#E3F2FD' }]}>
-                    <Ionicons name="document-text" size={20} color="#1976D2" />
+                  <View style={styles.quickActionIconWrapper}>
+                    <Svg width="48" height="48" viewBox="0 0 48 48">
+                      <Defs>
+                        <SvgLinearGradient id="reportGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <Stop offset="0%" stopColor="#2196F3" stopOpacity={0.15} />
+                          <Stop offset="100%" stopColor="#1565C0" stopOpacity={0.25} />
+                        </SvgLinearGradient>
+                      </Defs>
+                      <Circle cx="24" cy="24" r="22" fill="url(#reportGrad)" />
+                      <Circle cx="24" cy="24" r="16" fill="#E3F2FD" />
+                    </Svg>
+                    <View style={styles.quickActionIconOverlay}>
+                      <Ionicons name="document-text" size={20} color="#1976D2" />
+                    </View>
                   </View>
                   <Text style={[styles.quickActionLabel, { color: colors.text }]}>Reports</Text>
-                  <Text style={[styles.quickActionHint, { color: colors.textSecondary }]}>Business</Text>
+                  <Text style={[styles.quickActionHint, { color: colors.textSecondary }]}>Download</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -1651,6 +1835,16 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingVertical: SPACING.xs,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  earningsStatSvgBackground: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    overflow: 'hidden',
   },
   earningsStatIcon: {
     width: 36,
@@ -1857,6 +2051,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
   },
   verifiedBenefitText: {
     fontSize: 11,
@@ -1887,8 +2084,11 @@ const styles = StyleSheet.create({
     position: 'relative',
     width: 80,
     height: 80,
+    borderRadius: 40,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   verifiedBadgeOuter: {
     width: 70,
@@ -2329,7 +2529,13 @@ const styles = StyleSheet.create({
   goalCard: {
     borderRadius: BORDER_RADIUS.lg,
     overflow: 'hidden',
-    ...SHADOWS.medium,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.04)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
   goalGradientHeader: {
     padding: SPACING.md,
@@ -2376,7 +2582,14 @@ const styles = StyleSheet.create({
   // Pending balance styles
   pendingBalanceCard: {
     borderRadius: BORDER_RADIUS.lg,
-    ...SHADOWS.small,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.04)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
   pendingBalanceContent: {
     flexDirection: 'row',
@@ -2756,6 +2969,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: SPACING.xl * 1.5,
     paddingHorizontal: SPACING.lg,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  recentOrdersEmptySvgBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    overflow: 'hidden',
   },
   recentOrdersEmptyIcon: {
     width: 64,
@@ -2772,6 +2995,36 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   recentOrdersEmptyText: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: FONTS.regular,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  // Best Sellers Empty State
+  bestSellersEmpty: {
+    alignItems: 'center',
+    paddingVertical: SPACING.xl * 1.5,
+    paddingHorizontal: SPACING.lg,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  bestSellersEmptySvgBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  bestSellersEmptyTitle: {
+    fontSize: FONT_SIZES.md,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+    marginBottom: 4,
+  },
+  bestSellersEmptyText: {
     fontSize: FONT_SIZES.sm,
     fontFamily: FONTS.regular,
     textAlign: 'center',
@@ -2841,15 +3094,40 @@ const styles = StyleSheet.create({
   quickActionsRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    paddingVertical: SPACING.md,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.xs,
+    gap: 8,
   },
   quickActionsGridSeparator: {
     height: 1,
     marginHorizontal: SPACING.lg,
   },
   quickActionItem: {
+    flex: 1,
     alignItems: 'center',
-    width: (width - SPACING.md * 4) / 3,
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    borderRadius: 16,
+    minHeight: 100,
+    ...SHADOWS.small,
+  },
+  quickActionIconWrapper: {
+    position: 'relative',
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.xs,
+  },
+  quickActionIconOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   quickActionIconGradient: {
     width: 52,
@@ -3009,6 +3287,16 @@ const styles = StyleSheet.create({
     marginLeft: 58, // Aligned with text start (icon container + margin)
   },
   // Clean Card Styles for Goal Card
+  goalCardSvgBackground: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    width: '50%',
+    overflow: 'hidden',
+    borderTopRightRadius: 12,
+    borderBottomRightRadius: 12,
+  },
   goalCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -3112,16 +3400,52 @@ const styles = StyleSheet.create({
   },
   // Clean Card Styles for Verified Banner
   verifiedCard: {
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.08,
     shadowRadius: 8,
-    elevation: 3,
+    elevation: 4,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.04)',
     position: 'relative',
+  },
+  verifiedCardSvgContainer: {
+    position: 'absolute',
+    top: -20,
+    right: -20,
+    opacity: 1,
+  },
+  verifiedCardSvg: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  verifiedCardDecor: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    overflow: 'hidden',
+  },
+  verifiedDecorCircle1: {
+    position: 'absolute',
+    top: -30,
+    right: -30,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+  },
+  verifiedDecorCircle2: {
+    position: 'absolute',
+    bottom: -40,
+    left: -20,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
   },
   verifiedCardContent: {
     flexDirection: 'row',

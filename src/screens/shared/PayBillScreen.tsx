@@ -15,10 +15,12 @@ import {
   Animated,
   Dimensions,
   RefreshControl,
+  FlatList,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Contacts from 'expo-contacts';
 import { useTheme } from '../../context/ThemeContext';
 import { triggerHaptic, triggerMediumHaptic } from '../../utils/haptics';
 import { useAppSelector } from '../../store';
@@ -32,6 +34,7 @@ import {
   BettingIllustration,
   BillsHeroIllustration,
 } from '../../assets/illustrations/bills';
+import { WalletHeroIllustration } from '../../assets/illustrations/stats';
 import {
   BillType,
   Biller,
@@ -44,6 +47,7 @@ import {
   getBillHistory,
   BillHistoryItem,
 } from '../../services/billsService';
+import { walletService } from '../../services/walletService';
 
 const { width } = Dimensions.get('window');
 
@@ -109,7 +113,10 @@ export default function PayBillScreen() {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
   const { user } = useAppSelector((state) => state.auth);
-  const walletBalance = typeof user?.walletBalance === 'number' ? user.walletBalance : 0;
+  
+  // State for wallet balance - fetched from API
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [isLoadingBalance, setIsLoadingBalance] = useState(true);
 
   // State
   const [selectedCategory, setSelectedCategory] = useState<BillCategory | null>(null);
@@ -126,6 +133,10 @@ export default function PayBillScreen() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [recentBills, setRecentBills] = useState<BillHistoryItem[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showContactsModal, setShowContactsModal] = useState(false);
+  const [contactsList, setContactsList] = useState<Contacts.Contact[]>([]);
+  const [contactSearch, setContactSearch] = useState('');
+  const [pendingContactsOpen, setPendingContactsOpen] = useState(false);
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -145,8 +156,42 @@ export default function PayBillScreen() {
       }),
     ]).start();
     
+    loadWalletBalance();
     loadRecentBills();
   }, []);
+
+  // Handle opening contacts modal after payment modal closes
+  useEffect(() => {
+    if (pendingContactsOpen && !showPaymentModal) {
+      const timer = setTimeout(() => {
+        setShowContactsModal(true);
+        setPendingContactsOpen(false);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [pendingContactsOpen, showPaymentModal]);
+
+  const loadWalletBalance = async () => {
+    try {
+      setIsLoadingBalance(true);
+      console.log('[PayBillScreen] Loading wallet balance...');
+      const response = await walletService.getBalance();
+      console.log('[PayBillScreen] Raw balance response:', JSON.stringify(response));
+      
+      // Handle different response structures: { available } or { balance }
+      let availableBalance = (response as any)?.available ?? (response as any)?.balance ?? 0;
+      if (typeof availableBalance === 'string') {
+        availableBalance = parseFloat(availableBalance) || 0;
+      }
+      console.log('[PayBillScreen] Parsed balance:', availableBalance);
+      setWalletBalance(availableBalance);
+    } catch (error) {
+      console.error('[PayBillScreen] Failed to load wallet balance:', error);
+      setWalletBalance(0);
+    } finally {
+      setIsLoadingBalance(false);
+    }
+  };
 
   const loadRecentBills = async () => {
     try {
@@ -159,7 +204,7 @@ export default function PayBillScreen() {
 
   const onRefresh = async () => {
     setIsRefreshing(true);
-    await loadRecentBills();
+    await Promise.all([loadWalletBalance(), loadRecentBills()]);
     setIsRefreshing(false);
   };
 
@@ -393,11 +438,11 @@ export default function PayBillScreen() {
       key={biller.code}
       style={[
         styles.billerItem,
-        { backgroundColor: dynamicStyles.secondaryCard },
+        { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#F5F5F5' },
         selectedBiller?.code === biller.code && { 
-          backgroundColor: `${selectedCategory?.color}15`, 
-          borderColor: selectedCategory?.color, 
-          borderWidth: 1.5 
+          backgroundColor: '#F0FDF4', 
+          borderColor: '#16A34A', 
+          borderWidth: 2 
         },
       ]}
       onPress={() => handleBillerSelect(biller)}
@@ -406,12 +451,12 @@ export default function PayBillScreen() {
       <Text style={[
         styles.billerName,
         { color: dynamicStyles.text },
-        selectedBiller?.code === biller.code && { color: selectedCategory?.color, fontWeight: '600' },
+        selectedBiller?.code === biller.code && { color: '#16A34A', fontWeight: '600' },
       ]}>
         {biller.shortName || biller.name}
       </Text>
       {selectedBiller?.code === biller.code && (
-        <Ionicons name="checkmark-circle" size={20} color={selectedCategory?.color} />
+        <Ionicons name="checkmark-circle" size={20} color="#16A34A" />
       )}
     </TouchableOpacity>
   );
@@ -427,11 +472,11 @@ export default function PayBillScreen() {
         key={`${pkg.code}-${index}`}
         style={[
           styles.packageItem,
-          { backgroundColor: dynamicStyles.secondaryCard },
+          { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#F5F5F5' },
           isSelected && { 
-            backgroundColor: `${selectedCategory?.color}15`, 
-            borderColor: selectedCategory?.color, 
-            borderWidth: 1.5 
+            backgroundColor: '#F0FDF4', 
+            borderColor: '#16A34A', 
+            borderWidth: 2 
           },
         ]}
         onPress={() => handlePackageSelect(pkg)}
@@ -441,7 +486,7 @@ export default function PayBillScreen() {
           <Text style={[
             styles.packageName,
             { color: dynamicStyles.text },
-            isSelected && { color: selectedCategory?.color, fontWeight: '600' },
+            isSelected && { color: '#16A34A', fontWeight: '600' },
           ]}>
             {pkg.name}
           </Text>
@@ -450,7 +495,7 @@ export default function PayBillScreen() {
           </Text>
         </View>
         {isSelected && (
-          <Ionicons name="checkmark-circle" size={20} color={selectedCategory?.color} />
+          <Ionicons name="checkmark-circle" size={20} color="#16A34A" />
         )}
       </TouchableOpacity>
     );
@@ -461,16 +506,16 @@ export default function PayBillScreen() {
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <View style={styles.headerContent}>
           <TouchableOpacity
-            style={styles.backButton}
+            style={[styles.backButton, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
             onPress={() => {
               triggerHaptic();
               navigation.goBack();
             }}
           >
-            <Ionicons name="chevron-back" size={24} color={colors.primary} />
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: dynamicStyles.text }]}>Pay Bills</Text>
           <TouchableOpacity
@@ -495,16 +540,23 @@ export default function PayBillScreen() {
       >
         {/* Wallet Balance Card */}
         <View style={[styles.walletCard, { backgroundColor: dynamicStyles.card }]}>
+          <View style={styles.walletIconContainer}>
+            <WalletHeroIllustration width={32} height={32} color="#FFFFFF" />
+          </View>
           <View style={styles.walletInfo}>
             <Text style={[styles.walletLabel, { color: dynamicStyles.textSecondary }]}>
               Wallet Balance
             </Text>
-            <Text style={[styles.walletBalance, { color: dynamicStyles.text }]}>
-              {formatCurrency(walletBalance)}
-            </Text>
+            {isLoadingBalance ? (
+              <ActivityIndicator size="small" color="#16A34A" style={{ marginTop: 8 }} />
+            ) : (
+              <Text style={[styles.walletBalance, { color: dynamicStyles.text }]}>
+                {formatCurrency(walletBalance)}
+              </Text>
+            )}
           </View>
           <TouchableOpacity
-            style={[styles.topUpButton, { backgroundColor: colors.primary }]}
+            style={styles.topUpButton}
             onPress={() => {
               triggerHaptic();
               (navigation as any).navigate('TopUp');
@@ -513,6 +565,10 @@ export default function PayBillScreen() {
             <Ionicons name="add" size={18} color="#FFFFFF" />
             <Text style={styles.topUpText}>Top Up</Text>
           </TouchableOpacity>
+          <View style={styles.balanceDecoration}>
+            <View style={[styles.decorationCircle, styles.decorationCircle1]} />
+            <View style={[styles.decorationCircle, styles.decorationCircle2]} />
+          </View>
         </View>
 
         {/* Hero Illustration */}
@@ -624,8 +680,10 @@ export default function PayBillScreen() {
                   </Text>
                 </View>
               ) : billers.length > 0 ? (
-                <View style={styles.billersGrid}>
-                  {billers.map(renderBillerItem)}
+                <View style={[styles.billersCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+                  <View style={styles.billersGrid}>
+                    {billers.map(renderBillerItem)}
+                  </View>
                 </View>
               ) : (
                 <Text style={[styles.emptyText, { color: dynamicStyles.textSecondary }]}>
@@ -658,6 +716,50 @@ export default function PayBillScreen() {
                     keyboardType={selectedCategory?.id === BillType.AIRTIME || selectedCategory?.id === BillType.DATA ? 'phone-pad' : 'default'}
                     maxLength={selectedCategory?.id === BillType.AIRTIME || selectedCategory?.id === BillType.DATA ? 11 : 20}
                   />
+                  {(selectedCategory?.id === BillType.AIRTIME || selectedCategory?.id === BillType.DATA) && (
+                    <TouchableOpacity
+                      style={[styles.contactButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#F5F5F5' }]}
+                      onPress={async () => {
+                        console.log('[PayBillScreen] Contact button pressed');
+                        triggerHaptic();
+                        try {
+                          const { status } = await Contacts.requestPermissionsAsync();
+                          console.log('[PayBillScreen] Contacts permission status:', status);
+                          if (status !== 'granted') {
+                            Alert.alert('Permission Required', 'Please grant contacts permission to select a contact.');
+                            return;
+                          }
+                          console.log('[PayBillScreen] Fetching contacts...');
+                          const { data } = await Contacts.getContactsAsync({
+                            fields: [Contacts.Fields.PhoneNumbers],
+                          });
+                          console.log('[PayBillScreen] Contacts fetched:', data.length);
+                          if (data.length > 0) {
+                            const contactsWithPhones = data.filter(c => c.phoneNumbers && c.phoneNumbers.length > 0);
+                            console.log('[PayBillScreen] Contacts with phones:', contactsWithPhones.length);
+                            if (contactsWithPhones.length === 0) {
+                              Alert.alert('No Contacts', 'No contacts with phone numbers found.');
+                              return;
+                            }
+                            // Sort contacts alphabetically
+                            contactsWithPhones.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+                            setContactsList(contactsWithPhones);
+                            setContactSearch('');
+                            // Close payment modal first, then open contacts modal
+                            setShowPaymentModal(false);
+                            setPendingContactsOpen(true);
+                          } else {
+                            Alert.alert('No Contacts', 'No contacts found.');
+                          }
+                        } catch (error) {
+                          console.error('[PayBillScreen] Error fetching contacts:', error);
+                          Alert.alert('Error', 'Failed to load contacts. Please try again.');
+                        }
+                      }}
+                    >
+                      <Ionicons name="person-add" size={20} color="#16A34A" />
+                    </TouchableOpacity>
+                  )}
                 </View>
               </View>
             )}
@@ -679,15 +781,17 @@ export default function PayBillScreen() {
                     </Text>
                   </View>
                 ) : packages.length > 0 ? (
-                  <ScrollView 
-                    style={styles.packagesScrollView}
-                    nestedScrollEnabled
-                    showsVerticalScrollIndicator={false}
-                  >
-                    <View style={styles.packagesContainer}>
-                      {packages.map(renderPackageItem)}
-                    </View>
-                  </ScrollView>
+                  <View style={[styles.packagesCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+                    <ScrollView 
+                      style={styles.packagesScrollView}
+                      nestedScrollEnabled
+                      showsVerticalScrollIndicator={false}
+                    >
+                      <View style={styles.packagesContainer}>
+                        {packages.map(renderPackageItem)}
+                      </View>
+                    </ScrollView>
+                  </View>
                 ) : (
                   <Text style={[styles.emptyText, { color: dynamicStyles.textSecondary }]}>
                     No {selectedCategory?.id === BillType.DATA ? 'data plans' : 'packages'} available
@@ -717,33 +821,35 @@ export default function PayBillScreen() {
                 </View>
 
                 {/* Quick Amounts - Only for Airtime */}
-                <View style={styles.quickAmountsContainer}>
-                  {QUICK_AMOUNTS.map((amt) => (
-                    <TouchableOpacity
-                      key={amt}
-                      style={[
-                        styles.quickAmountBtn,
-                        { backgroundColor: dynamicStyles.secondaryCard },
-                        amount === amt.toString() && { 
-                          backgroundColor: `${selectedCategory?.color}15`, 
-                          borderColor: selectedCategory?.color, 
-                          borderWidth: 1 
-                        },
-                      ]}
-                      onPress={() => {
-                        triggerHaptic();
-                        setAmount(amt.toString());
-                      }}
-                    >
-                      <Text style={[
-                        styles.quickAmountText,
-                        { color: dynamicStyles.text },
-                        amount === amt.toString() && { color: selectedCategory?.color, fontWeight: '600' },
-                      ]}>
-                        ₦{amt.toLocaleString()}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+                <View style={[styles.quickAmountsCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+                  <View style={styles.quickAmountsContainer}>
+                    {QUICK_AMOUNTS.map((amt) => (
+                      <TouchableOpacity
+                        key={amt}
+                        style={[
+                          styles.quickAmountBtn,
+                          { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#F5F5F5' },
+                          amount === amt.toString() && { 
+                            backgroundColor: '#F0FDF4', 
+                            borderColor: '#16A34A', 
+                            borderWidth: 2 
+                          },
+                        ]}
+                        onPress={() => {
+                          triggerHaptic();
+                          setAmount(amt.toString());
+                        }}
+                      >
+                        <Text style={[
+                          styles.quickAmountText,
+                          { color: dynamicStyles.text },
+                          amount === amt.toString() && { color: '#16A34A', fontWeight: '600' },
+                        ]}>
+                          ₦{amt.toLocaleString()}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                 </View>
               </>
             )}
@@ -817,6 +923,111 @@ export default function PayBillScreen() {
           </ScrollView>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* Contacts Modal */}
+      <Modal
+        visible={showContactsModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => {
+          setShowContactsModal(false);
+          setTimeout(() => setShowPaymentModal(true), 300);
+        }}
+      >
+        <View style={[styles.modalContainer, { backgroundColor: dynamicStyles.container }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: dynamicStyles.border }]}>
+            <TouchableOpacity
+              style={styles.modalCloseButton}
+              onPress={() => {
+                triggerHaptic();
+                setShowContactsModal(false);
+                // Reopen payment modal after a short delay
+                setTimeout(() => setShowPaymentModal(true), 300);
+              }}
+            >
+              <Ionicons name="close" size={24} color={dynamicStyles.text} />
+            </TouchableOpacity>
+            <Text style={[styles.modalTitle, { color: dynamicStyles.text }]}>Select Contact</Text>
+            <View style={{ width: 40 }} />
+          </View>
+          
+          {/* Search Bar */}
+          <View style={[styles.contactSearchContainer, { backgroundColor: dynamicStyles.groupBg }]}>
+            <Ionicons name="search" size={20} color={dynamicStyles.textSecondary} />
+            <TextInput
+              style={[styles.contactSearchInput, { color: dynamicStyles.text }]}
+              placeholder="Search contacts..."
+              placeholderTextColor={dynamicStyles.textSecondary}
+              value={contactSearch}
+              onChangeText={setContactSearch}
+            />
+            {contactSearch.length > 0 && (
+              <TouchableOpacity onPress={() => setContactSearch('')}>
+                <Ionicons name="close-circle" size={20} color={dynamicStyles.textSecondary} />
+              </TouchableOpacity>
+            )}
+          </View>
+          
+          {/* Contacts List */}
+          <FlatList
+            data={contactsList.filter(c => 
+              contactSearch.length === 0 || 
+              (c.name || '').toLowerCase().includes(contactSearch.toLowerCase()) ||
+              (c.phoneNumbers?.[0]?.number || '').includes(contactSearch)
+            )}
+            keyExtractor={(item, index) => `contact-${index}`}
+            style={[styles.contactsList, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}
+            contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+            initialNumToRender={20}
+            maxToRenderPerBatch={20}
+            windowSize={10}
+            ItemSeparatorComponent={() => (
+              <View style={[styles.contactDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }]} />
+            )}
+            renderItem={({ item: contact }) => (
+              <TouchableOpacity
+                style={styles.contactItem}
+                onPress={() => {
+                  triggerHaptic();
+                  if (contact.phoneNumbers && contact.phoneNumbers[0]) {
+                    let phone = contact.phoneNumbers[0].number || '';
+                    // Clean the phone number - remove spaces, dashes, and country code
+                    phone = phone.replace(/[\s\-\(\)]/g, '');
+                    if (phone.startsWith('+234')) phone = '0' + phone.slice(4);
+                    if (phone.startsWith('234')) phone = '0' + phone.slice(3);
+                    setPhoneNumber(phone.slice(0, 11));
+                  }
+                  setShowContactsModal(false);
+                  // Reopen payment modal after a short delay
+                  setTimeout(() => setShowPaymentModal(true), 300);
+                }}
+              >
+                <View style={[styles.contactAvatar, { backgroundColor: '#16A34A' }]}>
+                  <Text style={styles.contactAvatarText}>
+                    {(contact.name || '?')[0].toUpperCase()}
+                  </Text>
+                </View>
+                <View style={styles.contactInfo}>
+                  <Text style={[styles.contactName, { color: dynamicStyles.text }]}>
+                    {contact.name || 'Unknown'}
+                  </Text>
+                  <Text style={[styles.contactPhone, { color: dynamicStyles.textSecondary }]}>
+                    {contact.phoneNumbers?.[0]?.number || 'No phone'}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={dynamicStyles.textSecondary} />
+              </TouchableOpacity>
+            )}
+            ListEmptyComponent={
+              <View style={styles.emptyContactsContainer}>
+                <Text style={[styles.emptyText, { color: dynamicStyles.textSecondary }]}>
+                  No contacts found
+                </Text>
+              </View>
+            }
+          />
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -838,8 +1049,20 @@ const styles = StyleSheet.create({
   backButton: {
     width: 40,
     height: 40,
-    alignItems: 'flex-start',
+    borderRadius: 20,
+    alignItems: 'center',
     justifyContent: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   headerTitle: {
     fontSize: 17,
@@ -855,36 +1078,77 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   walletCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    borderRadius: 12,
+    padding: 20,
+    borderRadius: 16,
     marginBottom: 16,
+    overflow: 'hidden',
+    position: 'relative' as const,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  walletIconContainer: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: '#16A34A',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   walletInfo: {
-    flex: 1,
+    zIndex: 1,
   },
   walletLabel: {
     fontSize: 13,
     marginBottom: 4,
   },
   walletBalance: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '700',
   },
   topUpButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    gap: 4,
+    justifyContent: 'center',
+    backgroundColor: '#16A34A',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    marginTop: 16,
+    gap: 8,
+    zIndex: 1,
   },
   topUpText: {
     fontSize: 14,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  balanceDecoration: {
+    position: 'absolute' as const,
+    top: -20,
+    right: -20,
+  },
+  decorationCircle: {
+    position: 'absolute' as const,
+    borderRadius: 100,
+    backgroundColor: '#16A34A',
+    opacity: 0.08,
+  },
+  decorationCircle1: {
+    width: 120,
+    height: 120,
+    top: 0,
+    right: 0,
+  },
+  decorationCircle2: {
+    width: 80,
+    height: 80,
+    top: 60,
+    right: 60,
+    opacity: 0.05,
   },
   heroContainer: {
     alignItems: 'center',
@@ -1059,6 +1323,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     padding: 20,
   },
+  billersCard: {
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 8,
+  },
   billersGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -1078,11 +1347,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     flex: 1,
   },
+  packagesCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
   packagesScrollView: {
     maxHeight: 250,
   },
   packagesContainer: {
     gap: 10,
+    padding: 16,
   },
   packageItem: {
     flexDirection: 'row',
@@ -1090,7 +1365,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 14,
-    borderRadius: 10,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
   packageInfo: {
     flex: 1,
@@ -1115,6 +1392,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     paddingVertical: 14,
   },
+  contactButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
   amountInput: {
     fontSize: 24,
     fontWeight: '600',
@@ -1124,18 +1409,25 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginRight: 4,
   },
+  quickAmountsCard: {
+    borderRadius: 16,
+    marginBottom: 24,
+    overflow: 'hidden',
+  },
   quickAmountsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
-    marginBottom: 24,
+    padding: 16,
+    justifyContent: 'space-between',
   },
   quickAmountBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-    minWidth: '30%',
+    width: '31.5%',
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
   quickAmountText: {
     fontSize: 14,
@@ -1197,5 +1489,65 @@ const styles = StyleSheet.create({
   },
   securityText: {
     fontSize: 12,
+  },
+  contactSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    gap: 8,
+  },
+  contactSearchInput: {
+    flex: 1,
+    fontSize: 16,
+  },
+  contactsList: {
+    flex: 1,
+    marginHorizontal: 16,
+    borderRadius: 16,
+    marginTop: 8,
+  },
+  contactItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  contactDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 72,
+  },
+  contactAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  contactAvatarText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  contactInfo: {
+    flex: 1,
+  },
+  contactName: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  contactPhone: {
+    fontSize: 14,
+  },
+  emptyContactsContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
   },
 });

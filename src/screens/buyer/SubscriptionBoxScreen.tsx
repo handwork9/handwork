@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Circle } from 'react-native-svg';
 import { useTheme } from '../../context/ThemeContext';
 import { COLORS, SPACING, FONT_SIZES, FONTS } from '../../constants/theme';
 import subscriptionBoxService, {
@@ -364,18 +365,24 @@ export default function SubscriptionBoxScreen() {
     return (
       <Animated.View style={{ opacity: fadeAnim }}>
         {/* Hero Section */}
-        <LinearGradient
-          colors={[COLORS.primary, '#2E7D32']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.heroCard}
-        >
-          <Ionicons name="cube" size={48} color="#FFF" />
-          <Text style={styles.heroTitle}>Fresh Box Subscription</Text>
-          <Text style={styles.heroSubtitle}>
+        <View style={[styles.heroCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
+          {/* SVG Background */}
+          <View style={styles.heroCardSvg}>
+            <Svg width="200" height="200" viewBox="0 0 200 200">
+              <Circle cx="150" cy="50" r="80" fill={COLORS.primary} fillOpacity={0.08} />
+              <Circle cx="180" cy="100" r="50" fill={COLORS.primary} fillOpacity={0.06} />
+              <Circle cx="120" cy="30" r="30" fill="#2E7D32" fillOpacity={0.05} />
+            </Svg>
+          </View>
+          
+          <View style={[styles.heroIconContainer, { backgroundColor: isDark ? 'rgba(76, 175, 80, 0.15)' : '#E8F5E9' }]}>
+            <Ionicons name="cube" size={48} color={COLORS.primary} />
+          </View>
+          <Text style={[styles.heroTitle, { color: colors.text }]}>Fresh Box Subscription</Text>
+          <Text style={[styles.heroSubtitle, { color: colors.textSecondary }]}>
             Get fresh farm produce delivered to your door automatically
           </Text>
-        </LinearGradient>
+        </View>
 
         {/* Frequency Selection */}
         <View style={[styles.section, { backgroundColor: isDark ? colors.card : '#FFF' }]}>
@@ -697,22 +704,40 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   heroCard: {
-    borderRadius: 20,
+    borderRadius: 16,
     padding: SPACING.xl,
     alignItems: 'center',
     marginBottom: SPACING.md,
+    overflow: 'hidden',
+    position: 'relative',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  heroCardSvg: {
+    position: 'absolute',
+    top: -20,
+    right: -20,
+  },
+  heroIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   heroTitle: {
     fontSize: 24,
     fontFamily: FONTS.bold,
-    color: '#FFF',
     marginTop: SPACING.md,
     textAlign: 'center',
   },
   heroSubtitle: {
     fontSize: FONT_SIZES.md,
     fontFamily: FONTS.regular,
-    color: 'rgba(255,255,255,0.9)',
     marginTop: SPACING.xs,
     textAlign: 'center',
   },

@@ -21,6 +21,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, FONTS } from '../../constants/theme';
@@ -387,9 +388,28 @@ export default function ActiveDeliveryScreen() {
         <View style={[styles.fixedHeader, { paddingTop: insets.top, backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
           <Text style={[styles.fixedHeaderTitle, { color: colors.text }]}>Active Delivery</Text>
         </View>
-        <View style={styles.emptyState}>
-          <View style={[styles.emptyIconContainer, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : COLORS.background }]}>
-            <Ionicons name="cube-outline" size={48} color={COLORS.gray} />
+        <View style={[
+          styles.emptyState,
+          {
+            backgroundColor: isDark ? colors.card : '#FFFFFF',
+            borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+          }
+        ]}>
+          {/* SVG Background */}
+          <View style={styles.emptyBackground}>
+            <Svg width={200} height={200}>
+              <Defs>
+                <SvgLinearGradient id="emptyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <Stop offset="0%" stopColor="#2196F3" stopOpacity="0.15" />
+                  <Stop offset="100%" stopColor="#64B5F6" stopOpacity="0.08" />
+                </SvgLinearGradient>
+              </Defs>
+              <Circle cx="100" cy="100" r="90" fill="url(#emptyGrad)" />
+              <Circle cx="100" cy="100" r="60" fill="url(#emptyGrad)" />
+            </Svg>
+          </View>
+          <View style={[styles.emptyIconContainer, { backgroundColor: '#E3F2FD' }]}>
+            <Ionicons name="cube" size={40} color="#2196F3" />
           </View>
           <Text style={[styles.emptyTitle, { color: colors.text }]}>No Active Delivery</Text>
           <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
@@ -432,54 +452,58 @@ export default function ActiveDeliveryScreen() {
       >
         {/* Hero Section with Map Placeholder */}
         <View style={styles.heroSection}>
-          <LinearGradient
-            colors={isDark ? ['#1E40AF', '#3B82F6'] : [COLORS.primary, COLORS.primaryDark]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.heroGradient}
-          >
-            {/* Current step indicator */}
-            <View style={styles.currentStepBadge}>
-              <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-                <Ionicons name={STEP_INFO[currentStep].icon} size={20} color="#FFFFFF" />
-              </Animated.View>
-              <Text style={styles.currentStepText}>{STEP_INFO[currentStep].label}</Text>
+          <View style={[styles.heroCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
+            <View style={styles.heroCardSvg}>
+              <Svg width="200" height="200" viewBox="0 0 200 200">
+                <Circle cx="150" cy="50" r="80" fill={COLORS.primary} fillOpacity={0.08} />
+                <Circle cx="180" cy="100" r="50" fill={COLORS.primaryDark} fillOpacity={0.06} />
+                <Circle cx="120" cy="30" r="30" fill={COLORS.primary} fillOpacity={0.05} />
+              </Svg>
             </View>
-            
-            <View style={styles.heroIconContainer}>
-              <Ionicons name="navigate" size={32} color="#FFFFFF" />
+            <View style={styles.heroContent}>
+              {/* Current step indicator */}
+              <View style={[styles.currentStepBadge, { backgroundColor: 'rgba(34, 197, 94, 0.1)' }]}>
+                <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                  <Ionicons name={STEP_INFO[currentStep].icon} size={20} color={COLORS.primary} />
+                </Animated.View>
+                <Text style={[styles.currentStepText, { color: COLORS.primary }]}>{STEP_INFO[currentStep].label}</Text>
+              </View>
+              
+              <View style={[styles.heroIconContainer, { backgroundColor: 'rgba(34, 197, 94, 0.1)' }]}>
+                <Ionicons name="navigate" size={32} color={COLORS.primary} />
+              </View>
+              <Text style={[styles.heroTitle, { color: colors.text }]}>
+                {currentStep === 'accepted' ? 'Head to Pickup' : 
+                 currentStep === 'picked_up' ? 'Start Delivery' : 'On the Way'}
+              </Text>
+              <Text style={[styles.heroSubtitle, { color: colors.textSecondary }]}>
+                {destination?.name} • {destination?.address}
+              </Text>
+              <View style={[styles.heroStatsRow, { borderTopColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
+                <View style={styles.heroStatItem}>
+                  <Text style={[styles.heroStatValue, { color: COLORS.primary }]}>{formatCurrency(delivery.earnings ?? 0)}</Text>
+                  <Text style={[styles.heroStatLabel, { color: colors.textSecondary }]}>Earnings</Text>
+                </View>
+                <View style={[styles.heroStatDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]} />
+                <View style={styles.heroStatItem}>
+                  <Text style={[styles.heroStatValue, { color: COLORS.primary }]}>{delivery.items.length}</Text>
+                  <Text style={[styles.heroStatLabel, { color: colors.textSecondary }]}>Items</Text>
+                </View>
+                <View style={[styles.heroStatDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]} />
+                <View style={styles.heroStatItem}>
+                  <Text style={[styles.heroStatValue, { color: COLORS.primary }]}>{formatElapsedTime(elapsedTime)}</Text>
+                  <Text style={[styles.heroStatLabel, { color: colors.textSecondary }]}>Time</Text>
+                </View>
+                <View style={[styles.heroStatDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]} />
+                <View style={styles.heroStatItem}>
+                  <Text style={[styles.heroStatValue, { color: COLORS.primary }]}>
+                    {delivery.eta ? `${delivery.eta} min` : '--'}
+                  </Text>
+                  <Text style={[styles.heroStatLabel, { color: colors.textSecondary }]}>ETA</Text>
+                </View>
+              </View>
             </View>
-            <Text style={styles.heroTitle}>
-              {currentStep === 'accepted' ? 'Head to Pickup' : 
-               currentStep === 'picked_up' ? 'Start Delivery' : 'On the Way'}
-            </Text>
-            <Text style={styles.heroSubtitle}>
-              {destination?.name} • {destination?.address}
-            </Text>
-            <View style={styles.heroStatsRow}>
-              <View style={styles.heroStatItem}>
-                <Text style={styles.heroStatValue}>{formatCurrency(delivery.earnings ?? 0)}</Text>
-                <Text style={styles.heroStatLabel}>Earnings</Text>
-              </View>
-              <View style={styles.heroStatDivider} />
-              <View style={styles.heroStatItem}>
-                <Text style={styles.heroStatValue}>{delivery.items.length}</Text>
-                <Text style={styles.heroStatLabel}>Items</Text>
-              </View>
-              <View style={styles.heroStatDivider} />
-              <View style={styles.heroStatItem}>
-                <Text style={styles.heroStatValue}>{formatElapsedTime(elapsedTime)}</Text>
-                <Text style={styles.heroStatLabel}>Time</Text>
-              </View>
-              <View style={styles.heroStatDivider} />
-              <View style={styles.heroStatItem}>
-                <Text style={styles.heroStatValue}>
-                  {delivery.eta ? `${delivery.eta} min` : '--'}
-                </Text>
-                <Text style={styles.heroStatLabel}>ETA</Text>
-              </View>
-            </View>
-          </LinearGradient>
+          </View>
         </View>
 
         {/* In-App Map */}
@@ -783,8 +807,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.md,
     paddingTop: SPACING.xs,
   },
-  heroGradient: {
-    borderRadius: BORDER_RADIUS.xl,
+  heroCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    position: 'relative',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  heroCardSvg: {
+    position: 'absolute',
+    top: -20,
+    right: -20,
+  },
+  heroContent: {
     padding: SPACING.lg,
     alignItems: 'center',
   },
@@ -792,7 +831,6 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: SPACING.sm,
@@ -801,13 +839,11 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.xl,
     fontWeight: '700',
     fontFamily: FONTS.bold,
-    color: '#FFFFFF',
     textAlign: 'center',
   },
   heroSubtitle: {
     fontSize: FONT_SIZES.sm,
     fontFamily: FONTS.regular,
-    color: 'rgba(255, 255, 255, 0.85)',
     textAlign: 'center',
     marginTop: SPACING.xs,
     paddingHorizontal: SPACING.md,
@@ -818,7 +854,6 @@ const styles = StyleSheet.create({
     marginTop: SPACING.md,
     paddingTop: SPACING.md,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.2)',
   },
   heroStatItem: {
     flex: 1,
@@ -828,23 +863,19 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.lg,
     fontWeight: '700',
     fontFamily: FONTS.bold,
-    color: '#FFFFFF',
   },
   heroStatLabel: {
     fontSize: FONT_SIZES.xs,
     fontFamily: FONTS.regular,
-    color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 2,
   },
   heroStatDivider: {
     width: 1,
     height: 30,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
   currentStepBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.xs,
     borderRadius: BORDER_RADIUS.round,
@@ -855,7 +886,6 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.sm,
     fontWeight: '600',
     fontFamily: FONTS.semiBold,
-    color: '#FFFFFF',
   },
   mapPlaceholder: {
     height: 200,
@@ -1112,6 +1142,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: SPACING.xl,
+    margin: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    ...SHADOWS.small,
+  },
+  emptyBackground: {
+    position: 'absolute',
+    opacity: 0.8,
   },
   emptyIconContainer: {
     width: 80,

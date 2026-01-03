@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Circle } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -308,6 +309,8 @@ const ProductAnalyticsDetailScreen: React.FC = () => {
           style={[
             styles.heroCard,
             {
+              backgroundColor: isDark ? colors.card : '#FFFFFF',
+              borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
               opacity: headerAnim,
               transform: [
                 {
@@ -320,11 +323,17 @@ const ProductAnalyticsDetailScreen: React.FC = () => {
             },
           ]}
         >
-          <LinearGradient
-            colors={[COLORS.primary, COLORS.primaryDark]}
-            style={styles.heroGradient}
-          >
-            <View style={styles.heroImageContainer}>
+          {/* SVG Background */}
+          <View style={styles.heroCardSvg}>
+            <Svg width="200" height="200" viewBox="0 0 200 200">
+              <Circle cx="150" cy="50" r="80" fill={COLORS.primary} fillOpacity={0.08} />
+              <Circle cx="180" cy="100" r="50" fill={COLORS.primary} fillOpacity={0.06} />
+              <Circle cx="120" cy="30" r="30" fill={COLORS.success} fillOpacity={0.05} />
+            </Svg>
+          </View>
+          
+          <View style={styles.heroContent}>
+            <View style={[styles.heroImageContainer, { backgroundColor: isDark ? 'rgba(76, 175, 80, 0.15)' : '#E8F5E9', borderColor: isDark ? 'rgba(76, 175, 80, 0.3)' : COLORS.primary + '30' }]}>
               {productImageUrl ? (
                 <Image 
                   source={{ uri: productImageUrl }} 
@@ -335,51 +344,51 @@ const ProductAnalyticsDetailScreen: React.FC = () => {
                 getProductIllustration(productName, 72)
               )}
             </View>
-            <Text style={styles.heroName}>{productName}</Text>
+            <Text style={[styles.heroName, { color: colors.text }]}>{productName}</Text>
             <View style={styles.heroBadgeRow}>
-              <View style={[styles.heroBadge, { backgroundColor: product.stock > 50 ? 'rgba(16, 185, 129, 0.3)' : product.stock > 20 ? 'rgba(251, 191, 36, 0.3)' : 'rgba(239, 68, 68, 0.3)' }]}>
+              <View style={[styles.heroBadge, { backgroundColor: product.stock > 50 ? 'rgba(16, 185, 129, 0.15)' : product.stock > 20 ? 'rgba(251, 191, 36, 0.15)' : 'rgba(239, 68, 68, 0.15)' }]}>
                 <Ionicons 
                   name="cube" 
                   size={12} 
-                  color={COLORS.white} 
+                  color={product.stock > 50 ? COLORS.success : product.stock > 20 ? '#F59E0B' : COLORS.error} 
                 />
-                <Text style={styles.heroBadgeText}>
+                <Text style={[styles.heroBadgeText, { color: product.stock > 50 ? COLORS.success : product.stock > 20 ? '#F59E0B' : COLORS.error }]}>
                   {product.stock > 50 ? 'In Stock' : product.stock > 20 ? 'Low Stock' : 'Very Low'}
                 </Text>
               </View>
-              <View style={[styles.heroBadge, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}>
-                <Ionicons name="star" size={12} color="#FFD700" />
-                <Text style={styles.heroBadgeText}>
+              <View style={[styles.heroBadge, { backgroundColor: 'rgba(255, 193, 7, 0.15)' }]}>
+                <Ionicons name="star" size={12} color="#F59E0B" />
+                <Text style={[styles.heroBadgeText, { color: '#F59E0B' }]}>
                   {(product.conversionRate / 1.5).toFixed(1)} Rating
                 </Text>
               </View>
             </View>
-            <View style={styles.heroStats}>
+            <View style={[styles.heroStats, { backgroundColor: isDark ? 'rgba(76, 175, 80, 0.1)' : '#F0FDF4' }]}>
               <View style={styles.heroStatItem}>
-                <Text style={styles.heroStatValue}>{formatCurrency(product.revenue)}</Text>
-                <Text style={styles.heroStatLabel}>Revenue</Text>
+                <Text style={[styles.heroStatValue, { color: COLORS.primary }]}>{formatCurrency(product.revenue)}</Text>
+                <Text style={[styles.heroStatLabel, { color: colors.textSecondary }]}>Revenue</Text>
               </View>
-              <View style={styles.heroStatDivider} />
+              <View style={[styles.heroStatDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }]} />
               <View style={styles.heroStatItem}>
-                <Text style={styles.heroStatValue}>{product.sales}</Text>
-                <Text style={styles.heroStatLabel}>Units Sold</Text>
+                <Text style={[styles.heroStatValue, { color: COLORS.primary }]}>{product.sales}</Text>
+                <Text style={[styles.heroStatLabel, { color: colors.textSecondary }]}>Units Sold</Text>
               </View>
-              <View style={styles.heroStatDivider} />
+              <View style={[styles.heroStatDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }]} />
               <View style={styles.heroStatItem}>
                 <View style={styles.heroGrowth}>
                   <Ionicons
                     name={product.growth >= 0 ? 'trending-up' : 'trending-down'}
                     size={16}
-                    color={COLORS.white}
+                    color={product.growth >= 0 ? COLORS.success : COLORS.error}
                   />
-                  <Text style={styles.heroStatValue}>
+                  <Text style={[styles.heroStatValue, { color: product.growth >= 0 ? COLORS.success : COLORS.error }]}>
                     {product.growth >= 0 ? '+' : ''}{product.growth}%
                   </Text>
                 </View>
-                <Text style={styles.heroStatLabel}>Growth</Text>
+                <Text style={[styles.heroStatLabel, { color: colors.textSecondary }]}>Growth</Text>
               </View>
             </View>
-          </LinearGradient>
+          </View>
         </Animated.View>
 
         {/* Key Metrics */}
@@ -585,9 +594,24 @@ const styles = StyleSheet.create({
   },
   heroCard: {
     margin: SPACING.md,
-    borderRadius: BORDER_RADIUS.xl,
+    borderRadius: 16,
     overflow: 'hidden',
-    ...SHADOWS.medium,
+    position: 'relative',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  heroCardSvg: {
+    position: 'absolute',
+    top: -20,
+    right: -20,
+  },
+  heroContent: {
+    padding: SPACING.lg,
+    alignItems: 'center',
   },
   heroGradient: {
     padding: SPACING.lg,
@@ -597,14 +621,11 @@ const styles = StyleSheet.create({
     width: 90,
     height: 90,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: SPACING.sm,
     overflow: 'hidden',
-    borderWidth: 3,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-    ...SHADOWS.medium,
+    borderWidth: 2,
   },
   heroImage: {
     width: 90,
@@ -631,7 +652,6 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.xxl,
     fontWeight: '700',
     fontFamily: FONTS.bold,
-    color: COLORS.white,
     marginBottom: SPACING.xs,
   },
   heroBadgeRow: {
@@ -643,20 +663,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.xs,
-    backgroundColor: 'rgba(255,255,255,0.2)',
     paddingHorizontal: SPACING.sm,
     paddingVertical: SPACING.xs,
     borderRadius: BORDER_RADIUS.lg,
   },
   heroBadgeText: {
     fontSize: FONT_SIZES.xs,
-    color: COLORS.white,
     fontWeight: '600',
     fontFamily: FONTS.semiBold,
   },
   heroStats: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: BORDER_RADIUS.lg,
     padding: SPACING.md,
     width: '100%',
@@ -669,17 +686,15 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.lg,
     fontWeight: '700',
     fontFamily: FONTS.bold,
-    color: COLORS.white,
   },
   heroStatLabel: {
     fontSize: FONT_SIZES.xs,
     fontFamily: FONTS.regular,
-    color: 'rgba(255,255,255,0.8)',
     marginTop: 2,
   },
   heroStatDivider: {
     width: 1,
-    backgroundColor: 'rgba(255,255,255,0.3)',
+    marginHorizontal: SPACING.sm,
   },
   heroGrowth: {
     flexDirection: 'row',

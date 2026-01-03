@@ -9,9 +9,11 @@ import {
   Alert,
   Dimensions,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Circle } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, FONTS } from '../../constants/theme';
@@ -264,26 +266,41 @@ const PromoteProductScreen: React.FC = () => {
           }}
         >
           {/* Product Preview */}
-          <View style={styles.productPreview}>
-            <LinearGradient
-              colors={[COLORS.secondary, COLORS.secondaryDark]}
-              style={styles.productGradient}
-            >
-              <View style={styles.productImageContainer}>
-                {getProductIllustration(product.name, 64)}
+          <View style={[styles.productPreview, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
+            {/* SVG Background */}
+            <View style={styles.productPreviewSvg}>
+              <Svg width="200" height="200" viewBox="0 0 200 200">
+                <Circle cx="150" cy="50" r="80" fill="#FF8F00" fillOpacity={0.08} />
+                <Circle cx="180" cy="100" r="50" fill="#FF8F00" fillOpacity={0.06} />
+                <Circle cx="120" cy="30" r="30" fill="#FFB300" fillOpacity={0.05} />
+              </Svg>
+            </View>
+            
+            <View style={styles.productPreviewContent}>
+              <View style={[styles.productImageContainer, { backgroundColor: isDark ? 'rgba(255, 143, 0, 0.15)' : '#FFF3E0' }]}>
+                {product.images?.[0] || product.image ? (
+                  <Image 
+                    source={{ uri: product.images?.[0] || product.image }} 
+                    style={styles.productImage}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  getProductIllustration(product.name, 64)
+                )}
               </View>
-              <Text style={styles.productName}>{product.name}</Text>
-              <View style={styles.productStats}>
+              <Text style={[styles.productName, { color: colors.text }]}>{product.name}</Text>
+              <View style={[styles.productStats, { backgroundColor: isDark ? 'rgba(255, 143, 0, 0.1)' : '#FFF8E1' }]}>
                 <View style={styles.productStat}>
-                  <Ionicons name="eye-outline" size={16} color="rgba(255,255,255,0.8)" />
-                  <Text style={styles.productStatText}>{product.views || 0} views</Text>
+                  <Ionicons name="eye-outline" size={16} color="#FF8F00" />
+                  <Text style={[styles.productStatText, { color: colors.textSecondary }]}>{product.views || 0} views</Text>
                 </View>
+                <View style={[styles.productStatDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }]} />
                 <View style={styles.productStat}>
-                  <Ionicons name="bag-outline" size={16} color="rgba(255,255,255,0.8)" />
-                  <Text style={styles.productStatText}>{product.sales || 0} sold</Text>
+                  <Ionicons name="bag-outline" size={16} color="#FF8F00" />
+                  <Text style={[styles.productStatText, { color: colors.textSecondary }]}>{product.sales || 0} sold</Text>
                 </View>
               </View>
-            </LinearGradient>
+            </View>
           </View>
 
           {/* Wallet Balance Info */}
@@ -654,9 +671,24 @@ const styles = StyleSheet.create({
   },
   productPreview: {
     margin: SPACING.md,
-    borderRadius: BORDER_RADIUS.xl,
+    borderRadius: 16,
     overflow: 'hidden',
-    ...SHADOWS.medium,
+    position: 'relative',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  productPreviewSvg: {
+    position: 'absolute',
+    top: -20,
+    right: -20,
+  },
+  productPreviewContent: {
+    padding: SPACING.lg,
+    alignItems: 'center',
   },
   productGradient: {
     padding: SPACING.lg,
@@ -666,31 +698,42 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: SPACING.sm,
+    overflow: 'hidden',
+  },
+  productImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
   },
   productName: {
     fontSize: FONT_SIZES.xl,
     fontWeight: '700',
     fontFamily: FONTS.bold,
-    color: COLORS.white,
     marginBottom: SPACING.sm,
   },
   productStats: {
     flexDirection: 'row',
-    gap: SPACING.md,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    alignItems: 'center',
   },
   productStat: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
+  productStatDivider: {
+    width: 1,
+    height: 16,
+    marginHorizontal: SPACING.md,
+  },
   productStatText: {
     fontSize: FONT_SIZES.sm,
     fontFamily: FONTS.regular,
-    color: 'rgba(255,255,255,0.8)',
   },
   walletInfo: {
     marginHorizontal: SPACING.md,

@@ -424,7 +424,7 @@ export default function WithdrawScreen({ route }: { route?: { params?: { balance
                     key={value}
                     style={[
                       styles.quickAmountButton,
-                      dynamicStyles.card,
+                      { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#F5F5F5' },
                       isSelected && styles.quickAmountButtonSelected,
                     ]}
                     onPress={() => handleQuickAmount(value)}
@@ -964,9 +964,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: SPACING.sm,
+    justifyContent: 'space-between',
   },
   quickAmountButton: {
-    width: '31%',
+    width: '31.5%',
     paddingVertical: SPACING.md,
     borderRadius: 12,
     alignItems: 'center',

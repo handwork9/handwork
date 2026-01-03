@@ -103,9 +103,11 @@ export default function CartScreen() {
           <View style={styles.placeholder} />
         </View>
         <EmptyState
-          icon={<Ionicons name="cart-outline" size={64} color={colors.textSecondary} />}
+          icon={<Ionicons name="cart" size={40} color="#4CAF50" />}
           title={t('cart.empty')}
           description={t('cart.emptyDescription')}
+          iconBackgroundColor="#E8F5E9"
+          gradientColors={['#4CAF50', '#81C784']}
           action={
             <Button
               title={t('cart.browseProducts')}

@@ -19,8 +19,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { useTheme } from '../../context/ThemeContext';
-import { FONTS } from '../../constants/theme';
+import { FONTS, SPACING } from '../../constants/theme';
 import { chatService, Conversation as ApiConversation, ChatMessage } from '../../services/chatService';
 import { useAppSelector, useAppDispatch } from '../../store';
 import { useBuyerSocket, useMessageNotifications } from '../../hooks/useBuyerSocket';
@@ -761,11 +762,22 @@ export default function MessagesScreen() {
     // No conversations yet
     return (
       <View style={styles.emptyState}>
-        <EmptyMessagesIllustration 
-          size={140} 
-          primaryColor={colors.primary}
-          secondaryColor={isDark ? '#81C784' : '#A5D6A7'}
-        />
+        {/* SVG Background */}
+        <View style={styles.emptyBackground}>
+          <Svg width={200} height={200}>
+            <Defs>
+              <SvgLinearGradient id="emptyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <Stop offset="0%" stopColor="#4CAF50" stopOpacity="0.15" />
+                <Stop offset="100%" stopColor="#81C784" stopOpacity="0.08" />
+              </SvgLinearGradient>
+            </Defs>
+            <Circle cx="100" cy="100" r="90" fill="url(#emptyGrad)" />
+            <Circle cx="100" cy="100" r="60" fill="url(#emptyGrad)" />
+          </Svg>
+        </View>
+        <View style={[styles.emptyIconBg, { backgroundColor: '#E8F5E9' }]}>
+          <Ionicons name="chatbubbles" size={40} color="#4CAF50" />
+        </View>
         <Text style={[styles.emptyTitle, { color: colors.text }]}>No Messages Yet</Text>
         <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
           Start a conversation with a farmer by visiting their profile or product page
@@ -1310,11 +1322,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 32,
   },
+  emptyBackground: {
+    position: 'absolute',
+    opacity: 0.8,
+  },
+  emptyIconBg: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   emptyTitle: {
     fontSize: 22,
     fontFamily: FONTS.bold,
     marginBottom: 8,
-    marginTop: 24,
+    marginTop: SPACING.md,
   },
   emptySubtitle: {
     fontSize: 15,

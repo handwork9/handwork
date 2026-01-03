@@ -20,6 +20,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, FONTS } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
@@ -540,67 +541,68 @@ export default function AvailableJobsScreen() {
           <>
             {/* Hero Section */}
             <View style={styles.heroSection}>
-              <LinearGradient
-                colors={isOnline 
-                  ? (isDark ? ['#1E40AF', '#3B82F6'] : [COLORS.primary, COLORS.primaryDark])
-                  : (isDark ? ['#374151', '#4B5563'] : ['#6B7280', '#9CA3AF'])
-                }
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.heroGradient}
-              >
-                {/* Online/Offline Toggle */}
-                <View style={styles.onlineToggleContainer}>
-                  <View style={styles.onlineStatusRow}>
-                    <View style={[
-                      styles.onlineIndicator,
-                      { backgroundColor: isOnline === true ? COLORS.success : '#9CA3AF' }
-                    ]} />
-                    <Text style={styles.onlineStatusText}>
-                      {isOnline === true ? 'Online' : 'Offline'}
-                    </Text>
-                  </View>
-                  <Switch
-                    value={isOnline === true}
-                    onValueChange={async (value) => {
-                      try {
-                        await dispatch(updateRiderStatus({ isOnline: value })).unwrap();
-                        await dispatch(fetchRiderProfile()).unwrap();
-                      } catch (error) {
-                        Alert.alert('Error', `Failed to go ${value ? 'online' : 'offline'}. Please try again.`);
-                      }
-                    }}
-                    trackColor={{ false: 'rgba(255,255,255,0.3)', true: COLORS.success }}
-                    thumbColor="#FFFFFF"
-                    ios_backgroundColor="rgba(255,255,255,0.3)"
-                    style={{ transform: [{ scaleX: 1.1 }, { scaleY: 1.1 }] }}
-                  />
+              <View style={[styles.heroCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
+                <View style={styles.heroCardSvg}>
+                  <Svg width="200" height="200" viewBox="0 0 200 200">
+                    <Circle cx="150" cy="50" r="80" fill={isOnline ? COLORS.primary : '#6B7280'} fillOpacity={0.08} />
+                    <Circle cx="180" cy="100" r="50" fill={isOnline ? COLORS.primaryDark : '#9CA3AF'} fillOpacity={0.06} />
+                    <Circle cx="120" cy="30" r="30" fill={isOnline ? COLORS.primary : '#6B7280'} fillOpacity={0.05} />
+                  </Svg>
                 </View>
+                <View style={styles.heroContent}>
+                  {/* Online/Offline Toggle */}
+                  <View style={[styles.onlineToggleContainer, { borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
+                    <View style={styles.onlineStatusRow}>
+                      <View style={[
+                        styles.onlineIndicator,
+                        { backgroundColor: isOnline === true ? COLORS.success : '#9CA3AF' }
+                      ]} />
+                      <Text style={[styles.onlineStatusText, { color: colors.text }]}>
+                        {isOnline === true ? 'Online' : 'Offline'}
+                      </Text>
+                    </View>
+                    <Switch
+                      value={isOnline === true}
+                      onValueChange={async (value) => {
+                        try {
+                          await dispatch(updateRiderStatus({ isOnline: value })).unwrap();
+                          await dispatch(fetchRiderProfile()).unwrap();
+                        } catch (error) {
+                          Alert.alert('Error', `Failed to go ${value ? 'online' : 'offline'}. Please try again.`);
+                        }
+                      }}
+                      trackColor={{ false: 'rgba(0,0,0,0.1)', true: COLORS.success }}
+                      thumbColor="#FFFFFF"
+                      ios_backgroundColor="rgba(0,0,0,0.1)"
+                      style={{ transform: [{ scaleX: 1.1 }, { scaleY: 1.1 }] }}
+                    />
+                  </View>
 
-                <View style={styles.heroIconContainer}>
-                  <Ionicons name="bicycle" size={32} color="#FFFFFF" />
+                  <View style={[styles.heroIconContainer, { backgroundColor: isOnline ? 'rgba(34, 197, 94, 0.1)' : 'rgba(107, 114, 128, 0.1)' }]}>
+                    <Ionicons name="bicycle" size={32} color={isOnline ? COLORS.primary : '#6B7280'} />
+                  </View>
+                  <Text style={[styles.heroTitle, { color: colors.text }]}>{isOnline ? 'Find Deliveries' : 'You\'re Offline'}</Text>
+                  <Text style={[styles.heroSubtitle, { color: colors.textSecondary }]}>
+                    {isOnline ? 'Pick up jobs near you and start earning' : 'Turn on to receive delivery requests'}
+                  </Text>
+                  <View style={[styles.heroStatsRow, { borderTopColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
+                    <View style={styles.heroStatItem}>
+                      <Text style={[styles.heroStatValue, { color: isOnline ? COLORS.primary : '#6B7280' }]}>{sortedJobs.length}</Text>
+                      <Text style={[styles.heroStatLabel, { color: colors.textSecondary }]}>Jobs</Text>
+                    </View>
+                    <View style={[styles.heroStatDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]} />
+                    <View style={styles.heroStatItem}>
+                      <Text style={[styles.heroStatValue, { color: isOnline ? COLORS.primary : '#6B7280' }]}>{formatCurrency(totalEarnings ?? 0)}</Text>
+                      <Text style={[styles.heroStatLabel, { color: colors.textSecondary }]}>Total Value</Text>
+                    </View>
+                    <View style={[styles.heroStatDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]} />
+                    <View style={styles.heroStatItem}>
+                      <Text style={[styles.heroStatValue, { color: isOnline ? COLORS.primary : '#6B7280' }]}>{avgDistance} km</Text>
+                      <Text style={[styles.heroStatLabel, { color: colors.textSecondary }]}>Avg Distance</Text>
+                    </View>
+                  </View>
                 </View>
-                <Text style={styles.heroTitle}>{isOnline ? 'Find Deliveries' : 'You\'re Offline'}</Text>
-                <Text style={styles.heroSubtitle}>
-                  {isOnline ? 'Pick up jobs near you and start earning' : 'Turn on to receive delivery requests'}
-                </Text>
-                <View style={styles.heroStatsRow}>
-                  <View style={styles.heroStatItem}>
-                    <Text style={styles.heroStatValue}>{sortedJobs.length}</Text>
-                    <Text style={styles.heroStatLabel}>Jobs</Text>
-                  </View>
-                  <View style={styles.heroStatDivider} />
-                  <View style={styles.heroStatItem}>
-                    <Text style={styles.heroStatValue}>{formatCurrency(totalEarnings ?? 0)}</Text>
-                    <Text style={styles.heroStatLabel}>Total Value</Text>
-                  </View>
-                  <View style={styles.heroStatDivider} />
-                  <View style={styles.heroStatItem}>
-                    <Text style={styles.heroStatValue}>{avgDistance} km</Text>
-                    <Text style={styles.heroStatLabel}>Avg Distance</Text>
-                  </View>
-                </View>
-              </LinearGradient>
+              </View>
             </View>
 
             {/* Sort Options */}
@@ -620,12 +622,14 @@ export default function AvailableJobsScreen() {
                   }}
                   activeOpacity={0.7}
                 >
-                  <Ionicons 
-                    name={option.icon} 
-                    size={16} 
-                    color={sortBy === option.key ? '#FFFFFF' : colors.textSecondary}
-                    style={{ marginRight: SPACING.xs }}
-                  />
+                  {sortBy === option.key && (
+                    <Ionicons 
+                      name={option.icon} 
+                      size={16} 
+                      color="#FFFFFF"
+                      style={{ marginRight: SPACING.xs }}
+                    />
+                  )}
                   <Text style={[
                     styles.sortOptionText,
                     { color: colors.textSecondary },
@@ -690,9 +694,28 @@ export default function AvailableJobsScreen() {
           </>
         }
         ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <View style={[styles.emptyIconContainer, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : COLORS.background }]}>
-              <Ionicons name="bicycle-outline" size={48} color={COLORS.gray} />
+          <View style={[
+            styles.emptyState,
+            {
+              backgroundColor: isDark ? colors.card : '#FFFFFF',
+              borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+            }
+          ]}>
+            {/* SVG Background */}
+            <View style={styles.emptyBackground}>
+              <Svg width={200} height={200}>
+                <Defs>
+                  <SvgLinearGradient id="emptyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <Stop offset="0%" stopColor="#4CAF50" stopOpacity="0.15" />
+                    <Stop offset="100%" stopColor="#81C784" stopOpacity="0.08" />
+                  </SvgLinearGradient>
+                </Defs>
+                <Circle cx="100" cy="100" r="90" fill="url(#emptyGrad)" />
+                <Circle cx="100" cy="100" r="60" fill="url(#emptyGrad)" />
+              </Svg>
+            </View>
+            <View style={[styles.emptyIconContainer, { backgroundColor: '#E8F5E9' }]}>
+              <Ionicons name="bicycle" size={40} color="#4CAF50" />
             </View>
             <Text style={[styles.emptyTitle, { color: colors.text }]}>No jobs available</Text>
             <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
@@ -791,8 +814,23 @@ const styles = StyleSheet.create({
     paddingTop: SPACING.xs,
     paddingBottom: SPACING.sm,
   },
-  heroGradient: {
-    borderRadius: BORDER_RADIUS.xl,
+  heroCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    position: 'relative',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  heroCardSvg: {
+    position: 'absolute',
+    top: -20,
+    right: -20,
+  },
+  heroContent: {
     padding: SPACING.lg,
     alignItems: 'center',
   },
@@ -804,7 +842,6 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
     paddingBottom: SPACING.md,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.2)',
   },
   onlineStatusRow: {
     flexDirection: 'row',
@@ -820,13 +857,11 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.md,
     fontWeight: '600',
     fontFamily: FONTS.semiBold,
-    color: '#FFFFFF',
   },
   heroIconContainer: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: SPACING.sm,
@@ -835,13 +870,11 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.xl,
     fontWeight: '700',
     fontFamily: FONTS.bold,
-    color: '#FFFFFF',
     textAlign: 'center',
   },
   heroSubtitle: {
     fontSize: FONT_SIZES.sm,
     fontFamily: FONTS.regular,
-    color: 'rgba(255, 255, 255, 0.85)',
     textAlign: 'center',
     marginTop: SPACING.xs,
   },
@@ -851,7 +884,6 @@ const styles = StyleSheet.create({
     marginTop: SPACING.md,
     paddingTop: SPACING.md,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.2)',
   },
   heroStatItem: {
     flex: 1,
@@ -861,18 +893,15 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.lg,
     fontWeight: '700',
     fontFamily: FONTS.bold,
-    color: '#FFFFFF',
   },
   heroStatLabel: {
     fontSize: FONT_SIZES.xs,
     fontFamily: FONTS.regular,
-    color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 2,
   },
   heroStatDivider: {
     width: 1,
     height: 30,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
   header: {
     padding: SPACING.md,
@@ -1057,6 +1086,14 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     paddingVertical: SPACING.xxl,
+    marginHorizontal: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    ...SHADOWS.small,
+  },
+  emptyBackground: {
+    position: 'absolute',
+    opacity: 0.8,
   },
   emptyIconContainer: {
     width: 80,

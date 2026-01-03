@@ -525,7 +525,7 @@ const AnalyticsScreen: React.FC = () => {
   const renderBarChart = () => {
     if (isSalesLoading) {
       return (
-        <View style={[styles.chartContainer, { backgroundColor: isDark ? colors.card : COLORS.surface, alignItems: 'center', justifyContent: 'center', height: 200 }]}>
+        <View style={[styles.chartContainer, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)', alignItems: 'center', justifyContent: 'center', height: 200 }]}>
           <ActivityIndicator size="large" color={COLORS.primary} />
         </View>
       );
@@ -533,7 +533,7 @@ const AnalyticsScreen: React.FC = () => {
 
     if (salesData.length === 0) {
       return (
-        <View style={[styles.chartContainer, { backgroundColor: isDark ? colors.card : COLORS.surface, alignItems: 'center', justifyContent: 'center', height: 200 }]}>
+        <View style={[styles.chartContainer, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)', alignItems: 'center', justifyContent: 'center', height: 200 }]}>
           <Ionicons name="bar-chart-outline" size={48} color={colors.textSecondary} />
           <Text style={[styles.emptyText, { color: colors.textSecondary, marginTop: SPACING.sm }]}>No sales data available</Text>
         </View>
@@ -543,7 +543,7 @@ const AnalyticsScreen: React.FC = () => {
     const barWidth = (CHART_WIDTH - SPACING.md * 2) / salesData.length - 8;
 
     return (
-      <View style={[styles.chartContainer, { backgroundColor: isDark ? colors.card : COLORS.surface }]}>
+      <View style={[styles.chartContainer, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
         <View style={styles.chartBars}>
           {salesData.map((data, index) => {
             const barHeight = (data.value / maxValue) * 150;
@@ -597,23 +597,55 @@ const AnalyticsScreen: React.FC = () => {
 
   const renderSummaryCards = () => (
     <View style={styles.summaryGrid}>
-      <View style={[styles.summaryCard, { backgroundColor: isDark ? `${COLORS.primary}30` : COLORS.primaryLight }]}>
-        <Ionicons name="trending-up" size={24} color={COLORS.primary} />
+      <View style={[styles.summaryCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
+        <View style={styles.summaryCardSvg}>
+          <Svg width="80" height="80" viewBox="0 0 80 80">
+            <Circle cx="60" cy="20" r="40" fill={COLORS.primary} fillOpacity={0.1} />
+            <Circle cx="40" cy="60" r="20" fill={COLORS.primary} fillOpacity={0.06} />
+          </Svg>
+        </View>
+        <View style={[styles.summaryIconBg, { backgroundColor: isDark ? `${COLORS.primary}30` : COLORS.primaryLight }]}>
+          <Ionicons name="trending-up" size={20} color={COLORS.primary} />
+        </View>
         <Text style={[styles.summaryValue, { color: colors.text }]}>{formatCurrency(totalRevenue)}</Text>
         <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Total Revenue</Text>
       </View>
-      <View style={[styles.summaryCard, { backgroundColor: isDark ? `${COLORS.secondary}30` : COLORS.secondaryLight }]}>
-        <Ionicons name="bag-check" size={24} color={COLORS.secondary} />
+      <View style={[styles.summaryCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
+        <View style={styles.summaryCardSvg}>
+          <Svg width="80" height="80" viewBox="0 0 80 80">
+            <Circle cx="60" cy="20" r="40" fill={COLORS.secondary} fillOpacity={0.1} />
+            <Circle cx="40" cy="60" r="20" fill={COLORS.secondary} fillOpacity={0.06} />
+          </Svg>
+        </View>
+        <View style={[styles.summaryIconBg, { backgroundColor: isDark ? `${COLORS.secondary}30` : COLORS.secondaryLight }]}>
+          <Ionicons name="bag-check" size={20} color={COLORS.secondary} />
+        </View>
         <Text style={[styles.summaryValue, { color: colors.text }]}>{totalOrders}</Text>
         <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Total Orders</Text>
       </View>
-      <View style={[styles.summaryCard, { backgroundColor: isDark ? `${COLORS.accent}30` : COLORS.accentLight }]}>
-        <Ionicons name="pricetag" size={24} color={COLORS.accent} />
+      <View style={[styles.summaryCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
+        <View style={styles.summaryCardSvg}>
+          <Svg width="80" height="80" viewBox="0 0 80 80">
+            <Circle cx="60" cy="20" r="40" fill={COLORS.accent} fillOpacity={0.1} />
+            <Circle cx="40" cy="60" r="20" fill={COLORS.accent} fillOpacity={0.06} />
+          </Svg>
+        </View>
+        <View style={[styles.summaryIconBg, { backgroundColor: isDark ? `${COLORS.accent}30` : COLORS.accentLight }]}>
+          <Ionicons name="pricetag" size={20} color={COLORS.accent} />
+        </View>
         <Text style={[styles.summaryValue, { color: colors.text }]}>{formatCurrency(avgOrderValue)}</Text>
         <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Avg. Order</Text>
       </View>
-      <View style={[styles.summaryCard, { backgroundColor: isDark ? `${COLORS.success}30` : COLORS.successLight }]}>
-        <Ionicons name={growth >= 0 ? "arrow-up-circle" : "arrow-down-circle"} size={24} color={growth >= 0 ? COLORS.success : COLORS.error} />
+      <View style={[styles.summaryCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
+        <View style={styles.summaryCardSvg}>
+          <Svg width="80" height="80" viewBox="0 0 80 80">
+            <Circle cx="60" cy="20" r="40" fill={growth >= 0 ? COLORS.success : COLORS.error} fillOpacity={0.1} />
+            <Circle cx="40" cy="60" r="20" fill={growth >= 0 ? COLORS.success : COLORS.error} fillOpacity={0.06} />
+          </Svg>
+        </View>
+        <View style={[styles.summaryIconBg, { backgroundColor: isDark ? `${growth >= 0 ? COLORS.success : COLORS.error}30` : (growth >= 0 ? COLORS.successLight : '#FEE2E2') }]}>
+          <Ionicons name={growth >= 0 ? "arrow-up-circle" : "arrow-down-circle"} size={20} color={growth >= 0 ? COLORS.success : COLORS.error} />
+        </View>
         <Text style={[styles.summaryValue, { color: colors.text }]}>{growth >= 0 ? '+' : ''}{growth.toFixed(1)}%</Text>
         <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Growth</Text>
       </View>
@@ -629,11 +661,11 @@ const AnalyticsScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
       {isProductsLoading ? (
-        <View style={[styles.productCard, { backgroundColor: isDark ? colors.card : COLORS.surface, justifyContent: 'center', alignItems: 'center', height: 80 }]}>
+        <View style={[styles.productCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)', justifyContent: 'center', alignItems: 'center', height: 80 }]}>
           <ActivityIndicator size="small" color={COLORS.primary} />
         </View>
       ) : topProducts.length === 0 ? (
-        <View style={[styles.productCard, { backgroundColor: isDark ? colors.card : COLORS.surface, justifyContent: 'center', alignItems: 'center', height: 80 }]}>
+        <View style={[styles.productCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)', justifyContent: 'center', alignItems: 'center', height: 80 }]}>
           <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No product data available</Text>
         </View>
       ) : (
@@ -646,7 +678,7 @@ const AnalyticsScreen: React.FC = () => {
             <Animated.View
               style={[
                 styles.productCard,
-                { backgroundColor: isDark ? colors.card : COLORS.surface },
+                { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' },
                 {
                   opacity: cardsAnim,
                   transform: [
@@ -711,25 +743,35 @@ const AnalyticsScreen: React.FC = () => {
         </View>
       ) : (
         <View style={styles.insightsGrid}>
-          {customerInsights.map((insight, index) => (
-            <View key={index} style={[styles.insightCard, { backgroundColor: isDark ? colors.card : COLORS.surface }]}>
-              <View style={[styles.insightIconContainer, { backgroundColor: isDark ? `${COLORS.primary}30` : COLORS.primaryLight }]}>
-                <Ionicons name={insight.icon} size={20} color={COLORS.primary} />
+          {customerInsights.map((insight, index) => {
+            const insightColors = [COLORS.primary, COLORS.secondary, COLORS.accent, COLORS.success];
+            const insightColor = insightColors[index % insightColors.length];
+            return (
+              <View key={index} style={[styles.insightCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
+                <View style={styles.insightCardSvg}>
+                  <Svg width="60" height="60" viewBox="0 0 60 60">
+                    <Circle cx="45" cy="15" r="30" fill={insightColor} fillOpacity={0.1} />
+                    <Circle cx="30" cy="45" r="15" fill={insightColor} fillOpacity={0.06} />
+                  </Svg>
+                </View>
+                <View style={[styles.insightIconContainer, { backgroundColor: isDark ? `${insightColor}30` : `${insightColor}15` }]}>
+                  <Ionicons name={insight.icon} size={20} color={insightColor} />
+                </View>
+                <Text style={[styles.insightValue, { color: colors.text }]}>{insight.value}</Text>
+                <Text style={[styles.insightMetric, { color: colors.textSecondary }]}>{insight.metric}</Text>
+                <View style={[styles.insightChange, insight.change >= 0 ? styles.changePositive : styles.changeNegative]}>
+                  <Ionicons
+                    name={insight.change >= 0 ? 'trending-up' : 'trending-down'}
+                    size={12}
+                    color={insight.change >= 0 ? COLORS.success : COLORS.error}
+                  />
+                  <Text style={[styles.changeText, insight.change >= 0 ? styles.changeTextPositive : styles.changeTextNegative]}>
+                    {insight.change >= 0 ? '+' : ''}{insight.change}%
+                  </Text>
+                </View>
               </View>
-              <Text style={[styles.insightValue, { color: colors.text }]}>{insight.value}</Text>
-              <Text style={[styles.insightMetric, { color: colors.textSecondary }]}>{insight.metric}</Text>
-              <View style={[styles.insightChange, insight.change >= 0 ? styles.changePositive : styles.changeNegative]}>
-                <Ionicons
-                  name={insight.change >= 0 ? 'trending-up' : 'trending-down'}
-                  size={12}
-                  color={insight.change >= 0 ? COLORS.success : COLORS.error}
-                />
-                <Text style={[styles.changeText, insight.change >= 0 ? styles.changeTextPositive : styles.changeTextNegative]}>
-                  {insight.change >= 0 ? '+' : ''}{insight.change}%
-                </Text>
-              </View>
-            </View>
-          ))}
+            );
+          })}
         </View>
       )}
     </View>
@@ -741,15 +783,22 @@ const AnalyticsScreen: React.FC = () => {
     <View style={styles.section}>
       <Text style={[styles.sectionTitle, { color: colors.text }]}>Revenue Breakdown</Text>
       {isRevenueLoading ? (
-        <View style={[styles.breakdownCard, { backgroundColor: isDark ? colors.card : COLORS.surface, justifyContent: 'center', alignItems: 'center', height: 150 }]}>
+        <View style={[styles.breakdownCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)', justifyContent: 'center', alignItems: 'center', height: 150 }]}>
           <ActivityIndicator size="small" color={COLORS.primary} />
         </View>
       ) : revenueBreakdown.length === 0 ? (
-        <View style={[styles.breakdownCard, { backgroundColor: isDark ? colors.card : COLORS.surface, justifyContent: 'center', alignItems: 'center', height: 150 }]}>
+        <View style={[styles.breakdownCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)', justifyContent: 'center', alignItems: 'center', height: 150 }]}>
           <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No revenue data available</Text>
         </View>
       ) : (
-        <View style={[styles.breakdownCard, { backgroundColor: isDark ? colors.card : COLORS.surface }]}>
+        <View style={[styles.breakdownCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
+          {/* Background SVG */}
+          <View style={styles.breakdownCardSvg}>
+            <Svg width="120" height="120" viewBox="0 0 120 120">
+              <Circle cx="90" cy="30" r="50" fill={COLORS.primary} fillOpacity={0.08} />
+              <Circle cx="60" cy="90" r="30" fill={COLORS.secondary} fillOpacity={0.06} />
+            </Svg>
+          </View>
           {revenueBreakdown.map((item: any, index: number) => (
             <View key={index} style={styles.breakdownItem}>
               <View style={[styles.breakdownBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : COLORS.border }]}>
@@ -783,7 +832,15 @@ const AnalyticsScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
         
-        <View style={[styles.goalCard, { backgroundColor: isDark ? colors.card : COLORS.surface }]}>
+        <View style={[styles.goalCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
+          {/* Background SVG */}
+          <View style={styles.goalCardSvg}>
+            <Svg width="150" height="150" viewBox="0 0 150 150">
+              <Circle cx="120" cy="30" r="70" fill={COLORS.primary} fillOpacity={0.08} />
+              <Circle cx="80" cy="120" r="40" fill={COLORS.primary} fillOpacity={0.05} />
+              <Circle cx="30" cy="60" r="15" fill={COLORS.primary} fillOpacity={0.1} />
+            </Svg>
+          </View>
           {goal > 0 ? (
             <>
               <View style={styles.goalHeader}>
@@ -862,7 +919,7 @@ const AnalyticsScreen: React.FC = () => {
     return (
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>This {periodLabel} vs Last {periodLabel}</Text>
-        <View style={[styles.comparisonCard, { backgroundColor: isDark ? colors.card : COLORS.surface }]}>
+        <View style={[styles.comparisonCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
           {isComparisonLoading ? (
             <ActivityIndicator size="small" color={COLORS.primary} />
           ) : (
@@ -929,7 +986,7 @@ const AnalyticsScreen: React.FC = () => {
     return (
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>Revenue Trend</Text>
-        <View style={[styles.lineChartContainer, { backgroundColor: isDark ? colors.card : COLORS.surface }]}>
+        <View style={[styles.lineChartContainer, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
           <Svg width={CHART_WIDTH} height={chartHeight}>
             <Defs>
               <SvgLinearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
@@ -1088,16 +1145,15 @@ const AnalyticsScreen: React.FC = () => {
     // Determine colors based on status
     const isPremium = tier === 'premium';
     const isVerified = tier === 'verified';
-    const statusColor = isPremium ? '#FFD700' : isVerified ? '#1DA1F2' : COLORS.textSecondary;
-    const gradientColors: readonly [string, string, ...string[]] = isPremium 
-      ? ['#FFFBEB', '#FEF3C7'] 
-      : isVerified 
-        ? ['#EFF6FF', '#DBEAFE'] 
-        : [isDark ? colors.card : '#F8F8F8', isDark ? colors.card : '#F0F0F0'];
+    const statusColor = isPremium ? '#F59E0B' : isVerified ? '#0284C7' : '#6B7280';
 
     // Determine urgency level for expiring subscriptions
     const isUrgent = renewalInfo?.isExpiringSoon && daysRemaining !== null && daysRemaining <= 3;
     const isWarning = renewalInfo?.isExpiringSoon && daysRemaining !== null && daysRemaining > 3;
+
+    // SVG gradient colors based on tier
+    const svgColor1 = isPremium ? '#F59E0B' : isVerified ? '#0EA5E9' : '#6B7280';
+    const svgColor2 = isPremium ? '#D97706' : isVerified ? '#0284C7' : '#4B5563';
 
     return (
       <View style={styles.section}>
@@ -1108,31 +1164,53 @@ const AnalyticsScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
         
-        <LinearGradient
-          colors={gradientColors}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+        <View
           style={[
             styles.subscriptionCard,
+            { 
+              backgroundColor: isDark ? colors.card : '#FFFFFF',
+              borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
+            },
             isUrgent && styles.subscriptionCardUrgent,
             isWarning && styles.subscriptionCardWarning,
           ]}
         >
+          {/* Background SVG Pattern */}
+          <View style={styles.promoCardSvgContainer}>
+            <Svg width="200" height="200" viewBox="0 0 200 200">
+              <Defs>
+                <SvgLinearGradient id="promoBgGrad" x1="0" y1="0" x2="1" y2="1">
+                  <Stop offset="0" stopColor={svgColor1} stopOpacity={0.12} />
+                  <Stop offset="1" stopColor={svgColor2} stopOpacity={0.06} />
+                </SvgLinearGradient>
+              </Defs>
+              {/* Main decorative circle */}
+              <Circle cx="140" cy="60" r="90" fill="url(#promoBgGrad)" />
+              {/* Secondary circle */}
+              <Circle cx="100" cy="140" r="50" fill={svgColor1} fillOpacity={0.08} />
+              {/* Small accent dots */}
+              <Circle cx="60" cy="40" r="6" fill={svgColor1} fillOpacity={0.15} />
+              <Circle cx="160" cy="120" r="4" fill={svgColor2} fillOpacity={0.2} />
+              <Circle cx="80" cy="100" r="3" fill={svgColor1} fillOpacity={0.18} />
+            </Svg>
+          </View>
+          
           {/* Status Badge */}
           <View style={styles.subscriptionHeader}>
-            <View style={[styles.subscriptionBadge, { backgroundColor: statusColor }]}>
+            <View style={[styles.subscriptionBadge, { backgroundColor: isPremium ? '#FEF3C7' : isVerified ? '#E0F2FE' : '#F3F4F6' }]}>
               <Ionicons 
                 name={isPremium ? 'diamond' : isVerified ? 'shield-checkmark' : 'person'} 
                 size={14} 
-                color="#FFFFFF" 
+                color={statusColor} 
               />
-              <Text style={styles.subscriptionBadgeText}>
+              <Text style={[styles.subscriptionBadgeText, { color: statusColor }]}>
                 {promotionBenefits?.tierBadge || 'Basic Seller'}
               </Text>
             </View>
             {isActive && daysRemaining !== null && (
               <View style={[
                 styles.daysRemainingBadge,
+                { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#F3F4F6' },
                 isUrgent && styles.daysRemainingUrgent,
                 isWarning && styles.daysRemainingWarning,
               ]}>
@@ -1143,6 +1221,7 @@ const AnalyticsScreen: React.FC = () => {
                 />
                 <Text style={[
                   styles.daysRemainingText,
+                  { color: colors.textSecondary },
                   isUrgent && styles.daysRemainingTextUrgent,
                   isWarning && styles.daysRemainingTextWarning,
                 ]}>
@@ -1155,17 +1234,19 @@ const AnalyticsScreen: React.FC = () => {
           {/* Visibility Status */}
           <View style={styles.visibilitySection}>
             <View style={styles.visibilityRow}>
-              <Ionicons 
-                name={promotionBenefits?.isShowingInVerifiedSection ? 'eye' : 'eye-off'} 
-                size={20} 
-                color={promotionBenefits?.isShowingInVerifiedSection ? COLORS.success : colors.textSecondary} 
-              />
+              <View style={[styles.visibilityIconBg, { backgroundColor: promotionBenefits?.isShowingInVerifiedSection ? '#DCFCE7' : (isDark ? 'rgba(255,255,255,0.1)' : '#F3F4F6') }]}>
+                <Ionicons 
+                  name={promotionBenefits?.isShowingInVerifiedSection ? 'eye' : 'eye-off'} 
+                  size={18} 
+                  color={promotionBenefits?.isShowingInVerifiedSection ? '#16A34A' : colors.textSecondary} 
+                />
+              </View>
               <View style={styles.visibilityInfo}>
                 <Text style={[styles.visibilityTitle, { color: colors.text }]}>
                   Verified Sellers Section
                 </Text>
                 <Text style={[styles.visibilityStatus, { 
-                  color: promotionBenefits?.isShowingInVerifiedSection ? COLORS.success : colors.textSecondary 
+                  color: promotionBenefits?.isShowingInVerifiedSection ? '#16A34A' : colors.textSecondary 
                 }]}>
                   {promotionBenefits?.isShowingInVerifiedSection 
                     ? '✓ Your products are visible to buyers!' 
@@ -1175,7 +1256,9 @@ const AnalyticsScreen: React.FC = () => {
             </View>
 
             <View style={styles.visibilityRow}>
-              <Ionicons name="trending-up" size={20} color={statusColor} />
+              <View style={[styles.visibilityIconBg, { backgroundColor: isPremium ? '#FEF3C7' : isVerified ? '#E0F2FE' : (isDark ? 'rgba(255,255,255,0.1)' : '#F3F4F6') }]}>
+                <Ionicons name="trending-up" size={18} color={statusColor} />
+              </View>
               <View style={styles.visibilityInfo}>
                 <Text style={[styles.visibilityTitle, { color: colors.text }]}>
                   Visibility Boost
@@ -1191,7 +1274,7 @@ const AnalyticsScreen: React.FC = () => {
           {isActive && renewalInfo?.isExpiringSoon && (
             <View style={[
               styles.expirationWarning,
-              isUrgent ? styles.expirationUrgent : styles.expirationWarningBg,
+              { backgroundColor: isUrgent ? '#FEE2E2' : '#FEF3C7' },
             ]}>
               <Ionicons 
                 name={isUrgent ? 'alert-circle' : 'information-circle'} 
@@ -1200,7 +1283,7 @@ const AnalyticsScreen: React.FC = () => {
               />
               <Text style={[
                 styles.expirationText,
-                isUrgent ? styles.expirationTextUrgent : styles.expirationTextWarning,
+                { color: isUrgent ? '#991B1B' : '#92400E' },
               ]}>
                 {isUrgent 
                   ? `⚠️ Expires in ${daysRemaining} days! Renew now to keep your visibility.`
@@ -1213,33 +1296,29 @@ const AnalyticsScreen: React.FC = () => {
           {/* Not Subscribed CTA */}
           {!isActive && (
             <TouchableOpacity 
-              style={styles.upgradeButton}
+              style={[styles.upgradeButton, { backgroundColor: statusColor }]}
               onPress={() => navigation.navigate('FarmerSubscription' as any)}
             >
-              <LinearGradient
-                colors={[COLORS.primary, COLORS.primaryDark]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.upgradeButtonGradient}
-              >
+              <View style={styles.upgradeButtonInner}>
                 <Ionicons name="rocket" size={18} color="#FFFFFF" />
-                <Text style={styles.upgradeButtonText}>Boost Your Visibility</Text>
-              </LinearGradient>
+                <Text style={[styles.upgradeButtonText, { color: '#FFFFFF' }]}>Boost Your Visibility</Text>
+                <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
+              </View>
             </TouchableOpacity>
           )}
 
           {/* Renew Button for Expiring */}
           {isActive && renewalInfo?.isExpiringSoon && renewalInfo?.renewalPrice && (
             <TouchableOpacity 
-              style={styles.renewButton}
+              style={[styles.renewButton, { backgroundColor: statusColor }]}
               onPress={() => navigation.navigate('FarmerSubscription' as any)}
             >
-              <Text style={styles.renewButtonText}>
+              <Text style={[styles.renewButtonText, { color: '#FFFFFF' }]}>
                 Renew Now - ₦{renewalInfo?.renewalPrice?.toLocaleString()}
               </Text>
             </TouchableOpacity>
           )}
-        </LinearGradient>
+        </View>
       </View>
     );
   };
@@ -1292,34 +1371,38 @@ const AnalyticsScreen: React.FC = () => {
       >
         {/* Hero Section */}
         <View style={styles.heroSection}>
-          <LinearGradient
-            colors={isDark ? ['#1A5F2A', '#2D8B42'] : [COLORS.primary, COLORS.primaryDark]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.heroGradient}
-          >
-            <View style={styles.heroIconContainer}>
-              <Ionicons name="trending-up" size={40} color="#FFFFFF" />
+          <View style={[styles.heroCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
+            {/* SVG Background */}
+            <View style={styles.heroCardSvg}>
+              <Svg width="200" height="200" viewBox="0 0 200 200">
+                <Circle cx="150" cy="50" r="80" fill={COLORS.primary} fillOpacity={0.08} />
+                <Circle cx="180" cy="100" r="50" fill={COLORS.primary} fillOpacity={0.06} />
+                <Circle cx="120" cy="30" r="30" fill={COLORS.success} fillOpacity={0.05} />
+              </Svg>
             </View>
-            <Text style={styles.heroTitle}>Farm Performance</Text>
-            <Text style={styles.heroSubtitle}>Track your sales, orders and growth</Text>
-            <View style={styles.heroStatsRow}>
+            
+            <View style={[styles.heroIconContainer, { backgroundColor: isDark ? 'rgba(76, 175, 80, 0.15)' : '#E8F5E9' }]}>
+              <Ionicons name="trending-up" size={40} color={COLORS.primary} />
+            </View>
+            <Text style={[styles.heroTitle, { color: colors.text }]}>Farm Performance</Text>
+            <Text style={[styles.heroSubtitle, { color: colors.textSecondary }]}>Track your sales, orders and growth</Text>
+            <View style={[styles.heroStatsRow, { backgroundColor: isDark ? 'rgba(76, 175, 80, 0.1)' : '#F0FDF4' }]}>
               <View style={styles.heroStatItem}>
-                <Text style={styles.heroStatValue}>{formatCurrency(totalRevenue)}</Text>
-                <Text style={styles.heroStatLabel}>Revenue</Text>
+                <Text style={[styles.heroStatValue, { color: COLORS.primary }]}>{formatCurrency(totalRevenue)}</Text>
+                <Text style={[styles.heroStatLabel, { color: colors.textSecondary }]}>Revenue</Text>
               </View>
-              <View style={styles.heroStatDivider} />
+              <View style={[styles.heroStatDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }]} />
               <View style={styles.heroStatItem}>
-                <Text style={styles.heroStatValue}>{totalOrders}</Text>
-                <Text style={styles.heroStatLabel}>Orders</Text>
+                <Text style={[styles.heroStatValue, { color: COLORS.primary }]}>{totalOrders}</Text>
+                <Text style={[styles.heroStatLabel, { color: colors.textSecondary }]}>Orders</Text>
               </View>
-              <View style={styles.heroStatDivider} />
+              <View style={[styles.heroStatDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }]} />
               <View style={styles.heroStatItem}>
-                <Text style={styles.heroStatValue}>{growth >= 0 ? '+' : ''}{growth.toFixed(1)}%</Text>
-                <Text style={styles.heroStatLabel}>Growth</Text>
+                <Text style={[styles.heroStatValue, { color: growth >= 0 ? COLORS.success : COLORS.error }]}>{growth >= 0 ? '+' : ''}{growth.toFixed(1)}%</Text>
+                <Text style={[styles.heroStatLabel, { color: colors.textSecondary }]}>Growth</Text>
               </View>
             </View>
-          </LinearGradient>
+          </View>
         </View>
 
         {/* Time Period Selector */}
@@ -1327,7 +1410,7 @@ const AnalyticsScreen: React.FC = () => {
           {(['week', 'month', 'year'] as TimePeriod[]).map((period) => (
             <TouchableOpacity
               key={period}
-              style={[styles.periodButton, { backgroundColor: isDark ? colors.card : COLORS.surface }, timePeriod === period && styles.periodButtonActive]}
+              style={[styles.periodButton, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }, timePeriod === period && styles.periodButtonActive]}
               onPress={() => setTimePeriod(period)}
             >
               <Text style={[styles.periodText, { color: colors.textSecondary }, timePeriod === period && styles.periodTextActive]}>
@@ -1339,7 +1422,7 @@ const AnalyticsScreen: React.FC = () => {
           <TouchableOpacity
             style={[
               styles.periodButton,
-              { backgroundColor: isDark ? colors.card : COLORS.surface },
+              { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' },
               timePeriod === 'custom' && styles.periodButtonActive,
             ]}
             onPress={() => setShowDatePicker(true)}
@@ -1363,7 +1446,7 @@ const AnalyticsScreen: React.FC = () => {
           <TouchableOpacity
             style={[
               styles.comparisonToggle,
-              { backgroundColor: isDark ? colors.card : COLORS.surface },
+              { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' },
               showComparison && styles.comparisonToggleActive,
             ]}
             onPress={() => setShowComparison(!showComparison)}
@@ -1482,6 +1565,24 @@ const styles = StyleSheet.create({
     paddingTop: SPACING.sm,
     marginBottom: SPACING.sm,
   },
+  heroCard: {
+    borderRadius: 16,
+    padding: SPACING.lg,
+    alignItems: 'center',
+    overflow: 'hidden',
+    position: 'relative',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  heroCardSvg: {
+    position: 'absolute',
+    top: -20,
+    right: -20,
+  },
   heroGradient: {
     borderRadius: BORDER_RADIUS.xl,
     padding: SPACING.lg,
@@ -1491,7 +1592,6 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: SPACING.md,
@@ -1500,22 +1600,20 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     fontFamily: FONTS.bold,
-    color: '#FFFFFF',
     marginBottom: SPACING.xs,
   },
   heroSubtitle: {
     fontSize: FONT_SIZES.sm,
     fontFamily: FONTS.regular,
-    color: 'rgba(255, 255, 255, 0.8)',
     marginBottom: SPACING.lg,
   },
   heroStatsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     borderRadius: BORDER_RADIUS.lg,
     paddingVertical: SPACING.md,
     paddingHorizontal: SPACING.lg,
+    width: '100%',
   },
   heroStatItem: {
     flex: 1,
@@ -1525,18 +1623,15 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.lg,
     fontWeight: '700',
     fontFamily: FONTS.bold,
-    color: '#FFFFFF',
   },
   heroStatLabel: {
     fontSize: FONT_SIZES.xs,
     fontFamily: FONTS.regular,
-    color: 'rgba(255, 255, 255, 0.7)',
     marginTop: 2,
   },
   heroStatDivider: {
     width: 1,
     height: 32,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
     marginHorizontal: SPACING.md,
   },
   periodSelector: {
@@ -1550,7 +1645,9 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.md,
     borderRadius: BORDER_RADIUS.lg,
-    backgroundColor: COLORS.surface,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.06)',
     alignItems: 'center',
     justifyContent: 'center',
     ...SHADOWS.small,
@@ -1576,10 +1673,30 @@ const styles = StyleSheet.create({
   summaryCard: {
     width: (width - SPACING.md * 3) / 2,
     padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.xl,
+    borderRadius: 16,
     marginBottom: SPACING.sm,
     alignItems: 'center',
-    ...SHADOWS.small,
+    overflow: 'hidden',
+    position: 'relative',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  summaryCardSvg: {
+    position: 'absolute',
+    top: -10,
+    right: -10,
+  },
+  summaryIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
   },
   summaryValue: {
     fontSize: FONT_SIZES.xl,
@@ -1617,10 +1734,16 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.semiBold,
   },
   chartContainer: {
-    backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.xl,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
     padding: SPACING.lg,
-    ...SHADOWS.small,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.06)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
   chartBars: {
     flexDirection: 'row',
@@ -1675,11 +1798,17 @@ const styles = StyleSheet.create({
   productCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.xl,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
     padding: SPACING.md,
     marginBottom: SPACING.sm,
-    ...SHADOWS.small,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.06)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
   productRank: {
     width: 28,
@@ -1768,12 +1897,24 @@ const styles = StyleSheet.create({
   },
   insightCard: {
     width: (width - SPACING.md * 3) / 2,
-    backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.xl,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
     padding: SPACING.md,
     marginBottom: SPACING.sm,
     alignItems: 'center',
-    ...SHADOWS.small,
+    overflow: 'hidden',
+    position: 'relative',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  insightCardSvg: {
+    position: 'absolute',
+    top: -10,
+    right: -10,
   },
   insightIconContainer: {
     width: 40,
@@ -1824,10 +1965,22 @@ const styles = StyleSheet.create({
     color: COLORS.error,
   },
   breakdownCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.xl,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
     padding: SPACING.lg,
-    ...SHADOWS.small,
+    overflow: 'hidden',
+    position: 'relative',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  breakdownCardSvg: {
+    position: 'absolute',
+    top: -15,
+    right: -15,
   },
   breakdownItem: {
     marginBottom: SPACING.md,
@@ -1867,9 +2020,46 @@ const styles = StyleSheet.create({
   },
   // Subscription Status Card Styles
   subscriptionCard: {
-    borderRadius: BORDER_RADIUS.xl,
+    borderRadius: 16,
     padding: SPACING.lg,
-    ...SHADOWS.small,
+    borderWidth: 1,
+    overflow: 'hidden',
+    position: 'relative',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  promoCardSvgContainer: {
+    position: 'absolute',
+    top: -20,
+    right: -20,
+    opacity: 1,
+  },
+  promoCardDecor: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    overflow: 'hidden',
+  },
+  promoDecorCircle1: {
+    position: 'absolute',
+    top: -30,
+    right: -30,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+  },
+  promoDecorCircle2: {
+    position: 'absolute',
+    bottom: -40,
+    left: -20,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
   },
   subscriptionCardUrgent: {
     borderWidth: 2,
@@ -1935,6 +2125,13 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: SPACING.sm,
   },
+  visibilityIconBg: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   visibilityInfo: {
     flex: 1,
   },
@@ -1976,8 +2173,17 @@ const styles = StyleSheet.create({
   },
   upgradeButton: {
     marginTop: SPACING.xs,
-    borderRadius: BORDER_RADIUS.lg,
+    borderRadius: 20,
     overflow: 'hidden',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    alignSelf: 'flex-start',
+  },
+  upgradeButtonInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
   upgradeButtonGradient: {
     flexDirection: 'row',
@@ -1993,10 +2199,10 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.bold,
   },
   renewButton: {
-    backgroundColor: COLORS.primary,
     paddingVertical: 12,
-    borderRadius: BORDER_RADIUS.lg,
-    alignItems: 'center',
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    alignSelf: 'flex-start',
   },
   renewButtonText: {
     color: '#FFFFFF',
@@ -2021,6 +2227,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
     gap: 8,
   },
   comparisonToggleActive: {
@@ -2034,8 +2241,20 @@ const styles = StyleSheet.create({
   // Goal Card Styles
   goalCard: {
     padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.lg,
-    ...SHADOWS.small,
+    borderRadius: 16,
+    overflow: 'hidden',
+    position: 'relative',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  goalCardSvg: {
+    position: 'absolute',
+    top: -20,
+    right: -20,
   },
   goalHeader: {
     flexDirection: 'row',
@@ -2128,6 +2347,8 @@ const styles = StyleSheet.create({
   comparisonCard: {
     padding: SPACING.md,
     borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    overflow: 'hidden',
     ...SHADOWS.small,
   },
   comparisonRow: {
@@ -2188,6 +2409,8 @@ const styles = StyleSheet.create({
   lineChartContainer: {
     padding: SPACING.md,
     borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    overflow: 'hidden',
     ...SHADOWS.small,
   },
   lineChartLabels: {

@@ -17,7 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { io, Socket } from 'socket.io-client';
-import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, FONTS } from '../../constants/theme';
+import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, FONTS, SHADOWS } from '../../constants/theme';
 
 // Dynamic import for Agora - only available in development builds
 let RtcSurfaceView: any = null;
@@ -32,6 +32,7 @@ try {
   console.log('[LiveStreamsScreen] Agora not available - running in Expo Go');
 }
 import { useTheme } from '../../context/ThemeContext';
+import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { socialService, LiveStream } from '../../services/socialService';
 import { API_CONFIG } from '../../constants/config';
 import { useAppSelector } from '../../store';
@@ -55,12 +56,19 @@ const LiveStreamCard = ({
   stream: LiveStream; 
   onPress: () => void 
 }) => {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
 
   return (
     <TouchableOpacity 
-      style={[styles.streamCard, { backgroundColor: colors.card }]}
+      style={[
+        styles.streamCard, 
+        { 
+          backgroundColor: isDark ? colors.card : '#FFFFFF',
+          borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+        }
+      ]}
       onPress={onPress}
+      activeOpacity={0.9}
     >
       <View style={styles.streamThumbnailContainer}>
         {stream.thumbnailUrl ? (
@@ -396,12 +404,38 @@ const LiveStreamsScreen = () => {
   );
 
   const renderEmpty = () => (
-    <View style={styles.emptyContainer}>
-      <Ionicons 
-        name={activeTab === 'live' ? 'videocam-off-outline' : 'calendar-outline'} 
-        size={64} 
-        color={isDark ? '#555' : '#ccc'} 
-      />
+    <View style={[
+      styles.emptyContainer,
+      { backgroundColor: isDark ? colors.card : '#FFFFFF' }
+    ]}>
+      {/* SVG Background */}
+      <View style={styles.emptySvgBackground}>
+        <Svg width="200" height="200" viewBox="0 0 200 200">
+          <Defs>
+            <SvgLinearGradient id="emptyGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+              <Stop offset="0%" stopColor="#E74C3C" stopOpacity={0.12} />
+              <Stop offset="100%" stopColor="#C0392B" stopOpacity={0.06} />
+            </SvgLinearGradient>
+            <SvgLinearGradient id="emptyGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+              <Stop offset="0%" stopColor="#E74C3C" stopOpacity={0.08} />
+              <Stop offset="100%" stopColor="#E74C3C" stopOpacity={0.03} />
+            </SvgLinearGradient>
+          </Defs>
+          <Circle cx="100" cy="80" r="90" fill="url(#emptyGrad1)" />
+          <Circle cx="140" cy="120" r="60" fill="url(#emptyGrad2)" />
+        </Svg>
+      </View>
+      
+      <View style={[
+        styles.emptyIconContainer, 
+        { backgroundColor: activeTab === 'live' ? '#FFEBEE' : '#E3F2FD' }
+      ]}>
+        <Ionicons 
+          name={activeTab === 'live' ? 'videocam-off' : 'calendar'} 
+          size={32} 
+          color={activeTab === 'live' ? '#E74C3C' : '#1976D2'} 
+        />
+      </View>
       <Text style={[styles.emptyTitle, { color: colors.text }]}>
         {activeTab === 'live' ? 'No Live Streams' : 'No Upcoming Streams'}
       </Text>
@@ -439,7 +473,13 @@ const LiveStreamsScreen = () => {
       </View>
 
       {/* Tabs */}
-      <View style={[styles.tabsContainer, { backgroundColor: isDark ? '#222' : '#f5f5f5' }]}>
+      <View style={[
+        styles.tabsContainer, 
+        { 
+          backgroundColor: isDark ? colors.card : '#FFFFFF',
+          borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+        }
+      ]}>
         <TouchableOpacity 
           style={[styles.tab, activeTab === 'live' && styles.activeTab]}
           onPress={() => setActiveTab('live')}
@@ -512,8 +552,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginHorizontal: SPACING.md,
     marginVertical: SPACING.sm,
-    borderRadius: BORDER_RADIUS.md,
+    borderRadius: BORDER_RADIUS.lg,
     padding: 4,
+    borderWidth: 1,
+    ...SHADOWS.small,
   },
   tab: {
     flex: 1,
@@ -562,6 +604,8 @@ const styles = StyleSheet.create({
     borderRadius: BORDER_RADIUS.lg,
     overflow: 'hidden',
     marginBottom: SPACING.md,
+    borderWidth: 1,
+    ...SHADOWS.small,
   },
   streamThumbnailContainer: {
     position: 'relative',
@@ -670,16 +714,32 @@ const styles = StyleSheet.create({
   },
   // Empty State
   emptyContainer: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: SPACING.xl,
-    paddingTop: 100,
+    paddingVertical: SPACING.xl * 2,
+    borderRadius: BORDER_RADIUS.lg,
+    overflow: 'hidden',
+    ...SHADOWS.small,
+  },
+  emptySvgBackground: {
+    position: 'absolute',
+    top: -20,
+    right: -20,
+    opacity: 1,
+  },
+  emptyIconContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
   },
   emptyTitle: {
-    fontSize: FONT_SIZES.xl,
+    fontSize: FONT_SIZES.lg,
     fontFamily: FONTS.semiBold,
-    marginTop: SPACING.md,
+    marginTop: SPACING.sm,
   },
   emptySubtitle: {
     fontSize: FONT_SIZES.md,

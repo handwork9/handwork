@@ -17,6 +17,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useQuery } from '@tanstack/react-query';
+import Svg, { Circle } from 'react-native-svg';
 import { useTheme } from '../../context/ThemeContext';
 import { BuyerStackParamList } from '../../types';
 import { FONTS, SPACING, BORDER_RADIUS } from '../../constants/theme';
@@ -332,29 +333,29 @@ export default function FlashSalesScreen({ navigation }: Props) {
   );
 
   const renderHeader = () => (
-    <View style={[styles.headerBanner, { backgroundColor: isDark ? '#7F1D1D' : '#FEE2E2' }]}>
-      <LinearGradient
-        colors={['#EF4444', '#DC2626', '#B91C1C']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.bannerGradient}
-      >
-        <View style={styles.bannerContent}>
-          <View style={styles.bannerLeft}>
-            <View style={styles.flashBadge}>
-              <Ionicons name="flash" size={20} color="#FFD700" />
-              <Text style={styles.flashText}>FLASH SALE</Text>
-              <View style={styles.liveDot} />
-            </View>
-            <Text style={styles.bannerSubtitle}>
-              {flashSales.length} {filter === 'upcoming' ? 'upcoming' : 'active'} deal{flashSales.length !== 1 ? 's' : ''}
-            </Text>
+    <View style={[styles.headerBanner, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
+      <View style={styles.bannerSvg}>
+        <Svg width="200" height="200" viewBox="0 0 200 200">
+          <Circle cx="150" cy="50" r="80" fill="#EF4444" fillOpacity={0.08} />
+          <Circle cx="180" cy="100" r="50" fill="#DC2626" fillOpacity={0.06} />
+          <Circle cx="120" cy="30" r="30" fill="#EF4444" fillOpacity={0.05} />
+        </Svg>
+      </View>
+      <View style={styles.bannerContent}>
+        <View style={styles.bannerLeft}>
+          <View style={[styles.flashBadge, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}>
+            <Ionicons name="flash" size={20} color="#EF4444" />
+            <Text style={[styles.flashText, { color: '#EF4444' }]}>FLASH SALE</Text>
+            <View style={styles.liveDot} />
           </View>
-          <View style={styles.bannerRight}>
-            <Ionicons name="flash" size={60} color="rgba(255,255,255,0.2)" />
-          </View>
+          <Text style={[styles.bannerSubtitle, { color: colors.textSecondary }]}>
+            {flashSales.length} {filter === 'upcoming' ? 'upcoming' : 'active'} deal{flashSales.length !== 1 ? 's' : ''}
+          </Text>
         </View>
-      </LinearGradient>
+        <View style={[styles.bannerIconContainer, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}>
+          <Ionicons name="flash" size={32} color="#EF4444" />
+        </View>
+      </View>
     </View>
   );
 
@@ -484,31 +485,52 @@ const styles = StyleSheet.create({
   },
   headerBanner: {
     marginHorizontal: 16,
-    borderRadius: BORDER_RADIUS.lg,
+    borderRadius: 16,
     overflow: 'hidden',
     marginBottom: 12,
+    position: 'relative',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  bannerGradient: {
-    padding: 16,
+  bannerSvg: {
+    position: 'absolute',
+    top: -20,
+    right: -20,
   },
   bannerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    padding: 16,
   },
   bannerLeft: {
     flex: 1,
   },
+  bannerIconContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 16,
+  },
   flashBadge: {
     flexDirection: 'row',
     alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
     gap: 6,
-    marginBottom: 4,
+    marginBottom: 8,
   },
   flashText: {
-    fontSize: 16,
+    fontSize: 14,
     fontFamily: FONTS.bold,
-    color: '#FFFFFF',
     letterSpacing: 1,
   },
   liveDot: {
@@ -520,10 +542,6 @@ const styles = StyleSheet.create({
   bannerSubtitle: {
     fontSize: 13,
     fontFamily: FONTS.regular,
-    color: 'rgba(255,255,255,0.8)',
-  },
-  bannerRight: {
-    marginLeft: 16,
   },
   loadingContainer: {
     flex: 1,

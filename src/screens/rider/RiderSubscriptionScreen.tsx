@@ -17,6 +17,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Circle } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, FONTS } from '../../constants/theme';
@@ -408,58 +409,67 @@ export default function RiderSubscriptionScreen() {
         <View style={{ width: 44 }} />
       </Animated.View>
 
+      {/* Initial Back Button (visible before scroll) */}
+      <View style={[styles.initialBackButton, { top: insets.top + 10 }]}>
+        <TouchableOpacity 
+          style={[styles.backButtonCircle, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="chevron-back" size={24} color={colors.text} />
+        </TouchableOpacity>
+      </View>
+
       <Animated.ScrollView
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
           { useNativeDriver: true }
         )}
         scrollEventThrottle={16}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 200 }}
       >
         {/* Hero Section */}
-        <LinearGradient
-          colors={isDark ? ['#1E40AF', '#3B82F6'] : [COLORS.primary, COLORS.primaryDark]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.heroSection, { paddingTop: insets.top + 60 }]}
-        >
-          <TouchableOpacity 
-            style={styles.heroBackButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="chevron-back" size={28} color="#FFFFFF" />
-          </TouchableOpacity>
-
-          <View style={styles.heroIconContainer}>
-            <Ionicons name="rocket" size={48} color="#FFFFFF" />
-          </View>
-          <Animated.Text 
-            style={[
-              styles.heroTitle,
-              { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
-            ]}
-          >
-            Boost Your Earnings
-          </Animated.Text>
-          <Animated.Text 
-            style={[
-              styles.heroSubtitle,
-              { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
-            ]}
-          >
-            Get priority access to more delivery jobs
-          </Animated.Text>
-
-          {/* Current Status */}
-          {hasActiveSubscription && (
-            <View style={styles.currentStatusBadge}>
-              <Ionicons name="checkmark-circle" size={16} color="#FFFFFF" />
-              <Text style={styles.currentStatusText}>
-                Active: {currentTier?.charAt(0).toUpperCase() + currentTier?.slice(1)}
-              </Text>
+        <View style={[styles.heroSection, { paddingTop: insets.top + 60 }]}>
+          <View style={[styles.heroCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
+            {/* SVG Background */}
+            <View style={styles.heroCardSvg}>
+              <Svg width="200" height="200" viewBox="0 0 200 200">
+                <Circle cx="150" cy="50" r="80" fill={COLORS.primary} fillOpacity={0.08} />
+                <Circle cx="180" cy="100" r="50" fill={COLORS.primary} fillOpacity={0.06} />
+                <Circle cx="120" cy="30" r="30" fill="#2E7D32" fillOpacity={0.05} />
+              </Svg>
             </View>
-          )}
-        </LinearGradient>
+
+            <View style={[styles.heroIconContainer, { backgroundColor: isDark ? 'rgba(76, 175, 80, 0.15)' : '#E8F5E9' }]}>
+              <Ionicons name="rocket" size={48} color={COLORS.primary} />
+            </View>
+            <Animated.Text 
+              style={[
+                styles.heroTitle,
+                { color: colors.text, opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
+              ]}
+            >
+              Boost Your Earnings
+            </Animated.Text>
+            <Animated.Text 
+              style={[
+                styles.heroSubtitle,
+                { color: colors.textSecondary, opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
+              ]}
+            >
+              Get priority access to more delivery jobs
+            </Animated.Text>
+
+            {/* Current Status */}
+            {hasActiveSubscription && (
+              <View style={[styles.currentStatusBadge, { backgroundColor: isDark ? 'rgba(76, 175, 80, 0.15)' : '#E8F5E9' }]}>
+                <Ionicons name="checkmark-circle" size={16} color={COLORS.primary} />
+                <Text style={[styles.currentStatusText, { color: COLORS.primary }]}>
+                  Active: {currentTier?.charAt(0).toUpperCase() + currentTier?.slice(1)}
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
 
         {/* Benefits */}
         <Animated.View 
@@ -483,33 +493,48 @@ export default function RiderSubscriptionScreen() {
         </Animated.View>
 
         {/* Duration Selector */}
-        <View style={[styles.durationContainer, { backgroundColor: isDark ? colors.card : COLORS.surface }]}>
-          {(['weekly', 'monthly', 'quarterly'] as SubscriptionDuration[]).map((duration) => (
-            <TouchableOpacity
-              key={duration}
-              style={[
-                styles.durationOption,
-                selectedDuration === duration && styles.durationOptionActive,
-              ]}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setSelectedDuration(duration);
-              }}
-            >
-              <Text style={[
-                styles.durationText,
-                { color: colors.textSecondary },
-                selectedDuration === duration && styles.durationTextActive,
-              ]}>
-                {getDurationLabel(duration)}
-              </Text>
-              {duration === 'quarterly' && (
-                <View style={styles.savingsBadge}>
-                  <Text style={styles.savingsBadgeText}>Best Value</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          ))}
+        <View style={styles.durationSection}>
+          <Text style={[styles.durationSectionTitle, { color: colors.text }]}>Choose Duration</Text>
+          <View style={[styles.durationContainer, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+            {([
+              { key: 'weekly' as SubscriptionDuration, label: 'Weekly', sublabel: 'Billed weekly', discount: null },
+              { key: 'monthly' as SubscriptionDuration, label: 'Monthly', sublabel: '4 weeks', discount: '15% OFF' },
+              { key: 'quarterly' as SubscriptionDuration, label: 'Quarterly', sublabel: '12 weeks', discount: '25% OFF' },
+            ]).map((item) => {
+              const isActive = selectedDuration === item.key;
+              return (
+                <TouchableOpacity
+                  key={item.key}
+                  style={[
+                    styles.durationOption,
+                    { backgroundColor: isActive ? COLORS.primary : (isDark ? 'rgba(255,255,255,0.05)' : '#F5F5F5') },
+                  ]}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setSelectedDuration(item.key);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  {item.discount && (
+                    <View style={[styles.discountBadge, { backgroundColor: isActive ? '#FFF' : '#FF6B6B' }]}>
+                      <Text style={[styles.discountBadgeText, { color: isActive ? COLORS.primary : '#FFF' }]}>{item.discount}</Text>
+                    </View>
+                  )}
+                  <Text style={[styles.durationLabel, { color: isActive ? '#FFF' : colors.text }]}>
+                    {item.label}
+                  </Text>
+                  <Text style={[styles.durationSublabel, { color: isActive ? 'rgba(255,255,255,0.8)' : colors.textSecondary }]}>
+                    {item.sublabel}
+                  </Text>
+                  {isActive && (
+                    <View style={styles.durationCheckmark}>
+                      <Ionicons name="checkmark-circle" size={18} color="#FFF" />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
 
         {/* Plans */}
@@ -687,59 +712,80 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  initialBackButton: {
+    position: 'absolute',
+    left: SPACING.md,
+    zIndex: 50,
+  },
+  backButtonCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
   fixedHeaderTitle: {
     fontSize: FONT_SIZES.lg,
     fontWeight: '600',
     fontFamily: FONTS.semiBold,
   },
   heroSection: {
-    paddingHorizontal: SPACING.lg,
-    paddingBottom: SPACING.xl,
-    alignItems: 'center',
+    paddingHorizontal: SPACING.md,
+    paddingBottom: SPACING.md,
   },
-  heroBackButton: {
-    position: 'absolute',
-    top: 60,
-    left: SPACING.md,
-    width: 44,
-    height: 44,
+  heroCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    position: 'relative',
+    borderWidth: 1,
+    padding: SPACING.lg,
     alignItems: 'center',
-    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  heroCardSvg: {
+    position: 'absolute',
+    top: -20,
+    right: -20,
   },
   heroIconContainer: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: SPACING.md,
+    marginTop: SPACING.xl,
   },
   heroTitle: {
     fontSize: FONT_SIZES.xxl,
     fontWeight: '700',
     fontFamily: FONTS.bold,
-    color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: SPACING.xs,
   },
   heroSubtitle: {
     fontSize: FONT_SIZES.md,
     fontFamily: FONTS.regular,
-    color: 'rgba(255,255,255,0.9)',
     textAlign: 'center',
   },
   currentStatusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.2)',
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.xs,
     borderRadius: BORDER_RADIUS.round,
     marginTop: SPACING.md,
   },
   currentStatusText: {
-    color: '#FFFFFF',
     fontSize: FONT_SIZES.sm,
     fontFamily: FONTS.medium,
     marginLeft: SPACING.xs,
@@ -782,43 +828,57 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.sm,
     fontFamily: FONTS.regular,
   },
+  durationSection: {
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.lg,
+  },
+  durationSectionTitle: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+    marginBottom: SPACING.md,
+  },
   durationContainer: {
     flexDirection: 'row',
-    marginHorizontal: SPACING.md,
-    marginVertical: SPACING.md,
-    padding: SPACING.xs,
-    borderRadius: BORDER_RADIUS.xl,
+    borderRadius: 16,
+    padding: 8,
+    gap: 8,
     ...SHADOWS.small,
   },
   durationOption: {
     flex: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
     alignItems: 'center',
-    paddingVertical: SPACING.sm,
-    borderRadius: BORDER_RADIUS.lg,
+    borderRadius: 12,
+    position: 'relative',
   },
-  durationOptionActive: {
-    backgroundColor: COLORS.primary,
-  },
-  durationText: {
-    fontSize: FONT_SIZES.sm,
-    fontWeight: '500',
-    fontFamily: FONTS.medium,
-  },
-  durationTextActive: {
-    color: '#FFFFFF',
-  },
-  savingsBadge: {
-    backgroundColor: COLORS.success,
-    paddingHorizontal: SPACING.xs,
-    paddingVertical: 2,
-    borderRadius: BORDER_RADIUS.sm,
-    marginTop: 4,
-  },
-  savingsBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 10,
+  durationLabel: {
+    fontSize: 15,
     fontWeight: '600',
     fontFamily: FONTS.semiBold,
+    marginBottom: 2,
+  },
+  durationSublabel: {
+    fontSize: 11,
+    fontFamily: FONTS.regular,
+  },
+  durationCheckmark: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+  },
+  discountBadge: {
+    position: 'absolute',
+    top: -8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  discountBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
   },
   plansContainer: {
     padding: SPACING.md,

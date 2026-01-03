@@ -21,7 +21,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
-import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, FONTS } from '../../constants/theme';
+import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, FONTS, SHADOWS } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
 import { socialService, CreateStoryDto } from '../../services/socialService';
 import { uploadService } from '../../services/uploadService';
@@ -260,42 +260,66 @@ const CreateStoryScreen = () => {
 
       <View style={styles.typeOptions}>
         <TouchableOpacity 
-          style={[styles.typeOption, { backgroundColor: colors.card }]}
+          style={[
+            styles.typeOption, 
+            { 
+              backgroundColor: isDark ? colors.card : '#FFFFFF',
+              borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+            }
+          ]}
           onPress={pickImage}
         >
-          <View style={[styles.typeIconContainer, { backgroundColor: '#FF6B6B20' }]}>
+          <View style={[styles.typeIconContainer, { backgroundColor: '#FFEBEE' }]}>
             <Ionicons name="images" size={32} color="#FF6B6B" />
           </View>
-          <Text style={[styles.typeTitle, { color: colors.text }]}>Gallery</Text>
-          <Text style={[styles.typeDescription, { color: colors.textSecondary }]}>
-            Choose from your photos
-          </Text>
+          <View style={styles.typeTextContainer}>
+            <Text style={[styles.typeTitle, { color: colors.text }]}>Gallery</Text>
+            <Text style={[styles.typeDescription, { color: colors.textSecondary }]}>
+              Choose from your photos
+            </Text>
+          </View>
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={[styles.typeOption, { backgroundColor: colors.card }]}
+          style={[
+            styles.typeOption, 
+            { 
+              backgroundColor: isDark ? colors.card : '#FFFFFF',
+              borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+            }
+          ]}
           onPress={takePhoto}
         >
-          <View style={[styles.typeIconContainer, { backgroundColor: '#54A0FF20' }]}>
+          <View style={[styles.typeIconContainer, { backgroundColor: '#E3F2FD' }]}>
             <Ionicons name="camera" size={32} color="#54A0FF" />
           </View>
-          <Text style={[styles.typeTitle, { color: colors.text }]}>Camera</Text>
-          <Text style={[styles.typeDescription, { color: colors.textSecondary }]}>
-            Take a photo or video
-          </Text>
+          <View style={styles.typeTextContainer}>
+            <Text style={[styles.typeTitle, { color: colors.text }]}>Camera</Text>
+            <Text style={[styles.typeDescription, { color: colors.textSecondary }]}>
+              Take a photo or video
+            </Text>
+          </View>
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={[styles.typeOption, { backgroundColor: colors.card }]}
+          style={[
+            styles.typeOption, 
+            { 
+              backgroundColor: isDark ? colors.card : '#FFFFFF',
+              borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+            }
+          ]}
           onPress={startTextStory}
         >
-          <View style={[styles.typeIconContainer, { backgroundColor: '#1DD1A120' }]}>
+          <View style={[styles.typeIconContainer, { backgroundColor: '#E8F5E9' }]}>
             <Ionicons name="text" size={32} color="#1DD1A1" />
           </View>
-          <Text style={[styles.typeTitle, { color: colors.text }]}>Text</Text>
-          <Text style={[styles.typeDescription, { color: colors.textSecondary }]}>
-            Create a text story
-          </Text>
+          <View style={styles.typeTextContainer}>
+            <Text style={[styles.typeTitle, { color: colors.text }]}>Text</Text>
+            <Text style={[styles.typeDescription, { color: colors.textSecondary }]}>
+              Create a text story
+            </Text>
+          </View>
         </TouchableOpacity>
       </View>
     </View>
@@ -422,7 +446,13 @@ const CreateStoryScreen = () => {
       </View>
 
       {/* Caption input */}
-      <View style={[styles.captionInputContainer, { backgroundColor: colors.card }]}>
+      <View style={[
+        styles.captionInputContainer, 
+        { 
+          backgroundColor: isDark ? colors.card : '#FFFFFF',
+          borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+        }
+      ]}>
         <TextInput
           style={[styles.captionInput, { color: colors.text }]}
           placeholder="Add a caption..."
@@ -630,14 +660,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: SPACING.md,
     borderRadius: BORDER_RADIUS.lg,
-    gap: SPACING.md,
+    borderWidth: 1,
+    ...SHADOWS.small,
   },
   typeIconContainer: {
     width: 60,
     height: 60,
-    borderRadius: BORDER_RADIUS.md,
+    borderRadius: BORDER_RADIUS.lg,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  typeTextContainer: {
+    flex: 1,
+    marginLeft: SPACING.md,
   },
   typeTitle: {
     fontSize: FONT_SIZES.lg,
@@ -763,9 +798,11 @@ const styles = StyleSheet.create({
     gap: SPACING.xs,
   },
   captionInputContainer: {
-    borderRadius: BORDER_RADIUS.md,
-    padding: SPACING.sm,
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.md,
     marginBottom: SPACING.md,
+    borderWidth: 1,
+    ...SHADOWS.small,
   },
   captionInput: {
     fontSize: FONT_SIZES.md,
@@ -813,6 +850,7 @@ const styles = StyleSheet.create({
     width: '100%',
     borderRadius: BORDER_RADIUS.lg,
     padding: SPACING.lg,
+    ...SHADOWS.medium,
   },
   linkInputHeader: {
     flexDirection: 'row',

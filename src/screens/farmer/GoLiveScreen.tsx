@@ -20,7 +20,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { io, Socket } from 'socket.io-client';
-import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, FONTS } from '../../constants/theme';
+import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, FONTS, SHADOWS } from '../../constants/theme';
 
 // Dynamic import for Agora - only available in development builds
 let RtcSurfaceView: any = null;
@@ -506,70 +506,112 @@ const GoLiveScreen = () => {
           keyboardShouldPersistTaps="handled"
         >
           {/* Thumbnail */}
-          <TouchableOpacity style={styles.thumbnailContainer} onPress={pickThumbnail}>
-            {thumbnail ? (
-              <Image source={{ uri: thumbnail }} style={styles.thumbnailImage} />
-            ) : (
-              <View style={[styles.thumbnailPlaceholder, { backgroundColor: isDark ? '#1a1a1a' : '#f5f5f5' }]}>
-                <Ionicons name="camera" size={40} color={colors.textSecondary} />
-                <Text style={[styles.thumbnailText, { color: colors.textSecondary }]}>
-                  Add Cover Photo
-                </Text>
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <View style={[styles.sectionIconContainer, { backgroundColor: '#FFEBEE' }]}>
+                <Ionicons name="image" size={16} color="#E53935" />
               </View>
-            )}
-          </TouchableOpacity>
+              <Text style={[styles.sectionLabel, { color: colors.text }]}>Cover Photo</Text>
+            </View>
+            <TouchableOpacity 
+              style={[
+                styles.thumbnailContainer, 
+                { 
+                  backgroundColor: isDark ? colors.card : '#FFFFFF',
+                  borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+                }
+              ]} 
+              onPress={pickThumbnail}
+            >
+              {thumbnail ? (
+                <Image source={{ uri: thumbnail }} style={styles.thumbnailImage} />
+              ) : (
+                <View style={styles.thumbnailPlaceholder}>
+                  <View style={[styles.thumbnailIconContainer, { backgroundColor: '#FFEBEE' }]}>
+                    <Ionicons name="camera" size={28} color="#E53935" />
+                  </View>
+                  <Text style={[styles.thumbnailText, { color: colors.text }]}>
+                    Add Cover Photo
+                  </Text>
+                  <Text style={[styles.thumbnailSubtext, { color: colors.textSecondary }]}>
+                    Tap to upload
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
 
           {/* Title */}
           <View style={styles.section}>
-            <Text style={[styles.label, { color: colors.text }]}>
-              Stream Title *
-            </Text>
-            <TextInput
-              style={[
-                styles.input,
-                { 
-                  backgroundColor: isDark ? '#1a1a1a' : '#f5f5f5',
-                  color: colors.text,
-                },
-              ]}
-              placeholder="What's your stream about?"
-              placeholderTextColor={colors.textSecondary}
-              value={title}
-              onChangeText={setTitle}
-            />
+            <View style={styles.sectionHeader}>
+              <View style={[styles.sectionIconContainer, { backgroundColor: '#E8F5E9' }]}>
+                <Ionicons name="text" size={16} color="#4CAF50" />
+              </View>
+              <Text style={[styles.sectionLabel, { color: colors.text }]}>Stream Title *</Text>
+            </View>
+            <View style={[
+              styles.card,
+              { 
+                backgroundColor: isDark ? colors.card : '#FFFFFF',
+                borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+              }
+            ]}>
+              <TextInput
+                style={[styles.input, { color: colors.text }]}
+                placeholder="What's your stream about?"
+                placeholderTextColor={colors.textSecondary}
+                value={title}
+                onChangeText={setTitle}
+              />
+            </View>
           </View>
 
           {/* Description */}
           <View style={styles.section}>
-            <Text style={[styles.label, { color: colors.text }]}>
-              Description (optional)
-            </Text>
-            <TextInput
-              style={[
-                styles.input,
-                styles.textArea,
-                { 
-                  backgroundColor: isDark ? '#1a1a1a' : '#f5f5f5',
-                  color: colors.text,
-                },
-              ]}
-              placeholder="Tell viewers more about your stream..."
-              placeholderTextColor={colors.textSecondary}
-              value={description}
-              onChangeText={setDescription}
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-            />
+            <View style={styles.sectionHeader}>
+              <View style={[styles.sectionIconContainer, { backgroundColor: '#E3F2FD' }]}>
+                <Ionicons name="document-text" size={16} color="#1976D2" />
+              </View>
+              <Text style={[styles.sectionLabel, { color: colors.text }]}>Description (optional)</Text>
+            </View>
+            <View style={[
+              styles.card,
+              { 
+                backgroundColor: isDark ? colors.card : '#FFFFFF',
+                borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+              }
+            ]}>
+              <TextInput
+                style={[styles.input, styles.textArea, { color: colors.text }]}
+                placeholder="Tell viewers more about your stream..."
+                placeholderTextColor={colors.textSecondary}
+                value={description}
+                onChangeText={setDescription}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+            </View>
           </View>
 
           {/* Tags */}
           <View style={styles.section}>
-            <Text style={[styles.label, { color: colors.text }]}>
-              Tags (optional)
-            </Text>
-            <View style={[styles.inputContainer, { backgroundColor: isDark ? '#1a1a1a' : '#f5f5f5' }]}>
-              <Ionicons name="pricetag-outline" size={20} color={colors.textSecondary} />
+            <View style={styles.sectionHeader}>
+              <View style={[styles.sectionIconContainer, { backgroundColor: '#F3E5F5' }]}>
+                <Ionicons name="pricetag" size={16} color="#8E24AA" />
+              </View>
+              <Text style={[styles.sectionLabel, { color: colors.text }]}>Tags (optional)</Text>
+            </View>
+            <View style={[
+              styles.inputContainer, 
+              { 
+                backgroundColor: isDark ? colors.card : '#FFFFFF',
+                borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+              }
+            ]}>
+              <View style={[styles.inputIcon, { backgroundColor: '#F3E5F5' }]}>
+                <Ionicons name="pricetag" size={16} color="#8E24AA" />
+              </View>
               <TextInput
                 style={[styles.tagInput, { color: colors.text }]}
                 placeholder="Add tags (press enter)"
@@ -599,11 +641,20 @@ const GoLiveScreen = () => {
 
           {/* Feature Product */}
           <View style={styles.section}>
-            <Text style={[styles.label, { color: colors.text }]}>
-              Feature a Product (optional)
-            </Text>
+            <View style={styles.sectionHeader}>
+              <View style={[styles.sectionIconContainer, { backgroundColor: '#FFF3E0' }]}>
+                <Ionicons name="storefront" size={16} color="#F57C00" />
+              </View>
+              <Text style={[styles.sectionLabel, { color: colors.text }]}>Feature a Product (optional)</Text>
+            </View>
             <TouchableOpacity 
-              style={[styles.productSelector, { backgroundColor: isDark ? '#1a1a1a' : '#f5f5f5' }]}
+              style={[
+                styles.productSelector, 
+                { 
+                  backgroundColor: isDark ? colors.card : '#FFFFFF',
+                  borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+                }
+              ]}
               onPress={() => setShowProductPicker(true)}
             >
               {selectedProduct ? (
@@ -625,8 +676,10 @@ const GoLiveScreen = () => {
                 </View>
               ) : (
                 <View style={styles.addProductRow}>
-                  <Ionicons name="add-circle-outline" size={24} color={COLORS.primary} />
-                  <Text style={[styles.addProductText, { color: colors.textSecondary }]}>
+                  <View style={[styles.addProductIcon, { backgroundColor: '#E8F5E9' }]}>
+                    <Ionicons name="add" size={20} color="#4CAF50" />
+                  </View>
+                  <Text style={[styles.addProductText, { color: colors.text }]}>
                     Select a product to showcase
                   </Text>
                 </View>
@@ -730,12 +783,11 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.semiBold,
   },
   thumbnailContainer: {
-    width: screenWidth - (SPACING.md * 2),
-    alignSelf: 'center',
-    marginVertical: SPACING.md,
     aspectRatio: 16 / 9,
     borderRadius: BORDER_RADIUS.lg,
     overflow: 'hidden',
+    borderWidth: 1,
+    ...SHADOWS.small,
   },
   thumbnailImage: {
     width: '100%',
@@ -745,27 +797,56 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(0,0,0,0.1)',
-    borderStyle: 'dashed',
-    borderRadius: BORDER_RADIUS.lg,
+  },
+  thumbnailIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
   },
   thumbnailText: {
-    marginTop: SPACING.sm,
     fontSize: FONT_SIZES.md,
-    fontFamily: FONTS.medium,
+    fontFamily: FONTS.semiBold,
+  },
+  thumbnailSubtext: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: FONTS.regular,
+    marginTop: 4,
   },
   section: {
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: SPACING.sm,
+  },
+  sectionIconContainer: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sectionLabel: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: FONTS.semiBold,
   },
   label: {
     fontSize: FONT_SIZES.sm,
     fontFamily: FONTS.medium,
     marginBottom: SPACING.sm,
   },
+  card: {
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    ...SHADOWS.small,
+  },
   input: {
-    borderRadius: BORDER_RADIUS.md,
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.md,
     fontSize: FONT_SIZES.md,
@@ -777,9 +858,19 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: BORDER_RADIUS.md,
+    borderRadius: BORDER_RADIUS.lg,
     paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
     gap: SPACING.sm,
+    borderWidth: 1,
+    ...SHADOWS.small,
+  },
+  inputIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   tagInput: {
     flex: 1,
@@ -808,17 +899,26 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.medium,
   },
   productSelector: {
-    borderRadius: BORDER_RADIUS.md,
+    borderRadius: BORDER_RADIUS.lg,
     padding: SPACING.md,
+    borderWidth: 1,
+    ...SHADOWS.small,
   },
   addProductRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
   },
+  addProductIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   addProductText: {
     fontSize: FONT_SIZES.md,
-    fontFamily: FONTS.regular,
+    fontFamily: FONTS.medium,
   },
   selectedProductRow: {
     flexDirection: 'row',

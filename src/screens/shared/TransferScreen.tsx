@@ -12,13 +12,16 @@ import {
   KeyboardAvoidingView,
   Platform,
   Animated,
+  FlatList,
 } from 'react-native';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Contacts from 'expo-contacts';
 import { useTheme } from '../../context/ThemeContext';
 import { walletService } from '../../services/walletService';
+import { WalletHeroIllustration } from '../../assets/illustrations/stats';
 import apiClient from '../../services/apiClient';
 import { SPACING, FONT_SIZES, FONTS } from '../../constants/theme';
 import { triggerHaptic } from '../../utils/haptics';
@@ -56,6 +59,9 @@ export default function TransferScreen() {
   const [transferReference, setTransferReference] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [recentRecipients, setRecentRecipients] = useState<RecentRecipient[]>([]);
+  const [showContactsModal, setShowContactsModal] = useState(false);
+  const [contactsList, setContactsList] = useState<Contacts.Contact[]>([]);
+  const [contactSearch, setContactSearch] = useState('');
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -288,80 +294,69 @@ export default function TransferScreen() {
               {
                 opacity: fadeAnim,
                 transform: [{ translateY: slideAnim }],
+                backgroundColor: isDark ? colors.card : '#FFFFFF',
               },
             ]}
           >
-            <LinearGradient
-              colors={isDark ? ['#1B5E20', '#2E7D32'] : ['#43A047', '#66BB6A']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.heroGradient}
-            >
-              <View style={styles.heroContent}>
-                <View style={styles.heroIconContainer}>
-                  <MaterialCommunityIcons name="wallet-outline" size={24} color="#FFFFFF" />
-                </View>
-                <View style={styles.heroTextContainer}>
-                  <Text style={styles.heroLabel}>Available Balance</Text>
-                  {isLoadingBalance ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" style={{ marginTop: 4 }} />
-                  ) : (
-                    <Text style={styles.heroAmount}>{formatCurrencyFull(walletBalance)}</Text>
-                  )}
-                </View>
-              </View>
-              <View style={styles.heroDecoration}>
-                <View style={[styles.heroCircle, styles.heroCircle1]} />
-                <View style={[styles.heroCircle, styles.heroCircle2]} />
-              </View>
-            </LinearGradient>
+            <View style={styles.heroIconContainer}>
+              <WalletHeroIllustration width={32} height={32} color="#FFFFFF" />
+            </View>
+            <View style={styles.heroTextContainer}>
+              <Text style={[styles.heroLabel, { color: colors.textSecondary }]}>Available Balance</Text>
+              {isLoadingBalance ? (
+                <ActivityIndicator size="small" color="#16A34A" style={{ marginTop: 8 }} />
+              ) : (
+                <Text style={[styles.heroAmount, { color: colors.text }]}>{formatCurrencyFull(walletBalance)}</Text>
+              )}
+            </View>
+            <View style={styles.heroDecoration}>
+              <View style={[styles.heroCircle, styles.heroCircle1]} />
+              <View style={[styles.heroCircle, styles.heroCircle2]} />
+            </View>
           </Animated.View>
 
           {/* Amount Input Section */}
           <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
             <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>ENTER AMOUNT</Text>
-            <View style={[styles.amountCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
-              <View style={styles.amountInputContainer}>
-                <Text style={[styles.currencySymbol, { color: colors.primary }]}>₦</Text>
-                <TextInput
-                  style={[styles.amountInput, { color: colors.text }]}
-                  placeholder="0"
-                  placeholderTextColor={colors.textSecondary}
-                  value={amount}
-                  onChangeText={(text) => {
-                    const numeric = text.replace(/[^0-9]/g, '');
-                    setAmount(numeric ? parseInt(numeric, 10).toLocaleString() : '');
-                  }}
-                  keyboardType="number-pad"
-                />
-              </View>
-              
-              {/* Quick Amount Chips */}
-              <View style={styles.quickAmountsContainer}>
+            <View style={[styles.amountInputContainer, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderRadius: 16, padding: 20, marginBottom: 16 }]}>
+              <Text style={[styles.currencySymbol, { color: colors.primary }]}>₦</Text>
+              <TextInput
+                style={[styles.amountInput, { color: colors.text }]}
+                placeholder="0"
+                placeholderTextColor={colors.textSecondary}
+                value={amount}
+                onChangeText={(text) => {
+                  const numeric = text.replace(/[^0-9]/g, '');
+                  setAmount(numeric ? parseInt(numeric, 10).toLocaleString() : '');
+                }}
+                keyboardType="number-pad"
+              />
+            </View>
+            
+            {/* Quick Amount Chips */}
+            <View style={[styles.quickAmountCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+              <View style={styles.presetGrid}>
                 {QUICK_AMOUNTS.map((value) => {
                   const isSelected = numericAmount === value;
                   return (
                     <TouchableOpacity
                       key={value}
                       style={[
-                        styles.quickAmountChip,
-                        {
-                          backgroundColor: isSelected
-                            ? colors.primary
-                            : isDark
-                            ? 'rgba(255,255,255,0.1)'
-                            : '#F5F5F5',
-                        },
+                        styles.presetAmount,
+                        { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#F5F5F5' },
+                        isSelected && styles.presetAmountSelected,
                       ]}
                       onPress={() => handleQuickAmount(value)}
+                      activeOpacity={0.7}
                     >
                       <Text
                         style={[
-                          styles.quickAmountText,
-                          { color: isSelected ? '#FFFFFF' : colors.text },
+                          styles.presetAmountText,
+                          { color: colors.text },
+                          isSelected && styles.presetAmountTextSelected,
                         ]}
                       >
-                        {value >= 1000 ? `₦${value / 1000}k` : `₦${value}`}
+                        ₦{value.toLocaleString()}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -392,6 +387,42 @@ export default function TransferScreen() {
                 <View style={styles.verifiedBadge}>
                   <Ionicons name="checkmark" size={14} color="#FFFFFF" />
                 </View>
+              )}
+              {!verifiedRecipient && !isVerifying && (
+                <TouchableOpacity
+                  style={[styles.contactButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#E8F5E9' }]}
+                  onPress={async () => {
+                    triggerHaptic('light');
+                    try {
+                      const { status } = await Contacts.requestPermissionsAsync();
+                      if (status !== 'granted') {
+                        Alert.alert('Permission Required', 'Please grant contacts permission to select a contact.');
+                        return;
+                      }
+                      const { data } = await Contacts.getContactsAsync({
+                        fields: [Contacts.Fields.PhoneNumbers],
+                      });
+                      if (data.length > 0) {
+                        const contactsWithPhones = data.filter(c => c.phoneNumbers && c.phoneNumbers.length > 0);
+                        if (contactsWithPhones.length === 0) {
+                          Alert.alert('No Contacts', 'No contacts with phone numbers found.');
+                          return;
+                        }
+                        contactsWithPhones.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+                        setContactsList(contactsWithPhones);
+                        setContactSearch('');
+                        setShowContactsModal(true);
+                      } else {
+                        Alert.alert('No Contacts', 'No contacts found.');
+                      }
+                    } catch (error) {
+                      console.error('Error fetching contacts:', error);
+                      Alert.alert('Error', 'Failed to load contacts. Please try again.');
+                    }
+                  }}
+                >
+                  <Ionicons name="person-add" size={20} color="#43A047" />
+                </TouchableOpacity>
               )}
             </View>
 
@@ -815,6 +846,103 @@ export default function TransferScreen() {
           </Animated.View>
         </View>
       </Modal>
+
+      {/* Contacts Modal */}
+      <Modal
+        visible={showContactsModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowContactsModal(false)}
+      >
+        <View style={[styles.contactsModalContainer, { backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
+          <View style={[styles.contactsModalHeader, { borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]}>
+            <TouchableOpacity
+              style={styles.contactsModalCloseButton}
+              onPress={() => {
+                triggerHaptic('light');
+                setShowContactsModal(false);
+              }}
+            >
+              <Ionicons name="close" size={24} color={colors.text} />
+            </TouchableOpacity>
+            <Text style={[styles.contactsModalTitle, { color: colors.text }]}>Select Contact</Text>
+            <View style={{ width: 40 }} />
+          </View>
+          
+          {/* Search Bar */}
+          <View style={[styles.contactSearchContainer, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#FFFFFF' }]}>
+            <Ionicons name="search" size={20} color={colors.textSecondary} />
+            <TextInput
+              style={[styles.contactSearchInput, { color: colors.text }]}
+              placeholder="Search contacts..."
+              placeholderTextColor={colors.textSecondary}
+              value={contactSearch}
+              onChangeText={setContactSearch}
+            />
+            {contactSearch.length > 0 && (
+              <TouchableOpacity onPress={() => setContactSearch('')}>
+                <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            )}
+          </View>
+          
+          {/* Contacts List */}
+          <FlatList
+            data={contactsList.filter(c => 
+              contactSearch.length === 0 || 
+              (c.name || '').toLowerCase().includes(contactSearch.toLowerCase()) ||
+              (c.phoneNumbers?.[0]?.number || '').includes(contactSearch)
+            )}
+            keyExtractor={(item, index) => `contact-${index}`}
+            style={[styles.contactsList, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}
+            contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+            initialNumToRender={20}
+            maxToRenderPerBatch={20}
+            windowSize={10}
+            ItemSeparatorComponent={() => (
+              <View style={[styles.contactDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }]} />
+            )}
+            renderItem={({ item: contact }) => (
+              <TouchableOpacity
+                style={styles.contactItem}
+                onPress={() => {
+                  triggerHaptic('light');
+                  if (contact.phoneNumbers && contact.phoneNumbers[0]) {
+                    let phone = contact.phoneNumbers[0].number || '';
+                    phone = phone.replace(/[\s\-\(\)]/g, '');
+                    if (phone.startsWith('+234')) phone = '0' + phone.slice(4);
+                    if (phone.startsWith('234')) phone = '0' + phone.slice(3);
+                    setRecipient(phone.slice(0, 11));
+                  }
+                  setShowContactsModal(false);
+                }}
+              >
+                <View style={[styles.contactAvatar, { backgroundColor: '#16A34A' }]}>
+                  <Text style={styles.contactAvatarText}>
+                    {(contact.name || '?')[0].toUpperCase()}
+                  </Text>
+                </View>
+                <View style={styles.contactInfo}>
+                  <Text style={[styles.contactName, { color: colors.text }]}>
+                    {contact.name || 'Unknown'}
+                  </Text>
+                  <Text style={[styles.contactPhone, { color: colors.textSecondary }]}>
+                    {contact.phoneNumbers?.[0]?.number || 'No phone'}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            )}
+            ListEmptyComponent={
+              <View style={styles.emptyContactsContainer}>
+                <Text style={[styles.emptyContactsText, { color: colors.textSecondary }]}>
+                  No contacts found
+                </Text>
+              </View>
+            }
+          />
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1003,22 +1131,49 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '700',
   },
-  quickAmountsContainer: {
+  quickAmountCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 8,
+    padding: 16,
+  },
+  presetGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    padding: 12,
     gap: 10,
+    justifyContent: 'space-between',
   },
-  quickAmountButton: {
+  presetAmount: {
     width: '31%',
-    paddingVertical: 14,
-    borderRadius: 10,
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: 'center',
-    borderWidth: 1.5,
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
-  quickAmountText: {
-    fontSize: 14,
+  presetAmountSelected: {
+    borderColor: '#16A34A',
+    backgroundColor: '#F0FDF4',
+  },
+  presetAmountText: {
+    fontSize: 15,
     fontWeight: '600',
+  },
+  presetAmountTextSelected: {
+    color: '#16A34A',
+  },
+  quickAmountCheckmark: {
+    position: 'absolute' as const,
+    top: -6,
+    right: -6,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#10B981',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
   noteInput: {
     fontSize: 16,
@@ -1267,47 +1422,40 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginBottom: 24,
     overflow: 'hidden',
+    padding: 20,
+    position: 'relative' as const,
     ...Platform.select({
       ios: {
-        shadowColor: '#43A047',
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
+        shadowOpacity: 0.08,
         shadowRadius: 12,
       },
       android: {
-        elevation: 6,
+        elevation: 4,
       },
     }),
   },
-  heroGradient: {
-    padding: 20,
-  },
-  heroContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
   heroIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: '#16A34A',
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 12,
   },
   heroTextContainer: {
-    flex: 1,
+    zIndex: 1,
   },
   heroLabel: {
     fontSize: 13,
     fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.85)',
     marginBottom: 4,
   },
   heroAmount: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '700',
-    color: '#FFFFFF',
   },
   heroDecoration: {
     position: 'absolute',
@@ -1317,19 +1465,21 @@ const styles = StyleSheet.create({
   heroCircle: {
     position: 'absolute',
     borderRadius: 100,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: '#16A34A',
+    opacity: 0.08,
   },
   heroCircle1: {
-    width: 100,
-    height: 100,
+    width: 120,
+    height: 120,
     right: 0,
     top: 0,
   },
   heroCircle2: {
-    width: 60,
-    height: 60,
+    width: 80,
+    height: 80,
     right: 60,
     top: 60,
+    opacity: 0.05,
   },
   // Header Title
   headerTitle: {
@@ -1337,16 +1487,6 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
     textAlign: 'center',
-  },
-  // Quick Amount Chip Styles
-  quickAmountChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-  },
-  quickAmountText: {
-    fontSize: 14,
-    fontWeight: '600',
   },
   // Phone Input Icon
   phoneInputIcon: {
@@ -1779,5 +1919,100 @@ const styles = StyleSheet.create({
   newTransferText: {
     fontSize: 15,
     fontWeight: '600',
+  },
+  contactButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+  contactsModalContainer: {
+    flex: 1,
+  },
+  contactsModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  contactsModalCloseButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  contactsModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  contactSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    gap: 8,
+  },
+  contactSearchInput: {
+    flex: 1,
+    fontSize: 16,
+  },
+  contactsList: {
+    flex: 1,
+    marginHorizontal: 16,
+    borderRadius: 16,
+    marginTop: 8,
+  },
+  contactItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  contactDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 72,
+  },
+  contactAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  contactAvatarText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  contactInfo: {
+    flex: 1,
+  },
+  contactName: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  contactPhone: {
+    fontSize: 14,
+  },
+  emptyContactsContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  emptyContactsText: {
+    fontSize: 16,
+    marginTop: 12,
   },
 });

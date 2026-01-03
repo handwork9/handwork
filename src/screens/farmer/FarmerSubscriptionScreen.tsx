@@ -17,6 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Circle } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, FONTS } from '../../constants/theme';
@@ -55,7 +56,7 @@ const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     quarterlyPrice: 0,
     yearlyPrice: 0,
     gradient: ['#6B7280', '#9CA3AF'],
-    icon: 'leaf-outline',
+    icon: 'person-outline',
     boost: 1.0,
     features: [
       { icon: 'checkmark-circle', text: 'Standard product listing', included: true },
@@ -276,39 +277,166 @@ export default function FarmerSubscriptionScreen() {
   // NOW we can have conditional returns after all hooks
   if (!showFullScreen) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.background }}>
-        <LinearGradient
-          colors={['#1DA1F2', '#0D8ECF']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{ paddingTop: insets.top + 10, paddingHorizontal: 16, paddingBottom: 16 }}
-        >
+      <View style={{ flex: 1, backgroundColor: isDark ? colors.background : '#F2F2F7' }}>
+        {/* Header */}
+        <View style={{ paddingTop: insets.top + 10, paddingHorizontal: 16, paddingBottom: 16, backgroundColor: isDark ? colors.background : '#F2F2F7' }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <TouchableOpacity onPress={() => navigation.goBack()}>
-              <Ionicons name="arrow-back" size={24} color="#FFF" />
+            <TouchableOpacity 
+              style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#FFFFFF', alignItems: 'center', justifyContent: 'center' }}
+              onPress={() => navigation.goBack()}
+            >
+              <Ionicons name="chevron-back" size={24} color={colors.text} />
             </TouchableOpacity>
-            <Text style={{ color: '#FFF', fontSize: 18, fontWeight: '600' }}>Verified Seller</Text>
-            <View style={{ width: 24 }} />
+            <Text style={{ color: colors.text, fontSize: 18, fontWeight: '600' }}>Verified Seller</Text>
+            <View style={{ width: 40 }} />
           </View>
-        </LinearGradient>
-        <ScrollView contentContainerStyle={{ padding: 20, alignItems: 'center' }}>
-          <View style={{ backgroundColor: '#1DA1F2', width: 100, height: 100, borderRadius: 50, justifyContent: 'center', alignItems: 'center', marginBottom: 20 }}>
-            <Ionicons name="checkmark-circle" size={60} color="#FFF" />
+        </View>
+        <ScrollView contentContainerStyle={{ padding: 20 }} showsVerticalScrollIndicator={false}>
+          {/* Hero Section */}
+          <View style={{ alignItems: 'center', marginBottom: 24 }}>
+            <View style={{ marginBottom: 20 }}>
+              <VerifiedSellerIllustration size={120} />
+            </View>
+            <Text style={{ fontSize: 24, fontWeight: 'bold', color: colors.text, marginBottom: 10 }}>Become a Verified Seller</Text>
+            <Text style={{ fontSize: 16, color: colors.textSecondary, textAlign: 'center', marginBottom: 20 }}>
+              Build trust and boost your sales with the verified badge
+            </Text>
           </View>
-          <Text style={{ fontSize: 24, fontWeight: 'bold', color: colors.text, marginBottom: 10 }}>Become a Verified Seller</Text>
-          <Text style={{ fontSize: 16, color: colors.textSecondary, textAlign: 'center', marginBottom: 30 }}>
-            Build trust and boost your sales with the verified badge
-          </Text>
+
+          {/* Benefits Cards */}
+          <View style={{ backgroundColor: isDark ? colors.card : '#FFFFFF', borderRadius: 16, padding: 16, marginBottom: 16 }}>
+            <Text style={{ fontSize: 18, fontWeight: '600', color: colors.text, marginBottom: 16 }}>Why Get Verified?</Text>
+            
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 }}>
+              <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#E3F2FD', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                <Ionicons name="shield-checkmark" size={20} color="#1DA1F2" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text, marginBottom: 4 }}>Trust Badge</Text>
+                <Text style={{ fontSize: 14, color: colors.textSecondary, lineHeight: 20 }}>
+                  Display a blue verification badge on all your products, building instant trust with buyers
+                </Text>
+              </View>
+            </View>
+
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 }}>
+              <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#E8F5E9', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                <Ionicons name="trending-up" size={20} color="#4CAF50" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text, marginBottom: 4 }}>1.5x More Visibility</Text>
+                <Text style={{ fontSize: 14, color: colors.textSecondary, lineHeight: 20 }}>
+                  Your products appear higher in search results and category listings, reaching more customers
+                </Text>
+              </View>
+            </View>
+
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 }}>
+              <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFF3E0', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                <Ionicons name="star" size={20} color="#FF9800" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text, marginBottom: 4 }}>Featured Placement</Text>
+                <Text style={{ fontSize: 14, color: colors.textSecondary, lineHeight: 20 }}>
+                  Get featured in the Verified Sellers section on the homepage and discovery pages
+                </Text>
+              </View>
+            </View>
+
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+              <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#F3E5F5', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                <Ionicons name="headset" size={20} color="#9C27B0" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text, marginBottom: 4 }}>Priority Support</Text>
+                <Text style={{ fontSize: 14, color: colors.textSecondary, lineHeight: 20 }}>
+                  Get faster responses from our support team and dedicated assistance for your business
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Stats Card */}
+          <View style={{ backgroundColor: isDark ? colors.card : '#FFFFFF', borderRadius: 16, padding: 16, marginBottom: 16 }}>
+            <Text style={{ fontSize: 18, fontWeight: '600', color: colors.text, marginBottom: 16 }}>Verified Seller Stats</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <View style={{ flex: 1, alignItems: 'center' }}>
+                <Text style={{ fontSize: 28, fontWeight: '700', color: '#1DA1F2' }}>45%</Text>
+                <Text style={{ fontSize: 12, color: colors.textSecondary, textAlign: 'center' }}>More Sales</Text>
+              </View>
+              <View style={{ width: 1, backgroundColor: isDark ? '#333' : '#E0E0E0' }} />
+              <View style={{ flex: 1, alignItems: 'center' }}>
+                <Text style={{ fontSize: 28, fontWeight: '700', color: '#4CAF50' }}>2.3x</Text>
+                <Text style={{ fontSize: 12, color: colors.textSecondary, textAlign: 'center' }}>More Views</Text>
+              </View>
+              <View style={{ width: 1, backgroundColor: isDark ? '#333' : '#E0E0E0' }} />
+              <View style={{ flex: 1, alignItems: 'center' }}>
+                <Text style={{ fontSize: 28, fontWeight: '700', color: '#FF9800' }}>4.8★</Text>
+                <Text style={{ fontSize: 12, color: colors.textSecondary, textAlign: 'center' }}>Avg Rating</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* How It Works */}
+          <View style={{ backgroundColor: isDark ? colors.card : '#FFFFFF', borderRadius: 16, padding: 16, marginBottom: 16 }}>
+            <Text style={{ fontSize: 18, fontWeight: '600', color: colors.text, marginBottom: 16 }}>How It Works</Text>
+            
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 14 }}>
+              <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#1DA1F2', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFF' }}>1</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>Choose Your Plan</Text>
+                <Text style={{ fontSize: 13, color: colors.textSecondary }}>Select monthly, quarterly, or yearly billing</Text>
+              </View>
+            </View>
+
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 14 }}>
+              <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#1DA1F2', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFF' }}>2</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>Pay From Wallet</Text>
+                <Text style={{ fontSize: 13, color: colors.textSecondary }}>Subscription fee is deducted from your wallet balance</Text>
+              </View>
+            </View>
+
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+              <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#1DA1F2', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFF' }}>3</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>Start Selling More</Text>
+                <Text style={{ fontSize: 13, color: colors.textSecondary }}>Your badge activates instantly and boosts visibility</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Pricing Info */}
+          <View style={{ backgroundColor: isDark ? colors.card : '#FFFFFF', borderRadius: 16, padding: 16, marginBottom: 24 }}>
+            <Text style={{ fontSize: 18, fontWeight: '600', color: colors.text, marginBottom: 8 }}>Pricing</Text>
+            <Text style={{ fontSize: 14, color: colors.textSecondary, lineHeight: 20, marginBottom: 12 }}>
+              Verified Seller subscription starts from just ₦3,000/month. Save up to 30% with yearly plans.
+            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              <View style={{ backgroundColor: '#E3F2FD', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 }}>
+                <Text style={{ fontSize: 12, color: '#1565C0', fontWeight: '500' }}>₦3,000/month</Text>
+              </View>
+              <View style={{ backgroundColor: '#E8F5E9', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 }}>
+                <Text style={{ fontSize: 12, color: '#2E7D32', fontWeight: '500' }}>₦7,500/quarter</Text>
+              </View>
+              <View style={{ backgroundColor: '#FFF3E0', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 }}>
+                <Text style={{ fontSize: 12, color: '#E65100', fontWeight: '500' }}>₦25,000/year</Text>
+              </View>
+            </View>
+          </View>
           
+          {/* CTA Button */}
           <TouchableOpacity 
-            style={{ backgroundColor: '#1DA1F2', paddingHorizontal: 30, paddingVertical: 15, borderRadius: 10, marginBottom: 20 }}
+            style={{ backgroundColor: '#1DA1F2', paddingHorizontal: 30, paddingVertical: 16, borderRadius: 12, width: '100%', alignItems: 'center', marginBottom: 30 }}
             onPress={() => setShowFullScreen(true)}
           >
             <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '600' }}>View Subscription Plans</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={{ color: '#1DA1F2', fontSize: 14 }}>Go Back</Text>
           </TouchableOpacity>
         </ScrollView>
       </View>
@@ -402,25 +530,20 @@ export default function FarmerSubscriptionScreen() {
 
   // Full screen view
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle="light-content" />
+    <View style={[styles.container, { backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       
-      {/* Header with gradient */}
-      <LinearGradient
-        colors={['#1DA1F2', '#0D8ECF']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[styles.header, { paddingTop: insets.top + 10 }]}
-      >
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + 10, backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
         <TouchableOpacity
-          style={styles.backButton}
+          style={[styles.backButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#FFFFFF' }]}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color="#FFF" />
+          <Ionicons name="chevron-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerNavTitle}>Verified Seller</Text>
+        <Text style={[styles.headerNavTitle, { color: colors.text }]}>Verified Seller</Text>
         <View style={{ width: 40 }} />
-      </LinearGradient>
+      </View>
 
       <ScrollView
         style={styles.content}
@@ -429,45 +552,49 @@ export default function FarmerSubscriptionScreen() {
       >
         {/* Hero Card */}
         <View style={styles.heroSection}>
-          <View style={styles.heroCard}>
-          <LinearGradient
-            colors={['#1DA1F2', '#0D8ECF']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.heroCardGradient}
-          >
-            <Animated.View style={{ transform: [{ rotate: badgeRotateInterpolate }] }}>
-              <View style={styles.verifiedBadgeLarge}>
-                <VerifiedSellerIllustration size={80} />
-              </View>
-            </Animated.View>
+          <View style={[styles.heroCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
+            {/* SVG Background */}
+            <View style={styles.heroCardSvg}>
+              <Svg width="200" height="200" viewBox="0 0 200 200">
+                <Circle cx="150" cy="50" r="80" fill="#1DA1F2" fillOpacity={0.08} />
+                <Circle cx="180" cy="100" r="50" fill="#1DA1F2" fillOpacity={0.06} />
+                <Circle cx="120" cy="30" r="30" fill="#0D8ECF" fillOpacity={0.05} />
+              </Svg>
+            </View>
             
-            <Animated.Text 
-              style={[
-                styles.heroCardTitle,
-                { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
-              ]}
-            >
-              Become a Verified Seller
-            </Animated.Text>
-            <Animated.Text 
-              style={[
-                styles.heroCardSubtitle,
-                { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
-              ]}
-            >
-              Build trust and boost your sales with the verified badge
-            </Animated.Text>
+            <View style={styles.heroCardContent}>
+              <Animated.View style={{ transform: [{ rotate: badgeRotateInterpolate }] }}>
+                <View style={[styles.verifiedBadgeLarge, { backgroundColor: isDark ? 'rgba(29, 161, 242, 0.15)' : '#E1F5FE' }]}>
+                  <VerifiedSellerIllustration size={80} />
+                </View>
+              </Animated.View>
+              
+              <Animated.Text 
+                style={[
+                  styles.heroCardTitle,
+                  { color: colors.text, opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
+                ]}
+              >
+                Become a Verified Seller
+              </Animated.Text>
+              <Animated.Text 
+                style={[
+                  styles.heroCardSubtitle,
+                  { color: colors.textSecondary, opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
+                ]}
+              >
+                Build trust and boost your sales with the verified badge
+              </Animated.Text>
 
-            {isCurrentlySubscribed && (
-              <View style={styles.currentPlanBadge}>
-                <Ionicons name="checkmark-circle" size={16} color="#FFF" />
-                <Text style={styles.currentPlanText}>
-                  Currently: {currentTier === 'verified' ? 'Verified' : 'Premium'} Seller
-                </Text>
-              </View>
-            )}
-          </LinearGradient>
+              {isCurrentlySubscribed && (
+                <View style={[styles.currentPlanBadge, { backgroundColor: isDark ? 'rgba(29, 161, 242, 0.15)' : '#E1F5FE' }]}>
+                  <Ionicons name="checkmark-circle" size={16} color="#1DA1F2" />
+                  <Text style={[styles.currentPlanText, { color: '#1DA1F2' }]}>
+                    Currently: {currentTier === 'verified' ? 'Verified' : 'Premium'} Seller
+                  </Text>
+                </View>
+              )}
+            </View>
           </View>
         </View>
 
@@ -490,29 +617,42 @@ export default function FarmerSubscriptionScreen() {
         {/* Duration Selector */}
         <View style={styles.durationSection}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Choose Duration</Text>
-          <View style={[styles.durationSelector, { backgroundColor: colors.card }]}>
-            {(['monthly', 'quarterly', 'yearly'] as DurationType[]).map((duration) => (
-              <TouchableOpacity
-                key={duration}
-                style={[
-                  styles.durationOption,
-                  selectedDuration === duration && styles.durationOptionActive,
-                ]}
-                onPress={() => setSelectedDuration(duration)}
-              >
-                <Text style={[
-                  styles.durationText,
-                  { color: selectedDuration === duration ? '#FFF' : colors.text }
-                ]}>
-                  {duration === 'monthly' ? 'Monthly' : duration === 'quarterly' ? '3 Months' : 'Yearly'}
-                </Text>
-                {duration === 'yearly' && (
-                  <View style={styles.saveBadge}>
-                    <Text style={styles.saveBadgeText}>Best Value</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            ))}
+          <View style={[styles.durationSelector, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+            {([
+              { key: 'monthly' as DurationType, label: 'Monthly', sublabel: 'Billed monthly', discount: null },
+              { key: 'quarterly' as DurationType, label: 'Quarterly', sublabel: '3 months', discount: '17% OFF' },
+              { key: 'yearly' as DurationType, label: 'Yearly', sublabel: '12 months', discount: '30% OFF' },
+            ]).map((item) => {
+              const isActive = selectedDuration === item.key;
+              return (
+                <TouchableOpacity
+                  key={item.key}
+                  style={[
+                    styles.durationOption,
+                    { backgroundColor: isActive ? '#1DA1F2' : (isDark ? 'rgba(255,255,255,0.05)' : '#F5F5F5') },
+                  ]}
+                  onPress={() => setSelectedDuration(item.key)}
+                  activeOpacity={0.8}
+                >
+                  {item.discount && (
+                    <View style={[styles.discountBadge, { backgroundColor: isActive ? '#FFF' : '#FF6B6B' }]}>
+                      <Text style={[styles.discountBadgeText, { color: isActive ? '#1DA1F2' : '#FFF' }]}>{item.discount}</Text>
+                    </View>
+                  )}
+                  <Text style={[styles.durationLabel, { color: isActive ? '#FFF' : colors.text }]}>
+                    {item.label}
+                  </Text>
+                  <Text style={[styles.durationSublabel, { color: isActive ? 'rgba(255,255,255,0.8)' : colors.textSecondary }]}>
+                    {item.sublabel}
+                  </Text>
+                  {isActive && (
+                    <View style={styles.durationCheckmark}>
+                      <Ionicons name="checkmark-circle" size={18} color="#FFF" />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
@@ -777,25 +917,35 @@ const styles = StyleSheet.create({
   headerNavTitle: {
     fontSize: 18,
     fontFamily: FONTS.semiBold,
-    color: '#FFF',
+    fontWeight: '600',
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   heroCard: {
     marginBottom: SPACING.lg,
-    borderRadius: 20,
+    borderRadius: 16,
     overflow: 'hidden',
-    elevation: 8,
-    shadowColor: '#1DA1F2',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
+    position: 'relative',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  heroCardSvg: {
+    position: 'absolute',
+    top: -20,
+    right: -20,
+  },
+  heroCardContent: {
+    padding: 28,
+    alignItems: 'center',
   },
   heroCardGradient: {
     padding: 28,
@@ -809,7 +959,6 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
@@ -818,14 +967,12 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     fontFamily: FONTS.bold,
-    color: '#FFF',
     textAlign: 'center',
     marginBottom: 8,
   },
   heroCardSubtitle: {
     fontSize: 15,
     fontFamily: FONTS.regular,
-    color: 'rgba(255,255,255,0.9)',
     textAlign: 'center',
     lineHeight: 22,
   },
@@ -847,7 +994,6 @@ const styles = StyleSheet.create({
   currentPlanBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.2)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
@@ -856,7 +1002,6 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   currentPlanText: {
-    color: '#FFF',
     fontSize: 13,
     fontWeight: '600',
     fontFamily: FONTS.semiBold,
@@ -917,17 +1062,47 @@ const styles = StyleSheet.create({
   },
   durationSelector: {
     flexDirection: 'row',
-    borderRadius: BORDER_RADIUS.lg,
-    padding: 4,
+    borderRadius: 16,
+    padding: 8,
+    gap: 8,
   },
   durationOption: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
     alignItems: 'center',
-    borderRadius: BORDER_RADIUS.md,
+    borderRadius: 12,
+    position: 'relative',
   },
   durationOptionActive: {
     backgroundColor: '#1DA1F2',
+  },
+  durationLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+    marginBottom: 2,
+  },
+  durationSublabel: {
+    fontSize: 11,
+    fontFamily: FONTS.regular,
+  },
+  durationCheckmark: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+  },
+  discountBadge: {
+    position: 'absolute',
+    top: -8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  discountBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
   },
   durationText: {
     fontSize: 14,

@@ -18,6 +18,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Circle } from 'react-native-svg';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, FONTS } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
 import { useAppSelector } from '../../store';
@@ -365,18 +366,22 @@ export default function GoPremiumScreen() {
 
         {/* Hero Section */}
         <View style={styles.heroSection}>
-          <LinearGradient
-            colors={isDark ? ['#16A34A', '#22C55E'] : ['#16A34A', '#22C55E']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.heroGradient}
-          >
-            <View style={styles.heroIconContainer}>
-              <GoPremiumIllustration size={100} />
+          <View style={[styles.heroCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
+            <View style={styles.heroCardSvg}>
+              <Svg width="200" height="200" viewBox="0 0 200 200">
+                <Circle cx="150" cy="50" r="80" fill="#16A34A" fillOpacity={0.08} />
+                <Circle cx="180" cy="100" r="50" fill="#22C55E" fillOpacity={0.06} />
+                <Circle cx="120" cy="30" r="30" fill="#16A34A" fillOpacity={0.05} />
+              </Svg>
             </View>
-            <Text style={styles.heroTitle}>Unlock Premium Benefits</Text>
-            <Text style={styles.heroSubtitle}>Save more on every order with exclusive perks</Text>
-          </LinearGradient>
+            <View style={styles.heroContent}>
+              <View style={[styles.heroIconContainer, { backgroundColor: 'rgba(22, 163, 74, 0.1)' }]}>
+                <GoPremiumIllustration size={100} />
+              </View>
+              <Text style={[styles.heroTitle, { color: colors.text }]}>Unlock Premium Benefits</Text>
+              <Text style={[styles.heroSubtitle, { color: colors.textSecondary }]}>Save more on every order with exclusive perks</Text>
+            </View>
+          </View>
         </View>
 
         {/* Benefits Section */}
@@ -743,35 +748,42 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 20,
   },
-  heroGradient: {
-    borderRadius: 20,
+  heroCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    position: 'relative',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  heroCardSvg: {
+    position: 'absolute',
+    top: -20,
+    right: -20,
+  },
+  heroContent: {
     padding: 28,
     alignItems: 'center',
-    shadowColor: '#16A34A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 6,
   },
   heroIconContainer: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
   },
   heroTitle: {
     fontSize: 24,
-    color: '#FFFFFF',
     marginBottom: 8,
     textAlign: 'center',
     fontFamily: FONTS.bold,
   },
   heroSubtitle: {
     fontSize: 15,
-    color: 'rgba(255,255,255,0.9)',
     textAlign: 'center',
     fontFamily: FONTS.regular,
   },

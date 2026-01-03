@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useAppSelector } from '../../store';
@@ -163,6 +164,20 @@ export default function WalletScreen() {
 
         {/* Balance Card */}
         <View style={[styles.balanceCard, dynamicStyles.card]}>
+          {/* SVG Background Decoration */}
+          <View style={styles.balanceCardBackground}>
+            <Svg width={200} height={200} style={{ position: 'absolute', top: -40, right: -40 }}>
+              <Defs>
+                <SvgLinearGradient id="walletHeroGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <Stop offset="0%" stopColor="#16A34A" stopOpacity="0.15" />
+                  <Stop offset="100%" stopColor="#22C55E" stopOpacity="0.05" />
+                </SvgLinearGradient>
+              </Defs>
+              <Circle cx="100" cy="100" r="90" fill="url(#walletHeroGrad)" />
+              <Circle cx="100" cy="100" r="60" fill="url(#walletHeroGrad)" />
+              <Circle cx="100" cy="100" r="30" fill="url(#walletHeroGrad)" />
+            </Svg>
+          </View>
           <View style={styles.balanceIconContainer}>
             <WalletHeroIllustration width={32} height={32} color="#FFFFFF" />
           </View>
@@ -186,10 +201,6 @@ export default function WalletScreen() {
             <MaterialCommunityIcons name="bank-transfer" size={20} color="#FFFFFF" />
             <Text style={styles.heroTransferButtonText}>{t('wallet.transfer')}</Text>
           </TouchableOpacity>
-          <View style={styles.balanceDecoration}>
-            <View style={[styles.decorationCircle, styles.decorationCircle1]} />
-            <View style={[styles.decorationCircle, styles.decorationCircle2]} />
-          </View>
         </View>
 
         {/* Quick Actions */}
@@ -233,8 +244,20 @@ export default function WalletScreen() {
         <View style={[styles.transactionsCard, dynamicStyles.card]}>
           {transactions.length === 0 ? (
             <View style={styles.emptyState}>
-              <View style={[styles.emptyIconContainer, { backgroundColor: isDark ? colors.background : '#F3F4F6' }]}>
-                <MaterialCommunityIcons name="receipt-text-outline" size={32} color={colors.textSecondary} />
+              <View style={styles.emptyBackground}>
+                <Svg width={160} height={160}>
+                  <Defs>
+                    <SvgLinearGradient id="walletEmptyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <Stop offset="0%" stopColor="#FF9500" stopOpacity="0.15" />
+                      <Stop offset="100%" stopColor="#FFCC00" stopOpacity="0.08" />
+                    </SvgLinearGradient>
+                  </Defs>
+                  <Circle cx="80" cy="80" r="70" fill="url(#walletEmptyGrad)" />
+                  <Circle cx="80" cy="80" r="45" fill="url(#walletEmptyGrad)" />
+                </Svg>
+              </View>
+              <View style={[styles.emptyIconContainer, { backgroundColor: '#FFF3E0' }]}>
+                <MaterialCommunityIcons name="receipt-text" size={32} color="#FF9500" />
               </View>
               <Text style={[styles.emptyText, dynamicStyles.textSecondary]}>{t('wallet.noTransactions')}</Text>
               <Text style={[styles.emptySubtext, dynamicStyles.textSecondary]}>{t('wallet.transactionHistoryAppear')}</Text>
@@ -348,24 +371,39 @@ const styles = StyleSheet.create({
   balanceCard: {
     backgroundColor: '#FFFFFF',
     padding: SPACING.xl,
-    borderRadius: 16,
+    borderRadius: 20,
     marginBottom: SPACING.lg,
     overflow: 'hidden',
     position: 'relative',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
+    shadowColor: '#16A34A',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(22, 163, 74, 0.1)',
+  },
+  balanceCardBackground: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: '100%',
+    height: '100%',
+    overflow: 'hidden',
   },
   balanceIconContainer: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
+    width: 56,
+    height: 56,
+    borderRadius: 16,
     backgroundColor: '#16A34A',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: SPACING.md,
+    shadowColor: '#16A34A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   balanceInfo: {
     zIndex: 1,
@@ -385,42 +423,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#16A34A',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 14,
     marginTop: SPACING.lg,
-    gap: 8,
+    gap: 10,
     zIndex: 1,
+    shadowColor: '#16A34A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   heroTransferButtonText: {
     color: '#FFFFFF',
     fontSize: FONT_SIZES.md,
     fontFamily: FONTS.semiBold,
     fontWeight: '600',
-  },
-  balanceDecoration: {
-    position: 'absolute',
-    top: -20,
-    right: -20,
-  },
-  decorationCircle: {
-    position: 'absolute',
-    borderRadius: 100,
-    backgroundColor: '#16A34A',
-    opacity: 0.08,
-  },
-  decorationCircle1: {
-    width: 120,
-    height: 120,
-    top: 0,
-    right: 0,
-  },
-  decorationCircle2: {
-    width: 80,
-    height: 80,
-    top: 60,
-    right: 60,
-    opacity: 0.05,
   },
   actionsContainer: {
     flexDirection: 'row',
@@ -528,6 +547,13 @@ const styles = StyleSheet.create({
     padding: SPACING.xl,
     paddingVertical: SPACING.xl * 1.5,
   },
+  emptyBackground: {
+    position: 'absolute',
+    top: SPACING.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    opacity: 0.8,
+  },
   emptyIconContainer: {
     width: 64,
     height: 64,
@@ -535,6 +561,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: SPACING.md,
+    zIndex: 1,
   },
   emptyText: {
     fontSize: 16,

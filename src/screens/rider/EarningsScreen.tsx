@@ -19,6 +19,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, FONTS } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
@@ -400,40 +401,44 @@ export default function EarningsScreen() {
       >
         {/* Hero Earnings Card */}
         <View style={styles.heroSection}>
-          <LinearGradient
-            colors={isDark ? ['#047857', '#10B981'] : [COLORS.success, '#059669']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.heroGradient}
-          >
-            <View style={styles.heroIconContainer}>
-              <Ionicons name="stats-chart" size={32} color="#FFFFFF" />
+          <View style={[styles.heroCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
+            <View style={styles.heroCardSvg}>
+              <Svg width="200" height="200" viewBox="0 0 200 200">
+                <Circle cx="150" cy="50" r="80" fill={COLORS.success} fillOpacity={0.08} />
+                <Circle cx="180" cy="100" r="50" fill="#059669" fillOpacity={0.06} />
+                <Circle cx="120" cy="30" r="30" fill={COLORS.success} fillOpacity={0.05} />
+              </Svg>
             </View>
-            <Text style={styles.heroLabel}>
-              {timeFilter === 'today' ? "Today's" : 
-               timeFilter === 'week' ? "This Week's" :
-               timeFilter === 'month' ? "This Month's" : "Total"} Earnings
-            </Text>
-            <Text style={styles.heroAmount}>
-              {formatCurrency((timeFilter === 'today' ? earnings?.today :
-                 timeFilter === 'week' ? earnings?.thisWeek :
-                 timeFilter === 'month' ? earnings?.thisMonth :
-                 (earnings?.today || 0) + (earnings?.thisWeek || 0) + (earnings?.thisMonth || 0)) || 0)}
-            </Text>
-            <View style={styles.heroStatsRow}>
-              <View style={styles.heroStatItem}>
-                <Text style={styles.heroStatValue}>{formatNumber(earnings?.totalDeliveries || 0)}</Text>
-                <Text style={styles.heroStatLabel}>Deliveries</Text>
+            <View style={styles.heroContent}>
+              <View style={[styles.heroIconContainer, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
+                <Ionicons name="stats-chart" size={32} color={COLORS.success} />
               </View>
-              <View style={styles.heroStatDivider} />
-              <View style={styles.heroStatItem}>
-                <Text style={styles.heroStatValue}>
-                  {formatCurrency(earnings?.averagePerDelivery || 0)}
-                </Text>
-                <Text style={styles.heroStatLabel}>Avg/Delivery</Text>
+              <Text style={[styles.heroLabel, { color: colors.textSecondary }]}>
+                {timeFilter === 'today' ? "Today's" : 
+                 timeFilter === 'week' ? "This Week's" :
+                 timeFilter === 'month' ? "This Month's" : "Total"} Earnings
+              </Text>
+              <Text style={[styles.heroAmount, { color: COLORS.success }]}>
+                {formatCurrency((timeFilter === 'today' ? earnings?.today :
+                   timeFilter === 'week' ? earnings?.thisWeek :
+                   timeFilter === 'month' ? earnings?.thisMonth :
+                   (earnings?.today || 0) + (earnings?.thisWeek || 0) + (earnings?.thisMonth || 0)) || 0)}
+              </Text>
+              <View style={[styles.heroStatsRow, { borderTopColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
+                <View style={styles.heroStatItem}>
+                  <Text style={[styles.heroStatValue, { color: COLORS.success }]}>{formatNumber(earnings?.totalDeliveries || 0)}</Text>
+                  <Text style={[styles.heroStatLabel, { color: colors.textSecondary }]}>Deliveries</Text>
+                </View>
+                <View style={[styles.heroStatDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]} />
+                <View style={styles.heroStatItem}>
+                  <Text style={[styles.heroStatValue, { color: COLORS.success }]}>
+                    {formatCurrency(earnings?.averagePerDelivery || 0)}
+                  </Text>
+                  <Text style={[styles.heroStatLabel, { color: colors.textSecondary }]}>Avg/Delivery</Text>
+                </View>
               </View>
             </View>
-          </LinearGradient>
+          </View>
         </View>
 
         {/* Performance Summary Button */}
@@ -587,8 +592,29 @@ export default function EarningsScreen() {
               </TouchableOpacity>
             ))
           ) : (
-            <View style={[styles.emptyState, { backgroundColor: isDark ? colors.card : COLORS.surface }]}>
-              <Ionicons name="clipboard-outline" size={48} color={COLORS.gray} />
+            <View style={[
+              styles.emptyState, 
+              { 
+                backgroundColor: isDark ? colors.card : '#FFFFFF',
+                borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+              }
+            ]}>
+              {/* SVG Background */}
+              <View style={styles.emptyBackground}>
+                <Svg width={180} height={180}>
+                  <Defs>
+                    <SvgLinearGradient id="emptyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <Stop offset="0%" stopColor="#FF9500" stopOpacity="0.15" />
+                      <Stop offset="100%" stopColor="#FFCC00" stopOpacity="0.08" />
+                    </SvgLinearGradient>
+                  </Defs>
+                  <Circle cx="90" cy="90" r="80" fill="url(#emptyGrad)" />
+                  <Circle cx="90" cy="90" r="50" fill="url(#emptyGrad)" />
+                </Svg>
+              </View>
+              <View style={[styles.emptyIconContainer, { backgroundColor: '#FFF3E0' }]}>
+                <Ionicons name="clipboard" size={36} color="#FF9500" />
+              </View>
               <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No recent deliveries</Text>
             </View>
           )}
@@ -629,11 +655,16 @@ export default function EarningsScreen() {
             </View>
 
             {/* Sheet Header */}
-            <View style={styles.sheetHeader}>
-              <Text style={[styles.sheetTitle, { color: colors.text }]}>Performance & Goals</Text>
+            <View style={[styles.sheetHeader, { borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
+              <View style={styles.sheetHeaderLeft}>
+                <View style={[styles.sheetHeaderIcon, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
+                  <Ionicons name="trophy" size={20} color="#3B82F6" />
+                </View>
+                <Text style={[styles.sheetTitle, { color: colors.text }]}>Performance & Goals</Text>
+              </View>
               <TouchableOpacity 
                 onPress={() => setShowPerformanceSheet(false)}
-                style={styles.sheetCloseButton}
+                style={[styles.sheetCloseButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}
               >
                 <Ionicons name="close" size={24} color={colors.textSecondary} />
               </TouchableOpacity>
@@ -642,125 +673,165 @@ export default function EarningsScreen() {
             <ScrollView showsVerticalScrollIndicator={false} style={styles.sheetContent}>
               {/* Daily Goal Section */}
               <View style={styles.sheetSection}>
-                <View style={styles.sheetSectionHeader}>
-                  <Ionicons name="trophy" size={20} color="#FF9500" />
-                  <Text style={[styles.sheetSectionTitle, { color: colors.text }]}>Daily Goal</Text>
-                  <TouchableOpacity 
-                    onPress={() => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      setGoalInput(String(earnings?.dailyGoal || 5000));
-                      setIsEditingGoal(true);
-                    }}
-                    style={styles.editGoalButton}
-                  >
-                    <Ionicons name="pencil" size={16} color={COLORS.primary} />
-                    <Text style={styles.editGoalText}>Edit</Text>
-                  </TouchableOpacity>
-                </View>
-
-                {/* Edit Goal Modal */}
-                {isEditingGoal && (
-                  <View style={[styles.editGoalCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#FEF3C7' }]}>
-                    <Text style={[styles.editGoalLabel, { color: colors.text }]}>Set your daily earning target</Text>
-                    <View style={styles.editGoalInputRow}>
-                      <Text style={[styles.editGoalCurrency, { color: colors.text }]}>₦</Text>
-                      <TextInput
-                        style={[styles.editGoalInput, { color: colors.text, borderColor: isDark ? 'rgba(255,255,255,0.2)' : '#E5E7EB' }]}
-                        value={goalInput}
-                        onChangeText={setGoalInput}
-                        keyboardType="numeric"
-                        placeholder="5000"
-                        placeholderTextColor={colors.textSecondary}
-                        autoFocus
-                      />
-                    </View>
-                    <Text style={[styles.editGoalHint, { color: colors.textSecondary }]}>Min: ₦1,000 • Max: ₦100,000</Text>
-                    <View style={styles.editGoalActions}>
+                <View style={[styles.goalCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
+                  <View style={styles.goalCardSvg}>
+                    <Svg width="160" height="160" viewBox="0 0 160 160">
+                      <Circle cx="120" cy="40" r="60" fill="#FF9500" fillOpacity={0.08} />
+                      <Circle cx="140" cy="80" r="40" fill="#F97316" fillOpacity={0.06} />
+                      <Circle cx="100" cy="20" r="25" fill="#FF9500" fillOpacity={0.05} />
+                    </Svg>
+                  </View>
+                  
+                  <View style={styles.goalCardContent}>
+                    <View style={styles.goalCardHeader}>
+                      <View style={styles.goalCardTitleRow}>
+                        <View style={[styles.goalIconBg, { backgroundColor: 'rgba(255, 149, 0, 0.1)' }]}>
+                          <Ionicons name="trophy" size={22} color="#FF9500" />
+                        </View>
+                        <View>
+                          <Text style={[styles.goalCardTitle, { color: colors.text }]}>Daily Goal</Text>
+                          <Text style={[styles.goalCardSubtitle, { color: colors.textSecondary }]}>Track your earnings target</Text>
+                        </View>
+                      </View>
                       <TouchableOpacity 
                         onPress={() => {
-                          setIsEditingGoal(false);
-                          setGoalInput('');
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          setGoalInput(String(earnings?.dailyGoal || 5000));
+                          setIsEditingGoal(true);
                         }}
-                        style={[styles.editGoalBtn, styles.editGoalCancelBtn]}
+                        style={[styles.editGoalButton, { backgroundColor: 'rgba(34, 197, 94, 0.1)' }]}
                       >
-                        <Text style={styles.editGoalCancelText}>Cancel</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity 
-                        onPress={handleSaveGoal}
-                        style={[styles.editGoalBtn, styles.editGoalSaveBtn]}
-                        disabled={updateGoalMutation.isPending}
-                      >
-                        {updateGoalMutation.isPending ? (
-                          <Text style={styles.editGoalSaveText}>Saving...</Text>
-                        ) : (
-                          <Text style={styles.editGoalSaveText}>Save Goal</Text>
-                        )}
+                        <Ionicons name="pencil" size={14} color={COLORS.primary} />
+                        <Text style={[styles.editGoalText, { color: COLORS.primary }]}>Edit</Text>
                       </TouchableOpacity>
                     </View>
-                  </View>
-                )}
 
-                <View style={[styles.dailyGoalWrapper, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F0FDF4' }]}>
-                  <View style={styles.dailyGoalHeader}>
-                    <View style={styles.dailyGoalTitleRow}>
-                      <Ionicons name="flag" size={20} color={(earnings?.today || 0) >= (earnings?.dailyGoal || 5000) ? '#10B981' : COLORS.primary} />
-                      <Text style={[styles.dailyGoalTitleText, { color: colors.text }]}>Progress</Text>
-                    </View>
-                    {(earnings?.today || 0) >= (earnings?.dailyGoal || 5000) && (
-                      <View style={styles.dailyGoalCompletedBadge}>
-                        <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                        <Text style={styles.dailyGoalCompletedText}>Completed!</Text>
+                    {/* Edit Goal Modal */}
+                    {isEditingGoal && (
+                      <View style={[styles.editGoalCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#FEF3C7', borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#FCD34D' }]}>
+                        <View style={styles.editGoalLabelRow}>
+                          <Ionicons name="cash-outline" size={18} color="#F59E0B" />
+                          <Text style={[styles.editGoalLabel, { color: colors.text }]}>Set your daily earning target</Text>
+                        </View>
+                        <View style={styles.editGoalInputRow}>
+                          <Text style={[styles.editGoalCurrency, { color: colors.text }]}>₦</Text>
+                          <TextInput
+                            style={[styles.editGoalInput, { color: colors.text, borderColor: isDark ? 'rgba(255,255,255,0.2)' : '#E5E7EB', backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#FFFFFF' }]}
+                            value={goalInput}
+                            onChangeText={setGoalInput}
+                            keyboardType="numeric"
+                            placeholder="5000"
+                            placeholderTextColor={colors.textSecondary}
+                            autoFocus
+                          />
+                        </View>
+                        <View style={styles.editGoalHintRow}>
+                          <Ionicons name="information-circle-outline" size={12} color={colors.textSecondary} />
+                          <Text style={[styles.editGoalHint, { color: colors.textSecondary }]}>Min: ₦1,000 • Max: ₦100,000</Text>
+                        </View>
+                        <View style={styles.editGoalActions}>
+                          <TouchableOpacity 
+                            onPress={() => {
+                              setIsEditingGoal(false);
+                              setGoalInput('');
+                            }}
+                            style={[styles.editGoalBtn, styles.editGoalCancelBtn, { borderColor: isDark ? 'rgba(255,255,255,0.2)' : '#E5E7EB' }]}
+                          >
+                            <Text style={[styles.editGoalCancelText, { color: colors.textSecondary }]}>Cancel</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity 
+                            onPress={handleSaveGoal}
+                            style={[styles.editGoalBtn, styles.editGoalSaveBtn]}
+                            disabled={updateGoalMutation.isPending}
+                          >
+                            {updateGoalMutation.isPending ? (
+                              <Text style={styles.editGoalSaveText}>Saving...</Text>
+                            ) : (
+                              <>
+                                <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                                <Text style={styles.editGoalSaveText}>Save Goal</Text>
+                              </>
+                            )}
+                          </TouchableOpacity>
+                        </View>
                       </View>
                     )}
+
+                    {/* Progress Section */}
+                    <View style={styles.goalProgressSection}>
+                      <View style={styles.goalProgressHeader}>
+                        <View style={styles.goalAmountsRow}>
+                          <Text style={[styles.goalCurrentAmount, { color: COLORS.primary }]}>{formatCurrency(earnings?.today || 0)}</Text>
+                          <Text style={[styles.goalTargetAmount, { color: colors.textSecondary }]}>/ {formatCurrency(earnings?.dailyGoal || 5000)}</Text>
+                        </View>
+                        {(earnings?.today || 0) >= (earnings?.dailyGoal || 5000) && (
+                          <View style={styles.goalCompletedBadge}>
+                            <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+                            <Text style={styles.goalCompletedText}>Completed!</Text>
+                          </View>
+                        )}
+                      </View>
+                      
+                      <View style={[styles.goalProgressBarBg, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }]}>
+                        <View 
+                          style={[
+                            styles.goalProgressBarFill, 
+                            { 
+                              width: `${Math.min(((earnings?.today || 0) / (earnings?.dailyGoal || 5000)) * 100, 100)}%`,
+                              backgroundColor: (earnings?.today || 0) >= (earnings?.dailyGoal || 5000) ? '#10B981' : COLORS.primary,
+                            }
+                          ]} 
+                        />
+                      </View>
+                      
+                      <View style={styles.goalProgressTextRow}>
+                        <Text style={[styles.goalProgressText, { color: colors.textSecondary }]}>
+                          {Math.round(((earnings?.today || 0) / (earnings?.dailyGoal || 5000)) * 100)}% achieved
+                        </Text>
+                        {(earnings?.today || 0) >= (earnings?.dailyGoal || 5000) ? (
+                          <Text style={styles.goalCelebrationText}>🎉 Great job!</Text>
+                        ) : (
+                          <Text style={[styles.goalRemainingText, { color: colors.textSecondary }]}>
+                            {formatCurrency((earnings?.dailyGoal || 5000) - (earnings?.today || 0))} to go
+                          </Text>
+                        )}
+                      </View>
+                    </View>
                   </View>
-                  
-                  <View style={styles.dailyGoalAmounts}>
-                    <Text style={[styles.dailyGoalCurrent, { color: colors.text }]}>{formatCurrency(earnings?.today || 0)}</Text>
-                    <Text style={[styles.dailyGoalTarget, { color: colors.textSecondary }]}>/ {formatCurrency(earnings?.dailyGoal || 5000)}</Text>
-                  </View>
-                  
-                  <View style={styles.dailyGoalBarBg}>
-                    <View 
-                      style={[
-                        styles.dailyGoalBarFill, 
-                        { 
-                          width: `${Math.min(((earnings?.today || 0) / (earnings?.dailyGoal || 5000)) * 100, 100)}%`,
-                          backgroundColor: (earnings?.today || 0) >= (earnings?.dailyGoal || 5000) ? '#10B981' : COLORS.primary,
-                        }
-                      ]} 
-                    />
-                  </View>
-                  
-                  <Text style={[styles.dailyGoalProgressText, { color: colors.textSecondary }]}>
-                    {(earnings?.today || 0) >= (earnings?.dailyGoal || 5000) 
-                      ? '🎉 Great job! You reached your daily goal!' 
-                      : `${Math.round(((earnings?.today || 0) / (earnings?.dailyGoal || 5000)) * 100)}% of daily goal`}
-                  </Text>
                 </View>
               </View>
 
               {/* Performance Metrics Section */}
               <View style={styles.sheetSection}>
                 <View style={styles.sheetSectionHeader}>
-                  <Ionicons name="stats-chart" size={20} color="#3B82F6" />
+                  <View style={[styles.sectionHeaderIcon, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
+                    <Ionicons name="stats-chart" size={18} color="#3B82F6" />
+                  </View>
                   <Text style={[styles.sheetSectionTitle, { color: colors.text }]}>Performance Metrics</Text>
                 </View>
                 
                 {/* Rating Card */}
-                <View style={[styles.metricCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F8FAFC' }]}>
-                  <View style={styles.metricIconContainer}>
-                    <LinearGradient
-                      colors={['#10B981', '#059669']}
-                      style={styles.metricIconGradient}
-                    >
-                      <Ionicons name="star" size={24} color="#FFFFFF" />
-                    </LinearGradient>
+                <View style={[styles.metricCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
+                  <View style={[styles.metricIconContainer, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
+                    <Ionicons name="star" size={24} color="#10B981" />
                   </View>
                   <View style={styles.metricInfo}>
                     <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Your Rating</Text>
-                    <Text style={[styles.metricValue, { color: colors.text }]}>{(earnings?.rating || 4.8).toFixed(1)}</Text>
+                    <View style={styles.metricValueRow}>
+                      <Text style={[styles.metricValue, { color: colors.text }]}>{(earnings?.rating || 4.8).toFixed(1)}</Text>
+                      <View style={styles.metricStars}>
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Ionicons 
+                            key={star} 
+                            name={star <= Math.floor(earnings?.rating || 4.8) ? 'star' : 'star-outline'} 
+                            size={12} 
+                            color="#F59E0B" 
+                          />
+                        ))}
+                      </View>
+                    </View>
                     <Text style={[styles.metricDesc, { color: colors.textSecondary }]}>
-                      {(earnings?.rating || 4.8) >= 4.5 ? 'Excellent! Keep it up' : 'Room for improvement'}
+                      {(earnings?.rating || 4.8) >= 4.5 ? '⭐ Excellent! Keep it up' : '📈 Room for improvement'}
                     </Text>
                   </View>
                   <View style={[styles.metricBadge, { backgroundColor: (earnings?.rating || 4.8) >= 4.5 ? '#10B98115' : '#F59E0B15' }]}>
@@ -771,20 +842,20 @@ export default function EarningsScreen() {
                 </View>
 
                 {/* Completion Rate Card */}
-                <View style={[styles.metricCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F8FAFC' }]}>
-                  <View style={styles.metricIconContainer}>
-                    <LinearGradient
-                      colors={['#3B82F6', '#2563EB']}
-                      style={styles.metricIconGradient}
-                    >
-                      <Ionicons name="checkmark-circle" size={24} color="#FFFFFF" />
-                    </LinearGradient>
+                <View style={[styles.metricCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
+                  <View style={[styles.metricIconContainer, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
+                    <Ionicons name="checkmark-done-circle" size={24} color="#3B82F6" />
                   </View>
                   <View style={styles.metricInfo}>
                     <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Completion Rate</Text>
-                    <Text style={[styles.metricValue, { color: colors.text }]}>{earnings?.completionRate || 95}%</Text>
+                    <View style={styles.metricValueRow}>
+                      <Text style={[styles.metricValue, { color: colors.text }]}>{earnings?.completionRate || 95}%</Text>
+                      <View style={[styles.miniProgressBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }]}>
+                        <View style={[styles.miniProgressFill, { width: `${earnings?.completionRate || 95}%`, backgroundColor: '#3B82F6' }]} />
+                      </View>
+                    </View>
                     <Text style={[styles.metricDesc, { color: colors.textSecondary }]}>
-                      {(earnings?.completionRate || 95) >= 95 ? 'Outstanding reliability' : 'Try to complete more orders'}
+                      {(earnings?.completionRate || 95) >= 95 ? '✅ Outstanding reliability' : '📊 Try to complete more orders'}
                     </Text>
                   </View>
                   <View style={[styles.metricBadge, { backgroundColor: (earnings?.completionRate || 95) >= 95 ? '#3B82F615' : '#F59E0B15' }]}>
@@ -795,47 +866,92 @@ export default function EarningsScreen() {
                 </View>
 
                 {/* Streak Card */}
-                <View style={[styles.metricCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F8FAFC' }]}>
-                  <View style={styles.metricIconContainer}>
-                    <LinearGradient
-                      colors={['#FF9500', '#F97316']}
-                      style={styles.metricIconGradient}
-                    >
-                      <Ionicons name="flame" size={24} color="#FFFFFF" />
-                    </LinearGradient>
+                <View style={[styles.metricCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
+                  <View style={[styles.metricIconContainer, { backgroundColor: 'rgba(255, 149, 0, 0.1)' }]}>
+                    <Ionicons name="flame" size={24} color="#FF9500" />
                   </View>
                   <View style={styles.metricInfo}>
                     <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Day Streak</Text>
-                    <Text style={[styles.metricValue, { color: colors.text }]}>{earnings?.streakDays || 0} days</Text>
+                    <View style={styles.metricValueRow}>
+                      <Text style={[styles.metricValue, { color: colors.text }]}>{earnings?.streakDays || 0}</Text>
+                      <Text style={[styles.metricValueUnit, { color: colors.textSecondary }]}>days</Text>
+                      {(earnings?.streakDays || 0) >= 3 && (
+                        <View style={styles.streakFlames}>
+                          {Array(Math.min(earnings?.streakDays || 0, 7)).fill(0).map((_, i) => (
+                            <Text key={i} style={styles.streakFlame}>🔥</Text>
+                          ))}
+                        </View>
+                      )}
+                    </View>
                     <Text style={[styles.metricDesc, { color: colors.textSecondary }]}>
-                      {(earnings?.streakDays || 0) >= 7 ? 'Amazing consistency!' : 'Keep delivering daily'}
+                      {(earnings?.streakDays || 0) >= 7 ? '🏆 Amazing consistency!' : '💪 Keep delivering daily'}
                     </Text>
                   </View>
                   {(earnings?.streakDays || 0) >= 3 && (
                     <View style={[styles.metricBadge, { backgroundColor: '#FF950015' }]}>
                       <Text style={[styles.metricBadgeText, { color: '#FF9500' }]}>
-                        🔥 On Fire
+                        On Fire
                       </Text>
                     </View>
                   )}
                 </View>
+
+                {/* Deliveries Today Card */}
+                <View style={[styles.metricCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
+                  <View style={[styles.metricIconContainer, { backgroundColor: 'rgba(139, 92, 246, 0.1)' }]}>
+                    <Ionicons name="bicycle" size={24} color="#8B5CF6" />
+                  </View>
+                  <View style={styles.metricInfo}>
+                    <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Total Deliveries</Text>
+                    <View style={styles.metricValueRow}>
+                      <Text style={[styles.metricValue, { color: colors.text }]}>{formatNumber(earnings?.totalDeliveries || 0)}</Text>
+                    </View>
+                    <Text style={[styles.metricDesc, { color: colors.textSecondary }]}>
+                      Avg. {formatCurrency(earnings?.averagePerDelivery || 0)}/delivery
+                    </Text>
+                  </View>
+                  <View style={[styles.metricBadge, { backgroundColor: '#8B5CF615' }]}>
+                    <Text style={[styles.metricBadgeText, { color: '#8B5CF6' }]}>
+                      {(earnings?.totalDeliveries || 0) >= 100 ? 'Pro' : 'Active'}
+                    </Text>
+                  </View>
+                </View>
               </View>
 
               {/* Tips Section */}
-              <View style={[styles.sheetTipsCard, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : '#ECFDF5' }]}>
+              <View style={[styles.sheetTipsCard, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.08)' : '#ECFDF5', borderColor: isDark ? 'rgba(16, 185, 129, 0.2)' : 'rgba(16, 185, 129, 0.3)' }]}>
                 <View style={styles.sheetTipsHeader}>
-                  <Ionicons name="bulb" size={18} color="#10B981" />
-                  <Text style={[styles.sheetTipsTitle, { color: '#10B981' }]}>Pro Tips</Text>
+                  <View style={[styles.tipIconBg, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+                    <Ionicons name="bulb" size={18} color="#10B981" />
+                  </View>
+                  <Text style={[styles.sheetTipsTitle, { color: '#10B981' }]}>Pro Tips to Earn More</Text>
                 </View>
-                <Text style={[styles.sheetTipText, { color: colors.text }]}>
-                  • Maintain 4.5+ rating for priority job access
-                </Text>
-                <Text style={[styles.sheetTipText, { color: colors.text }]}>
-                  • 7+ day streaks unlock bonus rewards
-                </Text>
-                <Text style={[styles.sheetTipText, { color: colors.text }]}>
-                  • High completion rate = more job offers
-                </Text>
+                <View style={styles.tipsList}>
+                  <View style={styles.tipItem}>
+                    <Text style={styles.tipBullet}>⭐</Text>
+                    <Text style={[styles.sheetTipText, { color: colors.text }]}>
+                      Maintain 4.5+ rating for priority job access
+                    </Text>
+                  </View>
+                  <View style={styles.tipItem}>
+                    <Text style={styles.tipBullet}>🔥</Text>
+                    <Text style={[styles.sheetTipText, { color: colors.text }]}>
+                      7+ day streaks unlock bonus rewards
+                    </Text>
+                  </View>
+                  <View style={styles.tipItem}>
+                    <Text style={styles.tipBullet}>✅</Text>
+                    <Text style={[styles.sheetTipText, { color: colors.text }]}>
+                      High completion rate = more job offers
+                    </Text>
+                  </View>
+                  <View style={styles.tipItem}>
+                    <Text style={styles.tipBullet}>📍</Text>
+                    <Text style={[styles.sheetTipText, { color: colors.text }]}>
+                      Position yourself in high-demand areas
+                    </Text>
+                  </View>
+                </View>
               </View>
 
               <View style={{ height: 40 }} />
@@ -883,8 +999,23 @@ const styles = StyleSheet.create({
     paddingTop: SPACING.xs,
     marginBottom: SPACING.md,
   },
-  heroGradient: {
-    borderRadius: BORDER_RADIUS.xl,
+  heroCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    position: 'relative',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  heroCardSvg: {
+    position: 'absolute',
+    top: -20,
+    right: -20,
+  },
+  heroContent: {
     padding: SPACING.lg,
     alignItems: 'center',
   },
@@ -892,7 +1023,6 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: SPACING.sm,
@@ -900,13 +1030,11 @@ const styles = StyleSheet.create({
   heroLabel: {
     fontSize: FONT_SIZES.md,
     fontFamily: FONTS.regular,
-    color: 'rgba(255, 255, 255, 0.9)',
   },
   heroAmount: {
     fontSize: 40,
     fontWeight: '700',
     fontFamily: FONTS.bold,
-    color: '#FFFFFF',
     marginVertical: SPACING.sm,
   },
   heroStatsRow: {
@@ -915,7 +1043,6 @@ const styles = StyleSheet.create({
     marginTop: SPACING.md,
     paddingTop: SPACING.md,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.2)',
   },
   heroStatItem: {
     flex: 1,
@@ -925,18 +1052,15 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.lg,
     fontWeight: '700',
     fontFamily: FONTS.bold,
-    color: '#FFFFFF',
   },
   heroStatLabel: {
     fontSize: FONT_SIZES.sm,
     fontFamily: FONTS.regular,
-    color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 2,
   },
   heroStatDivider: {
     width: 1,
     height: 30,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     marginHorizontal: SPACING.md,
   },
   filterContainer: {
@@ -1150,8 +1274,21 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     paddingVertical: SPACING.xl,
-    backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.xl,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    ...SHADOWS.small,
+  },
+  emptyBackground: {
+    position: 'absolute',
+    opacity: 0.8,
+  },
+  emptyIconContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
   },
   emptyIcon: {
     fontSize: 48,
@@ -1375,6 +1512,18 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,0,0,0.1)',
   },
+  sheetHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+  },
+  sheetHeaderIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   sheetTitle: {
     fontSize: FONT_SIZES.xl,
     fontWeight: '700',
@@ -1384,7 +1533,13 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(0,0,0,0.05)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sectionHeaderIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1412,16 +1567,15 @@ const styles = StyleSheet.create({
     padding: SPACING.md,
     borderRadius: BORDER_RADIUS.lg,
     marginBottom: SPACING.sm,
+    borderWidth: 1,
   },
   metricIconContainer: {
-    marginRight: SPACING.md,
-  },
-  metricIconGradient: {
     width: 48,
     height: 48,
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: SPACING.md,
   },
   metricInfo: {
     flex: 1,
@@ -1435,6 +1589,37 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.xl,
     fontWeight: '700',
     fontFamily: FONTS.bold,
+  },
+  metricValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+  },
+  metricValueUnit: {
+    fontSize: FONT_SIZES.md,
+    fontFamily: FONTS.regular,
+  },
+  metricStars: {
+    flexDirection: 'row',
+    gap: 2,
+  },
+  miniProgressBar: {
+    flex: 1,
+    height: 6,
+    borderRadius: 3,
+    maxWidth: 80,
+  },
+  miniProgressFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  streakFlames: {
+    flexDirection: 'row',
+    marginLeft: SPACING.xs,
+  },
+  streakFlame: {
+    fontSize: 12,
+    marginLeft: -4,
   },
   metricDesc: {
     fontSize: FONT_SIZES.xs,
@@ -1455,45 +1640,114 @@ const styles = StyleSheet.create({
     padding: SPACING.md,
     borderRadius: BORDER_RADIUS.lg,
     marginBottom: SPACING.md,
+    borderWidth: 1,
   },
   sheetTipsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.xs,
-    marginBottom: SPACING.sm,
+    gap: SPACING.sm,
+    marginBottom: SPACING.md,
+  },
+  tipIconBg: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   sheetTipsTitle: {
     fontSize: FONT_SIZES.md,
     fontWeight: '600',
     fontFamily: FONTS.semiBold,
   },
+  tipsList: {
+    gap: SPACING.sm,
+  },
+  tipItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: SPACING.sm,
+  },
+  tipBullet: {
+    fontSize: 14,
+    lineHeight: 22,
+  },
   sheetTipText: {
+    flex: 1,
     fontSize: FONT_SIZES.sm,
     fontFamily: FONTS.regular,
     lineHeight: 22,
   },
-  // Daily Goal Wrapper Styles (for bottom sheet)
-  dailyGoalWrapper: {
+  // Goal Card Styles (enhanced)
+  goalCard: {
     borderRadius: BORDER_RADIUS.xl,
-    padding: SPACING.md,
+    padding: SPACING.lg,
+    overflow: 'hidden',
+    position: 'relative' as const,
+    borderWidth: 1,
   },
-  dailyGoalHeader: {
+  goalCardSvg: {
+    position: 'absolute' as const,
+    top: 0,
+    right: 0,
+    opacity: 1,
+  },
+  goalCardContent: {
+    position: 'relative' as const,
+    zIndex: 1,
+  },
+  goalCardHeader: {
     flexDirection: 'row',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: SPACING.md,
   },
-  dailyGoalTitleRow: {
+  goalCardTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.xs,
+    gap: SPACING.sm,
   },
-  dailyGoalTitleText: {
-    fontSize: FONT_SIZES.md,
+  goalIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  goalCardTitle: {
+    fontSize: FONT_SIZES.lg,
     fontWeight: '700',
     fontFamily: FONTS.bold,
   },
-  dailyGoalCompletedBadge: {
+  goalCardSubtitle: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: FONTS.regular,
+    marginTop: 2,
+  },
+  goalProgressSection: {
+    marginTop: SPACING.sm,
+  },
+  goalProgressHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: SPACING.sm,
+  },
+  goalAmountsRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  goalCurrentAmount: {
+    fontSize: 28,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
+  },
+  goalTargetAmount: {
+    fontSize: FONT_SIZES.md,
+    fontFamily: FONTS.regular,
+    marginLeft: 4,
+  },
+  goalCompletedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(16, 185, 129, 0.1)',
@@ -1502,70 +1756,71 @@ const styles = StyleSheet.create({
     borderRadius: BORDER_RADIUS.round,
     gap: 4,
   },
-  dailyGoalCompletedText: {
+  goalCompletedText: {
     fontSize: FONT_SIZES.xs,
     fontWeight: '600',
     fontFamily: FONTS.semiBold,
     color: '#10B981',
   },
-  dailyGoalAmounts: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 4,
-    marginBottom: SPACING.sm,
-  },
-  dailyGoalCurrent: {
-    fontSize: FONT_SIZES.xxl,
-    fontWeight: '700',
-    fontFamily: FONTS.bold,
-  },
-  dailyGoalTarget: {
-    fontSize: FONT_SIZES.md,
-    fontFamily: FONTS.regular,
-  },
-  dailyGoalBarBg: {
-    height: 10,
-    backgroundColor: 'rgba(0,0,0,0.1)',
-    borderRadius: 5,
+  goalProgressBarBg: {
+    height: 12,
+    borderRadius: 6,
     overflow: 'hidden',
-    marginBottom: SPACING.xs,
   },
-  dailyGoalBarFill: {
+  goalProgressBarFill: {
     height: '100%',
-    borderRadius: 5,
+    borderRadius: 6,
   },
-  dailyGoalProgressText: {
+  goalProgressTextRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: SPACING.xs,
+  },
+  goalProgressText: {
     fontSize: FONT_SIZES.sm,
     fontFamily: FONTS.regular,
-    marginTop: 4,
+  },
+  goalRemainingText: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: FONTS.regular,
+  },
+  goalCelebrationText: {
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+    color: '#10B981',
   },
   // Edit Goal Styles
   editGoalButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginLeft: 'auto',
     paddingHorizontal: SPACING.sm,
-    paddingVertical: 4,
+    paddingVertical: 6,
     borderRadius: BORDER_RADIUS.md,
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
   },
   editGoalText: {
     fontSize: FONT_SIZES.sm,
     fontWeight: '600',
     fontFamily: FONTS.semiBold,
-    color: COLORS.primary,
   },
   editGoalCard: {
     padding: SPACING.md,
     borderRadius: BORDER_RADIUS.lg,
-    marginBottom: SPACING.md,
+    marginTop: SPACING.sm,
+    borderWidth: 1,
+  },
+  editGoalLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+    marginBottom: SPACING.sm,
   },
   editGoalLabel: {
     fontSize: FONT_SIZES.md,
     fontWeight: '600',
     fontFamily: FONTS.semiBold,
-    marginBottom: SPACING.sm,
   },
   editGoalInputRow: {
     flexDirection: 'row',
@@ -1588,29 +1843,38 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm,
   },
+  editGoalHintRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: SPACING.md,
+  },
   editGoalHint: {
     fontSize: FONT_SIZES.xs,
     fontFamily: FONTS.regular,
-    marginBottom: SPACING.md,
   },
   editGoalActions: {
     flexDirection: 'row',
     gap: SPACING.sm,
+    marginTop: SPACING.sm,
   },
   editGoalBtn: {
     flex: 1,
+    flexDirection: 'row',
     paddingVertical: SPACING.sm,
     borderRadius: BORDER_RADIUS.md,
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
   },
   editGoalCancelBtn: {
-    backgroundColor: 'rgba(0,0,0,0.1)',
+    backgroundColor: 'transparent',
+    borderWidth: 1,
   },
   editGoalCancelText: {
     fontSize: FONT_SIZES.md,
     fontWeight: '600',
     fontFamily: FONTS.semiBold,
-    color: '#6B7280',
   },
   editGoalSaveBtn: {
     backgroundColor: COLORS.primary,

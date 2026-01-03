@@ -14,6 +14,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Circle } from 'react-native-svg';
 import { COLORS, SPACING, FONT_SIZES, FONTS } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
 import { BuyerStackParamList } from '../../types';
@@ -298,23 +299,27 @@ export default function GoPremiumLearnMoreScreen() {
 
         {/* Hero Section */}
         <View style={styles.heroSection}>
-          <LinearGradient
-            colors={isDark ? ['#F57C00', '#FFB74D'] : ['#F57C00', '#FFB74D']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.heroGradient}
-          >
-            <Animated.View 
-              style={[
-                styles.heroIconContainer,
-                { transform: [{ scale: scaleAnim }] }
-              ]}
-            >
-              <GoPremiumIllustration size={100} />
-            </Animated.View>
-            <Text style={styles.heroTitle}>Unlock Premium Benefits</Text>
-            <Text style={styles.heroSubtitle}>Save more on every order with exclusive perks</Text>
-          </LinearGradient>
+          <View style={[styles.heroCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
+            <View style={styles.heroCardSvg}>
+              <Svg width="200" height="200" viewBox="0 0 200 200">
+                <Circle cx="150" cy="50" r="80" fill="#F57C00" fillOpacity={0.08} />
+                <Circle cx="180" cy="100" r="50" fill="#FFB74D" fillOpacity={0.06} />
+                <Circle cx="120" cy="30" r="30" fill="#F57C00" fillOpacity={0.05} />
+              </Svg>
+            </View>
+            <View style={styles.heroContent}>
+              <Animated.View 
+                style={[
+                  styles.heroIconContainer,
+                  { transform: [{ scale: scaleAnim }] }
+                ]}
+              >
+                <GoPremiumIllustration size={100} />
+              </Animated.View>
+              <Text style={[styles.heroTitle, { color: colors.text }]}>Unlock Premium Benefits</Text>
+              <Text style={[styles.heroSubtitle, { color: colors.textSecondary }]}>Save more on every order with exclusive perks</Text>
+            </View>
+          </View>
         </View>
 
         {/* Intro Section */}
@@ -541,8 +546,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 24,
   },
-  heroGradient: {
-    borderRadius: 20,
+  heroCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    position: 'relative',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  heroCardSvg: {
+    position: 'absolute',
+    top: -20,
+    right: -20,
+  },
+  heroContent: {
     padding: 24,
     alignItems: 'center',
   },
@@ -552,14 +572,12 @@ const styles = StyleSheet.create({
   heroTitle: {
     fontSize: 20,
     fontFamily: FONTS.bold,
-    color: '#FFF',
     textAlign: 'center',
     marginBottom: 6,
   },
   heroSubtitle: {
     fontSize: 14,
     fontFamily: FONTS.regular,
-    color: 'rgba(255,255,255,0.9)',
     textAlign: 'center',
   },
   section: {

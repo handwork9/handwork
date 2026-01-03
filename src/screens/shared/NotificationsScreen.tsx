@@ -273,9 +273,11 @@ export function NotificationsScreen() {
         ]}
         ListEmptyComponent={
           <EmptyState
-            icon={<Ionicons name="notifications-off-outline" size={64} color={colors.textSecondary} />}
+            icon={<Ionicons name="notifications" size={40} color="#FF9500" />}
             title="No notifications"
             description="You're all caught up! New notifications will appear here."
+            iconBackgroundColor="#FFF3E0"
+            gradientColors={['#FF9500', '#FFCC00']}
           />
         }
         refreshControl={

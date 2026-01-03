@@ -17,7 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, FONTS } from '../../constants/theme';
+import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, FONTS, SHADOWS } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
 import { socialService } from '../../services/socialService';
 import { uploadService } from '../../services/uploadService';
@@ -186,32 +186,47 @@ const CreatePostScreen = () => {
         >
           {/* Content Section */}
           <View style={styles.section}>
-            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
-              What's happening on your farm?
-            </Text>
-            <TextInput
-              style={[
-                styles.contentInput,
-                { 
-                  backgroundColor: isDark ? '#1a1a1a' : '#f5f5f5',
-                  color: colors.text,
-                },
-              ]}
-              multiline
-              numberOfLines={6}
-              placeholder="Share updates, tips, or showcase your products..."
-              placeholderTextColor={colors.textSecondary}
-              value={content}
-              onChangeText={setContent}
-              textAlignVertical="top"
-            />
+            <View style={styles.sectionHeader}>
+              <View style={[styles.sectionIconContainer, { backgroundColor: '#E8F5E9' }]}>
+                <Ionicons name="create" size={16} color="#4CAF50" />
+              </View>
+              <Text style={[styles.sectionLabel, { color: colors.text }]}>
+                What's happening on your farm?
+              </Text>
+            </View>
+            <View style={[
+              styles.card,
+              { 
+                backgroundColor: isDark ? colors.card : '#FFFFFF',
+                borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+              }
+            ]}>
+              <TextInput
+                style={[
+                  styles.contentInput,
+                  { color: colors.text }
+                ]}
+                multiline
+                numberOfLines={6}
+                placeholder="Share updates, tips, or showcase your products..."
+                placeholderTextColor={colors.textSecondary}
+                value={content}
+                onChangeText={setContent}
+                textAlignVertical="top"
+              />
+            </View>
           </View>
 
           {/* Images Section */}
           <View style={styles.section}>
-            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
-              Photos ({images.length}/{MAX_IMAGES})
-            </Text>
+            <View style={styles.sectionHeader}>
+              <View style={[styles.sectionIconContainer, { backgroundColor: '#E3F2FD' }]}>
+                <Ionicons name="images" size={16} color="#1976D2" />
+              </View>
+              <Text style={[styles.sectionLabel, { color: colors.text }]}>
+                Photos ({images.length}/{MAX_IMAGES})
+              </Text>
+            </View>
             
             {images.length > 0 && (
               <ScrollView 
@@ -235,19 +250,35 @@ const CreatePostScreen = () => {
 
             <View style={styles.mediaButtons}>
               <TouchableOpacity 
-                style={[styles.mediaBtn, { backgroundColor: isDark ? '#1a1a1a' : '#f5f5f5' }]}
+                style={[
+                  styles.mediaBtn, 
+                  { 
+                    backgroundColor: isDark ? colors.card : '#FFFFFF',
+                    borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+                  }
+                ]}
                 onPress={pickImage}
               >
-                <Ionicons name="images-outline" size={24} color={COLORS.primary} />
+                <View style={[styles.mediaBtnIcon, { backgroundColor: '#E3F2FD' }]}>
+                  <Ionicons name="images" size={20} color="#1976D2" />
+                </View>
                 <Text style={[styles.mediaBtnText, { color: colors.text }]}>
                   Gallery
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity 
-                style={[styles.mediaBtn, { backgroundColor: isDark ? '#1a1a1a' : '#f5f5f5' }]}
+                style={[
+                  styles.mediaBtn, 
+                  { 
+                    backgroundColor: isDark ? colors.card : '#FFFFFF',
+                    borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+                  }
+                ]}
                 onPress={takePhoto}
               >
-                <Ionicons name="camera-outline" size={24} color={COLORS.primary} />
+                <View style={[styles.mediaBtnIcon, { backgroundColor: '#FFF3E0' }]}>
+                  <Ionicons name="camera" size={20} color="#F57C00" />
+                </View>
                 <Text style={[styles.mediaBtnText, { color: colors.text }]}>
                   Camera
                 </Text>
@@ -257,11 +288,24 @@ const CreatePostScreen = () => {
 
           {/* Location Section */}
           <View style={styles.section}>
-            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
-              Location (optional)
-            </Text>
-            <View style={[styles.inputContainer, { backgroundColor: isDark ? '#1a1a1a' : '#f5f5f5' }]}>
-              <Ionicons name="location-outline" size={20} color={colors.textSecondary} />
+            <View style={styles.sectionHeader}>
+              <View style={[styles.sectionIconContainer, { backgroundColor: '#FFEBEE' }]}>
+                <Ionicons name="location" size={16} color="#E53935" />
+              </View>
+              <Text style={[styles.sectionLabel, { color: colors.text }]}>
+                Location (optional)
+              </Text>
+            </View>
+            <View style={[
+              styles.inputContainer, 
+              { 
+                backgroundColor: isDark ? colors.card : '#FFFFFF',
+                borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+              }
+            ]}>
+              <View style={[styles.inputIcon, { backgroundColor: '#FFEBEE' }]}>
+                <Ionicons name="location" size={16} color="#E53935" />
+              </View>
               <TextInput
                 style={[styles.locationInput, { color: colors.text }]}
                 placeholder="Add location"
@@ -274,11 +318,24 @@ const CreatePostScreen = () => {
 
           {/* Tags Section */}
           <View style={styles.section}>
-            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
-              Tags (optional)
-            </Text>
-            <View style={[styles.inputContainer, { backgroundColor: isDark ? '#1a1a1a' : '#f5f5f5' }]}>
-              <Ionicons name="pricetag-outline" size={20} color={colors.textSecondary} />
+            <View style={styles.sectionHeader}>
+              <View style={[styles.sectionIconContainer, { backgroundColor: '#F3E5F5' }]}>
+                <Ionicons name="pricetag" size={16} color="#8E24AA" />
+              </View>
+              <Text style={[styles.sectionLabel, { color: colors.text }]}>
+                Tags (optional)
+              </Text>
+            </View>
+            <View style={[
+              styles.inputContainer, 
+              { 
+                backgroundColor: isDark ? colors.card : '#FFFFFF',
+                borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+              }
+            ]}>
+              <View style={[styles.inputIcon, { backgroundColor: '#F3E5F5' }]}>
+                <Ionicons name="pricetag" size={16} color="#8E24AA" />
+              </View>
               <TextInput
                 style={[styles.tagInput, { color: colors.text }]}
                 placeholder="Add tags (press enter to add)"
@@ -350,15 +407,31 @@ const styles = StyleSheet.create({
   },
   section: {
     paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.md,
+    paddingVertical: SPACING.sm,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: SPACING.sm,
+  },
+  sectionIconContainer: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   sectionLabel: {
     fontSize: FONT_SIZES.sm,
-    fontFamily: FONTS.medium,
-    marginBottom: SPACING.sm,
+    fontFamily: FONTS.semiBold,
+  },
+  card: {
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    ...SHADOWS.small,
   },
   contentInput: {
-    borderRadius: BORDER_RADIUS.md,
     padding: SPACING.md,
     fontSize: FONT_SIZES.md,
     minHeight: 150,
@@ -394,18 +467,37 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: SPACING.sm,
     paddingVertical: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    ...SHADOWS.small,
+  },
+  mediaBtnIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   mediaBtnText: {
     fontSize: FONT_SIZES.md,
-    fontFamily: FONTS.medium,
+    fontFamily: FONTS.semiBold,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: BORDER_RADIUS.md,
+    borderRadius: BORDER_RADIUS.lg,
     paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
     gap: SPACING.sm,
+    borderWidth: 1,
+    ...SHADOWS.small,
+  },
+  inputIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   locationInput: {
     flex: 1,

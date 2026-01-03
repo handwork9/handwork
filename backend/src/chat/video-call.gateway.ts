@@ -75,9 +75,17 @@ export class VideoCallGateway implements OnGatewayInit, OnGatewayConnection, OnG
         throw new UnauthorizedException('No token provided');
       }
 
-      const payload = this.jwtService.verify(token, {
-        secret: this.configService.get<string>('jwt.accessSecret'),
-      });
+      // Verify and log token details
+      let payload;
+      try {
+        payload = this.jwtService.verify(token, {
+          secret: this.configService.get<string>('jwt.accessSecret'),
+        });
+      } catch (jwtError) {
+        this.logger.error(`JWT verification failed: ${jwtError.name} - ${jwtError.message}`);
+        throw jwtError;
+      }
+      
       this.logger.log(`Token verified for user: ${payload.sub}`);
       client.userId = payload.sub;
 

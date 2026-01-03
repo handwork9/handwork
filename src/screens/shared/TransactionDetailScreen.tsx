@@ -15,6 +15,7 @@ import {
 import * as Clipboard from 'expo-clipboard';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { SPACING, FONT_SIZES, FONTS } from '../../constants/theme';
@@ -157,12 +158,29 @@ export default function TransactionDetailScreen() {
         </View>
 
         {/* Amount Card */}
-        <View style={[styles.amountCard, dynamicStyles.card]}>
+        <View style={[styles.amountCard, dynamicStyles.card, {
+          borderWidth: 1,
+          borderColor: isCredit ? 'rgba(22, 163, 74, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+        }]}>
+          {/* SVG Background */}
+          <View style={styles.amountCardBackground}>
+            <Svg width={220} height={220} style={{ position: 'absolute', top: -50, right: -50 }}>
+              <Defs>
+                <SvgLinearGradient id="txDetailGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <Stop offset="0%" stopColor={isCredit ? '#16A34A' : '#EF4444'} stopOpacity="0.12" />
+                  <Stop offset="100%" stopColor={isCredit ? '#22C55E' : '#F87171'} stopOpacity="0.04" />
+                </SvgLinearGradient>
+              </Defs>
+              <Circle cx="110" cy="110" r="100" fill="url(#txDetailGrad)" />
+              <Circle cx="110" cy="110" r="70" fill="url(#txDetailGrad)" />
+              <Circle cx="110" cy="110" r="40" fill="url(#txDetailGrad)" />
+            </Svg>
+          </View>
           <View style={styles.transactionIllustrationContainer}>
             {isCredit ? (
-              <CreditTransactionIllustration size={90} />
+              <CreditTransactionIllustration size={100} />
             ) : (
-              <DebitTransactionIllustration size={90} />
+              <DebitTransactionIllustration size={100} />
             )}
           </View>
           <Text style={[styles.amountLabel, dynamicStyles.textSecondary]}>
@@ -402,21 +420,31 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   amountCard: {
-    borderRadius: 16,
-    padding: SPACING.xl,
+    borderRadius: 24,
+    padding: SPACING.xl + 4,
     alignItems: 'center',
     marginBottom: SPACING.lg,
+    position: 'relative',
+    overflow: 'hidden',
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
+        shadowColor: '#16A34A',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.12,
+        shadowRadius: 16,
       },
       android: {
-        elevation: 2,
+        elevation: 6,
       },
     }),
+  },
+  amountCardBackground: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: '100%',
+    height: '100%',
+    overflow: 'hidden',
   },
   transactionIconLarge: {
     width: 72,
@@ -429,27 +457,33 @@ const styles = StyleSheet.create({
   transactionIllustrationContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: SPACING.sm,
+    marginBottom: SPACING.md,
+    zIndex: 1,
   },
   amountLabel: {
-    fontSize: FONT_SIZES.sm,
-    fontFamily: FONTS.regular,
-    marginBottom: 8,
+    fontSize: FONT_SIZES.md,
+    fontFamily: FONTS.medium,
+    marginBottom: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    zIndex: 1,
   },
   amountValue: {
-    fontSize: 36,
+    fontSize: 42,
     fontFamily: FONTS.bold,
-    fontWeight: '700',
+    fontWeight: '800',
     marginBottom: SPACING.md,
-    letterSpacing: -1,
+    letterSpacing: -1.5,
+    zIndex: 1,
   },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 24,
+    gap: 10,
+    zIndex: 1,
   },
   statusDot: {
     width: 8,

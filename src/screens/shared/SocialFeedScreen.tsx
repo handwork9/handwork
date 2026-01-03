@@ -27,7 +27,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { formatDistanceToNow } from 'date-fns';
-import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, FONTS } from '../../constants/theme';
+import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
+import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, FONTS, SHADOWS } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
 import { useAppSelector } from '../../store';
 import { socialService, SocialPost, FarmerStories, PostComment } from '../../services/socialService';
@@ -816,7 +817,13 @@ const PostCard = ({
   const contentTruncated = post.content && post.content.length > 150;
 
   return (
-    <View style={[styles.postCard, { backgroundColor: colors.card }]}>
+    <View style={[
+      styles.postCard, 
+      { 
+        backgroundColor: isDark ? colors.card : '#FFFFFF',
+        borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+      }
+    ]}>
       {/* Header */}
       <TouchableOpacity style={styles.postHeader} onPress={onProfilePress}>
         {post.farmer.user.avatar ? (
@@ -1150,7 +1157,22 @@ const SocialFeedScreen = () => {
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
-      <Ionicons name="images-outline" size={64} color={isDark ? '#555' : '#ccc'} />
+      {/* SVG Background */}
+      <View style={styles.emptyBackground}>
+        <Svg width={200} height={200}>
+          <Defs>
+            <SvgLinearGradient id="emptyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <Stop offset="0%" stopColor="#4CAF50" stopOpacity="0.15" />
+              <Stop offset="100%" stopColor="#81C784" stopOpacity="0.08" />
+            </SvgLinearGradient>
+          </Defs>
+          <Circle cx="100" cy="100" r="90" fill="url(#emptyGrad)" />
+          <Circle cx="100" cy="100" r="60" fill="url(#emptyGrad)" />
+        </Svg>
+      </View>
+      <View style={[styles.emptyIconContainer, { backgroundColor: '#E8F5E9' }]}>
+        <Ionicons name="images" size={32} color="#4CAF50" />
+      </View>
       <Text style={[styles.emptyTitle, { color: colors.text }]}>
         No Posts Yet
       </Text>
@@ -1374,6 +1396,9 @@ const styles = StyleSheet.create({
   // Post Card
   postCard: {
     marginBottom: SPACING.sm,
+    borderWidth: 1,
+    borderRadius: BORDER_RADIUS.lg,
+    ...SHADOWS.small,
   },
   postHeader: {
     flexDirection: 'row',
@@ -1511,10 +1536,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.xl,
     paddingTop: 100,
   },
+  emptyBackground: {
+    position: 'absolute',
+    opacity: 0.8,
+  },
+  emptyIconContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
   emptyTitle: {
     fontSize: FONT_SIZES.xl,
     fontFamily: FONTS.semiBold,
-    marginTop: SPACING.md,
   },
   emptySubtitle: {
     fontSize: FONT_SIZES.md,

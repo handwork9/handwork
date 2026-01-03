@@ -28,141 +28,141 @@ interface ChatResponse {
 // Knowledge base for common questions
 const KNOWLEDGE_BASE = {
   greetings: [
-    'Hello! Welcome to Handwork support. How can I help you today?',
-    'Hi there! I\'m here to assist you. What can I help you with?',
-    'Welcome! How may I assist you today?',
+    "Hello! 👋 Welcome to Handwork support. I'm your AI assistant, and I'm here to help you with:\n\n📦 Order tracking & delivery\n💳 Payments & wallet\n🎁 Coupons & rewards\n👨‍🌾 Becoming a farmer\n🚴 Becoming a rider\n\nHow can I assist you today?",
+    "Hi there! 👋 I'm your Handwork AI assistant. I can help you with orders, payments, deliveries, and more.\n\nWhat would you like help with?",
+    "Welcome to Handwork! 🌱 I'm here to make your experience smooth. Whether it's tracking orders, resolving issues, or learning about our services - I've got you covered!\n\nHow may I help you?",
   ],
   
   orderStatus: {
     keywords: ['order', 'status', 'where', 'track', 'delivery', 'shipped', 'when', 'my order'],
     responses: {
-      pending: 'Your order is pending confirmation. The farmer will confirm it shortly.',
-      created: 'Your order has been created and is awaiting confirmation.',
-      confirmed: 'Great news! Your order has been confirmed and is being prepared.',
-      preparing: 'Your order is being prepared by the farmer.',
-      ready_for_pickup: 'Your order is ready and waiting for a rider to pick it up.',
-      rider_assigned: 'A rider has been assigned to deliver your order.',
-      assigned: 'A rider has been assigned to deliver your order.',
-      picked_up: 'Your order has been picked up and is on the way!',
-      in_transit: 'Your order is currently in transit to your location.',
-      delivered: 'Your order has been delivered. Enjoy!',
-      cancelled: 'This order has been cancelled.',
-      refunded: 'This order has been refunded.',
+      pending: '⏳ **Status: Pending**\nYour order is awaiting confirmation from the farmer. They usually respond within 30 minutes.',
+      created: '📝 **Status: Created**\nYour order has been placed and is waiting for the farmer to confirm.',
+      confirmed: '✅ **Status: Confirmed**\nGreat news! The farmer has confirmed your order and is now preparing it.',
+      preparing: '👨‍🍳 **Status: Preparing**\nYour order is being carefully prepared by the farmer. Almost ready!',
+      ready_for_pickup: '📦 **Status: Ready for Pickup**\nYour order is packed and waiting for a rider to collect it.',
+      rider_assigned: '🚴 **Status: Rider Assigned**\nA delivery rider has been assigned and will pick up your order shortly.',
+      assigned: '🚴 **Status: Rider Assigned**\nA delivery rider has been assigned and will pick up your order shortly.',
+      picked_up: '🛵 **Status: Picked Up**\nYour order is on the way! Track the rider in real-time on the app.',
+      in_transit: '🚚 **Status: In Transit**\nYour order is on its way to you. You can track the rider live!',
+      delivered: '🎉 **Status: Delivered**\nYour order has been delivered successfully. Enjoy your fresh produce!',
+      cancelled: '❌ **Status: Cancelled**\nThis order has been cancelled. Any payment will be refunded to your wallet.',
+      refunded: '💰 **Status: Refunded**\nThis order has been refunded. Check your wallet for the credit.',
     } as Record<string, string>,
   },
 
   refund: {
     keywords: ['refund', 'money back', 'return', 'cancel order', 'get my money'],
-    response: 'For refund requests, please note:\n• Orders can be cancelled before pickup for a full refund\n• After pickup, contact support for assistance\n• Refunds are processed within 3-5 business days\n• Refunds go back to your wallet or original payment method\n\nWould you like me to connect you with a support agent for your refund request?',
+    response: '💰 **Refund Information**\n\n**Before Pickup:**\n• Cancel anytime for a full refund\n• Go to Orders → Select order → Cancel\n\n**After Pickup:**\n• Contact support for assistance\n• Partial refunds may apply\n\n**Refund Timeline:**\n• Wallet: Instant\n• Card/Bank: 3-5 business days\n\n⚠️ For quality issues, report within 24 hours with photos.\n\nWould you like me to connect you with support?',
   },
 
   payment: {
     keywords: ['payment', 'pay', 'card', 'transaction', 'failed', 'payment failed', 'cant pay', 'not working'],
-    response: 'For payment issues:\n• Check your card details are correct\n• Ensure sufficient balance\n• Try using wallet payment as an alternative\n• Clear app cache and retry\n• Wait a few minutes and try again\n\nIf the issue persists, I can connect you with support.',
+    response: '💳 **Payment Troubleshooting**\n\n**Quick Fixes:**\n1. ✅ Verify card details are correct\n2. ✅ Check sufficient balance\n3. ✅ Try a different card\n4. ✅ Use Handwork Wallet instead\n\n**Still Failing?**\n• Clear app cache & retry\n• Wait 5 minutes before retrying\n• Check with your bank for blocks\n\n**Alternative Payment:**\n💡 Top up your Handwork Wallet for instant, hassle-free payments!\n\nNeed more help?',
   },
 
   delivery: {
     keywords: ['delivery', 'deliver', 'shipping', 'late', 'delay', 'not arrived', 'taking long'],
-    response: 'Regarding delivery:\n• Standard delivery takes 1-3 hours within the same city\n• Track your order in real-time in the app\n• Contact the rider directly for updates\n• Delivery fees vary by distance\n\nIs there a specific delivery concern I can help with?',
+    response: '🚚 **Delivery Information**\n\n**Delivery Times:**\n• Same City: 1-3 hours\n• Peak Hours: May take longer\n\n**Track Your Order:**\n1. Go to Orders tab\n2. Tap your order\n3. View live rider location\n\n**Delivery Fees:**\n• Based on distance (₦200-₦1000)\n• Premium members: FREE delivery!\n\n**Running Late?**\n• Contact rider directly from the app\n• Check traffic conditions\n\nAnything specific I can help with?',
   },
 
   farmer: {
     keywords: ['farmer', 'sell', 'vendor', 'become farmer', 'register as farmer', 'start selling'],
-    response: 'To become a farmer/vendor on Handwork:\n1. Go to Profile > Become a Farmer\n2. Fill in your farm details\n3. Upload required documents (ID, farm photos)\n4. Wait for approval (usually 24-48 hours)\n5. Once approved, start adding products!\n\nFarmers earn up to 90% of each sale. Would you like more details?',
+    response: '👨‍🌾 **Become a Handwork Farmer**\n\n**Benefits:**\n• Earn up to 90% per sale\n• Reach thousands of customers\n• Free listing & promotion tools\n• Flexible schedule\n\n**How to Register:**\n1. Go to Profile → Become a Farmer\n2. Fill in your farm details\n3. Upload documents (ID + farm photos)\n4. Submit for review\n\n**Approval Time:** 24-48 hours\n\n**Requirements:**\n• Valid ID\n• Farm/business registration (optional)\n• Quality product photos\n\nReady to start selling?',
   },
 
   rider: {
     keywords: ['rider', 'dispatch', 'driver', 'become rider', 'delivery job', 'deliver for handwork'],
-    response: 'To become a Handwork rider:\n1. Go to Profile > Become a Rider\n2. Provide personal information\n3. Add guarantor details\n4. Upload required documents\n5. Complete the verification process\n\nRiders earn competitive rates per delivery plus tips!',
+    response: '🚴 **Become a Handwork Rider**\n\n**Earnings:**\n• Competitive pay per delivery\n• Keep 100% of tips\n• Weekly bonuses\n• Flexible hours\n\n**Requirements:**\n• Valid ID\n• Smartphone with internet\n• Own vehicle (bike/motorcycle)\n• Guarantor information\n\n**How to Apply:**\n1. Profile → Become a Rider\n2. Complete application form\n3. Upload documents\n4. Background verification\n\n**Approval:** Usually 2-3 days\n\nReady to ride with us?',
   },
 
   account: {
     keywords: ['account', 'password', 'login', 'profile', 'delete account', 'change email', 'change phone'],
-    response: 'For account-related issues:\n• Reset password: Use "Forgot Password" on login\n• Update profile: Go to Settings > Edit Profile\n• Change phone/email: Settings > Edit Profile\n• Delete account: Settings > Account > Delete Account\n\nWhat specific account help do you need?',
+    response: '👤 **Account Help**\n\n**Common Actions:**\n\n🔐 **Reset Password:**\nLogin screen → Forgot Password → Enter email/phone\n\n✏️ **Update Profile:**\nProfile → Settings → Edit Profile\n\n📱 **Change Phone/Email:**\nSettings → Edit Profile → Update contact\n\n🗑️ **Delete Account:**\nSettings → Account → Delete Account\n(Warning: This is permanent!)\n\n**Security Tips:**\n• Enable 2FA for extra protection\n• Set a transaction PIN\n\nWhat would you like to do?',
   },
 
   contact: {
     keywords: ['contact', 'phone', 'email', 'support', 'help', 'human', 'agent', 'talk to someone', 'speak to', 'real person'],
-    response: 'I can connect you with our support team. Would you like me to create a support ticket for you?',
+    response: '👨‍💼 **Connect with Human Support**\n\nI can connect you with our support team right away.\n\n**Support Hours:**\n• Live Chat: 8am - 10pm daily\n• Email: support@handwork.ng\n\n**Average Response:**\n• Live Chat: Under 5 minutes\n• Email: Within 24 hours\n\nWould you like me to create a support ticket for you?',
     shouldEscalate: true,
   },
 
-  // NEW: Wallet & Finance
+  // Wallet & Finance
   wallet: {
     keywords: ['wallet', 'balance', 'top up', 'add money', 'fund', 'topup', 'withdraw', 'withdrawal'],
-    response: 'About your Handwork Wallet:\n• Top up: Wallet > Top Up > Select amount > Pay with card/bank\n• Withdraw: Wallet > Withdraw > Enter amount > Select bank\n• Check balance: Go to Wallet from your profile\n• Transfer: Send money to other Handwork users\n\nWallet payments are instant and secure!',
+    response: '💰 **Handwork Wallet**\n\n**Top Up:**\n1. Wallet → Top Up\n2. Enter amount\n3. Pay with card/bank transfer\n\n**Withdraw:**\n1. Wallet → Withdraw\n2. Enter amount\n3. Select bank account\n4. Confirm with PIN\n\n**Benefits:**\n✅ Instant payments\n✅ No transaction failures\n✅ Earn cashback on orders\n✅ Easy refunds\n\n**Transfer:**\nSend money to other Handwork users instantly!\n\nHow can I help with your wallet?',
   },
 
-  // NEW: Rewards & Points
+  // Rewards & Points
   rewards: {
     keywords: ['reward', 'points', 'earn', 'cashback', 'bonus', 'loyalty', 'referral bonus'],
-    response: 'Handwork Rewards Program:\n• Earn points on every purchase\n• Get cashback on orders\n• Refer friends for bonus rewards\n• Complete challenges for extra points\n• Redeem points for discounts\n\nCheck your rewards: Profile > Rewards',
+    response: '🎁 **Handwork Rewards**\n\n**Earn Points:**\n• Every ₦100 spent = 1 point\n• Complete challenges for bonus\n• Refer friends for extra rewards\n\n**Redeem Points:**\n• 100 points = ₦50 discount\n• Use at checkout\n\n**Cashback:**\n• Up to 5% on orders\n• 10% for Premium members\n\n**Referral Program:**\n• Share your code\n• Get ₦500 when friend orders\n• Friend gets ₦500 too!\n\nCheck rewards: Profile → Rewards',
   },
 
-  // NEW: Coupons & Discounts
+  // Coupons & Discounts
   coupons: {
     keywords: ['coupon', 'discount', 'promo', 'code', 'voucher', 'offer', 'deal', 'save money'],
-    response: 'Using Coupons on Handwork:\n• Find coupons: Home menu > Coupons\n• Apply at checkout: Enter code or tap "Apply Coupon"\n• Check expiry dates before using\n• Some coupons are category-specific\n• First-time users get welcome discounts!\n\nNew coupons are added regularly!',
+    response: '🎟️ **Coupons & Discounts**\n\n**Find Coupons:**\nHome → Menu → Coupons\n\n**How to Apply:**\n1. Add items to cart\n2. Go to checkout\n3. Tap "Apply Coupon"\n4. Enter code or select available\n\n**Types of Discounts:**\n• % off entire order\n• ₦ off specific amount\n• Free delivery\n• Category-specific\n\n**Pro Tips:**\n💡 Check expiry dates\n💡 Some have minimum order\n💡 New coupons added weekly!\n\nWant to see available coupons?',
   },
 
-  // NEW: Group Buying
+  // Group Buying
   groupBuying: {
     keywords: ['group buy', 'group buying', 'bulk', 'together', 'group order', 'share order', 'split'],
-    response: 'Group Buying on Handwork:\n• Join or create group buys for bulk discounts\n• Share with friends to reach target quantity\n• Get 10-30% off when buying together\n• Perfect for families, offices, or neighborhoods\n\nFind group buys: Home menu > Group Buying',
+    response: '👥 **Group Buying**\n\n**What is it?**\nBuy together with others for bulk discounts!\n\n**How it Works:**\n1. Browse group buys or create one\n2. Share with friends/neighbors\n3. Reach target quantity\n4. Everyone saves 10-30%!\n\n**Perfect For:**\n• Families buying together\n• Office orders\n• Neighborhood groups\n\n**Benefits:**\n✅ Lower prices\n✅ Fresher bulk produce\n✅ Split delivery costs\n\nExplore: Home → Group Buying',
   },
 
-  // NEW: Subscription Boxes
+  // Subscription Boxes
   subscription: {
     keywords: ['subscription', 'subscribe', 'weekly', 'monthly', 'regular delivery', 'auto order', 'box'],
-    response: 'Subscription Boxes:\n• Get fresh produce delivered regularly\n• Choose weekly, bi-weekly, or monthly\n• Customize your box contents\n• Save up to 15% vs regular orders\n• Pause or cancel anytime\n\nSet up: Home menu > Subscription Box',
+    response: '📦 **Subscription Boxes**\n\n**Plans:**\n• Weekly: Fresh produce every week\n• Bi-weekly: Every 2 weeks\n• Monthly: Once a month\n\n**Customize:**\n• Choose box size\n• Select preferences\n• Add/remove items\n\n**Savings:**\n• Up to 15% off regular prices\n• Free delivery on subscription\n\n**Flexibility:**\n• Pause anytime\n• Skip a delivery\n• Cancel when you want\n\nSetup: Home → Subscription Box',
   },
 
-  // NEW: Shopping Lists
+  // Shopping Lists
   shoppingList: {
     keywords: ['shopping list', 'list', 'save items', 'favorites', 'wishlist', 'save for later'],
-    response: 'Shopping Lists:\n• Create multiple lists (Weekly groceries, Party supplies, etc.)\n• Share lists with family members\n• Quick add to cart from any list\n• Set reminders to reorder\n\nAccess: Home menu > Shopping Lists',
+    response: '📝 **Shopping Lists**\n\n**Create Lists:**\n• Weekly Groceries\n• Party Supplies\n• Office Snacks\n• And more!\n\n**Features:**\n✅ Share with family\n✅ Quick add to cart\n✅ Set reorder reminders\n✅ Track prices\n\n**How to Use:**\n1. Home → Shopping Lists\n2. Create new list\n3. Add products\n4. Shop with one tap!\n\n**Pro Tip:**\nShare lists with household members for coordinated shopping.',
   },
 
-  // NEW: Product Quality
+  // Product Quality
   quality: {
     keywords: ['quality', 'fresh', 'bad', 'spoiled', 'rotten', 'expired', 'damaged', 'wrong item'],
-    response: 'Product Quality Issues:\n• Take photos of the issue immediately\n• Report within 24 hours of delivery\n• Go to Orders > Select order > Report Issue\n• Choose "Quality Problem" and upload photos\n• Full refund or replacement guaranteed!\n\nWe take quality seriously.',
+    response: '⚠️ **Quality Issue Report**\n\n**What to Do:**\n1. 📸 Take clear photos immediately\n2. Keep the product\n3. Report within 24 hours\n\n**How to Report:**\nOrders → Select order → Report Issue → Quality Problem → Upload photos\n\n**Resolution Options:**\n• Full refund\n• Free replacement\n• Partial credit\n\n**Our Promise:**\n🛡️ 100% Quality Guarantee\nWe take product quality seriously!\n\nWant me to help you report an issue?',
   },
 
-  // NEW: Pricing
+  // Pricing
   pricing: {
     keywords: ['price', 'expensive', 'cost', 'fee', 'charge', 'how much', 'pricing'],
-    response: 'Pricing on Handwork:\n• Prices set by farmers (competitive rates)\n• Delivery fee: ₦200-₦1000 based on distance\n• Service fee: 5% of order total\n• No hidden charges\n• Premium members get free delivery!\n\nCompare prices from different farmers.',
+    response: '💵 **Pricing Guide**\n\n**Product Prices:**\n• Set by farmers (competitive rates)\n• Compare across sellers\n\n**Fees:**\n• Delivery: ₦200-₦1000 (distance-based)\n• Service fee: 5% of order\n• No hidden charges!\n\n**Save Money:**\n✅ Use coupons\n✅ Join group buys\n✅ Subscribe for discounts\n✅ Go Premium = Free delivery\n\n**Price Match:**\nFound it cheaper? Let us know!',
   },
 
-  // NEW: Premium/Go Premium
+  // Premium/Go Premium
   premium: {
     keywords: ['premium', 'go premium', 'membership', 'free delivery', 'vip', 'subscribe premium'],
-    response: 'Handwork Premium Benefits:\n• Free delivery on all orders\n• Priority customer support\n• Exclusive discounts & early access\n• Higher cashback rates\n• Premium badge on your profile\n\nUpgrade: Profile > Go Premium',
+    response: '⭐ **Handwork Premium**\n\n**Benefits:**\n🚚 FREE delivery on ALL orders\n💬 Priority customer support\n🎁 Exclusive discounts\n⏰ Early access to deals\n💰 Higher cashback (10%)\n🏷️ Premium badge\n\n**Plans:**\n• Monthly: ₦2,999/month\n• Yearly: ₦24,999/year (Save 30%!)\n\n**Worth It If:**\n• You order 3+ times/month\n• Average order over ₦5,000\n\nUpgrade: Profile → Go Premium',
   },
 
-  // NEW: App Help
+  // App Help
   appHelp: {
     keywords: ['app', 'crash', 'bug', 'slow', 'not loading', 'error', 'update', 'version'],
-    response: 'App Troubleshooting:\n• Update to latest version from App Store/Play Store\n• Clear app cache: Settings > Clear Cache\n• Check internet connection\n• Restart the app\n• Reinstall if issues persist\n\nStill having problems? Contact support.',
+    response: '📱 **App Troubleshooting**\n\n**Quick Fixes:**\n1. Update to latest version\n2. Settings → Clear Cache\n3. Check internet connection\n4. Restart the app\n5. Restart your phone\n\n**Still Not Working?**\n• Uninstall & reinstall\n• Check storage space\n• Try on WiFi\n\n**Report a Bug:**\nHelp → Report Bug → Describe issue\n\n**Current Version:**\nCheck: Profile → About → Version\n\nNeed more help?',
   },
 
-  // NEW: Security
+  // Security
   security: {
     keywords: ['security', 'hack', 'stolen', 'unauthorized', 'suspicious', 'fraud', 'scam', '2fa', 'pin'],
-    response: 'Account Security:\n• Enable 2FA: Settings > Security > Two-Factor Auth\n• Set transaction PIN: Settings > Security > Set PIN\n• Never share OTP or PIN with anyone\n• Report suspicious activity immediately\n• Handwork never asks for passwords via chat\n\nSuspect fraud? Contact support NOW.',
+    response: '🔐 **Account Security**\n\n**Protect Your Account:**\n\n📱 **Enable 2FA:**\nSettings → Security → Two-Factor Auth\n\n🔢 **Set Transaction PIN:**\nSettings → Security → Set PIN\n\n⚠️ **Never Share:**\n• OTP codes\n• Transaction PIN\n• Password\n\n**Red Flags:**\n❌ Handwork never asks for passwords\n❌ Don\'t click suspicious links\n❌ Verify official communications\n\n**Suspect Fraud?**\n🚨 Contact support IMMEDIATELY!\n\nIs your account compromised?',
   },
 
-  // NEW: Location & Address
+  // Location & Address
   address: {
     keywords: ['address', 'location', 'change address', 'add address', 'delivery address', 'wrong address'],
-    response: 'Managing Addresses:\n• Add new: Profile > My Addresses > Add Address\n• Set default: Tap address > Set as Default\n• Edit/Delete: Tap address > Edit or Delete\n• Add multiple addresses for home, work, etc.\n\nMake sure address includes landmarks for easy delivery!',
+    response: '📍 **Managing Addresses**\n\n**Add New Address:**\nProfile → My Addresses → Add Address\n\n**Set Default:**\nTap address → Set as Default\n\n**Edit/Delete:**\nTap address → Edit or Delete\n\n**Tips for Better Delivery:**\n✅ Include landmarks\n✅ Add building/floor number\n✅ Provide gate code if needed\n✅ Add delivery instructions\n\n**Multiple Addresses:**\n• Home\n• Work\n• Family\n• Friends\n\nNeed help with an address?',
   },
 
-  // NEW: Notifications
+  // Notifications
   notifications: {
     keywords: ['notification', 'alert', 'message', 'not receiving', 'too many', 'turn off'],
-    response: 'Notification Settings:\n• Manage: Profile > Settings > Notifications\n• Toggle order updates, promotions, chat messages\n• Enable push notifications in phone settings\n• Check spam folder for emails\n\nStay updated on your orders!',
+    response: '🔔 **Notification Settings**\n\n**Manage Notifications:**\nProfile → Settings → Notifications\n\n**Types:**\n• Order updates (Recommended ON)\n• Promotions & deals\n• Chat messages\n• Price alerts\n\n**Not Receiving?**\n1. Check phone settings\n2. Enable push notifications\n3. Check spam folder (email)\n4. Update app\n\n**Too Many?**\nCustomize which notifications you receive in settings.\n\nWhat would you like to adjust?',
   },
 };
 
@@ -289,24 +289,40 @@ export class ChatbotService {
       });
 
       // Build context for AI
-      const systemPrompt = `You are a helpful customer support assistant for Handwork, a farm-to-table marketplace app in Nigeria.
+      const systemPrompt = `You are a helpful, friendly customer support assistant for Handwork, a farm-to-table marketplace app in Nigeria.
 
-User Info:
+**User Info:**
 - Name: ${user?.name || 'Customer'}
 - Role: ${user?.role || 'buyer'}
+- Recent Orders: ${recentOrders.map(o => `#${o.orderNumber} (${o.status})`).join(', ') || 'None'}
 
-Recent Orders: ${recentOrders.map(o => `#${o.orderNumber} (${o.status})`).join(', ') || 'None'}
+**Response Guidelines:**
+1. Be warm, friendly, and helpful - use emojis appropriately 😊
+2. Use Nigerian English where appropriate (e.g., "How may I assist you today?")
+3. Structure responses clearly with bullet points or numbered steps
+4. Use **bold** for important information and section headers
+5. Keep responses concise but informative (under 200 words)
+6. Always provide actionable next steps
 
-Guidelines:
-1. Be friendly, helpful, and concise
-2. Use Nigerian English where appropriate
-3. For order issues, always ask for the order number if not provided
-4. For payment issues, suggest using wallet or retrying
-5. If you cannot resolve an issue, offer to connect them with human support
-6. Never share sensitive information
-7. Keep responses under 200 words
+**Formatting Rules:**
+- Use emojis for visual appeal (📦 🚚 💰 ✅ ⚠️ 💡)
+- Use **bold** for headers and key terms
+- Use bullet points (•) for lists
+- Use numbered steps (1. 2. 3.) for instructions
+- Add helpful tips with 💡
 
-Common topics: order tracking, delivery issues, refunds, payments, becoming a farmer/rider`;
+**Topic-Specific Guidance:**
+- Order issues: Ask for order number if not provided, check status
+- Payments: Suggest wallet as alternative, explain retry steps
+- Delivery: Provide tracking info, estimated times
+- Refunds: Explain policy, timelines, process
+- Becoming farmer/rider: Guide through registration steps
+- Premium: Highlight free delivery and other benefits
+
+**Escalation:**
+If you cannot resolve the issue, offer: "Would you like me to connect you with our support team for further assistance?"
+
+Never share sensitive information or make promises outside policy.`;
 
       // Call OpenAI API
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -325,7 +341,7 @@ Common topics: order tracking, delivery issues, refunds, payments, becoming a fa
             })),
             { role: 'user', content: message },
           ],
-          max_tokens: 300,
+          max_tokens: 400,
           temperature: 0.7,
         }),
       });
@@ -573,8 +589,8 @@ Common topics: order tracking, delivery issues, refunds, payments, becoming a fa
 
     // Default response
     return {
-      message: 'I\'m not sure I understand. Here are some things I can help with:\n\n• Track your order\n• Payment & wallet issues\n• Delivery information\n• Refunds & returns\n• Coupons & discounts\n• Group buying\n• Subscription boxes\n• Becoming a farmer or rider\n• Account & security\n\nOr say "talk to support" for a human agent.',
-      suggestedActions: ['Track order', 'Wallet help', 'Coupons', 'Talk to support'],
+      message: '🤔 I\'m not quite sure what you\'re asking about. Let me show you what I can help with:\n\n**🛒 Orders & Delivery**\n• Track your order\n• Delivery status\n• Cancel or refund\n\n**💰 Payments & Wallet**\n• Payment issues\n• Top up wallet\n• Withdraw funds\n\n**🎁 Savings & Rewards**\n• Coupons & discounts\n• Rewards points\n• Group buying\n\n**👤 Account**\n• Profile settings\n• Security\n• Notifications\n\n**🚀 Get Started**\n• Become a farmer\n• Become a rider\n• Go premium\n\n💬 You can also say **"talk to support"** to connect with a human agent.\n\nWhat would you like help with?',
+      suggestedActions: ['Track order', 'Wallet help', 'View coupons', 'Talk to support'],
     };
   }
 

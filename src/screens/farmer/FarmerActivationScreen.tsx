@@ -16,6 +16,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop, Path } from 'react-native-svg';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, FONTS } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
 import { useAppSelector } from '../../store';
@@ -34,24 +35,28 @@ const BENEFITS = [
     title: 'Your Store',
     description: 'Create your digital farm store',
     color: '#34C759',
+    bgColor: '#E8F5E9',
   },
   {
     icon: 'people' as const,
     title: 'Customers',
     description: 'Reach thousands of buyers',
     color: '#FF9500',
+    bgColor: '#FFF3E0',
   },
   {
     icon: 'card' as const,
     title: 'Payments',
     description: 'Get paid to your bank',
     color: '#007AFF',
+    bgColor: '#E3F2FD',
   },
   {
     icon: 'bar-chart' as const,
     title: 'Analytics',
     description: 'Track your sales growth',
     color: '#AF52DE',
+    bgColor: '#F3E5F5',
   },
 ];
 
@@ -201,7 +206,7 @@ export default function FarmerActivationScreen() {
           </Animated.Text>
           <Animated.View style={[styles.headerCompact, { opacity: headerOpacity }]}>
             <View style={styles.headerLeaf}>
-              <Ionicons name="leaf" size={20} color="#34C759" />
+              <Ionicons name="storefront" size={18} color="#4CAF50" />
             </View>
             <Text style={[styles.headerCompactTitle, { color: colors.text }]}>Become a Seller</Text>
           </Animated.View>
@@ -220,26 +225,67 @@ export default function FarmerActivationScreen() {
       >
         {/* Hero Section */}
         <View style={styles.heroSection}>
-          <LinearGradient
-            colors={isDark ? ['#1B5E20', '#2E7D32'] : ['#2E7D32', '#43A047']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.heroGradient}
-          >
-            <View style={styles.heroIconContainer}>
-              <FarmerActivationIllustration size={100} />
+          <View style={[styles.heroCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+            {/* SVG Background */}
+            <View style={styles.heroSvgBackground}>
+              <Svg width="300" height="300" viewBox="0 0 300 300">
+                <Defs>
+                  <SvgLinearGradient id="heroGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <Stop offset="0%" stopColor="#4CAF50" stopOpacity={0.15} />
+                    <Stop offset="100%" stopColor="#2E7D32" stopOpacity={0.08} />
+                  </SvgLinearGradient>
+                  <SvgLinearGradient id="heroGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <Stop offset="0%" stopColor="#81C784" stopOpacity={0.12} />
+                    <Stop offset="100%" stopColor="#4CAF50" stopOpacity={0.05} />
+                  </SvgLinearGradient>
+                </Defs>
+                <Circle cx="220" cy="60" r="120" fill="url(#heroGrad1)" />
+                <Circle cx="280" cy="150" r="80" fill="url(#heroGrad2)" />
+                <Circle cx="180" cy="20" r="50" fill="url(#heroGrad2)" />
+              </Svg>
             </View>
-            <Text style={styles.heroTitle}>Start Selling Today</Text>
-            <Text style={styles.heroSubtitle}>One-time payment, lifetime access to all features</Text>
             
-            {/* Price Badge */}
-            <View style={styles.priceBadgeContainer}>
-              <View style={styles.priceBadge}>
-                <Text style={styles.priceText}>{ACTIVATION_FEE_DISPLAY}</Text>
-                <Text style={styles.priceSubtext}>one-time</Text>
+            {/* Badge */}
+            <View style={[styles.heroBadge, { backgroundColor: '#E8F5E9' }]}>
+              <Ionicons name="sparkles" size={12} color="#4CAF50" />
+              <Text style={[styles.heroBadgeText, { color: '#4CAF50' }]}>BECOME A SELLER</Text>
+            </View>
+            
+            {/* Content */}
+            <View style={styles.heroContent}>
+              <View style={styles.heroLeft}>
+                <Text style={[styles.heroTitle, { color: colors.text }]}>Start Your Farm Business</Text>
+                <Text style={[styles.heroSubtitle, { color: colors.textSecondary }]}>
+                  One-time fee, unlimited selling potential
+                </Text>
+                
+                {/* Price */}
+                <View style={styles.heroPriceContainer}>
+                  <Text style={[styles.heroPrice, { color: '#4CAF50' }]}>{ACTIVATION_FEE_DISPLAY}</Text>
+                  <View style={[styles.heroPriceBadge, { backgroundColor: '#E8F5E9' }]}>
+                    <Text style={[styles.heroPriceBadgeText, { color: '#4CAF50' }]}>ONE-TIME</Text>
+                  </View>
+                </View>
+                
+                {/* Stats */}
+                <View style={styles.heroStats}>
+                  <View style={styles.heroStatItem}>
+                    <Ionicons name="checkmark-circle" size={14} color="#4CAF50" />
+                    <Text style={[styles.heroStatText, { color: colors.textSecondary }]}>Lifetime access</Text>
+                  </View>
+                  <View style={styles.heroStatItem}>
+                    <Ionicons name="infinite" size={14} color="#4CAF50" />
+                    <Text style={[styles.heroStatText, { color: colors.textSecondary }]}>Unlimited products</Text>
+                  </View>
+                </View>
+              </View>
+              
+              {/* Illustration */}
+              <View style={styles.heroIllustration}>
+                <FarmerActivationIllustration size={110} />
               </View>
             </View>
-          </LinearGradient>
+          </View>
         </View>
 
         {/* Quick Benefits */}
@@ -252,20 +298,24 @@ export default function FarmerActivationScreen() {
             }
           ]}
         >
-          {BENEFITS.map((benefit, index) => (
-            <View 
-              key={index} 
-              style={[
-                styles.quickBenefitCard,
-                { backgroundColor: isDark ? colors.card : '#DEDEE0' }
-              ]}
-            >
-              <View style={[styles.quickBenefitIcon, { backgroundColor: `${benefit.color}15` }]}>
-                <Ionicons name={benefit.icon} size={22} color={benefit.color} />
+          <Text style={[styles.benefitsTitle, { color: colors.text }]}>What You'll Get</Text>
+          <View style={styles.benefitsGrid}>
+            {BENEFITS.map((benefit, index) => (
+              <View 
+                key={index} 
+                style={[
+                  styles.quickBenefitCard,
+                  { backgroundColor: isDark ? colors.card : '#FFFFFF' }
+                ]}
+              >
+                <View style={[styles.quickBenefitIcon, { backgroundColor: benefit.bgColor }]}>
+                  <Ionicons name={benefit.icon} size={24} color={benefit.color} />
+                </View>
+                <Text style={[styles.quickBenefitTitle, { color: colors.text }]}>{benefit.title}</Text>
+                <Text style={[styles.quickBenefitDesc, { color: colors.textSecondary }]}>{benefit.description}</Text>
               </View>
-              <Text style={[styles.quickBenefitTitle, { color: colors.text }]}>{benefit.title}</Text>
-            </View>
-          ))}
+            ))}
+          </View>
         </Animated.View>
 
         {/* Features Section */}
@@ -278,18 +328,25 @@ export default function FarmerActivationScreen() {
             },
           ]}
         >
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>WHAT'S INCLUDED</Text>
-          <View style={[styles.featuresCard, { backgroundColor: isDark ? colors.card : '#DEDEE0' }]}>
+          <View style={styles.sectionHeader}>
+            <View style={[styles.sectionIconContainer, { backgroundColor: '#E8F5E9' }]}>
+              <Ionicons name="list" size={18} color="#4CAF50" />
+            </View>
+            <Text style={[styles.sectionTitleNew, { color: colors.text }]}>What's Included</Text>
+          </View>
+          <View style={[styles.featuresCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
             {FEATURES.map((feature, idx) => (
               <View key={idx}>
                 <View style={styles.featureRow}>
-                  <Ionicons name={feature.icon} size={22} color="#34C759" />
+                  <View style={[styles.featureIconContainer, { backgroundColor: '#E8F5E9' }]}>
+                    <Ionicons name={feature.icon} size={16} color="#4CAF50" />
+                  </View>
                   <Text style={[styles.featureText, { color: colors.text }]}>
                     {feature.text}
                   </Text>
                 </View>
                 {idx < FEATURES.length - 1 && (
-                  <View style={[styles.separator, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60, 60, 67, 0.12)' }]} />
+                  <View style={[styles.separator, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]} />
                 )}
               </View>
             ))}
@@ -298,8 +355,13 @@ export default function FarmerActivationScreen() {
 
         {/* FAQ Section */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>FAQ</Text>
-          <View style={[styles.faqCard, { backgroundColor: isDark ? colors.card : '#DEDEE0' }]}>
+          <View style={styles.sectionHeader}>
+            <View style={[styles.sectionIconContainer, { backgroundColor: '#FFF3E0' }]}>
+              <Ionicons name="help-circle" size={18} color="#FF9800" />
+            </View>
+            <Text style={[styles.sectionTitleNew, { color: colors.text }]}>Common Questions</Text>
+          </View>
+          <View style={[styles.faqCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
             <View style={styles.faqItem}>
               <Text style={[styles.faqQuestion, { color: colors.text }]}>Is this a one-time payment?</Text>
               <Text style={[styles.faqAnswer, { color: colors.textSecondary }]}>
@@ -324,18 +386,27 @@ export default function FarmerActivationScreen() {
         </View>
 
         {/* Trust Badges */}
-        <View style={[styles.trustSection, { backgroundColor: isDark ? colors.card : '#DEDEE0' }]}>
+        <View style={[styles.trustSection, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
           <View style={styles.trustBadge}>
-            <Ionicons name="shield-checkmark" size={24} color="#34C759" />
-            <Text style={[styles.trustText, { color: colors.textSecondary }]}>Secure</Text>
+            <View style={[styles.trustIconContainer, { backgroundColor: '#E8F5E9' }]}>
+              <Ionicons name="shield-checkmark" size={22} color="#4CAF50" />
+            </View>
+            <Text style={[styles.trustText, { color: colors.text }]}>Secure</Text>
+            <Text style={[styles.trustSubtext, { color: colors.textSecondary }]}>Payment</Text>
           </View>
           <View style={styles.trustBadge}>
-            <Ionicons name="lock-closed" size={24} color="#007AFF" />
-            <Text style={[styles.trustText, { color: colors.textSecondary }]}>Protected</Text>
+            <View style={[styles.trustIconContainer, { backgroundColor: '#E3F2FD' }]}>
+              <Ionicons name="lock-closed" size={22} color="#1976D2" />
+            </View>
+            <Text style={[styles.trustText, { color: colors.text }]}>Protected</Text>
+            <Text style={[styles.trustSubtext, { color: colors.textSecondary }]}>Data</Text>
           </View>
           <View style={styles.trustBadge}>
-            <Ionicons name="headset" size={24} color="#FF9500" />
-            <Text style={[styles.trustText, { color: colors.textSecondary }]}>Support</Text>
+            <View style={[styles.trustIconContainer, { backgroundColor: '#FFF3E0' }]}>
+              <Ionicons name="headset" size={22} color="#FF9800" />
+            </View>
+            <Text style={[styles.trustText, { color: colors.text }]}>24/7</Text>
+            <Text style={[styles.trustSubtext, { color: colors.textSecondary }]}>Support</Text>
           </View>
         </View>
       </Animated.ScrollView>
@@ -566,88 +637,159 @@ const styles = StyleSheet.create({
   },
   heroSection: {
     paddingHorizontal: SPACING.md,
-    marginBottom: SPACING.md,
-  },
-  heroGradient: {
-    borderRadius: 20,
-    padding: SPACING.xl,
-    alignItems: 'center',
-  },
-  heroIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: SPACING.md,
-  },
-  heroTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    fontFamily: FONTS.bold,
-    color: '#FFFFFF',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  heroSubtitle: {
-    fontSize: 15,
-    fontFamily: FONTS.regular,
-    color: 'rgba(255,255,255,0.9)',
-    textAlign: 'center',
-    marginBottom: SPACING.md,
-  },
-  priceBadgeContainer: {
-    marginTop: SPACING.sm,
-  },
-  priceBadge: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.sm,
-    borderRadius: 20,
-    alignItems: 'center',
-  },
-  priceText: {
-    fontSize: 28,
-    fontWeight: '700',
-    fontFamily: FONTS.bold,
-    color: '#FFFFFF',
-  },
-  priceSubtext: {
-    fontSize: 13,
-    fontFamily: FONTS.regular,
-    color: 'rgba(255,255,255,0.8)',
-    marginTop: 2,
-  },
-  quickBenefitsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: SPACING.md,
-    gap: 8,
     marginBottom: SPACING.lg,
   },
-  quickBenefitCard: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: SPACING.md,
-    borderRadius: 16,
+  heroCard: {
+    borderRadius: 20,
+    padding: SPACING.lg,
+    overflow: 'hidden',
+    ...SHADOWS.medium,
   },
-  quickBenefitIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+  heroSvgBackground: {
+    position: 'absolute',
+    top: -50,
+    right: -50,
+    opacity: 1,
+  },
+  heroBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    gap: 4,
+    marginBottom: SPACING.md,
+  },
+  heroBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
+    letterSpacing: 0.5,
+  },
+  heroContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  heroLeft: {
+    flex: 1,
+    paddingRight: SPACING.md,
+  },
+  heroTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
+    marginBottom: 4,
+    lineHeight: 28,
+  },
+  heroSubtitle: {
+    fontSize: 13,
+    fontFamily: FONTS.regular,
+    marginBottom: SPACING.md,
+    lineHeight: 18,
+  },
+  heroPriceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: SPACING.sm,
+  },
+  heroPrice: {
+    fontSize: 26,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
+  },
+  heroPriceBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  heroPriceBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
+    letterSpacing: 0.5,
+  },
+  heroStats: {
+    flexDirection: 'row',
+    gap: SPACING.md,
+  },
+  heroStatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  heroStatText: {
+    fontSize: 11,
+    fontFamily: FONTS.regular,
+  },
+  heroIllustration: {
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+  },
+  benefitsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+    marginBottom: SPACING.md,
+    marginLeft: 4,
+  },
+  quickBenefitsContainer: {
+    paddingHorizontal: SPACING.md,
+    marginBottom: SPACING.lg,
+  },
+  benefitsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  quickBenefitCard: {
+    width: '48%',
+    padding: SPACING.md,
+    borderRadius: 16,
+    ...SHADOWS.small,
+  },
+  quickBenefitIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
   },
   quickBenefitTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+    marginBottom: 4,
+  },
+  quickBenefitDesc: {
     fontSize: 11,
-    fontWeight: '500',
-    fontFamily: FONTS.medium,
-    textAlign: 'center',
+    fontFamily: FONTS.regular,
+    lineHeight: 15,
   },
   section: {
     paddingHorizontal: SPACING.md,
     marginBottom: SPACING.lg,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: SPACING.md,
+  },
+  sectionIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sectionTitleNew: {
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
   },
   sectionTitle: {
     fontSize: 13,
@@ -658,8 +800,9 @@ const styles = StyleSheet.create({
     marginLeft: SPACING.md,
   },
   featuresCard: {
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
+    ...SHADOWS.small,
   },
   featureRow: {
     flexDirection: 'row',
@@ -668,18 +811,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.md,
     gap: 12,
   },
+  featureIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   featureText: {
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: FONTS.regular,
     flex: 1,
   },
   separator: {
     height: StyleSheet.hairlineWidth,
-    marginLeft: 50,
+    marginLeft: 56,
   },
   faqCard: {
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
+    ...SHADOWS.small,
   },
   faqItem: {
     padding: SPACING.md,
@@ -701,16 +852,29 @@ const styles = StyleSheet.create({
     marginHorizontal: SPACING.md,
     marginBottom: SPACING.xl,
     paddingVertical: SPACING.lg,
-    borderRadius: 12,
+    borderRadius: 16,
+    ...SHADOWS.small,
   },
   trustBadge: {
     alignItems: 'center',
-    gap: SPACING.xs,
+    gap: 6,
+  },
+  trustIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 4,
   },
   trustText: {
-    fontSize: 12,
-    fontWeight: '500',
-    fontFamily: FONTS.medium,
+    fontSize: 13,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+  },
+  trustSubtext: {
+    fontSize: 11,
+    fontFamily: FONTS.regular,
   },
   bottomBar: {
     position: 'absolute',

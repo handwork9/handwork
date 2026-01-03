@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Circle } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -206,38 +207,42 @@ const TopProductsScreen: React.FC = () => {
       >
         {/* Hero Stats Section */}
         <View style={styles.heroSection}>
-          <LinearGradient
-            colors={isDark ? ['#B45309', '#D97706'] : [COLORS.secondary, COLORS.secondaryDark]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.heroGradient}
-          >
-            <View style={styles.heroIconContainer}>
-              <Ionicons name="trophy" size={32} color="#FFFFFF" />
+          <View style={[styles.heroCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
+            {/* SVG Background */}
+            <View style={styles.heroCardSvg}>
+              <Svg width="200" height="200" viewBox="0 0 200 200">
+                <Circle cx="150" cy="50" r="80" fill="#FF8F00" fillOpacity={0.08} />
+                <Circle cx="180" cy="100" r="50" fill="#FF8F00" fillOpacity={0.06} />
+                <Circle cx="120" cy="30" r="30" fill="#FFB300" fillOpacity={0.05} />
+              </Svg>
             </View>
-            <Text style={styles.heroTitle}>Best Performers</Text>
-            <Text style={styles.heroSubtitle}>Your top selling products ranked by performance</Text>
-            <View style={styles.heroStatsRow}>
+            
+            <View style={[styles.heroIconContainer, { backgroundColor: isDark ? 'rgba(255, 143, 0, 0.15)' : '#FFF3E0' }]}>
+              <Ionicons name="trophy" size={32} color="#FF8F00" />
+            </View>
+            <Text style={[styles.heroTitle, { color: colors.text }]}>Best Performers</Text>
+            <Text style={[styles.heroSubtitle, { color: colors.textSecondary }]}>Your top selling products ranked by performance</Text>
+            <View style={[styles.heroStatsRow, { backgroundColor: isDark ? 'rgba(255, 143, 0, 0.1)' : '#FFF8E1' }]}>
               <View style={styles.heroStatItem}>
-                <Text style={styles.heroStatValue}>{products.length}</Text>
-                <Text style={styles.heroStatLabel}>Products</Text>
+                <Text style={[styles.heroStatValue, { color: '#FF8F00' }]}>{products.length}</Text>
+                <Text style={[styles.heroStatLabel, { color: colors.textSecondary }]}>Products</Text>
               </View>
-              <View style={styles.heroStatDivider} />
+              <View style={[styles.heroStatDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }]} />
               <View style={styles.heroStatItem}>
-                <Text style={styles.heroStatValue}>
+                <Text style={[styles.heroStatValue, { color: '#FF8F00' }]}>
                   {formatCurrency(products.reduce((sum, p) => sum + p.revenue, 0))}
                 </Text>
-                <Text style={styles.heroStatLabel}>Revenue</Text>
+                <Text style={[styles.heroStatLabel, { color: colors.textSecondary }]}>Revenue</Text>
               </View>
-              <View style={styles.heroStatDivider} />
+              <View style={[styles.heroStatDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }]} />
               <View style={styles.heroStatItem}>
-                <Text style={styles.heroStatValue}>
+                <Text style={[styles.heroStatValue, { color: '#FF8F00' }]}>
                   {products.reduce((sum, p) => sum + p.sales, 0)}
                 </Text>
-                <Text style={styles.heroStatLabel}>Sold</Text>
+                <Text style={[styles.heroStatLabel, { color: colors.textSecondary }]}>Sold</Text>
               </View>
             </View>
-          </LinearGradient>
+          </View>
         </View>
 
         {/* Sort & Filter */}
@@ -508,6 +513,24 @@ const styles = StyleSheet.create({
   heroSection: {
     marginBottom: SPACING.sm,
   },
+  heroCard: {
+    borderRadius: 16,
+    padding: SPACING.lg,
+    alignItems: 'center',
+    overflow: 'hidden',
+    position: 'relative',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  heroCardSvg: {
+    position: 'absolute',
+    top: -20,
+    right: -20,
+  },
   heroGradient: {
     borderRadius: BORDER_RADIUS.xl,
     padding: SPACING.lg,
@@ -517,7 +540,6 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: SPACING.sm,
@@ -526,13 +548,11 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.xl,
     fontWeight: '700',
     fontFamily: FONTS.bold,
-    color: '#FFFFFF',
     textAlign: 'center',
   },
   heroSubtitle: {
     fontSize: FONT_SIZES.sm,
     fontFamily: FONTS.regular,
-    color: 'rgba(255, 255, 255, 0.85)',
     textAlign: 'center',
     marginTop: SPACING.xs,
   },
@@ -540,9 +560,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: SPACING.md,
-    paddingTop: SPACING.md,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.2)',
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    borderRadius: BORDER_RADIUS.lg,
+    width: '100%',
   },
   heroStatItem: {
     flex: 1,
@@ -552,18 +573,16 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.lg,
     fontWeight: '700',
     fontFamily: FONTS.bold,
-    color: '#FFFFFF',
   },
   heroStatLabel: {
     fontSize: FONT_SIZES.xs,
     fontFamily: FONTS.regular,
-    color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 2,
   },
   heroStatDivider: {
     width: 1,
     height: 30,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    marginHorizontal: SPACING.md,
   },
   scrollView: {
     flex: 1,

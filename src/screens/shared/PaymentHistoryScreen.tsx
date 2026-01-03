@@ -8,14 +8,18 @@ import {
   Animated,
   Dimensions,
   TextInput,
+  StatusBar,
+  Platform,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { formatCurrency } from '../../utils/formatters';
 import { useTheme } from '../../context/ThemeContext';
+import { SPACING } from '../../constants/theme';
 
 const { width } = Dimensions.get('window');
 
@@ -201,110 +205,148 @@ export default function PaymentHistoryScreen() {
 
   return (
     <View style={[styles.container, dynamicStyles.container]}>
-      {/* Header with Gradient */}
-      <Animated.View style={{ opacity: headerAnim }}>
-        <LinearGradient
-          colors={['#7C3AED', '#9333EA', '#A855F7']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.header, { paddingTop: insets.top }]}
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: colors.background }]}>
+        <TouchableOpacity
+          style={[styles.backButton, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
+          onPress={() => {
+            if (showSearch) {
+              setShowSearch(false);
+              setSearchQuery('');
+            } else {
+              navigation.goBack();
+            }
+          }}
         >
-          <View style={styles.headerContent}>
-            <TouchableOpacity 
-              onPress={() => {
-                if (showSearch) {
-                  setShowSearch(false);
-                  setSearchQuery('');
-                } else {
-                  navigation.goBack();
-                }
-              }} 
-              style={styles.backButton}
-            >
-              <Ionicons name="arrow-back" size={24} color="#FFF" />
-            </TouchableOpacity>
-            
-            {showSearch ? (
-              <View style={styles.headerSearchContainer}>
-                <Ionicons name="search" size={18} color="rgba(255,255,255,0.7)" />
-                <TextInput
-                  style={styles.headerSearchInput}
-                  placeholder="Search payments..."
-                  placeholderTextColor="rgba(255,255,255,0.6)"
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  autoFocus
-                />
-                {searchQuery.length > 0 && (
-                  <TouchableOpacity onPress={() => setSearchQuery('')}>
-                    <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.7)" />
-                  </TouchableOpacity>
-                )}
-              </View>
-            ) : (
-              <Text style={styles.headerTitle}>Payment History</Text>
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
+        </TouchableOpacity>
+        
+        {showSearch ? (
+          <View style={[styles.headerSearchContainer, { backgroundColor: isDark ? '#2C2C2E' : '#F3F4F6' }]}>
+            <Ionicons name="search" size={18} color={colors.textSecondary} />
+            <TextInput
+              style={[styles.headerSearchInput, { color: colors.text }]}
+              placeholder="Search payments..."
+              placeholderTextColor={colors.textSecondary}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoFocus
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
+              </TouchableOpacity>
             )}
-            
-            <TouchableOpacity 
-              style={styles.searchButton}
-              onPress={() => setShowSearch(!showSearch)}
-            >
-              <Ionicons name={showSearch ? "close" : "search"} size={24} color="#FFF" />
-            </TouchableOpacity>
           </View>
-
-          {/* Stats Card */}
-          <View style={[styles.statsCard, dynamicStyles.statsCard]}>
-            <View style={styles.statItem}>
-              <View>
-                <Text style={[styles.statNumber, dynamicStyles.text]}>{payments.length}</Text>
-                <Text style={[styles.statLabel, dynamicStyles.textSecondary]}>Total Payments</Text>
-              </View>
-            </View>
-            <View style={[styles.statDivider, dynamicStyles.statDivider]} />
-            <View style={styles.statItem}>
-              <View>
-                <Text style={[styles.statNumber, dynamicStyles.text]}>{formatCurrency(totalAmount ?? 0)}</Text>
-                <Text style={[styles.statLabel, dynamicStyles.textSecondary]}>Total Spent</Text>
-              </View>
-            </View>
-          </View>
-        </LinearGradient>
-      </Animated.View>
-
-      {/* Filter Chips */}
-      <View style={styles.filterContainer}>
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterScroll}
+        ) : (
+          <View style={{ flex: 1 }} />
+        )}
+        
+        <TouchableOpacity
+          style={[styles.searchButton, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
+          onPress={() => setShowSearch(!showSearch)}
         >
-          {FILTER_OPTIONS.map((filter) => (
-            <TouchableOpacity
-              key={filter}
-              style={[
-                styles.filterChip,
-                dynamicStyles.filterChip,
-                selectedFilter === filter && styles.filterChipSelected,
-              ]}
-              onPress={() => setSelectedFilter(filter)}
-            >
-              <Text style={[
-                styles.filterText,
-                dynamicStyles.textSecondary,
-                selectedFilter === filter && styles.filterTextSelected,
-              ]}>
-                {filter}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+          <Ionicons name={showSearch ? "close" : "search"} size={22} color="#7C3AED" />
+        </TouchableOpacity>
       </View>
 
-      <ScrollView
+      <Animated.ScrollView
+        style={{ opacity: fadeAnim }}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 20 }]}
       >
+        {/* Page Title */}
+        <View style={styles.pageTitleSection}>
+          <Text style={[styles.pageTitle, { color: colors.text }]}>Payment History</Text>
+          <Text style={[styles.pageSubtitle, { color: colors.textSecondary }]}>View all your bill payments</Text>
+        </View>
+
+        {/* Summary Hero Card */}
+        <View style={[styles.summaryCard, dynamicStyles.card]}>
+          {/* SVG Background */}
+          <View style={styles.summaryCardBackground}>
+            <Svg width={240} height={240} style={{ position: 'absolute', top: -60, right: -60 }}>
+              <Defs>
+                <SvgLinearGradient id="paymentHeroGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <Stop offset="0%" stopColor="#7C3AED" stopOpacity="0.12" />
+                  <Stop offset="100%" stopColor="#A855F7" stopOpacity="0.04" />
+                </SvgLinearGradient>
+              </Defs>
+              <Circle cx="120" cy="120" r="110" fill="url(#paymentHeroGrad)" />
+              <Circle cx="120" cy="120" r="75" fill="url(#paymentHeroGrad)" />
+              <Circle cx="120" cy="120" r="40" fill="url(#paymentHeroGrad)" />
+            </Svg>
+          </View>
+          
+          {/* Header Row */}
+          <View style={styles.summaryHeaderRow}>
+            <View style={styles.summaryHeaderInfo}>
+              <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Total Spent</Text>
+              <Text style={[styles.summaryValue, { color: colors.text }]}>{formatCurrency(totalAmount ?? 0)}</Text>
+            </View>
+            <View style={[styles.summaryIconContainer, { backgroundColor: '#F3E8FF' }]}>
+              <Ionicons name="receipt" size={32} color="#7C3AED" />
+            </View>
+          </View>
+          
+          {/* Stats Row */}
+          <View style={[styles.summaryStatsRow, { borderTopColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
+            <View style={styles.summaryStatBox}>
+              <Text style={[styles.summaryStatLabel, { color: colors.textSecondary }]}>Total</Text>
+              <Text style={[styles.summaryStatAmount, { color: '#7C3AED' }]}>{payments.length}</Text>
+            </View>
+            
+            <View style={[styles.summaryStatDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }]} />
+            
+            <View style={styles.summaryStatBox}>
+              <Text style={[styles.summaryStatLabel, { color: colors.textSecondary }]}>Paid</Text>
+              <Text style={[styles.summaryStatAmount, { color: '#10B981' }]}>
+                {payments.filter(p => p.status === 'paid').length}
+              </Text>
+            </View>
+            
+            <View style={[styles.summaryStatDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }]} />
+            
+            <View style={styles.summaryStatBox}>
+              <Text style={[styles.summaryStatLabel, { color: colors.textSecondary }]}>Pending</Text>
+              <Text style={[styles.summaryStatAmount, { color: '#F59E0B' }]}>
+                {payments.filter(p => p.status === 'pending').length}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Filter Chips */}
+        <View style={styles.filterContainer}>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterScroll}
+          >
+            {FILTER_OPTIONS.map((filter) => (
+              <TouchableOpacity
+                key={filter}
+                style={[
+                  styles.filterChip,
+                  dynamicStyles.filterChip,
+                  selectedFilter === filter && styles.filterChipSelected,
+                ]}
+                onPress={() => setSelectedFilter(filter)}
+              >
+                <Text style={[
+                  styles.filterText,
+                  dynamicStyles.textSecondary,
+                  selectedFilter === filter && styles.filterTextSelected,
+                ]}>
+                  {filter}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
         {Object.keys(groupedPayments).length > 0 ? (
           Object.entries(groupedPayments).map(([date, datePayments]) => (
             <View key={date} style={styles.dateGroup}>
@@ -329,7 +371,7 @@ export default function PaymentHistoryScreen() {
             </Text>
           </View>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
     </View>
   );
 }
@@ -340,104 +382,120 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
   },
   header: {
-    paddingBottom: 60,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-  },
-  headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 20,
+    paddingHorizontal: SPACING.lg,
+    paddingTop: Platform.OS === 'ios' ? 8 : SPACING.md,
+    paddingBottom: SPACING.sm,
   },
   backButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(124, 58, 237, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#FFF',
-    flex: 1,
-    textAlign: 'center',
-  },
-  headerSearchContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginHorizontal: 8,
-    gap: 8,
-  },
-  headerSearchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: '#FFF',
-    paddingVertical: 0,
   },
   searchButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(124, 58, 237, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  statsCard: {
-    flexDirection: 'row',
-    backgroundColor: '#FFF',
-    marginHorizontal: 20,
-    marginTop: 10,
+  pageTitleSection: {
+    paddingHorizontal: SPACING.lg,
+    marginBottom: SPACING.md,
+  },
+  pageTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  pageSubtitle: {
+    fontSize: 14,
+  },
+  scrollContent: {
+    paddingHorizontal: SPACING.lg,
+    paddingBottom: 100,
+  },
+  summaryCard: {
     borderRadius: 20,
-    padding: 20,
+    overflow: 'hidden',
+    marginBottom: SPACING.lg,
+    padding: SPACING.lg,
+    position: 'relative',
     shadowColor: '#7C3AED',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(124, 58, 237, 0.1)',
   },
-  statItem: {
-    flex: 1,
+  summaryCardBackground: {
+    position: 'absolute',
+    top: -60,
+    right: -60,
+    width: 200,
+    height: 200,
+  },
+  summaryHeaderRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 12,
+    marginBottom: SPACING.lg,
   },
-  statIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: '#F3E8FF',
+  summaryHeaderInfo: {
+    flex: 1,
+  },
+  summaryLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  summaryValue: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#7C3AED',
+  },
+  summaryIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: 'rgba(124, 58, 237, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: '400',
-    color: '#1F2937',
+  summaryStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: SPACING.md,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(124, 58, 237, 0.08)',
   },
-  statLabel: {
+  summaryStatBox: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  summaryStatLabel: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#6B7280',
+    marginBottom: 4,
   },
-  statDivider: {
+  summaryStatAmount: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  summaryStatDivider: {
     width: 1,
-    height: 40,
-    backgroundColor: '#E5E7EB',
-    marginHorizontal: 16,
+    height: 32,
+    backgroundColor: 'rgba(124, 58, 237, 0.12)',
   },
   searchContainer: {
     paddingHorizontal: 20,
-    marginTop: -20,
     marginBottom: 10,
   },
   searchInputWrapper: {
@@ -460,11 +518,10 @@ const styles = StyleSheet.create({
     color: '#1F2937',
   },
   filterContainer: {
-    marginTop: -20,
-    marginBottom: 10,
+    marginBottom: SPACING.md,
   },
   filterScroll: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 0,
     gap: 10,
   },
   filterChip: {
@@ -486,11 +543,6 @@ const styles = StyleSheet.create({
   },
   filterTextSelected: {
     color: '#FFF',
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 100,
   },
   dateGroup: {
     marginBottom: 20,

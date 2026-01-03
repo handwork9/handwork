@@ -15,6 +15,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -373,67 +374,55 @@ export default function TransactionHistoryScreen() {
         </View>
         
         {/* Summary Media Card */}
-        <View style={[styles.summaryMediaCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
-          {/* Gradient Header with Illustration */}
-          <LinearGradient
-            colors={['#059669', '#10B981', '#34D399']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.summaryMediaHeader}
-          >
-            {/* Decorative circles */}
-            <View style={[styles.summaryDecorCircle, { top: -20, right: -20, opacity: 0.1 }]} />
-            <View style={[styles.summaryDecorCircle, { bottom: -30, left: 60, opacity: 0.08, width: 80, height: 80 }]} />
-            
-            <View style={styles.summaryHeaderContent}>
-              <View style={styles.summaryHeaderLeft}>
-                <Text style={styles.summaryHeaderLabel}>Transaction Summary</Text>
-                <Text style={styles.summaryHeaderValue}>{transactions.length}</Text>
-                <View style={styles.summaryHeaderBadge}>
-                  <Ionicons name="receipt-outline" size={12} color="#FFFFFF" />
-                  <Text style={styles.summaryHeaderBadgeText}>Total Transactions</Text>
-                </View>
-              </View>
-              <View style={styles.summaryIllustrationContainer}>
-                <TransactionHistoryIllustration size={85} />
-              </View>
-            </View>
-          </LinearGradient>
+        <View style={[styles.summaryMediaCard, dynamicStyles.card]}>
+          {/* SVG Background Decoration */}
+          <View style={styles.summaryCardBackground}>
+            <Svg width={240} height={240} style={{ position: 'absolute', top: -60, right: -60 }}>
+              <Defs>
+                <SvgLinearGradient id="txSummaryGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <Stop offset="0%" stopColor="#10B981" stopOpacity="0.12" />
+                  <Stop offset="100%" stopColor="#34D399" stopOpacity="0.04" />
+                </SvgLinearGradient>
+              </Defs>
+              <Circle cx="120" cy="120" r="110" fill="url(#txSummaryGrad)" />
+              <Circle cx="120" cy="120" r="75" fill="url(#txSummaryGrad)" />
+              <Circle cx="120" cy="120" r="40" fill="url(#txSummaryGrad)" />
+            </Svg>
+          </View>
           
-          {/* Stats Grid */}
-          <View style={styles.summaryStatsGrid}>
-            {/* Total Income */}
-            <View style={[styles.summaryStatItem, { borderRightWidth: 1, borderRightColor: isDark ? '#3D3D3D' : '#F0F0F0' }]}>
-              <View style={[styles.summaryStatIconBg, { backgroundColor: '#ECFDF5' }]}>
-                <View style={[styles.summaryStatIconInner, { backgroundColor: '#10B981' }]}>
-                  <Ionicons name="trending-up" size={16} color="#FFFFFF" />
-                </View>
-              </View>
-              <Text style={[styles.summaryStatLabel, { color: colors.textSecondary }]}>Income</Text>
-              <Text style={[styles.summaryStatValue, { color: '#10B981' }]}>+{formatCurrency(totalCredit)}</Text>
+          {/* Header Row */}
+          <View style={styles.summaryHeaderRow}>
+            <View style={styles.summaryHeaderInfo}>
+              <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Total Transactions</Text>
+              <Text style={[styles.summaryValue, { color: colors.text }]}>{transactions.length}</Text>
             </View>
-            
-            {/* Total Expenses */}
-            <View style={styles.summaryStatItem}>
-              <View style={[styles.summaryStatIconBg, { backgroundColor: '#FEF2F2' }]}>
-                <View style={[styles.summaryStatIconInner, { backgroundColor: '#EF4444' }]}>
-                  <Ionicons name="trending-down" size={16} color="#FFFFFF" />
-                </View>
-              </View>
-              <Text style={[styles.summaryStatLabel, { color: colors.textSecondary }]}>Expenses</Text>
-              <Text style={[styles.summaryStatValue, { color: '#EF4444' }]}>-{formatCurrency(totalDebit)}</Text>
+            <View style={styles.summaryIllustrationContainer}>
+              <TransactionHistoryIllustration size={80} />
             </View>
           </View>
           
-          {/* Net Balance Footer */}
-          <View style={[styles.summaryNetBalanceFooter, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : '#F0FDF4' }]}>
-            <View style={styles.summaryNetBalanceContent}>
-              <Ionicons name="wallet-outline" size={18} color="#059669" />
-              <Text style={[styles.summaryNetBalanceLabel, { color: colors.textSecondary }]}>Net Balance</Text>
+          {/* Stats Row */}
+          <View style={[styles.summaryStatsRow, { borderTopColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
+            <View style={styles.summaryStatBox}>
+              <Text style={[styles.summaryStatLabel, { color: colors.textSecondary }]}>Income</Text>
+              <Text style={[styles.summaryStatAmount, { color: '#10B981' }]}>+{formatCurrency(totalCredit)}</Text>
             </View>
-            <Text style={[styles.summaryNetBalanceValue, { color: totalCredit - totalDebit >= 0 ? '#059669' : '#EF4444' }]}>
-              {totalCredit - totalDebit >= 0 ? '+' : ''}{formatCurrency(totalCredit - totalDebit)}
-            </Text>
+            
+            <View style={[styles.summaryStatDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }]} />
+            
+            <View style={styles.summaryStatBox}>
+              <Text style={[styles.summaryStatLabel, { color: colors.textSecondary }]}>Expenses</Text>
+              <Text style={[styles.summaryStatAmount, { color: '#EF4444' }]}>-{formatCurrency(totalDebit)}</Text>
+            </View>
+            
+            <View style={[styles.summaryStatDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }]} />
+            
+            <View style={styles.summaryStatBox}>
+              <Text style={[styles.summaryStatLabel, { color: colors.textSecondary }]}>Net</Text>
+              <Text style={[styles.summaryStatAmount, { color: totalCredit - totalDebit >= 0 ? '#059669' : '#EF4444' }]}>
+                {totalCredit - totalDebit >= 0 ? '+' : ''}{formatCurrency(totalCredit - totalDebit)}
+              </Text>
+            </View>
           </View>
         </View>
 
@@ -522,8 +511,20 @@ export default function TransactionHistoryScreen() {
         ) : (
           <View style={[styles.emptyCard, dynamicStyles.card]}>
             <View style={styles.emptyContainer}>
-              <View style={[styles.emptyIconContainer, { backgroundColor: isDark ? colors.background : '#F3F4F6' }]}>
-                <MaterialCommunityIcons name="receipt-text-outline" size={40} color={colors.textSecondary} />
+              <View style={styles.emptyBackground}>
+                <Svg width={180} height={180}>
+                  <Defs>
+                    <SvgLinearGradient id="txHistoryEmptyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <Stop offset="0%" stopColor="#FF9500" stopOpacity="0.15" />
+                      <Stop offset="100%" stopColor="#FFCC00" stopOpacity="0.08" />
+                    </SvgLinearGradient>
+                  </Defs>
+                  <Circle cx="90" cy="90" r="80" fill="url(#txHistoryEmptyGrad)" />
+                  <Circle cx="90" cy="90" r="55" fill="url(#txHistoryEmptyGrad)" />
+                </Svg>
+              </View>
+              <View style={[styles.emptyIconContainer, { backgroundColor: '#FFF3E0' }]}>
+                <MaterialCommunityIcons name="receipt-text" size={40} color="#FF9500" />
               </View>
               <Text style={[styles.emptyTitle, dynamicStyles.text]}>No Transactions Found</Text>
               <Text style={[styles.emptyDescription, dynamicStyles.textSecondary]}>
@@ -708,25 +709,120 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: 'hidden',
     marginBottom: SPACING.lg,
+    padding: SPACING.lg,
+    position: 'relative',
     shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
     shadowRadius: 12,
     elevation: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.1)',
   },
+  summaryCardBackground: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: '100%',
+    height: '100%',
+    overflow: 'hidden',
+  },
+  summaryHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.lg,
+    zIndex: 1,
+  },
+  summaryIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: '#10B981',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  summaryHeaderInfo: {
+    flex: 1,
+    marginLeft: SPACING.md,
+  },
+  summaryLabel: {
+    fontSize: 13,
+    fontFamily: FONTS.medium,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  summaryValue: {
+    fontSize: 32,
+    fontFamily: FONTS.bold,
+    fontWeight: '700',
+  },
+  summaryIllustrationContainer: {
+    marginLeft: SPACING.sm,
+  },
+  summaryStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: SPACING.lg,
+    borderTopWidth: 1,
+    zIndex: 1,
+  },
+  summaryStatBox: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  summaryStatIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: SPACING.xs,
+  },
+  summaryStatLabel: {
+    fontSize: 11,
+    fontFamily: FONTS.medium,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+    marginBottom: 4,
+  },
+  summaryStatAmount: {
+    fontSize: 15,
+    fontFamily: FONTS.bold,
+    fontWeight: '700',
+  },
+  summaryStatDivider: {
+    width: 1,
+    height: 50,
+    marginHorizontal: SPACING.sm,
+  },
+  // Legacy styles kept for compatibility
   summaryMediaHeader: {
     paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.lg,
-    paddingBottom: SPACING.xl,
+    paddingTop: SPACING.xl,
+    paddingBottom: SPACING.lg,
     position: 'relative',
+    overflow: 'hidden',
+  },
+  summaryHeaderSvgBackground: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: '100%',
+    height: '100%',
     overflow: 'hidden',
   },
   summaryDecorCircle: {
     position: 'absolute',
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#FFFFFF',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#10B981',
   },
   summaryHeaderContent: {
     flexDirection: 'row',
@@ -737,68 +833,58 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   summaryHeaderLabel: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: FONTS.medium,
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginBottom: 4,
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   summaryHeaderValue: {
-    fontSize: 42,
+    fontSize: 52,
     fontFamily: FONTS.bold,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: -0.5,
+    fontWeight: '800',
+    letterSpacing: -1.5,
   },
   summaryHeaderBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
     alignSelf: 'flex-start',
-    marginTop: 8,
-    gap: 4,
+    marginTop: 10,
+    gap: 6,
   },
   summaryHeaderBadgeText: {
-    fontSize: 11,
-    fontFamily: FONTS.medium,
-    color: '#FFFFFF',
-  },
-  summaryIllustrationContainer: {
-    marginLeft: SPACING.md,
+    fontSize: 12,
+    fontFamily: FONTS.semiBold,
   },
   summaryStatsGrid: {
     flexDirection: 'row',
-    paddingVertical: SPACING.md,
+    paddingVertical: SPACING.lg,
   },
   summaryStatItem: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: SPACING.sm,
+    paddingVertical: SPACING.md,
   },
   summaryStatIconBg: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 52,
+    height: 52,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: SPACING.xs,
+    marginBottom: SPACING.sm,
   },
   summaryStatIconInner: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  summaryStatLabel: {
-    fontSize: 12,
-    fontFamily: FONTS.medium,
-    marginBottom: 4,
-  },
   summaryStatValue: {
-    fontSize: 18,
+    fontSize: 20,
     fontFamily: FONTS.bold,
     fontWeight: '700',
   },
@@ -807,23 +893,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
+    paddingVertical: SPACING.md + 4,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0, 0, 0, 0.05)',
+    borderTopColor: 'rgba(0, 0, 0, 0.06)',
   },
   summaryNetBalanceContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
   summaryNetBalanceLabel: {
-    fontSize: FONT_SIZES.sm,
-    fontFamily: FONTS.medium,
+    fontSize: FONT_SIZES.md,
+    fontFamily: FONTS.semiBold,
   },
   summaryNetBalanceValue: {
-    fontSize: 18,
+    fontSize: 20,
     fontFamily: FONTS.bold,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   heroCard: {
     marginBottom: SPACING.lg,
@@ -1278,6 +1364,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
+  emptyBackground: {
+    position: 'absolute',
+    top: SPACING.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    opacity: 0.8,
+  },
   emptyIconContainer: {
     width: 80,
     height: 80,
@@ -1285,6 +1378,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: SPACING.sm,
+    zIndex: 1,
   },
   emptyTitle: {
     fontSize: FONT_SIZES.lg,

@@ -22,6 +22,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
 import { useDispatch } from 'react-redux';
 import { useTranslation } from 'react-i18next';
+import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { orderService } from '../../services/orderService';
 import { cartService } from '../../services/cartService';
 import { productService } from '../../services/productService';
@@ -666,8 +667,21 @@ const OrdersScreen: React.FC = () => {
   // Empty state
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      <View style={[styles.emptyIconContainer, dynamicStyles.emptyIconContainer]}>
-        <Ionicons name="cube-outline" size={64} color={dynamicStyles.emptyIconColor} />
+      {/* SVG Background */}
+      <View style={styles.emptyBackground}>
+        <Svg width={200} height={200}>
+          <Defs>
+            <SvgLinearGradient id="emptyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <Stop offset="0%" stopColor="#22C55E" stopOpacity="0.15" />
+              <Stop offset="100%" stopColor="#86EFAC" stopOpacity="0.08" />
+            </SvgLinearGradient>
+          </Defs>
+          <Circle cx="100" cy="100" r="90" fill="url(#emptyGrad)" />
+          <Circle cx="100" cy="100" r="60" fill="url(#emptyGrad)" />
+        </Svg>
+      </View>
+      <View style={[styles.emptyIconContainer, { backgroundColor: '#DCFCE7' }]}>
+        <Ionicons name="cube" size={48} color="#22C55E" />
       </View>
       <Text style={[styles.emptyTitle, dynamicStyles.emptyTitle]}>No Orders Yet</Text>
       <Text style={[styles.emptyText, dynamicStyles.emptyText]}>
@@ -685,7 +699,7 @@ const OrdersScreen: React.FC = () => {
           end={{ x: 1, y: 0 }}
           style={styles.shopButtonGradient}
         >
-          <Ionicons name="basket-outline" size={20} color="#fff" />
+          <Ionicons name="basket" size={20} color="#fff" />
           <Text style={styles.shopButtonText}>Start Shopping</Text>
         </LinearGradient>
       </TouchableOpacity>
@@ -1198,11 +1212,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     paddingVertical: 64,
   },
+  emptyBackground: {
+    position: 'absolute',
+    opacity: 0.8,
+  },
   emptyIconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#F3F4F6',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#DCFCE7',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 24,

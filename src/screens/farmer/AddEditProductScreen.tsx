@@ -23,6 +23,7 @@ import * as yup from 'yup';
 import * as ImagePicker from 'expo-image-picker';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, FONTS } from '../../constants/theme';
 import { Button, TextInput, LoadingState } from '../../components/common';
 import { productService } from '../../services/productService';
@@ -30,6 +31,7 @@ import { uploadService } from '../../services/uploadService';
 import { FarmerStackParamList, ProductCategory } from '../../types';
 import { useAppSelector } from '../../store';
 import { useTheme } from '../../context/ThemeContext';
+import { FarmerActivationIllustration } from '../../assets/illustrations/hero';
 
 type NavigationProp = NativeStackNavigationProp<FarmerStackParamList>;
 type RouteProps = RouteProp<FarmerStackParamList, 'EditProduct'>;
@@ -103,6 +105,9 @@ export default function AddEditProductScreen() {
   
   const productId = route.params?.productId;
   const isEditing = !!productId;
+  
+  // Check if farmer needs activation
+  const needsActivation = user?.role === 'farmer' && !user?.isActivated;
   
   const [images, setImages] = useState<string[]>([]);
   const [isAvailable, setIsAvailable] = useState(true);
@@ -470,9 +475,83 @@ export default function AddEditProductScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView contentContainerStyle={styles.content}>
+          {/* Activation Card - Always show for non-activated farmers when adding products */}
+          {!isEditing && (
+            <TouchableOpacity
+              style={[styles.activationCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}
+              onPress={() => navigation.navigate('FarmerActivation')}
+              activeOpacity={0.9}
+            >
+              {/* SVG Background */}
+              <View style={styles.activationCardSvg}>
+                <Svg width="250" height="200" viewBox="0 0 250 200">
+                  <Defs>
+                    <SvgLinearGradient id="activationGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <Stop offset="0%" stopColor="#FF6B35" stopOpacity={0.15} />
+                      <Stop offset="100%" stopColor="#FF8F00" stopOpacity={0.08} />
+                    </SvgLinearGradient>
+                    <SvgLinearGradient id="activationGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <Stop offset="0%" stopColor="#FF8F00" stopOpacity={0.12} />
+                      <Stop offset="100%" stopColor="#FF6B35" stopOpacity={0.05} />
+                    </SvgLinearGradient>
+                  </Defs>
+                  <Circle cx="180" cy="40" r="100" fill="url(#activationGrad1)" />
+                  <Circle cx="220" cy="120" r="60" fill="url(#activationGrad2)" />
+                  <Circle cx="140" cy="20" r="40" fill="url(#activationGrad2)" />
+                </Svg>
+              </View>
+              
+              <View style={styles.activationCardContent}>
+                <View style={styles.activationCardLeft}>
+                  {/* Badge */}
+                  <View style={[styles.activationBadge, { backgroundColor: '#FFF3E0' }]}>
+                    <Ionicons name="sparkles" size={10} color="#FF6B35" />
+                    <Text style={[styles.activationBadgeText, { color: '#FF6B35' }]}>GET STARTED</Text>
+                  </View>
+                  
+                  <Text style={[styles.activationCardTitle, { color: colors.text }]}>Activate Your Seller Account</Text>
+                  <Text style={[styles.activationCardSubtitle, { color: colors.textSecondary }]}>
+                    One-time ₦25,000 fee to unlock full selling features
+                  </Text>
+                  
+                  {/* Benefits */}
+                  <View style={styles.activationBenefitsRow}>
+                    <View style={[styles.activationBenefitItem, { backgroundColor: '#FFF3E0' }]}>
+                      <Ionicons name="storefront" size={12} color="#FF6B35" />
+                      <Text style={[styles.activationBenefitText, { color: '#FF6B35' }]}>Your Store</Text>
+                    </View>
+                    <View style={[styles.activationBenefitItem, { backgroundColor: '#E8F5E9' }]}>
+                      <Ionicons name="trending-up" size={12} color="#4CAF50" />
+                      <Text style={[styles.activationBenefitText, { color: '#4CAF50' }]}>Unlimited Sales</Text>
+                    </View>
+                  </View>
+                  
+                  {/* CTA Button */}
+                  <View style={[styles.activationCtaButton, { backgroundColor: '#FF6B35' }]}>
+                    <Text style={[styles.activationCtaText, { color: '#FFFFFF' }]}>Activate Now</Text>
+                    <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
+                  </View>
+                </View>
+                
+                {/* Illustration */}
+                <View style={styles.activationIllustration}>
+                  <FarmerActivationIllustration size={90} />
+                </View>
+              </View>
+            </TouchableOpacity>
+          )}
+
           {/* Images Section */}
           <View style={[styles.section, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Product Images</Text>
+            <View style={styles.sectionHeader}>
+              <View style={[styles.sectionIconContainer, { backgroundColor: '#E3F2FD' }]}>
+                <Ionicons name="images" size={18} color="#1976D2" />
+              </View>
+              <View>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Product Images</Text>
+                <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>Add up to 5 photos</Text>
+              </View>
+            </View>
             <ScrollView 
               horizontal 
               showsHorizontalScrollIndicator={false}
@@ -499,12 +578,20 @@ export default function AddEditProductScreen() {
                 </TouchableOpacity>
               )}
             </ScrollView>
-            <Text style={[styles.helperText, { color: colors.textSecondary }]}>Add up to 5 images. First image is the main photo.</Text>
+            <Text style={[styles.helperText, { color: colors.textSecondary }]}>First image will be the main photo</Text>
           </View>
 
           {/* Basic Info */}
           <View style={[styles.section, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Basic Information</Text>
+            <View style={styles.sectionHeader}>
+              <View style={[styles.sectionIconContainer, { backgroundColor: '#E8F5E9' }]}>
+                <Ionicons name="information-circle" size={18} color="#4CAF50" />
+              </View>
+              <View>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Basic Information</Text>
+                <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>Name and description</Text>
+              </View>
+            </View>
             <Controller
               control={control}
               name="name"
@@ -539,7 +626,15 @@ export default function AddEditProductScreen() {
 
           {/* Category */}
           <View style={[styles.section, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Category</Text>
+            <View style={styles.sectionHeader}>
+              <View style={[styles.sectionIconContainer, { backgroundColor: '#FFF3E0' }]}>
+                <Ionicons name="grid" size={18} color="#FF9800" />
+              </View>
+              <View>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Category</Text>
+                <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>Select product type</Text>
+              </View>
+            </View>
             <Controller
               control={control}
               name="category"
@@ -584,7 +679,15 @@ export default function AddEditProductScreen() {
 
           {/* Pricing & Stock */}
           <View style={[styles.section, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Pricing & Stock</Text>
+            <View style={styles.sectionHeader}>
+              <View style={[styles.sectionIconContainer, { backgroundColor: '#E8F5E9' }]}>
+                <Ionicons name="pricetag" size={18} color="#4CAF50" />
+              </View>
+              <View>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Pricing & Stock</Text>
+                <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>Set your price and inventory</Text>
+              </View>
+            </View>
             <View style={styles.row}>
               <View style={styles.flex}>
                 <Controller
@@ -655,10 +758,15 @@ export default function AddEditProductScreen() {
 
           {/* Certifications */}
           <View style={[styles.section, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Certifications</Text>
-            <Text style={[styles.helperText, { color: colors.textSecondary, marginBottom: SPACING.sm }]}>
-              Select all that apply to your product
-            </Text>
+            <View style={styles.sectionHeader}>
+              <View style={[styles.sectionIconContainer, { backgroundColor: '#F3E5F5' }]}>
+                <Ionicons name="shield-checkmark" size={18} color="#9C27B0" />
+              </View>
+              <View>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Certifications</Text>
+                <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>Quality badges for your product</Text>
+              </View>
+            </View>
             <View style={styles.certificationsGrid}>
               {certifications.map((cert) => (
                 <TouchableOpacity
@@ -692,7 +800,15 @@ export default function AddEditProductScreen() {
 
           {/* Harvest Date */}
           <View style={[styles.section, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Harvest Information</Text>
+            <View style={styles.sectionHeader}>
+              <View style={[styles.sectionIconContainer, { backgroundColor: '#E0F7FA' }]}>
+                <Ionicons name="calendar" size={18} color="#00BCD4" />
+              </View>
+              <View>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Harvest Information</Text>
+                <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>When was it harvested?</Text>
+              </View>
+            </View>
             <TouchableOpacity 
               style={[styles.datePickerButton, { backgroundColor: isDark ? '#3A3A3C' : '#F2F2F7' }]}
               onPress={() => setShowDatePicker(true)}
@@ -721,7 +837,15 @@ export default function AddEditProductScreen() {
 
           {/* Minimum Order & Bulk Discount */}
           <View style={[styles.section, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Order Settings</Text>
+            <View style={styles.sectionHeader}>
+              <View style={[styles.sectionIconContainer, { backgroundColor: '#FFF8E1' }]}>
+                <Ionicons name="settings" size={18} color="#FFC107" />
+              </View>
+              <View>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Order Settings</Text>
+                <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>Minimum orders & bulk discounts</Text>
+              </View>
+            </View>
             
             <Controller
               control={control}
@@ -971,12 +1095,29 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
     ...SHADOWS.small,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+    gap: SPACING.sm,
+  },
+  sectionIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   sectionTitle: {
-    fontSize: FONT_SIZES.lg,
+    fontSize: FONT_SIZES.md,
     fontWeight: '700',
     fontFamily: FONTS.bold,
     color: COLORS.textPrimary,
-    marginBottom: SPACING.md,
+  },
+  sectionSubtitle: {
+    fontSize: FONT_SIZES.xs,
+    fontFamily: FONTS.regular,
+    marginTop: 1,
   },
   imagesContainer: {
     gap: SPACING.sm,
@@ -1309,5 +1450,96 @@ const styles = StyleSheet.create({
   datePicker: {
     height: 200,
     marginTop: SPACING.sm,
+  },
+  // Activation Card Styles
+  activationCard: {
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.lg,
+    marginBottom: SPACING.md,
+    position: 'relative',
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 53, 0.2)',
+    ...SHADOWS.small,
+  },
+  activationCardSvg: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    overflow: 'hidden',
+  },
+  activationCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  activationCardLeft: {
+    flex: 1,
+    marginRight: SPACING.md,
+  },
+  activationBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+    gap: 4,
+  },
+  activationBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
+    letterSpacing: 0.5,
+  },
+  activationCardTitle: {
+    fontSize: FONT_SIZES.md,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
+    marginBottom: 4,
+  },
+  activationCardSubtitle: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: FONTS.regular,
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  activationBenefitsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  activationBenefitItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+  },
+  activationBenefitText: {
+    fontSize: 11,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+  },
+  activationCtaButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    alignSelf: 'flex-start',
+    gap: 6,
+  },
+  activationCtaText: {
+    fontSize: 13,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
+  },
+  activationIllustration: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

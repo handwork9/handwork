@@ -11,6 +11,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Circle } from 'react-native-svg';
 import { useTheme } from '../../context/ThemeContext';
 import { FONTS } from '../../constants/theme';
 
@@ -171,14 +172,23 @@ export default function BecomeFarmerInfoScreen() {
       >
         {/* Hero Section */}
         <View style={styles.heroContainer}>
-          <View style={[styles.heroSection, { backgroundColor: PRIMARY_COLOR }]}>
-            <View style={styles.heroIconContainer}>
-              <MaterialCommunityIcons name="sprout" size={48} color={PRIMARY_COLOR} />
+          <View style={[styles.heroSection, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
+            <View style={styles.heroSvg}>
+              <Svg width="200" height="200" viewBox="0 0 200 200">
+                <Circle cx="150" cy="50" r="80" fill="#4CAF50" fillOpacity={0.08} />
+                <Circle cx="180" cy="100" r="50" fill="#66BB6A" fillOpacity={0.06} />
+                <Circle cx="120" cy="30" r="30" fill="#4CAF50" fillOpacity={0.05} />
+              </Svg>
             </View>
-            <Text style={styles.heroTitle}>Grow Your Farm Business</Text>
-            <Text style={styles.heroSubtitle}>
-              Join thousands of farmers already selling on our platform
-            </Text>
+            <View style={styles.heroContent}>
+              <View style={[styles.heroIconContainer, { backgroundColor: 'rgba(76, 175, 80, 0.1)' }]}>
+                <MaterialCommunityIcons name="sprout" size={48} color={PRIMARY_COLOR} />
+              </View>
+              <Text style={[styles.heroTitle, { color: colors.text }]}>Grow Your Farm Business</Text>
+              <Text style={[styles.heroSubtitle, { color: colors.textSecondary }]}>
+                Join thousands of farmers already selling on our platform
+              </Text>
+            </View>
           </View>
         </View>
 
@@ -295,16 +305,30 @@ const styles = StyleSheet.create({
     paddingTop: 16,
   },
   heroSection: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    position: 'relative',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  heroSvg: {
+    position: 'absolute',
+    top: -20,
+    right: -20,
+  },
+  heroContent: {
     paddingVertical: 32,
     paddingHorizontal: 24,
     alignItems: 'center',
-    borderRadius: 20,
   },
   heroIconContainer: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
@@ -312,14 +336,12 @@ const styles = StyleSheet.create({
   heroTitle: {
     fontSize: 24,
     fontFamily: FONTS.bold,
-    color: '#FFFFFF',
     marginTop: 12,
     textAlign: 'center',
   },
   heroSubtitle: {
     fontSize: 15,
     fontFamily: FONTS.regular,
-    color: 'rgba(255,255,255,0.9)',
     marginTop: 8,
     textAlign: 'center',
     lineHeight: 22,

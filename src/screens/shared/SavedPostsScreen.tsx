@@ -19,8 +19,9 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { formatDistanceToNow } from 'date-fns';
+import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { useTheme } from '../../context/ThemeContext';
-import { COLORS, FONTS, FONT_SIZES, SPACING } from '../../constants/theme';
+import { COLORS, FONTS, FONT_SIZES, SPACING, BORDER_RADIUS, SHADOWS } from '../../constants/theme';
 import socialService, { SocialPost } from '../../services/socialService';
 
 const { width } = Dimensions.get('window');
@@ -105,7 +106,13 @@ const SavedPostsScreen = () => {
     const hasImages = item.images && item.images.length > 0;
 
     return (
-      <View style={[styles.postCard, { backgroundColor: colors.card }]}>
+      <View style={[
+        styles.postCard, 
+        { 
+          backgroundColor: isDark ? colors.card : '#FFFFFF',
+          borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+        }
+      ]}>
         {/* Header */}
         <TouchableOpacity 
           style={styles.postHeader}
@@ -174,7 +181,22 @@ const SavedPostsScreen = () => {
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
-      <Ionicons name="bookmark-outline" size={64} color={isDark ? '#555' : '#ccc'} />
+      {/* SVG Background */}
+      <View style={styles.emptyBackground}>
+        <Svg width={200} height={200}>
+          <Defs>
+            <SvgLinearGradient id="emptyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <Stop offset="0%" stopColor="#4CAF50" stopOpacity="0.15" />
+              <Stop offset="100%" stopColor="#81C784" stopOpacity="0.08" />
+            </SvgLinearGradient>
+          </Defs>
+          <Circle cx="100" cy="100" r="90" fill="url(#emptyGrad)" />
+          <Circle cx="100" cy="100" r="60" fill="url(#emptyGrad)" />
+        </Svg>
+      </View>
+      <View style={[styles.emptyIconContainer, { backgroundColor: '#E8F5E9' }]}>
+        <Ionicons name="bookmark" size={32} color="#4CAF50" />
+      </View>
       <Text style={[styles.emptyTitle, { color: colors.text }]}>
         No Saved Posts
       </Text>
@@ -265,14 +287,11 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   postCard: {
-    borderRadius: 12,
+    borderRadius: BORDER_RADIUS.lg,
     marginBottom: SPACING.md,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderWidth: 1,
+    ...SHADOWS.small,
   },
   postHeader: {
     flexDirection: 'row',
@@ -341,10 +360,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: SPACING.xl * 3,
   },
+  emptyBackground: {
+    position: 'absolute',
+    opacity: 0.8,
+  },
+  emptyIconContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
   emptyTitle: {
     fontSize: FONT_SIZES.lg,
     fontFamily: FONTS.bold,
-    marginTop: SPACING.lg,
   },
   emptySubtitle: {
     fontSize: FONT_SIZES.md,

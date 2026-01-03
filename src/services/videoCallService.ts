@@ -123,6 +123,8 @@ class VideoCallService {
         const expiresAt = tokenPayload.exp * 1000;
         const now = Date.now();
         
+        console.log('[VideoCall] Token expires at:', new Date(expiresAt).toISOString(), 'Now:', new Date(now).toISOString());
+        
         // If token is expired or expires within 5 minutes, refresh it
         if (expiresAt <= now || expiresAt - now < 5 * 60 * 1000) {
           console.log('[VideoCall] Token expired or expiring soon, refreshing...');
@@ -141,8 +143,8 @@ class VideoCallService {
             return;
           }
         }
-      } catch (error) {
-        console.error('[VideoCall] Token refresh failed:', error);
+      } catch (error: any) {
+        console.error('[VideoCall] Token refresh failed:', error?.response?.data || error.message);
         // If refresh fails and token is expired, don't try to connect
         try {
           const tokenPayload = JSON.parse(atob(token.split('.')[1]));

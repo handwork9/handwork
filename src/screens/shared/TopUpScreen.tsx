@@ -397,7 +397,7 @@ export default function TopUpScreen({ route }: { route?: { params?: { balance?: 
         key={amount}
         style={[
           styles.presetAmount,
-          dynamicStyles.card,
+          { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#F5F5F5' },
           isSelected && styles.presetAmountSelected,
         ]}
         onPress={() => {
@@ -893,9 +893,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: SPACING.sm,
+    justifyContent: 'space-between',
   },
   presetAmount: {
-    width: '31%',
+    width: '31.5%',
     paddingVertical: SPACING.md,
     borderRadius: 12,
     alignItems: 'center',
