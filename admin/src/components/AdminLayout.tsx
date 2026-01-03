@@ -36,6 +36,7 @@ import {
   ClockCircleOutlined,
   FallOutlined,
   StarOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import { useAuthStore, hasPermission, PERMISSIONS } from '@/store/auth';
 import { useSocketStore } from '@/lib/socket';
@@ -227,6 +228,16 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       icon: <GiftOutlined />,
       label: 'Marketing',
       children: [
+        {
+          key: '/flash-sales',
+          icon: <ThunderboltOutlined />,
+          label: 'Flash Sales',
+        },
+        {
+          key: '/bundles',
+          icon: <AppstoreOutlined />,
+          label: 'Product Bundles',
+        },
         {
           key: '/coupons',
           icon: <TagOutlined />,
