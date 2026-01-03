@@ -1989,7 +1989,7 @@ export default function HomeScreen() {
     return (
       <FlashSaleBanner
         flashSales={flashSales}
-        onSeeAll={() => navigation.navigate('Search', { category: 'flash-sales' })}
+        onSeeAll={() => navigation.navigate('FlashSales')}
         onSalePress={(saleId) => navigation.navigate('FlashSaleDetail', { saleId })}
         onProductPress={(productId) => navigation.navigate('ProductDetail', { productId })}
       />

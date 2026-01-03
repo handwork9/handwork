@@ -20,6 +20,7 @@ import OrdersScreen from '../screens/buyer/OrdersScreen';
 import ProfileScreen from '../screens/shared/ProfileScreen';
 import ProductDetailScreen from '../screens/buyer/ProductDetailScreen';
 import FlashSaleDetailScreen from '../screens/buyer/FlashSaleDetailScreen';
+import FlashSalesScreen from '../screens/buyer/FlashSalesScreen';
 import FarmerProfileScreen from '../screens/buyer/FarmerProfileScreen';
 import CartScreen from '../screens/buyer/CartScreen';
 import CheckoutScreen from '../screens/buyer/CheckoutScreen';
@@ -260,6 +261,11 @@ export function BuyerNavigator() {
       <Stack.Screen
         name="FlashSaleDetail"
         component={FlashSaleDetailScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="FlashSales"
+        component={FlashSalesScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen

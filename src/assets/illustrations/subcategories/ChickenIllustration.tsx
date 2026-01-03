@@ -1,5 +1,5 @@
 import React from 'react';
-import Svg, { Path, Circle, Ellipse, G, Defs, LinearGradient, Stop } from 'react-native-svg';
+import Svg, { Path, Circle, Ellipse, G, Defs, LinearGradient, Stop, RadialGradient } from 'react-native-svg';
 
 interface IllustrationProps {
   width?: number;
@@ -7,90 +7,94 @@ interface IllustrationProps {
   color?: string;
 }
 
+// Ultra-realistic roasted chicken/whole chicken illustration
 const ChickenIllustration: React.FC<IllustrationProps> = ({ 
   width = 64, 
   height = 64, 
 }) => (
   <Svg width={width} height={height} viewBox="0 0 64 64" fill="none">
     <Defs>
-      <LinearGradient id="chickenGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <RadialGradient id="chickenBodyReal" cx="40%" cy="35%" r="65%">
         <Stop offset="0%" stopColor="#FFCCBC" />
-        <Stop offset="100%" stopColor="#FF8A65" />
+        <Stop offset="30%" stopColor="#FFB74D" />
+        <Stop offset="60%" stopColor="#F4A460" />
+        <Stop offset="100%" stopColor="#D2691E" />
+      </RadialGradient>
+      <RadialGradient id="chickenGolden" cx="35%" cy="30%" r="60%">
+        <Stop offset="0%" stopColor="#FFE0B2" />
+        <Stop offset="50%" stopColor="#FFAB40" />
+        <Stop offset="100%" stopColor="#E65100" />
+      </RadialGradient>
+      <LinearGradient id="plateReal" x1="0%" y1="0%" x2="0%" y2="100%">
+        <Stop offset="0%" stopColor="#ECEFF1" />
+        <Stop offset="50%" stopColor="#CFD8DC" />
+        <Stop offset="100%" stopColor="#B0BEC5" />
       </LinearGradient>
     </Defs>
     
-    {/* Body */}
-    <Ellipse cx="28" cy="38" rx="18" ry="14" fill="url(#chickenGrad)" />
+    {/* Plate/platter */}
+    <Ellipse cx="32" cy="56" rx="26" ry="6" fill="url(#plateReal)" />
+    <Ellipse cx="32" cy="54" rx="22" ry="4" fill="#FAFAFA" />
     
-    {/* Breast highlight */}
-    <Ellipse cx="24" cy="40" rx="8" ry="6" fill="#FFAB91" opacity="0.5" />
+    {/* Main roasted chicken body */}
+    <Ellipse cx="32" cy="38" rx="18" ry="14" fill="url(#chickenBodyReal)" />
     
-    {/* Head */}
-    <Circle cx="48" cy="26" r="10" fill="url(#chickenGrad)" />
+    {/* Golden crispy top */}
+    <Path
+      d="M16 34C18 26 26 22 32 22C38 22 46 26 48 34"
+      stroke="url(#chickenGolden)"
+      strokeWidth="6"
+      strokeLinecap="round"
+      fill="none"
+    />
     
-    {/* Comb */}
+    {/* Breast highlight - golden brown */}
+    <Ellipse cx="28" cy="36" rx="8" ry="6" fill="#FFE0B2" opacity="0.4" />
+    <Ellipse cx="36" cy="36" rx="7" ry="5" fill="#FFE0B2" opacity="0.35" />
+    
+    {/* Chicken legs */}
     <G>
-      <Circle cx="46" cy="16" r="3" fill="#F44336" />
-      <Circle cx="50" cy="14" r="3.5" fill="#E53935" />
-      <Circle cx="54" cy="16" r="3" fill="#F44336" />
+      {/* Left drumstick */}
+      <Path
+        d="M14 42C10 44 6 50 8 54C12 56 16 52 18 46C20 42 16 40 14 42Z"
+        fill="url(#chickenGolden)"
+      />
+      <Ellipse cx="8" cy="54" rx="3" ry="2" fill="#FFE0B2" />
+      
+      {/* Right drumstick */}
+      <Path
+        d="M50 42C54 44 58 50 56 54C52 56 48 52 46 46C44 42 48 40 50 42Z"
+        fill="url(#chickenGolden)"
+      />
+      <Ellipse cx="56" cy="54" rx="3" ry="2" fill="#FFE0B2" />
     </G>
     
-    {/* Wattle */}
-    <Ellipse cx="54" cy="32" rx="2" ry="4" fill="#E53935" />
+    {/* Crispy skin texture */}
+    <Path d="M22 32C28 30 36 30 42 32" stroke="#D2691E" strokeWidth="0.5" opacity="0.4" />
+    <Path d="M20 38C26 36 38 36 44 38" stroke="#D2691E" strokeWidth="0.5" opacity="0.35" />
     
-    {/* Beak */}
+    {/* Wings tucked */}
     <Path
-      d="M56 26L62 28L56 30L56 26Z"
-      fill="#FF8F00"
-    />
-    
-    {/* Eye */}
-    <Circle cx="52" cy="24" r="2.5" fill="#FFFFFF" />
-    <Circle cx="53" cy="23" r="1.5" fill="#212121" />
-    <Circle cx="53.5" cy="22.5" r="0.5" fill="#FFFFFF" />
-    
-    {/* Wing */}
-    <Path
-      d="M18 34C14 36 12 40 14 44C16 48 22 50 28 48C24 44 20 40 18 34Z"
-      fill="#FFAB91"
+      d="M18 38C16 36 14 34 14 36C14 40 18 44 22 42"
+      fill="#F4A460"
     />
     <Path
-      d="M16 38C14 40 14 44 18 46"
-      stroke="#FF8A65"
-      strokeWidth="1"
-      opacity="0.5"
+      d="M46 38C48 36 50 34 50 36C50 40 46 44 42 42"
+      fill="#F4A460"
     />
     
-    {/* Tail feathers */}
+    {/* Garnish - herbs */}
     <G>
-      <Path
-        d="M10 34C6 30 4 26 6 24C8 22 12 24 14 28"
-        stroke="#FFAB91"
-        strokeWidth="4"
-        strokeLinecap="round"
-      />
-      <Path
-        d="M10 38C4 36 2 32 4 28"
-        stroke="#FF8A65"
-        strokeWidth="3"
-        strokeLinecap="round"
-      />
+      <Path d="M12 52C14 50 16 50 18 52" stroke="#43A047" strokeWidth="1.5" strokeLinecap="round" />
+      <Path d="M14 54C16 52 18 52 20 54" stroke="#66BB6A" strokeWidth="1" strokeLinecap="round" />
+      <Path d="M46 52C48 50 50 50 52 52" stroke="#43A047" strokeWidth="1.5" strokeLinecap="round" />
+      <Path d="M44 54C46 52 48 52 50 54" stroke="#66BB6A" strokeWidth="1" strokeLinecap="round" />
     </G>
     
-    {/* Legs */}
-    <G>
-      <Path
-        d="M22 50V58M22 58L18 60M22 58L26 60"
-        stroke="#FF8F00"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-      <Path
-        d="M34 50V58M34 58L30 60M34 58L38 60"
-        stroke="#FF8F00"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
+    {/* Steam wisps */}
+    <G opacity="0.25">
+      <Path d="M28 18C28 14 30 10 28 6" stroke="#90A4AE" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+      <Path d="M36 16C36 12 38 8 36 4" stroke="#90A4AE" strokeWidth="1.5" strokeLinecap="round" fill="none" />
     </G>
   </Svg>
 );

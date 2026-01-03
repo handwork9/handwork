@@ -1,5 +1,5 @@
 import React from 'react';
-import Svg, { Path, Circle, Ellipse, G, Defs, LinearGradient, Stop } from 'react-native-svg';
+import Svg, { Path, Circle, Ellipse, G, Defs, LinearGradient, Stop, RadialGradient } from 'react-native-svg';
 
 interface IllustrationProps {
   width?: number;
@@ -7,68 +7,99 @@ interface IllustrationProps {
   color?: string;
 }
 
+// Ultra-realistic cassava/yuca root illustration
 const CassavaIllustration: React.FC<IllustrationProps> = ({ 
   width = 64, 
   height = 64, 
 }) => (
   <Svg width={width} height={height} viewBox="0 0 64 64" fill="none">
     <Defs>
-      <LinearGradient id="cassavaGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <Stop offset="0%" stopColor="#EFEBE9" />
-        <Stop offset="100%" stopColor="#A1887F" />
+      <LinearGradient id="cassavaSkinReal" x1="0%" y1="0%" x2="100%" y2="0%">
+        <Stop offset="0%" stopColor="#8D6E63" />
+        <Stop offset="30%" stopColor="#A1887F" />
+        <Stop offset="70%" stopColor="#BCAAA4" />
+        <Stop offset="100%" stopColor="#8D6E63" />
       </LinearGradient>
-      <LinearGradient id="cassavaInner" x1="0%" y1="0%" x2="100%" y2="100%">
+      <RadialGradient id="cassavaFleshReal" cx="50%" cy="50%" r="50%">
         <Stop offset="0%" stopColor="#FFFFFF" />
-        <Stop offset="100%" stopColor="#FFF8E1" />
+        <Stop offset="60%" stopColor="#FFF8E1" />
+        <Stop offset="100%" stopColor="#FFECB3" />
+      </RadialGradient>
+      <LinearGradient id="cassavaWaxReal" x1="0%" y1="0%" x2="0%" y2="100%">
+        <Stop offset="0%" stopColor="#D7CCC8" />
+        <Stop offset="100%" stopColor="#A1887F" />
       </LinearGradient>
     </Defs>
     
-    {/* Cassava 1 - main */}
-    <Path
-      d="M20 8C16 10 14 20 16 36C18 52 24 60 28 60C32 60 36 52 36 36C36 20 32 10 28 8C24 6 22 6 20 8Z"
-      fill="url(#cassavaGrad)"
-    />
+    {/* Shadow */}
+    <Ellipse cx="26" cy="62" rx="14" ry="2" fill="#3E2723" opacity="0.15" />
+    <Ellipse cx="48" cy="60" rx="10" ry="2" fill="#3E2723" opacity="0.12" />
     
-    {/* Bark texture */}
-    <G opacity="0.4">
-      <Path d="M20 16C22 16 26 16 28 16" stroke="#6D4C41" strokeWidth="0.5" />
-      <Path d="M18 24C22 24 28 24 32 24" stroke="#6D4C41" strokeWidth="0.5" />
-      <Path d="M18 32C22 32 30 32 34 32" stroke="#6D4C41" strokeWidth="0.5" />
-      <Path d="M18 40C22 40 30 40 34 40" stroke="#6D4C41" strokeWidth="0.5" />
-      <Path d="M20 48C24 48 28 48 32 48" stroke="#6D4C41" strokeWidth="0.5" />
-    </G>
-    
-    {/* Cross section showing white interior */}
+    {/* Cassava 1 - main large root */}
     <G>
-      <Ellipse cx="27" cy="60" rx="8" ry="3" fill="url(#cassavaInner)" />
-      <Circle cx="27" cy="60" r="2" fill="#D7CCC8" opacity="0.5" />
+      <Path
+        d="M18 6C12 10 10 22 12 38C14 54 22 62 28 62C34 62 38 54 38 38C38 22 34 10 28 6C24 4 20 4 18 6Z"
+        fill="url(#cassavaSkinReal)"
+      />
+      
+      {/* Bark texture rings */}
+      <Path d="M14 16C18 14 28 14 34 16" stroke="#6D4C41" strokeWidth="0.6" opacity="0.5" />
+      <Path d="M12 26C18 24 30 24 36 26" stroke="#6D4C41" strokeWidth="0.6" opacity="0.45" />
+      <Path d="M12 36C18 34 32 34 36 36" stroke="#6D4C41" strokeWidth="0.6" opacity="0.4" />
+      <Path d="M14 46C20 44 32 44 36 46" stroke="#6D4C41" strokeWidth="0.6" opacity="0.35" />
+      <Path d="M16 54C22 52 30 52 34 54" stroke="#6D4C41" strokeWidth="0.5" opacity="0.3" />
+      
+      {/* Vertical bark lines */}
+      <Path d="M20 10C18 24 20 42 22 56" stroke="#5D4037" strokeWidth="0.4" opacity="0.3" />
+      <Path d="M32 10C30 24 32 42 30 58" stroke="#5D4037" strokeWidth="0.4" opacity="0.25" />
+      
+      {/* Highlight */}
+      <Path d="M16 12C18 20 18 34 18 48" stroke="#D7CCC8" strokeWidth="2" strokeLinecap="round" opacity="0.4" />
+      
+      {/* Root marks */}
+      <Circle cx="18" cy="22" r="1.5" fill="#5D4037" opacity="0.4" />
+      <Circle cx="30" cy="34" r="1.2" fill="#5D4037" opacity="0.35" />
+      <Circle cx="22" cy="48" r="1.3" fill="#5D4037" opacity="0.35" />
     </G>
     
-    {/* Cassava 2 - smaller */}
-    <Path
-      d="M42 16C40 18 38 26 40 38C42 50 46 56 48 56C50 56 54 50 54 38C54 26 50 18 48 16C46 14 44 14 42 16Z"
-      fill="url(#cassavaGrad)"
-    />
-    
-    {/* Bark texture for second */}
-    <G opacity="0.3">
-      <Path d="M42 22C44 22 48 22 50 22" stroke="#6D4C41" strokeWidth="0.5" />
-      <Path d="M40 30C44 30 50 30 52 30" stroke="#6D4C41" strokeWidth="0.5" />
-      <Path d="M40 38C44 38 50 38 52 38" stroke="#6D4C41" strokeWidth="0.5" />
-      <Path d="M42 46C44 46 48 46 50 46" stroke="#6D4C41" strokeWidth="0.5" />
-    </G>
-    
-    {/* Stem/root connections */}
+    {/* Cross section showing white flesh */}
     <G>
-      <Path d="M24 8C24 4 26 2 28 4" stroke="#5D4037" strokeWidth="2" strokeLinecap="round" />
-      <Path d="M46 16C46 12 48 10 50 12" stroke="#5D4037" strokeWidth="2" strokeLinecap="round" />
+      <Ellipse cx="28" cy="62" rx="10" ry="4" fill="url(#cassavaFleshReal)" />
+      {/* Core fiber */}
+      <Circle cx="28" cy="62" r="2.5" fill="#EFEBE9" />
+      <Circle cx="28" cy="62" r="1" fill="#D7CCC8" />
     </G>
     
-    {/* Some peeled bark showing */}
+    {/* Cassava 2 - smaller root */}
+    <G>
+      <Path
+        d="M44 14C40 18 38 28 40 40C42 52 48 58 52 58C56 58 60 52 60 40C60 28 56 18 52 14C50 12 46 12 44 14Z"
+        fill="url(#cassavaSkinReal)"
+      />
+      
+      {/* Bark texture */}
+      <Path d="M42 22C46 20 54 20 58 22" stroke="#6D4C41" strokeWidth="0.5" opacity="0.4" />
+      <Path d="M40 32C46 30 56 30 58 32" stroke="#6D4C41" strokeWidth="0.5" opacity="0.35" />
+      <Path d="M42 42C48 40 56 40 58 42" stroke="#6D4C41" strokeWidth="0.5" opacity="0.3" />
+      <Path d="M44 50C50 48 54 48 56 50" stroke="#6D4C41" strokeWidth="0.4" opacity="0.25" />
+      
+      {/* Highlight */}
+      <Path d="M44 18C44 28 46 40 46 50" stroke="#D7CCC8" strokeWidth="1.5" strokeLinecap="round" opacity="0.35" />
+    </G>
+    
+    {/* Stem/root connections at top */}
+    <G>
+      <Path d="M24 6C24 2 26 0 28 2" stroke="#5D4037" strokeWidth="2.5" strokeLinecap="round" />
+      <Circle cx="24" cy="6" r="2" fill="#8D6E63" />
+      <Path d="M50 14C50 10 52 8 54 10" stroke="#5D4037" strokeWidth="2" strokeLinecap="round" />
+      <Circle cx="50" cy="14" r="1.5" fill="#8D6E63" />
+    </G>
+    
+    {/* Peeled bark showing white */}
     <Path
-      d="M34 28C36 30 36 34 34 36"
-      stroke="#FFF8E1"
-      strokeWidth="2"
+      d="M36 30C38 32 38 38 36 42"
+      stroke="url(#cassavaFleshReal)"
+      strokeWidth="3"
       strokeLinecap="round"
     />
   </Svg>

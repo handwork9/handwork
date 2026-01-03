@@ -551,6 +551,7 @@ export type BuyerStackParamList = {
   BuyerTabs: undefined;
   ProductDetail: { productId: string };
   FlashSaleDetail: { saleId: string };
+  FlashSales: undefined;
   FarmerProfile: { farmerId: string };
   Cart: undefined;
   Checkout: undefined;
