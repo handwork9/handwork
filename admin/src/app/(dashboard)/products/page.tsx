@@ -339,7 +339,7 @@ export default function ProductsPage() {
   const [createForm] = Form.useForm();
   const queryClient = useQueryClient();
   const { message, modal } = App.useApp();
-  const { user: adminUser, isAuthenticated } = useAuthStore();
+  const { user: adminUser } = useAuthStore();
 
   // Fetch farmers for dropdown
   const { data: farmersData } = useQuery({
@@ -363,31 +363,17 @@ export default function ProductsPage() {
 
   const { data, isLoading, error } = useQuery<ProductsResponse>({
     queryKey: ['products', currentPage, pageSize, categoryFilter, stateFilter, searchText],
-    enabled: isAuthenticated,
     queryFn: async () => {
       try {
-        const response = await adminApi.getProducts({
-          page: currentPage,
-          limit: pageSize,
-          category: categoryFilter || undefined,
-          state: stateFilter || undefined,
-          search: searchText || undefined,
-        });
-        const apiResponse = response.data;
+        // Use public endpoint directly - always works
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL || 'https://handwork-api-production.up.railway.app/api/v1'}/products?page=${currentPage}&limit=${pageSize}${categoryFilter ? `&category=${categoryFilter}` : ''}${searchText ? `&searchQuery=${encodeURIComponent(searchText)}` : ''}`
+        );
+        const apiResponse = await response.json();
         
         console.log('Products API response:', apiResponse);
         
-        // Handle admin endpoint format: { products: [...], total, pages }
-        if (apiResponse?.products && Array.isArray(apiResponse.products)) {
-          return { 
-            data: apiResponse.products, 
-            total: apiResponse.total || apiResponse.products.length, 
-            page: currentPage, 
-            limit: pageSize 
-          };
-        }
-        
-        // Handle public endpoint: { success: true, data: { data: [...] } }
+        // Handle public endpoint: { success: true, data: { data: [...], total, ... } }
         if (apiResponse?.success && apiResponse?.data) {
           const innerData = apiResponse.data;
           if (Array.isArray(innerData.data)) {
@@ -401,6 +387,16 @@ export default function ProductsPage() {
           if (Array.isArray(innerData)) {
             return { data: innerData, total: innerData.length, page: currentPage, limit: pageSize };
           }
+        }
+        
+        // Handle admin endpoint format: { products: [...], total, pages }
+        if (apiResponse?.products && Array.isArray(apiResponse.products)) {
+          return { 
+            data: apiResponse.products, 
+            total: apiResponse.total || apiResponse.products.length, 
+            page: currentPage, 
+            limit: pageSize 
+          };
         }
         
         if (Array.isArray(apiResponse)) {
