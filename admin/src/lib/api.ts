@@ -37,6 +37,7 @@ export function normalizeImageUrl(url: string | null | undefined): string {
 const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -48,6 +49,10 @@ api.interceptors.request.use(
     const token = Cookies.get('admin_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    // Debug logging for API calls
+    if (typeof window !== 'undefined') {
+      console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`, { hasToken: !!token });
     }
     return config;
   },

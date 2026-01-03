@@ -24,6 +24,13 @@ export interface AuthState {
   checkAuth: () => void;
 }
 
+// Cookie options for cross-origin auth
+const cookieOptions = { 
+  expires: 7, 
+  sameSite: 'lax' as const,
+  secure: typeof window !== 'undefined' && window.location.protocol === 'https:',
+};
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
@@ -31,7 +38,7 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       isLoading: false,
       login: (user, token) => {
-        Cookies.set('admin_token', token, { expires: 7 });
+        Cookies.set('admin_token', token, cookieOptions);
         set({ user, isAuthenticated: true, isLoading: false });
       },
       logout: () => {
@@ -41,9 +48,9 @@ export const useAuthStore = create<AuthState>()(
       },
       setLoading: (loading) => set({ isLoading: loading }),
       setAuth: (user, token, refreshToken) => {
-        Cookies.set('admin_token', token, { expires: 7 });
+        Cookies.set('admin_token', token, cookieOptions);
         if (refreshToken) {
-          Cookies.set('admin_refresh_token', refreshToken, { expires: 30 });
+          Cookies.set('admin_refresh_token', refreshToken, { ...cookieOptions, expires: 30 });
         }
         set({ user, isAuthenticated: true, isLoading: false });
       },
