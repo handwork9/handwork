@@ -50,23 +50,31 @@ export class FlashSalesService {
 
     // Validate times
     const now = new Date();
-    if (new Date(dto.startTime) < now) {
-      throw new BadRequestException('Start time must be in the future');
+    const startTime = new Date(dto.startTime);
+    const endTime = new Date(dto.endTime);
+    
+    // Allow start time up to 5 minutes in the past (for immediate sales)
+    const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
+    if (startTime < fiveMinutesAgo) {
+      throw new BadRequestException('Start time cannot be more than 5 minutes in the past');
     }
 
-    if (new Date(dto.endTime) <= new Date(dto.startTime)) {
+    if (endTime <= startTime) {
       throw new BadRequestException('End time must be after start time');
     }
 
     // Calculate sale price
     const salePrice = product.price * (1 - dto.discountPercent / 100);
 
+    // Determine status: ACTIVE if start time is now or in the past, otherwise SCHEDULED
+    const status = startTime <= now ? FlashSaleStatus.ACTIVE : FlashSaleStatus.SCHEDULED;
+
     const flashSale = this.flashSaleRepository.create({
       ...dto,
       farmerId,
       originalPrice: product.price,
       salePrice: Math.round(salePrice * 100) / 100,
-      status: FlashSaleStatus.SCHEDULED,
+      status,
     });
 
     return this.flashSaleRepository.save(flashSale);
