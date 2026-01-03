@@ -20,3 +20,6 @@ export { OfflineBanner } from './OfflineBanner';
 export { default as StateFilterModal } from './StateFilterModal';
 export { ReportModal } from '../ReportModal';
 export type { ContentType } from '../ReportModal';
+export { default as QRCodeScanner } from './QRCodeScanner';
+export { default as VoiceSearchButton } from './VoiceSearchButton';
+export { default as ARProductPreview } from './ARProductPreview';

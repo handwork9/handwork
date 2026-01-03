@@ -16,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDebounce } from '../../hooks/useDebounce';
 import { BuyerStackParamList, Product } from '../../types';
-import { ProductCard, LoadingSpinner, EmptyState } from '../../components/common';
+import { ProductCard, LoadingSpinner, EmptyState, VoiceSearchButton, QRCodeScanner } from '../../components/common';
 import { productService } from '../../services/productService';
 import { useTheme } from '../../context/ThemeContext';
 import { FONTS } from '../../constants/theme';
@@ -60,7 +60,30 @@ export default function SearchScreen() {
   const [categoryFilter, setCategoryFilter] = useState<string | null>(route.params?.category || null);
   const [subcategoryFilter, setSubcategoryFilter] = useState<string | null>(route.params?.subcategory || null);
   const [verifiedOnly, setVerifiedOnly] = useState<boolean>(route.params?.verifiedOnly || false);
+  const [showQRScanner, setShowQRScanner] = useState(false);
   const debouncedQuery = useDebounce(searchQuery, 300);
+
+  // Handle voice search result
+  const handleVoiceResult = useCallback((text: string) => {
+    setSearchQuery(text);
+  }, []);
+
+  // Handle QR code scan
+  const handleQRScan = useCallback((data: string, type: string) => {
+    setShowQRScanner(false);
+    // Check if it's a product URL or ID
+    if (data.includes('product/') || data.startsWith('prod_')) {
+      const productId = data.includes('product/') 
+        ? data.split('product/')[1]?.split('?')[0]
+        : data;
+      if (productId) {
+        navigation.navigate('ProductDetail', { productId });
+      }
+    } else {
+      // Treat as search query
+      setSearchQuery(data);
+    }
+  }, [navigation]);
 
   useEffect(() => {
     if (route.params?.category) {
@@ -263,6 +286,15 @@ export default function SearchScreen() {
     <View style={[styles.container, { backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       
+      {/* QR Code Scanner */}
+      <QRCodeScanner
+        visible={showQRScanner}
+        onClose={() => setShowQRScanner(false)}
+        onScan={handleQRScan}
+        title="Scan Product"
+        description="Scan a QR code to find or add a product"
+      />
+      
       {/* Fixed Header */}
       <View style={[styles.header, { paddingTop: insets.top, backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
         <View style={styles.headerRow}>
@@ -286,10 +318,20 @@ export default function SearchScreen() {
               returnKeyType="search"
               autoFocus
             />
-            {searchQuery.length > 0 && (
+            {searchQuery.length > 0 ? (
               <TouchableOpacity onPress={() => setSearchQuery('')}>
                 <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
+            ) : (
+              <View style={styles.searchActions}>
+                <VoiceSearchButton onResult={handleVoiceResult} size={32} />
+                <TouchableOpacity 
+                  style={styles.qrButton}
+                  onPress={() => setShowQRScanner(true)}
+                >
+                  <Ionicons name="qr-code-outline" size={18} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
             )}
           </View>
         </View>
@@ -412,6 +454,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: FONTS.regular,
     paddingVertical: 0,
+  },
+  searchActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  qrButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   filterBadgeRow: {
     flexDirection: 'row',

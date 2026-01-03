@@ -15,7 +15,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BuyerStackParamList } from '../../types';
-import { Button, LoadingSpinner, ErrorState, ReportModal } from '../../components/common';
+import { Button, LoadingSpinner, ErrorState, ReportModal, ARProductPreview } from '../../components/common';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, FONTS } from '../../constants/theme';
 import { productService } from '../../services/productService';
 import { cartService } from '../../services/cartService';
@@ -34,6 +34,7 @@ export default function ProductDetailScreen({ navigation, route }: Props) {
   const { items } = useAppSelector((state) => state.cart);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showARPreview, setShowARPreview] = useState(false);
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -170,6 +171,19 @@ export default function ProductDetailScreen({ navigation, route }: Props) {
 
   return (
     <View style={[styles.container, { backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
+      {/* AR Product Preview Modal */}
+      <ARProductPreview
+        visible={showARPreview}
+        onClose={() => setShowARPreview(false)}
+        product={product ? {
+          id: product.id,
+          title: product.title,
+          images: validImages,
+          price: product.price,
+          unit: product.unit,
+        } : null}
+      />
+      
       {/* Fixed Header */}
       <View style={[styles.fixedHeader, { paddingTop: insets.top + 8, backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
         <TouchableOpacity
@@ -230,6 +244,18 @@ export default function ProductDetailScreen({ navigation, route }: Props) {
                   />
                 ))}
               </View>
+            )}
+            
+            {/* AR Preview Button */}
+            {validImages.length > 0 && (
+              <TouchableOpacity
+                style={[styles.arButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.7)' }]}
+                onPress={() => setShowARPreview(true)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="cube-outline" size={18} color={isDark ? '#000' : '#FFF'} />
+                <Text style={[styles.arButtonText, { color: isDark ? '#000' : '#FFF' }]}>AR View</Text>
+              </TouchableOpacity>
             )}
           </View>
         </View>
@@ -615,6 +641,21 @@ const styles = StyleSheet.create({
   },
   paginationDotActive: {
     width: 20,
+  },
+  arButton: {
+    position: 'absolute',
+    bottom: 12,
+    right: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+  },
+  arButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   section: {
     marginTop: 16,
