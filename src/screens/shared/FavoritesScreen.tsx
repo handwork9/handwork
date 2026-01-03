@@ -428,6 +428,13 @@ const FavoritesScreen: React.FC = () => {
         {/* Action Buttons */}
         <View style={styles.actionButtons}>
           <TouchableOpacity
+            style={[styles.priceDropsButton, { backgroundColor: '#FEF2F2', borderColor: '#FCA5A5' }]}
+            onPress={() => (navigation as any).navigate('PriceDrops')}
+          >
+            <Ionicons name="pricetag" size={16} color="#EF4444" />
+            <Text style={[styles.priceDropsButtonText, { color: '#EF4444' }]}>Price Drops</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: theme.primary }]}
             onPress={handleAddAllToCart}
             disabled={inStockCount === 0}
@@ -657,6 +664,20 @@ const styles = StyleSheet.create({
   actionButtons: {
     flexDirection: 'row',
     gap: 10,
+  },
+  priceDropsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 6,
+  },
+  priceDropsButtonText: {
+    fontWeight: '600',
+    fontSize: 13,
   },
   actionButton: {
     flex: 1,

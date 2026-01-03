@@ -94,6 +94,7 @@ import CreateGroupBuyScreen from '../screens/buyer/CreateGroupBuyScreen';
 import GroupBuyDetailScreen from '../screens/buyer/GroupBuyDetailScreen';
 import ShoppingListsScreen from '../screens/buyer/ShoppingListsScreen';
 import CouponsScreen from '../screens/buyer/CouponsScreen';
+import PriceDropsScreen from '../screens/buyer/PriceDropsScreen';
 
 // Social Feature Screens
 import SocialFeedScreen from '../screens/shared/SocialFeedScreen';
@@ -631,6 +632,11 @@ export function BuyerNavigator() {
       <Stack.Screen
         name="Coupons"
         component={CouponsScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="PriceDrops"
+        component={PriceDropsScreen}
         options={{ headerShown: false }}
       />
       {/* Social Feature Screens */}
