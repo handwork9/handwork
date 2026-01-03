@@ -291,9 +291,9 @@ export default function AIChatbotScreen() {
     } else if (action === 'Try Again') {
       inputRef.current?.focus();
     } else if (action === 'Become a Farmer' || action === 'Start farmer registration') {
-      navigation.navigate('BecomeFarmer' as any);
+      navigation.navigate('BecomeFarmerInfo' as any);
     } else if (action === 'Become a Rider' || action === 'Start rider registration') {
-      navigation.navigate('BecomeRider' as any);
+      navigation.navigate('BecomeRiderInfo' as any);
     } else {
       handleSend(action);
     }
