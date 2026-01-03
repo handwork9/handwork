@@ -24,10 +24,10 @@ const HoneyIllustration: React.FC<IllustrationProps> = ({
       
       {/* Glass jar gradient */}
       <LinearGradient id="honeyJarGlass" x1="0%" y1="0%" x2="100%" y2="0%">
-        <Stop offset="0%" stopColor="#FFF8E1" opacity="0.3" />
-        <Stop offset="15%" stopColor="#FFFFFF" opacity="0.5" />
-        <Stop offset="30%" stopColor="#FFF8E1" opacity="0.2" />
-        <Stop offset="100%" stopColor="#FFFFFF" opacity="0.1" />
+        <Stop offset="0%" stopColor="#FFF8E1" stopOpacity="0.3" />
+        <Stop offset="15%" stopColor="#FFFFFF" stopOpacity="0.5" />
+        <Stop offset="30%" stopColor="#FFF8E1" stopOpacity="0.2" />
+        <Stop offset="100%" stopColor="#FFFFFF" stopOpacity="0.1" />
       </LinearGradient>
       
       {/* Wooden lid gradient */}

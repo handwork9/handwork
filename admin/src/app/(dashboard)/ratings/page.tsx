@@ -34,7 +34,6 @@ import {
 } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
-import { useAuthStore } from '@/store/auth';
 
 const { Title, Text } = Typography;
 
@@ -55,6 +54,7 @@ interface ProductReview {
   id: string;
   userId: string;
   userName: string;
+  userAvatar?: string | null;
   productId: string;
   productName: string;
   productImage: string | null;
@@ -75,7 +75,7 @@ interface RatingStats {
 }
 
 export default function RatingsReviewsPage() {
-  const { token } = useAuthStore();
+  const token = typeof window !== 'undefined' ? document.cookie.split('; ').find(row => row.startsWith('admin_token='))?.split('=')[1] : '';
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRating, setFilterRating] = useState<string>('all');

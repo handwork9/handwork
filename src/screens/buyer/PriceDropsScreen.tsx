@@ -47,7 +47,7 @@ export default function PriceDropsScreen({ navigation }: Props) {
     if (showLoader) setIsLoading(true);
     try {
       const response = await apiClient.get('/price-alerts/drops?days=7');
-      setPriceDrops(response.data.data || []);
+      setPriceDrops((response as any).data.data || []);
     } catch (error) {
       console.error('Failed to fetch price drops:', error);
     } finally {
@@ -150,7 +150,7 @@ export default function PriceDropsScreen({ navigation }: Props) {
       </Text>
       <TouchableOpacity
         style={[styles.browseCta, { backgroundColor: colors.primary }]}
-        onPress={() => navigation.navigate('BuyerTabs', { screen: 'Home' })}
+        onPress={() => navigation.navigate('BuyerTabs')}
       >
         <Ionicons name="search" size={18} color="#FFFFFF" />
         <Text style={styles.browseCtaText}>Browse Products</Text>

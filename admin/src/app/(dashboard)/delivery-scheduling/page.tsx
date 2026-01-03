@@ -33,7 +33,6 @@ import {
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
-import { useAuthStore } from '@/store/auth';
 
 const { Title, Text } = Typography;
 
@@ -74,7 +73,7 @@ const DAYS_OF_WEEK = [
 ];
 
 export default function DeliverySchedulingPage() {
-  const { token } = useAuthStore();
+  const token = typeof window !== 'undefined' ? document.cookie.split('; ').find(row => row.startsWith('admin_token='))?.split('=')[1] : '';
   const queryClient = useQueryClient();
   const [isSlotModalOpen, setIsSlotModalOpen] = useState(false);
   const [editingSlot, setEditingSlot] = useState<DeliverySlot | null>(null);

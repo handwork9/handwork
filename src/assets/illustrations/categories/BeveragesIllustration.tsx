@@ -24,9 +24,9 @@ const BeveragesIllustration: React.FC<IllustrationProps> = ({
       
       {/* Glass gradient */}
       <LinearGradient id="bevGlass" x1="0%" y1="0%" x2="100%" y2="0%">
-        <Stop offset="0%" stopColor="#FFFFFF" opacity="0.4" />
-        <Stop offset="20%" stopColor="#FFFFFF" opacity="0.1" />
-        <Stop offset="100%" stopColor="#FFFFFF" opacity="0.3" />
+        <Stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.4" />
+        <Stop offset="20%" stopColor="#FFFFFF" stopOpacity="0.1" />
+        <Stop offset="100%" stopColor="#FFFFFF" stopOpacity="0.3" />
       </LinearGradient>
       
       {/* Green smoothie gradient */}

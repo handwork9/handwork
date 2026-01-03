@@ -29,7 +29,6 @@ import {
 } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
-import { useAuthStore } from '@/store/auth';
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -61,7 +60,7 @@ interface PriceHistory {
 }
 
 export default function PriceAlertsPage() {
-  const { token } = useAuthStore();
+  const token = typeof window !== 'undefined' ? document.cookie.split('; ').find(row => row.startsWith('admin_token='))?.split('=')[1] : '';
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');

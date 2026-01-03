@@ -46,7 +46,7 @@ class DeliverySchedulingService {
       if (city) params.append('city', city);
       
       const response = await apiClient.get(`/delivery-scheduling/slots?${params.toString()}`);
-      return response.data.data || [];
+      return (response as any).data.data || [];
     } catch (error) {
       console.error('Failed to fetch delivery slots:', error);
       return [];
@@ -79,7 +79,7 @@ class DeliverySchedulingService {
    */
   async scheduleDelivery(request: ScheduleDeliveryRequest): Promise<ScheduledDelivery> {
     const response = await apiClient.post('/delivery-scheduling', request);
-    return response.data.data;
+    return (response as any).data.data;
   }
 
   /**
@@ -88,7 +88,7 @@ class DeliverySchedulingService {
   async getScheduledDelivery(orderId: string): Promise<ScheduledDelivery | null> {
     try {
       const response = await apiClient.get(`/delivery-scheduling/order/${orderId}`);
-      return response.data.data;
+      return (response as any).data.data;
     } catch (error) {
       return null;
     }
@@ -100,7 +100,7 @@ class DeliverySchedulingService {
   async getUpcomingDeliveries(): Promise<ScheduledDelivery[]> {
     try {
       const response = await apiClient.get('/delivery-scheduling/upcoming');
-      return response.data.data || [];
+      return (response as any).data.data || [];
     } catch (error) {
       console.error('Failed to fetch upcoming deliveries:', error);
       return [];
@@ -115,7 +115,7 @@ class DeliverySchedulingService {
     updates: Partial<ScheduleDeliveryRequest>
   ): Promise<ScheduledDelivery> {
     const response = await apiClient.put(`/delivery-scheduling/${scheduledDeliveryId}`, updates);
-    return response.data.data;
+    return (response as any).data.data;
   }
 
   /**
@@ -130,7 +130,7 @@ class DeliverySchedulingService {
    */
   async initializeSlots(): Promise<{ message: string; count?: number }> {
     const response = await apiClient.post('/delivery-scheduling/init-slots');
-    return response.data.data;
+    return (response as any).data.data;
   }
 
   /**

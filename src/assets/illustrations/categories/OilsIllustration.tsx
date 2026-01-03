@@ -33,10 +33,10 @@ const OilsIllustration: React.FC<IllustrationProps> = ({
       
       {/* Glass bottle gradient */}
       <LinearGradient id="oilBottle" x1="0%" y1="0%" x2="100%" y2="0%">
-        <Stop offset="0%" stopColor="#E8F5E9" opacity="0.8" />
-        <Stop offset="20%" stopColor="#FFFFFF" opacity="0.9" />
-        <Stop offset="80%" stopColor="#E8F5E9" opacity="0.8" />
-        <Stop offset="100%" stopColor="#C8E6C9" opacity="0.7" />
+        <Stop offset="0%" stopColor="#E8F5E9" stopOpacity="0.8" />
+        <Stop offset="20%" stopColor="#FFFFFF" stopOpacity="0.9" />
+        <Stop offset="80%" stopColor="#E8F5E9" stopOpacity="0.8" />
+        <Stop offset="100%" stopColor="#C8E6C9" stopOpacity="0.7" />
       </LinearGradient>
       
       {/* Cork stopper gradient */}

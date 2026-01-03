@@ -1,4 +1,4 @@
-import { apiClient } from './api';
+import apiClient from './apiClient';
 
 export interface PriceDrop {
   product: {
@@ -29,10 +29,10 @@ export interface PriceHistory {
  * Get recent price drops for user's favorited products
  */
 export const getPriceDrops = async (days: number = 7): Promise<PriceDrop[]> => {
-  const response = await apiClient.get<{ success: boolean; data: PriceDrop[] }>(
+  const response = await apiClient.get(
     `/price-alerts/drops?days=${days}`
   );
-  return response.data.data;
+  return (response as any).data || [];
 };
 
 /**
@@ -42,10 +42,10 @@ export const getPriceHistory = async (
   productId: string,
   limit: number = 30
 ): Promise<PriceHistory[]> => {
-  const response = await apiClient.get<{ success: boolean; data: PriceHistory[] }>(
+  const response = await apiClient.get(
     `/price-alerts/history/${productId}?limit=${limit}`
   );
-  return response.data.data;
+  return (response as any).data || [];
 };
 
 export const priceAlertService = {
