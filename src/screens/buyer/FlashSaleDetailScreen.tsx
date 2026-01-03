@@ -17,7 +17,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
-import { useAppSelector } from '../../store';
+import { useAppSelector, useAppDispatch } from '../../store';
+import { setCart } from '../../store/slices/cartSlice';
 import apiClient from '../../services/apiClient';
 import { COLORS, FONTS, FONT_SIZES, SPACING } from '../../constants/theme';
 import { triggerHaptic } from '../../utils/haptics';
@@ -112,6 +113,7 @@ export default function FlashSaleDetailScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const queryClient = useQueryClient();
+  const dispatch = useAppDispatch();
   const user = useAppSelector(state => state.auth.user);
   const insets = useSafeAreaInsets();
   const { saleId } = route.params || {};
@@ -157,8 +159,36 @@ export default function FlashSaleDetailScreen() {
       });
       return response;
     },
-    onSuccess: () => {
+    onSuccess: (response: any) => {
       triggerHaptic();
+      
+      // Sync cart with Redux store
+      const cartData = response?.data || response;
+      if (cartData && cartData.items) {
+        // Transform backend cart to Redux cart format
+        const reduxCart = {
+          items: cartData.items.map((item: any) => ({
+            productId: item.productId,
+            product: {
+              id: item.productId,
+              title: item.title,
+              price: item.originalPrice || item.price,
+              images: item.image ? [item.image] : [],
+              unit: item.unit,
+              farmerId: item.farmerId,
+              farmer: { name: item.farmerName },
+            },
+            quantity: item.quantity,
+            subtotal: item.price * item.quantity,
+            flashSaleId: item.flashSaleId,
+            flashSalePrice: item.flashSaleId ? item.price : undefined,
+          })),
+          total: cartData.total || 0,
+          itemCount: cartData.itemCount || 0,
+        };
+        dispatch(setCart(reduxCart));
+      }
+      
       queryClient.invalidateQueries({ queryKey: ['cart'] });
       Alert.alert(
         'Added to Cart!',
