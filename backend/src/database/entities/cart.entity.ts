@@ -13,6 +13,7 @@ export interface CartItem {
   productId: string;
   title: string;
   price: number;
+  originalPrice?: number;
   quantity: number;
   unit: string;
   image?: string;
@@ -23,6 +24,8 @@ export interface CartItem {
   pickupAddress: string;
   pickupLat: number;
   pickupLng: number;
+  flashSaleId?: string;
+  flashSaleEndsAt?: string;
 }
 
 @Entity('carts')

@@ -2,6 +2,7 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Cart, CartItem } from '../database/entities/cart.entity';
+import { FlashSale, FlashSaleStatus } from '../database/entities/flash-sale.entity';
 import { ProductsService } from '../products/products.service';
 import { AddToCartDto, UpdateCartItemDto } from './dto';
 
@@ -10,6 +11,8 @@ export class CartService {
   constructor(
     @InjectRepository(Cart)
     private readonly cartRepository: Repository<Cart>,
+    @InjectRepository(FlashSale)
+    private readonly flashSaleRepository: Repository<FlashSale>,
     private readonly productsService: ProductsService,
   ) {}
 
@@ -34,26 +37,71 @@ export class CartService {
       throw new BadRequestException('Product is not available');
     }
 
-    if (product.stock < dto.quantity) {
-      throw new BadRequestException(`Only ${product.stock} items in stock`);
+    // Check for flash sale
+    let flashSale: FlashSale | null = null;
+    let itemPrice = Number(product.price);
+    let originalPrice: number | undefined;
+    let flashSaleEndsAt: string | undefined;
+
+    if (dto.flashSaleId) {
+      flashSale = await this.flashSaleRepository.findOne({
+        where: { 
+          id: dto.flashSaleId, 
+          productId: dto.productId,
+          status: FlashSaleStatus.ACTIVE,
+        },
+      });
+
+      if (!flashSale) {
+        throw new BadRequestException('Flash sale not found or has ended');
+      }
+
+      // Check if flash sale has ended
+      if (new Date(flashSale.endTime) < new Date()) {
+        throw new BadRequestException('This flash sale has ended');
+      }
+
+      // Check remaining quantity
+      if (flashSale.soldQuantity + dto.quantity > flashSale.totalQuantity) {
+        const remaining = flashSale.totalQuantity - flashSale.soldQuantity;
+        throw new BadRequestException(`Only ${remaining} items available in this flash sale`);
+      }
+
+      // Use flash sale price
+      originalPrice = Number(flashSale.originalPrice);
+      itemPrice = Number(flashSale.salePrice);
+      flashSaleEndsAt = flashSale.endTime.toISOString();
+    } else {
+      if (product.stock < dto.quantity) {
+        throw new BadRequestException(`Only ${product.stock} items in stock`);
+      }
     }
 
-    // Check if item already in cart
-    const existingIndex = cart.items.findIndex((item) => item.productId === dto.productId);
+    // Check if item already in cart (with same flash sale)
+    const existingIndex = cart.items.findIndex(
+      (item) => item.productId === dto.productId && item.flashSaleId === dto.flashSaleId
+    );
 
     if (existingIndex >= 0) {
       // Update quantity
       const newQuantity = cart.items[existingIndex].quantity + dto.quantity;
-      if (newQuantity > product.stock) {
+      
+      if (flashSale) {
+        if (flashSale.soldQuantity + newQuantity > flashSale.totalQuantity) {
+          throw new BadRequestException(`Only ${flashSale.totalQuantity - flashSale.soldQuantity} items available`);
+        }
+      } else if (newQuantity > product.stock) {
         throw new BadRequestException(`Only ${product.stock} items in stock`);
       }
+      
       cart.items[existingIndex].quantity = newQuantity;
     } else {
       // Add new item
       const cartItem: CartItem = {
         productId: product.id,
         title: product.title,
-        price: Number(product.price),
+        price: itemPrice,
+        originalPrice,
         quantity: dto.quantity,
         unit: product.unit,
         image: product.images?.[0],
@@ -64,6 +112,8 @@ export class CartService {
         pickupAddress: product.pickupAddress || 'Farm Location',
         pickupLat: product.pickupLat,
         pickupLng: product.pickupLng,
+        flashSaleId: dto.flashSaleId,
+        flashSaleEndsAt,
       };
       cart.items.push(cartItem);
     }
