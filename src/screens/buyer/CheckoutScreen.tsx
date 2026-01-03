@@ -43,6 +43,7 @@ import { useTheme } from '../../context/ThemeContext';
 import CouponInput from '../../components/cart/CouponInput';
 import { Coupon, CouponValidationResult } from '../../services/couponService';
 import DeliveryOptions from '../../components/checkout/DeliveryOptions';
+import deliverySchedulingService, { DeliverySlot } from '../../services/deliverySchedulingService';
 
 type Props = NativeStackScreenProps<BuyerStackParamList, 'Checkout'>;
 
@@ -311,6 +312,12 @@ export default function CheckoutScreen({ navigation }: Props) {
   const [showTimeSlotModal, setShowTimeSlotModal] = useState(false);
   const [payLinkGenerated, setPayLinkGenerated] = useState(false);
   
+  // API-based delivery slots
+  const [apiSlots, setApiSlots] = useState<Map<string, DeliverySlot[]>>(new Map());
+  const [isLoadingSlots, setIsLoadingSlots] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [selectedSlot, setSelectedSlot] = useState<DeliverySlot | null>(null);
+  
   // Pay for Me polling state
   const [payForMeStatus, setPayForMeStatus] = useState<'pending' | 'paid' | 'creating_order' | 'completed' | 'failed'>('pending');
   const [isPollingPayment, setIsPollingPayment] = useState(false);
@@ -336,6 +343,43 @@ export default function CheckoutScreen({ navigation }: Props) {
       fetchWalletBalance();
     }, [])
   );
+
+  // Fetch delivery slots from API when modal opens
+  useEffect(() => {
+    if (showTimeSlotModal && deliveryType === 'SCHEDULED') {
+      const fetchSlots = async () => {
+        setIsLoadingSlots(true);
+        try {
+          const days = deliverySchedulingService.getNextDays(3);
+          const state = selectedAddress?.state || user?.state;
+          const city = selectedAddress?.city || user?.city;
+          
+          const slotsMap = await deliverySchedulingService.getSlotsForDateRange(
+            days.map(d => d.date),
+            state,
+            city
+          );
+          setApiSlots(slotsMap);
+          
+          // Set default selected date to first day with available slots
+          if (!selectedDate) {
+            for (const day of days) {
+              const daySlots = slotsMap.get(day.date) || [];
+              if (daySlots.some(s => s.isAvailable)) {
+                setSelectedDate(day.date);
+                break;
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Failed to fetch delivery slots:', error);
+        } finally {
+          setIsLoadingSlots(false);
+        }
+      };
+      fetchSlots();
+    }
+  }, [showTimeSlotModal, deliveryType, selectedAddress, user]);
 
   // Calculate distance using Haversine formula
   const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
@@ -1341,7 +1385,17 @@ export default function CheckoutScreen({ navigation }: Props) {
                   <Ionicons name="time-outline" size={20} color={colors.primary} />
                 </View>
                 <View style={styles.timeSlotSelectorContent}>
-                  {selectedTimeSlot ? (
+                  {selectedSlot && selectedDate ? (
+                    <>
+                      <Text style={[styles.timeSlotSelectorLabel, { color: colors.text }]}>
+                        {deliverySchedulingService.getNextDays(3).find(d => d.date === selectedDate)?.label || selectedDate}
+                      </Text>
+                      <Text style={[styles.timeSlotSelectorValue, { color: colors.textSecondary }]}>
+                        {selectedSlot.displayTime} ({selectedSlot.name})
+                        {selectedSlot.additionalFee > 0 && ` +₦${selectedSlot.additionalFee}`}
+                      </Text>
+                    </>
+                  ) : selectedTimeSlot ? (
                     <>
                       <Text style={[styles.timeSlotSelectorLabel, { color: colors.text }]}>
                         {timeSlots.find(s => s.id === selectedTimeSlot)?.date}
@@ -1996,19 +2050,143 @@ export default function CheckoutScreen({ navigation }: Props) {
                 Choose your preferred delivery time. We'll do our best to deliver within the selected window.
               </Text>
 
-              {timeSlots.length === 0 ? (
+              {isLoadingSlots ? (
+                <View style={styles.noSlotsContainer}>
+                  <ActivityIndicator size="large" color={colors.primary} />
+                  <Text style={[styles.noSlotsText, { color: colors.textSecondary, marginTop: 12 }]}>
+                    Loading available slots...
+                  </Text>
+                </View>
+              ) : apiSlots.size === 0 && timeSlots.length === 0 ? (
                 <View style={styles.noSlotsContainer}>
                   <View style={[styles.noSlotsIcon, { backgroundColor: isDark ? colors.surface : '#F2F2F7' }]}>
                     <Ionicons name="time-outline" size={32} color={colors.textSecondary} />
                   </View>
                   <Text style={[styles.noSlotsTitle, { color: colors.text }]}>No Slots Available</Text>
                   <Text style={[styles.noSlotsText, { color: colors.textSecondary }]}>
-                    No time slots available for today. Please check back tomorrow.
+                    No time slots available. Please check back later.
                   </Text>
                 </View>
+              ) : apiSlots.size > 0 ? (
+                <>
+                  {/* Date selector tabs */}
+                  <View style={styles.dateSelectorContainer}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                      {deliverySchedulingService.getNextDays(3).map((day) => {
+                        const daySlots = apiSlots.get(day.date) || [];
+                        const hasAvailableSlots = daySlots.some(s => s.isAvailable);
+                        const isSelectedDay = selectedDate === day.date;
+                        
+                        return (
+                          <TouchableOpacity
+                            key={day.date}
+                            style={[
+                              styles.dateSelectorTab,
+                              { 
+                                backgroundColor: isSelectedDay 
+                                  ? colors.primary 
+                                  : (isDark ? colors.surface : '#F2F2F7'),
+                                opacity: hasAvailableSlots ? 1 : 0.5,
+                              },
+                            ]}
+                            onPress={() => hasAvailableSlots && setSelectedDate(day.date)}
+                            disabled={!hasAvailableSlots}
+                          >
+                            <Text style={[
+                              styles.dateSelectorText,
+                              { color: isSelectedDay ? '#FFFFFF' : colors.text },
+                            ]}>
+                              {day.label}
+                            </Text>
+                            {!hasAvailableSlots && (
+                              <Text style={[styles.dateSelectorSubtext, { color: colors.textSecondary }]}>
+                                Full
+                              </Text>
+                            )}
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
+
+                  {/* Slots for selected date */}
+                  {selectedDate && (
+                    <View style={styles.timeSlotDateGroup}>
+                      {(apiSlots.get(selectedDate) || []).map((slot) => {
+                        const isSelected = selectedSlot?.id === slot.id && selectedDate === selectedDate;
+                        const isAvailable = slot.isAvailable;
+                        
+                        return (
+                          <TouchableOpacity
+                            key={slot.id}
+                            style={[
+                              styles.timeSlotOption,
+                              { 
+                                backgroundColor: isSelected 
+                                  ? (isDark ? 'rgba(0, 122, 255, 0.15)' : '#E5F1FF') 
+                                  : (isDark ? colors.surface : '#F8F9FA'),
+                                borderColor: isSelected ? colors.primary : 'transparent',
+                                opacity: isAvailable ? 1 : 0.5,
+                              },
+                            ]}
+                            onPress={() => {
+                              if (isAvailable) {
+                                setSelectedSlot(slot);
+                                setSelectedTimeSlot(slot.id);
+                                setShowTimeSlotModal(false);
+                              }
+                            }}
+                            disabled={!isAvailable}
+                            activeOpacity={0.7}
+                          >
+                            <View style={[
+                              styles.timeSlotOptionIcon,
+                              { backgroundColor: isSelected 
+                                ? (isDark ? 'rgba(0, 122, 255, 0.2)' : '#CCE4FF') 
+                                : (isDark ? 'rgba(255,255,255,0.1)' : '#FFFFFF') 
+                              }
+                            ]}>
+                              <Ionicons 
+                                name={slot.name.includes('Express') ? 'flash-outline' : 'time-outline'}
+                                size={20} 
+                                color={isSelected ? colors.primary : colors.textSecondary} 
+                              />
+                            </View>
+                            <View style={styles.timeSlotOptionTextContainer}>
+                              <Text style={[
+                                styles.timeSlotOptionText,
+                                { color: isSelected ? colors.primary : colors.text },
+                              ]}>
+                                {slot.name}
+                              </Text>
+                              <Text style={[
+                                styles.timeSlotOptionSubtext,
+                                { color: isSelected ? colors.primary : colors.textSecondary },
+                              ]}>
+                                {slot.displayTime}
+                                {slot.additionalFee > 0 && ` • +₦${slot.additionalFee.toLocaleString()}`}
+                              </Text>
+                            </View>
+                            {!isAvailable ? (
+                              <Text style={[styles.slotFullText, { color: colors.error }]}>Full</Text>
+                            ) : isSelected ? (
+                              <View style={[styles.timeSlotCheckmark, { backgroundColor: colors.primary }]}>
+                                <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                              </View>
+                            ) : (
+                              <Text style={[styles.slotCapacityText, { color: colors.success }]}>
+                                {slot.availableCapacity} left
+                              </Text>
+                            )}
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  )}
+                </>
               ) : (
                 <>
-                  {/* Group slots by date */}
+                  {/* Fallback to local time slots */}
                   {['Today', 'Tomorrow'].map(dateGroup => {
                     const slotsForDate = timeSlots.filter(s => s.date === dateGroup);
                     if (slotsForDate.length === 0) return null;
@@ -2066,68 +2244,6 @@ export default function CheckoutScreen({ navigation }: Props) {
                       </View>
                     );
                   })}
-                  
-                  {/* Other dates */}
-                  {timeSlots.filter(s => s.date !== 'Today' && s.date !== 'Tomorrow').length > 0 && (
-                    <View style={styles.timeSlotDateGroup}>
-                      <Text style={[styles.timeSlotDateHeader, { color: colors.text }]}>Later This Week</Text>
-                      {timeSlots.filter(s => s.date !== 'Today' && s.date !== 'Tomorrow').map((slot) => {
-                        const isSelected = selectedTimeSlot === slot.id;
-                        return (
-                          <TouchableOpacity
-                            key={slot.id}
-                            style={[
-                              styles.timeSlotOption,
-                              { 
-                                backgroundColor: isSelected 
-                                  ? (isDark ? 'rgba(0, 122, 255, 0.15)' : '#E5F1FF') 
-                                  : (isDark ? colors.surface : '#F8F9FA'),
-                                borderColor: isSelected ? colors.primary : 'transparent',
-                              },
-                            ]}
-                            onPress={() => {
-                              setSelectedTimeSlot(slot.id);
-                              setShowTimeSlotModal(false);
-                            }}
-                            activeOpacity={0.7}
-                          >
-                            <View style={[
-                              styles.timeSlotOptionIcon,
-                              { backgroundColor: isSelected 
-                                ? (isDark ? 'rgba(0, 122, 255, 0.2)' : '#CCE4FF') 
-                                : (isDark ? 'rgba(255,255,255,0.1)' : '#FFFFFF') 
-                              }
-                            ]}>
-                              <Ionicons 
-                                name="calendar-outline" 
-                                size={20} 
-                                color={isSelected ? colors.primary : colors.textSecondary} 
-                              />
-                            </View>
-                            <View style={styles.timeSlotOptionTextContainer}>
-                              <Text style={[
-                                styles.timeSlotOptionText,
-                                { color: isSelected ? colors.primary : colors.text },
-                              ]}>
-                                {slot.date}
-                              </Text>
-                              <Text style={[
-                                styles.timeSlotOptionSubtext,
-                                { color: isSelected ? colors.primary : colors.textSecondary },
-                              ]}>
-                                {slot.time}
-                              </Text>
-                            </View>
-                            {isSelected && (
-                              <View style={[styles.timeSlotCheckmark, { backgroundColor: colors.primary }]}>
-                                <Ionicons name="checkmark" size={14} color="#FFFFFF" />
-                              </View>
-                            )}
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-                  )}
                 </>
               )}
             </ScrollView>
@@ -3140,6 +3256,34 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  dateSelectorContainer: {
+    marginBottom: 16,
+  },
+  dateSelectorTab: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginRight: 10,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  dateSelectorText: {
+    fontSize: 14,
+    fontFamily: FONTS.medium,
+  },
+  dateSelectorSubtext: {
+    fontSize: 11,
+    fontFamily: FONTS.regular,
+    marginTop: 2,
+  },
+  slotFullText: {
+    fontSize: 12,
+    fontFamily: FONTS.medium,
+  },
+  slotCapacityText: {
+    fontSize: 12,
+    fontFamily: FONTS.regular,
   },
   noSlotsIcon: {
     width: 64,
