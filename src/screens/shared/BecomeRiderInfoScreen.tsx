@@ -254,10 +254,10 @@ export default function BecomeRiderInfoScreen() {
         {/* CTA Button */}
         <TouchableOpacity
           style={styles.ctaButton}
-          onPress={() => navigation.navigate('ContactUs' as never)}
+          onPress={() => navigation.navigate('RiderOnboarding' as never)}
           activeOpacity={0.8}
         >
-          <Text style={styles.ctaButtonText}>Apply Now</Text>
+          <Text style={styles.ctaButtonText}>Start Application</Text>
           <Ionicons name="arrow-forward" size={20} color="#FFF" />
         </TouchableOpacity>
 

@@ -50,6 +50,7 @@ import DailyChallengesScreen from '../screens/shared/DailyChallengesScreen';
 import BecomeFarmerInfoScreen from '../screens/shared/BecomeFarmerInfoScreen';
 import BecomeRiderInfoScreen from '../screens/shared/BecomeRiderInfoScreen';
 import FarmerOnboardingScreen from '../screens/shared/FarmerOnboardingScreen';
+import RiderOnboardingScreen from '../screens/shared/RiderOnboardingScreen';
 import InviteHistoryScreen from '../screens/shared/InviteHistoryScreen';
 import InviteDetailScreen from '../screens/shared/InviteDetailScreen';
 import FavoritesScreen from '../screens/shared/FavoritesScreen';
@@ -402,6 +403,11 @@ export function BuyerNavigator() {
       <Stack.Screen
         name="FarmerOnboarding"
         component={FarmerOnboardingScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="RiderOnboarding"
+        component={RiderOnboardingScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen
