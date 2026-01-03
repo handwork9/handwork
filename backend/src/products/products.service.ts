@@ -123,10 +123,10 @@ export class ProductsService {
       qb.andWhere('product.isOrganic = :isOrganic', { isOrganic });
     }
 
-    // Search by title or description
+    // Search by title, description, or category
     if (searchQuery) {
       qb.andWhere(
-        '(LOWER(product.title) LIKE LOWER(:search) OR LOWER(product.description) LIKE LOWER(:search))',
+        '(LOWER(product.title) LIKE LOWER(:search) OR LOWER(product.description) LIKE LOWER(:search) OR LOWER(product.category) LIKE LOWER(:search) OR LOWER(product.subcategory) LIKE LOWER(:search))',
         { search: `%${searchQuery}%` },
       );
     }
