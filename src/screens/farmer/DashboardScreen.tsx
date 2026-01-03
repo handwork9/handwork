@@ -46,7 +46,6 @@ import {
   EarningsCardIllustration,
   TopSellersIllustration,
   RecentOrdersIllustration,
-  QuickActionsIllustration,
 } from '../../assets/illustrations/stats';
 
 const { width } = Dimensions.get('window');
@@ -1216,21 +1215,6 @@ export default function DashboardScreen() {
         {/* Quick Actions - Clean Card Style */}
         <View style={styles.section}>
           <View style={[styles.quickActionsCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
-            {/* Header */}
-            <View style={[styles.quickActionsCardHeader, { borderBottomColor: isDark ? '#2D2D2D' : '#F0F0F0' }]}>
-              <View style={styles.quickActionsHeaderLeft}>
-                <View style={[styles.quickActionsBadge, { backgroundColor: '#EDE7F6' }]}>
-                  <Ionicons name="flash" size={10} color="#7C3AED" />
-                  <Text style={[styles.quickActionsBadgeText, { color: '#7C3AED' }]}>SHORTCUTS</Text>
-                </View>
-                <Text style={[styles.quickActionsCardTitle, { color: colors.text }]}>Quick Actions</Text>
-                <Text style={[styles.quickActionsCardSubtitle, { color: colors.textSecondary }]}>Manage your farm with one tap</Text>
-              </View>
-              <View style={styles.quickActionsIllustrationWrapper}>
-                <QuickActionsIllustration width={65} height={65} />
-              </View>
-            </View>
-            
             {/* Actions Grid */}
             <View style={styles.quickActionsGrid}>
               {/* Row 1 */}
