@@ -66,10 +66,18 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    console.error('[API Error]', error.response?.status, error.config?.url, error.response?.data);
+    const url = error.config?.url || '';
+    console.error('[API Error]', error.response?.status, url, error.response?.data);
+    
+    // Don't redirect on 401 for admin endpoints that have fallbacks
+    // Let the calling code handle the fallback
+    if (error.response?.status === 401 && url.includes('/admin/')) {
+      console.warn('[API] 401 on admin endpoint - will try fallback');
+      return Promise.reject(error);
+    }
     
     if (error.response?.status === 401) {
-      // Only clear tokens and redirect if we're on client side and not already on login page
+      // Only clear tokens and redirect for non-admin endpoints
       if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
         console.warn('[API] 401 received - clearing auth and redirecting to login');
         Cookies.remove('admin_token');
@@ -198,15 +206,26 @@ export const adminApi = {
   rejectFarmerApplication: (id: string, reason: string) => 
     api.patch(`/admin/farmer-applications/${id}/reject`, { reason }),
   
-  // Products (use admin endpoint for all operations)
-  getProducts: (params?: {
+  // Products - try admin endpoint first, fallback to public if auth fails
+  getProducts: async (params?: {
     page?: number;
     limit?: number;
     category?: string;
     state?: string;
     search?: string;
     farmerId?: string;
-  }) => api.get('/admin/products', { params }),
+  }) => {
+    try {
+      return await api.get('/admin/products', { params });
+    } catch (error: any) {
+      // If 401, try public endpoint as fallback (won't show hidden products but at least shows data)
+      if (error?.response?.status === 401) {
+        console.warn('[API] Admin products failed with 401, falling back to public endpoint');
+        return api.get('/products', { params: { ...params, searchQuery: params?.search } });
+      }
+      throw error;
+    }
+  },
   createProduct: (data: {
     farmerId: string;
     title: string;
