@@ -446,7 +446,16 @@ export default function HomeScreen() {
     queryKey: ['flashSales', 'active'],
     queryFn: async () => {
       const response = await apiClient.get('/flash-sales');
-      return (response as any).data || [];
+      // Handle various response formats - API returns { data: [...], total, page, ... }
+      const responseData = (response as any)?.data;
+      // Check if it's the paginated response format
+      if (responseData?.data && Array.isArray(responseData.data)) return responseData.data;
+      // Direct array
+      if (Array.isArray(responseData)) return responseData;
+      // Other nested formats
+      if (responseData?.flashSales && Array.isArray(responseData.flashSales)) return responseData.flashSales;
+      if (responseData?.items && Array.isArray(responseData.items)) return responseData.items;
+      return [];
     },
     staleTime: 30 * 1000, // 30 seconds for live updates
   });
@@ -457,16 +466,17 @@ export default function HomeScreen() {
   const recommendedProducts = recommendedData?.products || [];
   
   // Transform flash sales data for the FlashSaleBanner component
-  const flashSales = (flashSalesData || []).map((sale: any) => ({
+  const flashSalesArray = Array.isArray(flashSalesData) ? flashSalesData : [];
+  const flashSales = flashSalesArray.map((sale: any) => ({
     id: sale.id,
     productId: sale.product?.id || sale.productId,
-    productTitle: sale.product?.title || 'Product',
+    productTitle: sale.product?.title || sale.title || 'Product',
     productImage: sale.product?.images?.[0] || sale.product?.image || '',
     originalPrice: Number(sale.originalPrice || sale.product?.price || 0),
     salePrice: Number(sale.salePrice || 0),
-    discountPercentage: Number(sale.discountPercentage || 0),
-    soldCount: Number(sale.soldCount || 0),
-    stockLimit: Number(sale.stockLimit || 100),
+    discountPercentage: Number(sale.discountPercent || sale.discountPercentage || 0),
+    soldCount: Number(sale.soldQuantity || sale.soldCount || 0),
+    stockLimit: Number(sale.totalQuantity || sale.stockLimit || 100),
     startTime: sale.startTime,
     endTime: sale.endTime,
   }));
@@ -1980,6 +1990,7 @@ export default function HomeScreen() {
       <FlashSaleBanner
         flashSales={flashSales}
         onSeeAll={() => navigation.navigate('Search', { category: 'flash-sales' })}
+        onSalePress={(saleId) => navigation.navigate('FlashSaleDetail', { saleId })}
         onProductPress={(productId) => navigation.navigate('ProductDetail', { productId })}
       />
     );
@@ -1991,7 +2002,7 @@ export default function HomeScreen() {
         {renderAdBanner()}
         {renderCategories()}
         {renderFlashSales()}
-        {renderLiveSupportBanner()}}
+        {renderLiveSupportBanner()}
         {renderPromoBanner()}
         {renderCategorySections()}
       </View>

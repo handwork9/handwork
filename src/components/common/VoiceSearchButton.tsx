@@ -79,16 +79,23 @@ export default function VoiceSearchButton({ onResult, size = 40, style }: VoiceS
   const handlePress = async () => {
     triggerHaptic();
     
+    if (!isSupported) {
+      // Show alert for unsupported devices or Expo Go
+      const { Alert } = require('react-native');
+      Alert.alert(
+        'Voice Search',
+        'Voice search requires a development build. It is not available in Expo Go.\n\nBuild your app with EAS Build to enable voice search.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    
     if (isListening) {
       await stopListening();
     } else {
       await startListening();
     }
   };
-
-  if (!isSupported) {
-    return null;
-  }
 
   return (
     <>
@@ -101,7 +108,7 @@ export default function VoiceSearchButton({ onResult, size = 40, style }: VoiceS
           <Ionicons
             name={isListening ? 'mic' : 'mic-outline'}
             size={size * 0.5}
-            color={isListening ? colors.primary : colors.textSecondary}
+            color={isListening ? colors.primary : colors.text}
           />
         </Animated.View>
       </TouchableOpacity>

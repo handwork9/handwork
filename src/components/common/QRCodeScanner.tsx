@@ -10,7 +10,7 @@ import {
   Linking,
   Vibration,
 } from 'react-native';
-import { BarCodeScanner, BarCodeScannedCallback } from 'expo-barcode-scanner';
+import { CameraView, useCameraPermissions, BarcodeScanningResult } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -35,7 +35,7 @@ export default function QRCodeScanner({
   title = 'Scan QR Code',
   description = 'Point your camera at a QR code to scan',
 }: QRCodeScannerProps) {
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const [torchOn, setTorchOn] = useState(false);
   const { colors, isDark } = useTheme();
@@ -43,16 +43,15 @@ export default function QRCodeScanner({
 
   useEffect(() => {
     if (visible) {
-      requestPermission();
       setScanned(false);
+      if (!permission?.granted) {
+        requestPermission();
+      }
     }
   }, [visible]);
 
-  const requestPermission = async () => {
-    const { status } = await BarCodeScanner.requestPermissionsAsync();
-    setHasPermission(status === 'granted');
-
-    if (status !== 'granted') {
+  useEffect(() => {
+    if (visible && permission && !permission.granted && permission.canAskAgain === false) {
       Alert.alert(
         'Camera Permission Required',
         'Please enable camera access to scan QR codes.',
@@ -62,16 +61,16 @@ export default function QRCodeScanner({
         ]
       );
     }
-  };
+  }, [permission, visible]);
 
-  const handleBarCodeScanned: BarCodeScannedCallback = ({ type, data }) => {
+  const handleBarCodeScanned = (result: BarcodeScanningResult) => {
     if (scanned) return;
     
     setScanned(true);
     triggerHaptic();
     Vibration.vibrate(100);
     
-    onScan(data, type);
+    onScan(result.data, result.type);
   };
 
   const handleRescan = () => {
@@ -79,6 +78,8 @@ export default function QRCodeScanner({
   };
 
   if (!visible) return null;
+
+  const hasPermission = permission?.granted;
 
   return (
     <Modal
@@ -88,13 +89,13 @@ export default function QRCodeScanner({
       onRequestClose={onClose}
     >
       <View style={styles.container}>
-        {hasPermission === null ? (
+        {!permission ? (
           <View style={styles.centeredContent}>
             <Text style={[styles.permissionText, { color: colors.text }]}>
               Requesting camera permission...
             </Text>
           </View>
-        ) : hasPermission === false ? (
+        ) : !hasPermission ? (
           <View style={styles.centeredContent}>
             <Ionicons name="camera-outline" size={64} color={colors.textSecondary} />
             <Text style={[styles.permissionText, { color: colors.text }]}>
@@ -109,16 +110,14 @@ export default function QRCodeScanner({
           </View>
         ) : (
           <>
-            <BarCodeScanner
-              onBarCodeScanned={handleBarCodeScanned}
+            <CameraView
               style={StyleSheet.absoluteFillObject}
-              barCodeTypes={[
-                BarCodeScanner.Constants.BarCodeType.qr,
-                BarCodeScanner.Constants.BarCodeType.ean13,
-                BarCodeScanner.Constants.BarCodeType.ean8,
-                BarCodeScanner.Constants.BarCodeType.upc_a,
-                BarCodeScanner.Constants.BarCodeType.upc_e,
-              ]}
+              facing="back"
+              enableTorch={torchOn}
+              barcodeScannerSettings={{
+                barcodeTypes: ['qr', 'ean13', 'ean8', 'upc_a', 'upc_e', 'code128', 'code39'],
+              }}
+              onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
             />
 
             {/* Overlay */}

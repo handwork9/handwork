@@ -782,9 +782,6 @@ export default function DashboardScreen() {
             
             {/* Main Earnings Amount */}
             <View style={styles.earningsMainAmount}>
-              <View style={[styles.earningsAmountBadge, { backgroundColor: '#ECFDF5' }]}>
-                <Ionicons name="trending-up" size={14} color="#10B981" />
-              </View>
               <View>
                 <Text style={[styles.earningsAmountLabel, { color: colors.textSecondary }]}>This Month</Text>
                 <Text style={[styles.earningsAmountValue, { color: colors.text }]}>{formatCurrency(monthEarnings)}</Text>
@@ -1320,6 +1317,51 @@ export default function DashboardScreen() {
                   </View>
                   <Text style={[styles.quickActionLabel, { color: colors.text }]}>Support</Text>
                   <Text style={[styles.quickActionHint, { color: colors.textSecondary }]}>Get help</Text>
+                </TouchableOpacity>
+              </View>
+              
+              {/* Separator */}
+              <View style={[styles.quickActionsGridSeparator, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]} />
+              
+              {/* Row 3 - Flash Sales */}
+              <View style={styles.quickActionsRow}>
+                {/* Flash Sales */}
+                <TouchableOpacity
+                  style={styles.quickActionItem}
+                  onPress={() => navigation.navigate('FlashSales' as any)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.quickActionIconClean, { backgroundColor: '#FFEBEE' }]}>
+                    <Ionicons name="flash" size={20} color="#EF4444" />
+                  </View>
+                  <Text style={[styles.quickActionLabel, { color: colors.text }]}>Flash Sales</Text>
+                  <Text style={[styles.quickActionHint, { color: colors.textSecondary }]}>Create deals</Text>
+                </TouchableOpacity>
+                
+                {/* Messages */}
+                <TouchableOpacity
+                  style={styles.quickActionItem}
+                  onPress={() => navigation.navigate('FarmerMessages')}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.quickActionIconClean, { backgroundColor: '#E8F5E9' }]}>
+                    <Ionicons name="chatbubbles" size={20} color="#4CAF50" />
+                  </View>
+                  <Text style={[styles.quickActionLabel, { color: colors.text }]}>Messages</Text>
+                  <Text style={[styles.quickActionHint, { color: colors.textSecondary }]}>Chat</Text>
+                </TouchableOpacity>
+                
+                {/* Reports */}
+                <TouchableOpacity
+                  style={styles.quickActionItem}
+                  onPress={() => navigation.navigate('BusinessReports' as any)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.quickActionIconClean, { backgroundColor: '#E3F2FD' }]}>
+                    <Ionicons name="document-text" size={20} color="#1976D2" />
+                  </View>
+                  <Text style={[styles.quickActionLabel, { color: colors.text }]}>Reports</Text>
+                  <Text style={[styles.quickActionHint, { color: colors.textSecondary }]}>Business</Text>
                 </TouchableOpacity>
               </View>
             </View>

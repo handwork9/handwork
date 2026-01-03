@@ -1,6 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Platform, Alert, Linking } from 'react-native';
-import Voice, { SpeechResultsEvent, SpeechErrorEvent } from '@react-native-voice/voice';
+
+// Try to import Voice, but handle the case when it's not available (Expo Go)
+let Voice: any = null;
+let isVoiceAvailable = false;
+
+try {
+  Voice = require('@react-native-voice/voice').default;
+  isVoiceAvailable = true;
+} catch (e) {
+  // Voice module not available (likely running in Expo Go)
+  console.log('Voice module not available - voice search disabled');
+  isVoiceAvailable = false;
+}
 
 interface UseVoiceSearchReturn {
   isListening: boolean;
@@ -20,6 +32,11 @@ export function useVoiceSearch(): UseVoiceSearchReturn {
   const [isSupported, setIsSupported] = useState(false);
 
   useEffect(() => {
+    if (!isVoiceAvailable || !Voice) {
+      setIsSupported(false);
+      return;
+    }
+
     // Check if voice recognition is supported
     const checkSupport = async () => {
       try {
@@ -42,19 +59,19 @@ export function useVoiceSearch(): UseVoiceSearchReturn {
       setIsListening(false);
     };
 
-    Voice.onSpeechResults = (e: SpeechResultsEvent) => {
+    Voice.onSpeechResults = (e: any) => {
       if (e.value && e.value.length > 0) {
         setTranscript(e.value[0]);
       }
     };
 
-    Voice.onSpeechPartialResults = (e: SpeechResultsEvent) => {
+    Voice.onSpeechPartialResults = (e: any) => {
       if (e.value && e.value.length > 0) {
         setTranscript(e.value[0]);
       }
     };
 
-    Voice.onSpeechError = (e: SpeechErrorEvent) => {
+    Voice.onSpeechError = (e: any) => {
       setIsListening(false);
       const errorMessage = e.error?.message || 'Voice recognition error';
       setError(errorMessage);
@@ -74,15 +91,25 @@ export function useVoiceSearch(): UseVoiceSearchReturn {
 
     // Cleanup
     return () => {
-      Voice.destroy().then(Voice.removeAllListeners);
+      if (Voice) {
+        Voice.destroy().then(() => Voice.removeAllListeners());
+      }
     };
   }, []);
 
   const startListening = useCallback(async () => {
+    if (!isVoiceAvailable || !Voice) {
+      Alert.alert(
+        'Voice Search Unavailable',
+        'Voice search requires a development build. It is not available in Expo Go.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     try {
       setError(null);
       setTranscript('');
-      
       await Voice.start('en-US');
     } catch (e: any) {
       setError(e.message || 'Failed to start voice recognition');
@@ -91,6 +118,8 @@ export function useVoiceSearch(): UseVoiceSearchReturn {
   }, []);
 
   const stopListening = useCallback(async () => {
+    if (!isVoiceAvailable || !Voice) return;
+
     try {
       await Voice.stop();
       setIsListening(false);
@@ -100,6 +129,8 @@ export function useVoiceSearch(): UseVoiceSearchReturn {
   }, []);
 
   const cancelListening = useCallback(async () => {
+    if (!isVoiceAvailable || !Voice) return;
+
     try {
       await Voice.cancel();
       setIsListening(false);

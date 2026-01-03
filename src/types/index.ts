@@ -550,6 +550,7 @@ export type BuyerTabParamList = {
 export type BuyerStackParamList = {
   BuyerTabs: undefined;
   ProductDetail: { productId: string };
+  FlashSaleDetail: { saleId: string };
   FarmerProfile: { farmerId: string };
   Cart: undefined;
   Checkout: undefined;
@@ -684,6 +685,9 @@ export type FarmerStackParamList = {
   ProductAnalyticsDetail: { product: any };
   AddDiscount: { product: any };
   PromoteProduct: { product: any };
+  FlashSales: undefined;
+  CreateFlashSale: { product?: any };
+  FlashSaleDetail: { saleId: string };
   FarmerMessages: undefined;
   BuyerChat: { buyerId: string; buyerName: string; buyerPhone?: string; buyerAvatar?: string; productId?: string; orderId?: string };
   Settings: undefined;

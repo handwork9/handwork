@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,8 @@ import {
   Animated,
   PanResponder,
   Alert,
+  GestureResponderEvent,
+  PanResponderGestureState,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -44,44 +46,90 @@ export default function ARProductPreview({ visible, onClose, product }: ARProduc
   const insets = useSafeAreaInsets();
   
   const [scale, setScale] = useState(1);
-  const [rotation, setRotation] = useState(0);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [totalRotation, setTotalRotation] = useState(0);
+  const [isSpinning, setIsSpinning] = useState(false);
   
-  const scaleAnim = React.useRef(new Animated.Value(1)).current;
-  const rotateAnim = React.useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const rotateAnim = useRef(new Animated.Value(0)).current;
+  const spinAnim = useRef(new Animated.Value(0)).current;
+  const lastImageIndexRef = useRef(0);
+  const accumulatedDxRef = useRef(0);
 
   useEffect(() => {
     if (visible) {
       setScale(1);
-      setRotation(0);
       setCurrentImageIndex(0);
+      setTotalRotation(0);
+      setIsSpinning(false);
+      scaleAnim.setValue(1);
+      rotateAnim.setValue(0);
+      spinAnim.setValue(0);
+      lastImageIndexRef.current = 0;
+      accumulatedDxRef.current = 0;
     }
   }, [visible]);
 
-  // Pan responder for rotation gesture
-  const panResponder = React.useRef(
+  // Update image based on accumulated rotation
+  const updateImageFromRotation = useCallback((dx: number) => {
+    if (!product?.images || product.images.length <= 1) return;
+    
+    accumulatedDxRef.current += dx;
+    const threshold = 60; // pixels per image change
+    const imageCount = product.images.length;
+    
+    // Calculate which image to show based on total accumulated movement
+    const indexChange = Math.floor(accumulatedDxRef.current / threshold);
+    let newIndex = (lastImageIndexRef.current + indexChange) % imageCount;
+    if (newIndex < 0) newIndex += imageCount;
+    
+    if (newIndex !== currentImageIndex) {
+      triggerHaptic();
+      setCurrentImageIndex(newIndex);
+    }
+  }, [product?.images, currentImageIndex]);
+
+  // Pan responder for rotation gesture - recreated when product changes
+  const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > 5 || Math.abs(gestureState.dy) > 5;
+      },
+      onPanResponderGrant: () => {
+        accumulatedDxRef.current = 0;
+      },
       onPanResponderMove: (_, gestureState) => {
-        // Rotate based on horizontal movement
-        const newRotation = gestureState.dx / 2;
-        rotateAnim.setValue(newRotation);
-        
-        // Change image based on rotation
+        // Apply continuous rotation
+        const rotationValue = gestureState.dx * 0.5;
+        rotateAnim.setValue(rotationValue);
+        setTotalRotation(rotationValue);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        // Update image based on final position
         if (product?.images && product.images.length > 1) {
-          const imageIndex = Math.abs(Math.floor(gestureState.dx / 100)) % product.images.length;
-          if (imageIndex !== currentImageIndex) {
+          const threshold = 80;
+          const imageCount = product.images.length;
+          const direction = gestureState.dx > 0 ? 1 : -1;
+          
+          if (Math.abs(gestureState.dx) > threshold) {
+            let newIndex = currentImageIndex - direction;
+            if (newIndex < 0) newIndex = imageCount - 1;
+            if (newIndex >= imageCount) newIndex = 0;
             triggerHaptic();
-            setCurrentImageIndex(imageIndex);
+            setCurrentImageIndex(newIndex);
+            lastImageIndexRef.current = newIndex;
           }
         }
-      },
-      onPanResponderRelease: () => {
+        
+        // Animate back to center
         Animated.spring(rotateAnim, {
           toValue: 0,
           useNativeDriver: true,
+          tension: 40,
+          friction: 7,
         }).start();
+        setTotalRotation(0);
       },
     })
   ).current;
@@ -107,10 +155,32 @@ export default function ARProductPreview({ visible, onClose, product }: ARProduc
   };
 
   const handleNextImage = () => {
+    if (isSpinning) return;
+    
+    triggerHaptic();
+    setIsSpinning(true);
+    
+    // Cycle to next image if multiple exist
     if (product?.images && product.images.length > 1) {
-      triggerHaptic();
-      setCurrentImageIndex((prev) => (prev + 1) % product.images.length);
+      const newIndex = (currentImageIndex + 1) % product.images.length;
+      
+      // Delay image change to middle of spin
+      setTimeout(() => {
+        setCurrentImageIndex(newIndex);
+        lastImageIndexRef.current = newIndex;
+      }, 250);
     }
+    
+    // Full 360° rotation animation
+    spinAnim.setValue(0);
+    Animated.timing(spinAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start(() => {
+      setIsSpinning(false);
+      spinAnim.setValue(0);
+    });
   };
 
   const handleARInfo = () => {
@@ -124,8 +194,15 @@ export default function ARProductPreview({ visible, onClose, product }: ARProduc
   if (!visible || !product) return null;
 
   const rotateInterpolate = rotateAnim.interpolate({
-    inputRange: [-180, 180],
-    outputRange: ['-30deg', '30deg'],
+    inputRange: [-200, 0, 200],
+    outputRange: ['-45deg', '0deg', '45deg'],
+    extrapolate: 'clamp',
+  });
+
+  // Full 360° spin for rotate button
+  const spinInterpolate = spinAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
   });
 
   return (
@@ -200,7 +277,7 @@ export default function ARProductPreview({ visible, onClose, product }: ARProduc
               {
                 transform: [
                   { scale: scaleAnim },
-                  { rotateY: rotateInterpolate },
+                  { rotateY: isSpinning ? spinInterpolate : rotateInterpolate },
                 ],
               },
             ]}

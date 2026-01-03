@@ -43,8 +43,7 @@
           "organization": "handwork",
           "project": "handwork"
         }
-      ],
-      "expo-barcode-scanner"
+      ]
     ],
     "extra": {
       "eas": {

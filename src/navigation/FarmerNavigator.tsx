@@ -24,6 +24,9 @@ import TopProductsScreen from '../screens/farmer/TopProductsScreen';
 import ProductAnalyticsDetailScreen from '../screens/farmer/ProductAnalyticsDetailScreen';
 import AddDiscountScreen from '../screens/farmer/AddDiscountScreen';
 import PromoteProductScreen from '../screens/farmer/PromoteProductScreen';
+import FlashSalesScreen from '../screens/farmer/FlashSalesScreen';
+import CreateFlashSaleScreen from '../screens/farmer/CreateFlashSaleScreen';
+import FarmerFlashSaleDetailScreen from '../screens/farmer/FarmerFlashSaleDetailScreen';
 import FarmerActivationScreen from '../screens/farmer/FarmerActivationScreen';
 import FarmerMessagesScreen from '../screens/farmer/FarmerMessagesScreen';
 import BuyerChatScreen from '../screens/farmer/BuyerChatScreen';
@@ -288,6 +291,21 @@ export function FarmerNavigator() {
       <Stack.Screen
         name="PromoteProduct"
         component={PromoteProductScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="FlashSales"
+        component={FlashSalesScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="CreateFlashSale"
+        component={CreateFlashSaleScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="FlashSaleDetail"
+        component={FarmerFlashSaleDetailScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen

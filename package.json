@@ -28,7 +28,6 @@
     "expo": "~54.0.30",
     "expo-asset": "~12.0.12",
     "expo-auth-session": "~7.0.10",
-    "expo-barcode-scanner": "^13.0.1",
     "expo-camera": "~17.0.10",
     "expo-clipboard": "~8.0.8",
     "expo-constants": "~18.0.12",

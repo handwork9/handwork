@@ -7,3 +7,5 @@ export { default as BuyerChatScreen } from './BuyerChatScreen';
 export { default as FarmerSubscriptionScreen } from './FarmerSubscriptionScreen';
 export { default as FarmerDisputesScreen } from './FarmerDisputesScreen';
 export { default as FarmerDisputeDetailScreen } from './FarmerDisputeDetailScreen';
+export { default as FlashSalesScreen } from './FlashSalesScreen';
+export { default as CreateFlashSaleScreen } from './CreateFlashSaleScreen';
