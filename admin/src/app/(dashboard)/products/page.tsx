@@ -356,7 +356,6 @@ export default function ProductsPage() {
       }
       return [];
     },
-    enabled: isAuthenticated,
   });
 
   const farmers = Array.isArray(farmersData) ? farmersData : [];
