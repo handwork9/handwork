@@ -1,87 +1,81 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Package, Search, RefreshCw, Eye, Trash2, TrendingUp, ShoppingBag, Users, DollarSign } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { Card, Table, Tag, Button, Input, Select, Space, Statistic, Row, Col, message, Modal, Image, InputNumber, Form } from 'antd';
+import { SearchOutlined, ReloadOutlined, GiftOutlined, EditOutlined, DeleteOutlined, PlusOutlined, EyeOutlined, DollarOutlined } from '@ant-design/icons';
+import type { ColumnsType } from 'antd/es/table';
 import api from '@/lib/api';
 
-interface BundleItem {
+interface BundleProduct {
+  id: string;
   productId: string;
-  productTitle: string;
   quantity: number;
-  originalPrice: number;
+  product: {
+    id: string;
+    title: string;
+    price: string;
+    images: string[];
+  };
 }
 
-interface ProductBundle {
+interface Bundle {
   id: string;
-  title: string;
+  name: string;
   description: string;
-  farmerId: string;
-  farmer?: {
+  imageUrl: string;
+  originalPrice: string;
+  bundlePrice: string;
+  discountPercent: number;
+  isActive: boolean;
+  stock: number;
+  soldCount: number;
+  validFrom: string;
+  validUntil: string;
+  products: BundleProduct[];
+  createdAt: string;
+  farmer: {
     id: string;
     name: string;
   };
-  items: BundleItem[];
-  originalTotal: number;
-  bundlePrice: number;
-  discountPercentage: number;
-  stock: number;
-  soldCount: number;
-  isActive: boolean;
-  startDate: string;
-  endDate: string;
-  createdAt: string;
 }
 
 export default function BundlesPage() {
-  const [bundles, setBundles] = useState<ProductBundle[]>([]);
+  const [bundles, setBundles] = useState<Bundle[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [selectedBundle, setSelectedBundle] = useState<Bundle | null>(null);
+  const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [stats, setStats] = useState({
     total: 0,
     active: 0,
     totalSold: 0,
     totalRevenue: 0,
   });
-  const { toast } = useToast();
 
   const fetchBundles = async () => {
     try {
       setLoading(true);
       const response = await api.get('/bundles', {
-        params: { limit: 100 },
+        params: { 
+          limit: 100,
+          ...(statusFilter !== 'all' && { isActive: statusFilter === 'active' }),
+        },
       });
-      const data = response.data?.data?.data || response.data?.data || [];
-      setBundles(data);
+      const data = response.data?.data?.data || response.data?.data || response.data || [];
+      const bundlesList = Array.isArray(data) ? data : [];
+      setBundles(bundlesList);
       
-      // Calculate stats
-      const active = data.filter((b: ProductBundle) => b.isActive).length;
-      const totalSold = data.reduce((sum: number, b: ProductBundle) => sum + (b.soldCount || 0), 0);
-      const revenue = data.reduce((sum: number, b: ProductBundle) => 
-        sum + ((b.soldCount || 0) * b.bundlePrice), 0);
+      const active = bundlesList.filter((b: Bundle) => b.isActive).length;
+      const totalSold = bundlesList.reduce((sum: number, b: Bundle) => sum + (b.soldCount || 0), 0);
+      const revenue = bundlesList.reduce((sum: number, b: Bundle) => 
+        sum + ((b.soldCount || 0) * parseFloat(b.bundlePrice || '0')), 0);
       
-      setStats({
-        total: data.length,
-        active,
-        totalSold,
-        totalRevenue: revenue,
-      });
+      setStats({ total: bundlesList.length, active, totalSold, totalRevenue: revenue });
     } catch (error) {
       console.error('Error fetching bundles:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load bundles',
-        variant: 'destructive',
-      });
+      message.error('Failed to load bundles');
+      setBundles([]);
     } finally {
       setLoading(false);
     }
@@ -89,215 +83,306 @@ export default function BundlesPage() {
 
   useEffect(() => {
     fetchBundles();
-  }, []);
+  }, [statusFilter]);
 
-  const handleDeleteBundle = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this bundle?')) return;
-    
+  const handleToggleStatus = async (bundle: Bundle) => {
     try {
-      await api.delete(`/bundles/${id}`);
-      toast({ title: 'Success', description: 'Bundle deleted successfully' });
+      await api.patch(`/bundles/${bundle.id}`, { isActive: !bundle.isActive });
+      message.success(`Bundle ${bundle.isActive ? 'deactivated' : 'activated'}`);
       fetchBundles();
     } catch (error) {
-      toast({ title: 'Error', description: 'Failed to delete bundle', variant: 'destructive' });
+      message.error('Failed to update bundle status');
     }
   };
 
-  const handleToggleActive = async (bundle: ProductBundle) => {
-    try {
-      await api.put(`/bundles/${bundle.id}`, { isActive: !bundle.isActive });
-      toast({ 
-        title: 'Success', 
-        description: `Bundle ${bundle.isActive ? 'deactivated' : 'activated'} successfully` 
-      });
-      fetchBundles();
-    } catch (error) {
-      toast({ title: 'Error', description: 'Failed to update bundle', variant: 'destructive' });
-    }
+  const handleDeleteBundle = (bundle: Bundle) => {
+    Modal.confirm({
+      title: 'Delete Bundle',
+      content: `Are you sure you want to delete "${bundle.name}"?`,
+      okType: 'danger',
+      onOk: async () => {
+        try {
+          await api.delete(`/bundles/${bundle.id}`);
+          message.success('Bundle deleted');
+          fetchBundles();
+        } catch (error) {
+          message.error('Failed to delete bundle');
+        }
+      },
+    });
   };
 
-  const filteredBundles = bundles.filter(bundle => {
-    const matchesSearch = bundle.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      bundle.description?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || 
-      (statusFilter === 'active' && bundle.isActive) ||
-      (statusFilter === 'inactive' && !bundle.isActive);
-    return matchesSearch && matchesStatus;
-  });
+  const columns: ColumnsType<Bundle> = [
+    {
+      title: 'Bundle',
+      key: 'bundle',
+      render: (_, record) => (
+        <Space>
+          {record.imageUrl && (
+            <Image 
+              src={record.imageUrl} 
+              alt={record.name}
+              width={50}
+              height={50}
+              style={{ borderRadius: 8, objectFit: 'cover' }}
+            />
+          )}
+          <div>
+            <div style={{ fontWeight: 500 }}>{record.name}</div>
+            <div style={{ fontSize: 12, color: '#888' }}>
+              {record.products?.length || 0} products
+            </div>
+          </div>
+        </Space>
+      ),
+    },
+    {
+      title: 'Farmer',
+      dataIndex: ['farmer', 'name'],
+      key: 'farmer',
+    },
+    {
+      title: 'Price',
+      key: 'price',
+      render: (_, record) => (
+        <div>
+          <Tag color="green">{record.discountPercent?.toFixed(0) || 0}% OFF</Tag>
+          <div style={{ fontSize: 12, marginTop: 4 }}>
+            <span style={{ textDecoration: 'line-through', color: '#888' }}>
+              ₦{parseFloat(record.originalPrice || '0').toLocaleString()}
+            </span>
+            <span style={{ color: '#52c41a', marginLeft: 8, fontWeight: 500 }}>
+              ₦{parseFloat(record.bundlePrice || '0').toLocaleString()}
+            </span>
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: 'Stock',
+      key: 'stock',
+      render: (_, record) => (
+        <div>
+          <div>{record.stock || 0} available</div>
+          <div style={{ fontSize: 12, color: '#888' }}>
+            {record.soldCount || 0} sold
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: 'Validity',
+      key: 'validity',
+      render: (_, record) => (
+        <div style={{ fontSize: 12 }}>
+          {record.validFrom && (
+            <div>From: {new Date(record.validFrom).toLocaleDateString()}</div>
+          )}
+          {record.validUntil && (
+            <div>Until: {new Date(record.validUntil).toLocaleDateString()}</div>
+          )}
+        </div>
+      ),
+    },
+    {
+      title: 'Status',
+      key: 'status',
+      render: (_, record) => (
+        <Tag color={record.isActive ? 'green' : 'default'}>
+          {record.isActive ? 'Active' : 'Inactive'}
+        </Tag>
+      ),
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      render: (_, record) => (
+        <Space>
+          <Button 
+            size="small"
+            icon={<EyeOutlined />}
+            onClick={() => {
+              setSelectedBundle(record);
+              setDetailModalVisible(true);
+            }}
+          />
+          <Button 
+            size="small"
+            type={record.isActive ? 'default' : 'primary'}
+            onClick={() => handleToggleStatus(record)}
+          >
+            {record.isActive ? 'Deactivate' : 'Activate'}
+          </Button>
+          <Button 
+            size="small"
+            danger
+            icon={<DeleteOutlined />}
+            onClick={() => handleDeleteBundle(record)}
+          />
+        </Space>
+      ),
+    },
+  ];
+
+  const filteredBundles = bundles.filter(bundle =>
+    bundle.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    bundle.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Product Bundles</h1>
-          <p className="text-muted-foreground">Manage farmer bundle deals and packages</p>
-        </div>
-        <Button onClick={fetchBundles} variant="outline">
-          <RefreshCw className="mr-2 h-4 w-4" />
-          Refresh
-        </Button>
+    <div style={{ padding: 24 }}>
+      <div style={{ marginBottom: 24 }}>
+        <h1 style={{ fontSize: 24, fontWeight: 600, marginBottom: 8 }}>Product Bundles</h1>
+        <p style={{ color: '#888' }}>Manage product bundles and package deals</p>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Bundles</CardTitle>
-            <Package className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Active Bundles</CardTitle>
-            <ShoppingBag className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.active}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Sold</CardTitle>
-            <Users className="h-4 w-4 text-purple-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalSold}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-yellow-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₦{stats.totalRevenue.toLocaleString()}</div>
-          </CardContent>
-        </Card>
-      </div>
+      <Row gutter={16} style={{ marginBottom: 24 }}>
+        <Col span={6}>
+          <Card>
+            <Statistic 
+              title="Total Bundles" 
+              value={stats.total} 
+              prefix={<GiftOutlined style={{ color: '#722ed1' }} />} 
+            />
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card>
+            <Statistic 
+              title="Active Bundles" 
+              value={stats.active} 
+              valueStyle={{ color: '#52c41a' }} 
+              prefix={<GiftOutlined />} 
+            />
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card>
+            <Statistic 
+              title="Total Sold" 
+              value={stats.totalSold} 
+              prefix={<GiftOutlined />} 
+            />
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card>
+            <Statistic 
+              title="Total Revenue" 
+              value={stats.totalRevenue} 
+              prefix={<DollarOutlined />} 
+              formatter={(v) => `₦${Number(v).toLocaleString()}`} 
+            />
+          </Card>
+        </Col>
+      </Row>
 
-      {/* Bundles Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>All Bundles</CardTitle>
-          <CardDescription>View and manage product bundles from farmers</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-4 mb-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search bundles..."
-                className="pl-8"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+      <Card title="Bundles List">
+        <Space style={{ marginBottom: 16 }}>
+          <Input
+            placeholder="Search bundles..."
+            prefix={<SearchOutlined />}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{ width: 300 }}
+          />
+          <Select
+            value={statusFilter}
+            onChange={setStatusFilter}
+            style={{ width: 150 }}
+            options={[
+              { value: 'all', label: 'All Status' },
+              { value: 'active', label: 'Active' },
+              { value: 'inactive', label: 'Inactive' },
+            ]}
+          />
+          <Button icon={<ReloadOutlined />} onClick={fetchBundles}>
+            Refresh
+          </Button>
+        </Space>
+
+        <Table
+          columns={columns}
+          dataSource={filteredBundles}
+          rowKey="id"
+          loading={loading}
+          pagination={{ pageSize: 10 }}
+        />
+      </Card>
+
+      {/* Bundle Detail Modal */}
+      <Modal
+        title={selectedBundle?.name}
+        open={detailModalVisible}
+        onCancel={() => setDetailModalVisible(false)}
+        footer={[
+          <Button key="close" onClick={() => setDetailModalVisible(false)}>
+            Close
+          </Button>,
+        ]}
+        width={600}
+      >
+        {selectedBundle && (
+          <div>
+            <p style={{ color: '#666', marginBottom: 16 }}>{selectedBundle.description}</p>
+            
+            <div style={{ marginBottom: 16 }}>
+              <strong>Products in Bundle:</strong>
+              <Table
+                size="small"
+                dataSource={selectedBundle.products}
+                rowKey="id"
+                pagination={false}
+                columns={[
+                  {
+                    title: 'Product',
+                    key: 'product',
+                    render: (_, item) => (
+                      <Space>
+                        {item.product?.images?.[0] && (
+                          <Image 
+                            src={item.product.images[0]} 
+                            width={30} 
+                            height={30}
+                            style={{ borderRadius: 4 }}
+                          />
+                        )}
+                        <span>{item.product?.title}</span>
+                      </Space>
+                    ),
+                  },
+                  {
+                    title: 'Quantity',
+                    dataIndex: 'quantity',
+                  },
+                  {
+                    title: 'Price',
+                    render: (_, item) => `₦${parseFloat(item.product?.price || '0').toLocaleString()}`,
+                  },
+                ]}
               />
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
 
-          {loading ? (
-            <div className="text-center py-8">Loading...</div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Bundle</TableHead>
-                  <TableHead>Farmer</TableHead>
-                  <TableHead>Items</TableHead>
-                  <TableHead>Pricing</TableHead>
-                  <TableHead>Stock</TableHead>
-                  <TableHead>Sold</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredBundles.map((bundle) => (
-                  <TableRow key={bundle.id}>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{bundle.title}</div>
-                        <div className="text-sm text-muted-foreground line-clamp-1">
-                          {bundle.description}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>{bundle.farmer?.name || 'N/A'}</TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        {bundle.items?.slice(0, 2).map((item, idx) => (
-                          <div key={idx} className="text-xs">
-                            {item.quantity}x {item.productTitle}
-                          </div>
-                        ))}
-                        {bundle.items?.length > 2 && (
-                          <div className="text-xs text-muted-foreground">
-                            +{bundle.items.length - 2} more
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-green-600 font-medium">
-                        {bundle.discountPercentage}% OFF
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        <span className="line-through">₦{bundle.originalTotal?.toLocaleString()}</span>
-                        {' → '}
-                        <span className="font-medium">₦{bundle.bundlePrice?.toLocaleString()}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>{bundle.stock}</TableCell>
-                    <TableCell>{bundle.soldCount || 0}</TableCell>
-                    <TableCell>
-                      <Badge variant={bundle.isActive ? 'default' : 'secondary'}>
-                        {bundle.isActive ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => handleToggleActive(bundle)}
-                        >
-                          {bundle.isActive ? 'Deactivate' : 'Activate'}
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="destructive"
-                          onClick={() => handleDeleteBundle(bundle.id)}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {filteredBundles.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                      No bundles found
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+            <Row gutter={16}>
+              <Col span={12}>
+                <Statistic
+                  title="Original Price"
+                  value={parseFloat(selectedBundle.originalPrice || '0')}
+                  prefix="₦"
+                />
+              </Col>
+              <Col span={12}>
+                <Statistic
+                  title="Bundle Price"
+                  value={parseFloat(selectedBundle.bundlePrice || '0')}
+                  prefix="₦"
+                  valueStyle={{ color: '#52c41a' }}
+                />
+              </Col>
+            </Row>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
