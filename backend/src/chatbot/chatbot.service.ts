@@ -385,6 +385,41 @@ Never share sensitive information or make promises outside policy.`;
       };
     }
 
+    // PRIORITY: Check for rider queries FIRST (before order status which has "delivery" keyword)
+    if (this.matchesKeywords(lowerMessage, KNOWLEDGE_BASE.rider.keywords) || 
+        lowerMessage.includes('become a rider') || 
+        lowerMessage.includes('delivery rider') ||
+        lowerMessage.includes('delivery job') ||
+        lowerMessage.includes('work as rider') ||
+        lowerMessage.includes('join as rider')) {
+      return {
+        message: KNOWLEDGE_BASE.rider.response,
+        suggestedActions: ['Start rider registration', 'Learn more'],
+      };
+    }
+
+    // PRIORITY: Check for farmer queries BEFORE order status
+    if (this.matchesKeywords(lowerMessage, KNOWLEDGE_BASE.farmer.keywords) ||
+        lowerMessage.includes('become a farmer') ||
+        lowerMessage.includes('become a seller') ||
+        lowerMessage.includes('become a vendor') ||
+        lowerMessage.includes('start selling') ||
+        lowerMessage.includes('sell on handwork')) {
+      return {
+        message: KNOWLEDGE_BASE.farmer.response,
+        suggestedActions: ['Start farmer registration', 'Learn more'],
+      };
+    }
+
+    // Check for refund queries BEFORE order status
+    if (this.matchesKeywords(lowerMessage, KNOWLEDGE_BASE.refund.keywords)) {
+      return {
+        message: KNOWLEDGE_BASE.refund.response,
+        suggestedActions: ['Cancel my order', 'Talk to support', 'View refund policy'],
+        shouldEscalate: lowerMessage.includes('refund'),
+      };
+    }
+
     // Check for order status queries
     if (this.matchesKeywords(lowerMessage, KNOWLEDGE_BASE.orderStatus.keywords)) {
       // Try to find order number in message
@@ -418,17 +453,8 @@ Never share sensitive information or make promises outside policy.`;
       }
 
       return {
-        message: 'Please provide your order number (e.g., ORD-ABC123) so I can check the status for you.',
+        message: '📦 **Order Tracking**\n\nPlease provide your order number (e.g., ORD-ABC123) so I can check the status for you.\n\n**How to find your order number:**\n1. Go to Orders tab\n2. Tap on any order\n3. Order number is at the top\n\n**Quick Actions:**\n• View all your orders in the Orders tab\n• Most recent orders appear first',
         suggestedActions: ['View my orders', 'Need help finding order number'],
-      };
-    }
-
-    // Check for refund queries
-    if (this.matchesKeywords(lowerMessage, KNOWLEDGE_BASE.refund.keywords)) {
-      return {
-        message: KNOWLEDGE_BASE.refund.response,
-        suggestedActions: ['Cancel my order', 'Talk to support', 'View refund policy'],
-        shouldEscalate: lowerMessage.includes('refund'),
       };
     }
 
@@ -440,27 +466,14 @@ Never share sensitive information or make promises outside policy.`;
       };
     }
 
-    // Check for delivery queries
-    if (this.matchesKeywords(lowerMessage, KNOWLEDGE_BASE.delivery.keywords)) {
+    // Check for delivery info queries (generic delivery questions, not "become rider")
+    if (this.matchesKeywords(lowerMessage, KNOWLEDGE_BASE.delivery.keywords) && 
+        !lowerMessage.includes('become') && 
+        !lowerMessage.includes('job') && 
+        !lowerMessage.includes('work')) {
       return {
         message: KNOWLEDGE_BASE.delivery.response,
         suggestedActions: ['Track my order', 'Contact rider', 'Report late delivery'],
-      };
-    }
-
-    // Check for farmer queries
-    if (this.matchesKeywords(lowerMessage, KNOWLEDGE_BASE.farmer.keywords)) {
-      return {
-        message: KNOWLEDGE_BASE.farmer.response,
-        suggestedActions: ['Start farmer registration', 'Learn more'],
-      };
-    }
-
-    // Check for rider queries
-    if (this.matchesKeywords(lowerMessage, KNOWLEDGE_BASE.rider.keywords)) {
-      return {
-        message: KNOWLEDGE_BASE.rider.response,
-        suggestedActions: ['Start rider registration', 'Learn more'],
       };
     }
 
