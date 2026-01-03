@@ -88,7 +88,7 @@ export const handleNotificationNavigation = (
       if (data.productId) {
         navigateToScreen('ProductDetail', { productId: data.productId });
       } else {
-        navigateToScreen('Home');
+        navigateToScreen('BuyerTabs', { screen: 'Home' });
       }
       break;
 

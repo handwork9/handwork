@@ -33,6 +33,9 @@ import {
   ApiOutlined,
   WhatsAppOutlined,
   EnvironmentOutlined,
+  ClockCircleOutlined,
+  FallOutlined,
+  StarOutlined,
 } from '@ant-design/icons';
 import { useAuthStore, hasPermission, PERMISSIONS } from '@/store/auth';
 import { useSocketStore } from '@/lib/socket';
@@ -150,6 +153,28 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           key: '/pickup-locations',
           icon: <EnvironmentOutlined />,
           label: 'Pickup Locations',
+        },
+        {
+          key: '/delivery-scheduling',
+          icon: <ClockCircleOutlined />,
+          label: 'Delivery Scheduling',
+        },
+      ],
+    },
+    {
+      key: 'engagement',
+      icon: <StarOutlined />,
+      label: 'Engagement',
+      children: [
+        {
+          key: '/price-alerts',
+          icon: <FallOutlined />,
+          label: 'Price Drop Alerts',
+        },
+        {
+          key: '/ratings',
+          icon: <StarOutlined />,
+          label: 'Ratings & Reviews',
         },
       ],
     },

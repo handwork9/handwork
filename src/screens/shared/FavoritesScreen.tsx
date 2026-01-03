@@ -244,7 +244,7 @@ const FavoritesScreen: React.FC = () => {
 
   // Start shopping
   const handleStartShopping = useCallback(() => {
-    navigation.navigate('Home');
+    navigation.navigate('BuyerTabs', { screen: 'Home' } as any);
   }, [navigation]);
 
   // Render favorite item

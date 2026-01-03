@@ -66,6 +66,8 @@ interface NotificationForm {
   type: 'info' | 'warning' | 'success' | 'promo';
   targetAudience: 'all' | 'buyers' | 'farmers' | 'riders';
   imageUrl?: string;
+  actionUrl?: string;
+  actionType?: 'product' | 'order' | 'wallet' | 'promo' | 'external';
 }
 
 interface User {
@@ -661,6 +663,70 @@ export default function NotificationsPage() {
                             </Button>
                           </Upload>
                         )}
+                      </Form.Item>
+
+                      <Form.Item
+                        name="actionType"
+                        label="Deep Link Action (Optional)"
+                        extra="Navigate users to a specific screen when they tap the notification"
+                      >
+                        <Select
+                          allowClear
+                          placeholder="Select action type"
+                          options={[
+                            { value: 'product', label: '🛒 View Product' },
+                            { value: 'order', label: '📦 View Order' },
+                            { value: 'wallet', label: '💰 Open Wallet' },
+                            { value: 'promo', label: '🎉 View Promotion' },
+                            { value: 'external', label: '🔗 External URL' },
+                          ]}
+                        />
+                      </Form.Item>
+
+                      <Form.Item
+                        noStyle
+                        shouldUpdate={(prev, curr) => prev.actionType !== curr.actionType}
+                      >
+                        {({ getFieldValue }) => {
+                          const actionType = getFieldValue('actionType');
+                          if (!actionType) return null;
+                          
+                          if (actionType === 'external') {
+                            return (
+                              <Form.Item
+                                name="actionUrl"
+                                label="External URL"
+                                rules={[{ type: 'url', message: 'Please enter a valid URL' }]}
+                              >
+                                <Input placeholder="https://example.com/promo" />
+                              </Form.Item>
+                            );
+                          }
+                          
+                          if (actionType === 'product') {
+                            return (
+                              <Form.Item
+                                name="actionUrl"
+                                label="Product ID"
+                              >
+                                <Input placeholder="Enter product ID" />
+                              </Form.Item>
+                            );
+                          }
+                          
+                          if (actionType === 'order') {
+                            return (
+                              <Form.Item
+                                name="actionUrl"
+                                label="Order ID"
+                              >
+                                <Input placeholder="Enter order ID" />
+                              </Form.Item>
+                            );
+                          }
+                          
+                          return null;
+                        }}
                       </Form.Item>
 
                       <Form.Item>

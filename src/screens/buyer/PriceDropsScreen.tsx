@@ -150,7 +150,7 @@ export default function PriceDropsScreen({ navigation }: Props) {
       </Text>
       <TouchableOpacity
         style={[styles.browseCta, { backgroundColor: colors.primary }]}
-        onPress={() => navigation.navigate('Home')}
+        onPress={() => navigation.navigate('BuyerTabs', { screen: 'Home' })}
       >
         <Ionicons name="search" size={18} color="#FFFFFF" />
         <Text style={styles.browseCtaText}>Browse Products</Text>

@@ -258,7 +258,7 @@ export function NotificationDetailScreen() {
         (navigation as any).navigate('Wallet');
         break;
       case 'promotion':
-        (navigation as any).navigate('Home');
+        (navigation as any).navigate('BuyerTabs', { screen: 'Home' });
         break;
       default:
         navigation.goBack();
