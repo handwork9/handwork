@@ -16,8 +16,9 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  TouchableWithoutFeedback,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,28 +29,31 @@ import { socialService, FarmerStories, FarmStory } from '../../services/socialSe
 import { chatService } from '../../services/chatService';
 
 const { width, height } = Dimensions.get('window');
+const STORY_DURATION = 5000; // 5 seconds per story
 
 interface StoriesRouteParams {
   stories: FarmerStories[];
   initialIndex: number;
 }
 
-// Progress Bar Component
+// Instagram-style Progress Bar Component
 const ProgressBar = ({ 
   total, 
   current, 
-  progress 
+  progress,
+  isPaused,
 }: { 
   total: number; 
   current: number; 
-  progress: number 
+  progress: number;
+  isPaused?: boolean;
 }) => {
   return (
     <View style={styles.progressContainer}>
       {Array.from({ length: total }).map((_, index) => (
         <View key={index} style={styles.progressBarWrapper}>
           <View style={styles.progressBarBg}>
-            <View 
+            <Animated.View 
               style={[
                 styles.progressBarFill,
                 { 
@@ -77,6 +81,8 @@ const StoryView = ({
   onClose,
   onProgressUpdate,
   externalPaused = false,
+  onLongPressStart,
+  onLongPressEnd,
 }: {
   story: FarmStory;
   isActive: boolean;
@@ -85,10 +91,14 @@ const StoryView = ({
   onClose: () => void;
   onProgressUpdate: (progress: number) => void;
   externalPaused?: boolean;
+  onLongPressStart?: () => void;
+  onLongPressEnd?: () => void;
 }) => {
   const progressRef = useRef(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const [isPressedPaused, setIsPressedPaused] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const scaleAnim = useRef(new Animated.Value(1)).current;
   
   // Combine internal press pause and external pause (from keyboard/input)
   const isPaused = isPressedPaused || externalPaused;
@@ -113,80 +123,107 @@ const StoryView = ({
       return;
     }
 
+    // Wait for image to load before starting progress
+    if (story.type !== 'text' && !imageLoaded) return;
+
     const duration = (story.duration || 5) * 1000;
-    const increment = 100 / (duration / 50); // Update every 50ms
+    const increment = 100 / (duration / 16); // 60fps (every ~16ms)
 
     intervalRef.current = setInterval(() => {
       if (!isPaused) {
         progressRef.current += increment;
-        onProgressUpdate(progressRef.current);
+        onProgressUpdate(Math.min(progressRef.current, 100));
 
         if (progressRef.current >= 100) {
           clearInterval(intervalRef.current!);
           onNext();
         }
       }
-    }, 50);
+    }, 16);
 
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
     };
-  }, [isActive, isPaused, story.duration]);
+  }, [isActive, isPaused, story.duration, imageLoaded, story.type]);
 
-  const handlePressIn = () => setIsPressedPaused(true);
-  const handlePressOut = () => setIsPressedPaused(false);
+  const handlePressIn = () => {
+    setIsPressedPaused(true);
+    onLongPressStart?.();
+    // Subtle scale animation like Instagram
+    Animated.spring(scaleAnim, {
+      toValue: 0.98,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    setIsPressedPaused(false);
+    onLongPressEnd?.();
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+    }).start();
+  };
 
   const handleTap = (event: any) => {
     const touchX = event.nativeEvent.locationX;
+    // Instagram: left 1/3 for previous, right 2/3 for next
     if (touchX < width / 3) {
       onPrevious();
-    } else if (touchX > (width * 2) / 3) {
+    } else {
       onNext();
     }
   };
 
   return (
-    <TouchableOpacity 
-      activeOpacity={1}
-      style={styles.storyView}
+    <TouchableWithoutFeedback
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       onPress={handleTap}
     >
-      {story.type === 'text' ? (
-        <View style={[styles.textStory, { backgroundColor: story.backgroundColor || COLORS.primary }]}>
-          <Text style={[styles.storyText, { color: story.textColor || 'white' }]}>
-            {story.caption}
-          </Text>
-        </View>
-      ) : (
-        <Image 
-          source={{ uri: story.mediaUrl || story.thumbnailUrl }}
-          style={styles.storyImage}
-          resizeMode="cover"
-        />
-      )}
+      <Animated.View style={[styles.storyView, { transform: [{ scale: scaleAnim }] }]}>
+        {story.type === 'text' ? (
+          <View style={[styles.textStory, { backgroundColor: story.backgroundColor || COLORS.primary }]}>
+            <Text style={[styles.storyText, { color: story.textColor || 'white' }]}>
+              {story.caption}
+            </Text>
+          </View>
+        ) : (
+          <>
+            {!imageLoaded && (
+              <View style={styles.imageLoading}>
+                <ActivityIndicator size="large" color="white" />
+              </View>
+            )}
+            <Image 
+              source={{ uri: story.mediaUrl || story.thumbnailUrl }}
+              style={[styles.storyImage, !imageLoaded && { opacity: 0 }]}
+              resizeMode="cover"
+              onLoad={() => setImageLoaded(true)}
+            />
+          </>
+        )}
 
-      {/* Caption overlay */}
-      {story.caption && story.type !== 'text' && (
-        <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.6)']}
-          style={styles.captionGradient}
-        >
-          <Text style={styles.caption}>{story.caption}</Text>
-        </LinearGradient>
-      )}
+        {/* Caption overlay - Instagram style at bottom */}
+        {story.caption && story.type !== 'text' && (
+          <View style={styles.captionContainer}>
+            <Text style={styles.caption} numberOfLines={3}>{story.caption}</Text>
+          </View>
+        )}
 
-      {/* Link button */}
-      {story.linkUrl && (
-        <TouchableOpacity style={styles.linkButton}>
-          <Ionicons name="chevron-up" size={16} color="white" />
-          <Text style={styles.linkText}>{story.linkText || 'See More'}</Text>
-        </TouchableOpacity>
-      )}
-    </TouchableOpacity>
+        {/* Link button - Swipe up style */}
+        {story.linkUrl && (
+          <View style={styles.linkContainer}>
+            <View style={styles.linkChevron}>
+              <Ionicons name="chevron-up" size={20} color="white" />
+            </View>
+            <Text style={styles.linkText}>{story.linkText || 'See More'}</Text>
+          </View>
+        )}
+      </Animated.View>
+    </TouchableWithoutFeedback>
   );
 };
 
@@ -194,6 +231,7 @@ const StoryView = ({
 const StoriesScreen = () => {
   const navigation = useNavigation();
   const route = useRoute<RouteProp<{ params: StoriesRouteParams }, 'params'>>();
+  const insets = useSafeAreaInsets();
   
   // Get params safely - they might be undefined if navigating directly
   const initialFarmerIndex = route.params?.initialIndex ?? 0;
@@ -212,8 +250,12 @@ const StoriesScreen = () => {
   const [replyMessage, setReplyMessage] = useState('');
   const [isSendingReply, setIsSendingReply] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [isLongPressed, setIsLongPressed] = useState(false);
+  const [showMoreOptions, setShowMoreOptions] = useState(false);
   
   const translateX = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(0)).current;
+  const cubeRotation = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
 
@@ -294,18 +336,51 @@ const StoriesScreen = () => {
 
   const panResponder = PanResponder.create({
     onMoveShouldSetPanResponder: (_, gestureState) => {
-      return Math.abs(gestureState.dx) > 20;
+      // Respond to horizontal swipes > 10px or vertical swipes > 30px
+      return Math.abs(gestureState.dx) > 10 || Math.abs(gestureState.dy) > 30;
+    },
+    onPanResponderGrant: () => {
+      setIsPaused(true);
     },
     onPanResponderMove: (_, gestureState) => {
-      translateX.setValue(gestureState.dx);
+      // Handle horizontal swipe for story navigation
+      if (Math.abs(gestureState.dx) > Math.abs(gestureState.dy)) {
+        translateX.setValue(gestureState.dx);
+      } else {
+        // Handle vertical swipe for close gesture
+        if (gestureState.dy > 0) {
+          translateY.setValue(gestureState.dy);
+        }
+      }
     },
     onPanResponderRelease: (_, gestureState) => {
-      if (gestureState.dx > 100) {
+      setIsPaused(false);
+      
+      // Vertical swipe down to close
+      if (gestureState.dy > 100 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx)) {
+        Animated.timing(translateY, {
+          toValue: height,
+          duration: 200,
+          useNativeDriver: true,
+        }).start(() => navigation.goBack());
+        return;
+      }
+      
+      // Reset vertical position
+      Animated.spring(translateY, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 100,
+        friction: 10,
+      }).start();
+
+      // Horizontal swipe handling
+      if (gestureState.dx > 80) {
         // Swipe right - previous farmer
         if (currentFarmerIndex > 0) {
           Animated.timing(translateX, {
             toValue: width,
-            duration: 200,
+            duration: 250,
             useNativeDriver: true,
           }).start(() => {
             setCurrentFarmerIndex(currentFarmerIndex - 1);
@@ -319,12 +394,12 @@ const StoriesScreen = () => {
             useNativeDriver: true,
           }).start();
         }
-      } else if (gestureState.dx < -100) {
+      } else if (gestureState.dx < -80) {
         // Swipe left - next farmer
         if (currentFarmerIndex < stories.length - 1) {
           Animated.timing(translateX, {
             toValue: -width,
-            duration: 200,
+            duration: 250,
             useNativeDriver: true,
           }).start(() => {
             setCurrentFarmerIndex(currentFarmerIndex + 1);
@@ -382,7 +457,20 @@ const StoriesScreen = () => {
   return (
     <View style={styles.container}>
       <Animated.View 
-        style={[styles.storyContainer, { transform: [{ translateX }] }]}
+        style={[
+          styles.storyContainer, 
+          { 
+            transform: [
+              { translateX },
+              { translateY },
+            ],
+            opacity: translateY.interpolate({
+              inputRange: [0, height / 2],
+              outputRange: [1, 0.5],
+              extrapolate: 'clamp',
+            }),
+          }
+        ]}
         {...panResponder.panHandlers}
       >
         <StoryView
@@ -392,60 +480,108 @@ const StoriesScreen = () => {
           onPrevious={goToPreviousStory}
           onClose={() => navigation.goBack()}
           onProgressUpdate={setProgress}
-          externalPaused={isPaused}
+          externalPaused={isPaused || isLongPressed}
+          onLongPressStart={() => setIsLongPressed(true)}
+          onLongPressEnd={() => setIsLongPressed(false)}
         />
 
-        {/* Header */}
-        <SafeAreaView style={styles.header}>
+        {/* Top Gradient Overlay */}
+        <LinearGradient
+          colors={['rgba(0,0,0,0.5)', 'transparent']}
+          style={styles.topGradient}
+          pointerEvents="none"
+        />
+
+        {/* Header - Instagram Style */}
+        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
           <ProgressBar
             total={currentFarmer.stories.length}
             current={currentStoryIndex}
             progress={progress}
+            isPaused={isPaused || isLongPressed}
           />
           
           <View style={styles.headerContent}>
-            <View style={styles.farmerInfo}>
-              {currentFarmer.farmer.user.avatar ? (
-                <Image 
-                  source={{ uri: currentFarmer.farmer.user.avatar }} 
-                  style={styles.farmerAvatar} 
-                />
-              ) : (
-                <View style={[styles.farmerAvatar, styles.avatarPlaceholder]}>
-                  <Text style={styles.avatarText}>
-                    {currentFarmer.farmer.farmName.charAt(0)}
-                  </Text>
+            <TouchableOpacity 
+              style={styles.farmerInfo}
+              activeOpacity={0.7}
+            >
+              {/* Instagram-style avatar with gradient ring */}
+              <LinearGradient
+                colors={['#F58529', '#DD2A7B', '#8134AF', '#515BD4']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.avatarRing}
+              >
+                <View style={styles.avatarInner}>
+                  {currentFarmer.farmer.user.avatar ? (
+                    <Image 
+                      source={{ uri: currentFarmer.farmer.user.avatar }} 
+                      style={styles.farmerAvatar} 
+                    />
+                  ) : (
+                    <View style={[styles.farmerAvatar, styles.avatarPlaceholder]}>
+                      <Text style={styles.avatarText}>
+                        {currentFarmer.farmer.farmName.charAt(0)}
+                      </Text>
+                    </View>
+                  )}
                 </View>
-              )}
+              </LinearGradient>
+              
               <View style={styles.farmerTextInfo}>
-                <Text style={styles.farmerName}>{currentFarmer.farmer.farmName}</Text>
+                <Text style={styles.farmerName} numberOfLines={1}>
+                  {currentFarmer.farmer.farmName}
+                </Text>
                 <Text style={styles.storyTime}>
                   {formatDistanceToNow(new Date(currentStory.createdAt), { addSuffix: true })}
                 </Text>
               </View>
-            </View>
-            
-            <TouchableOpacity 
-              style={styles.closeBtn}
-              onPress={() => navigation.goBack()}
-            >
-              <Ionicons name="close" size={28} color="white" />
             </TouchableOpacity>
+            
+            <View style={styles.headerActions}>
+              <TouchableOpacity 
+                style={styles.headerIconBtn}
+                onPress={() => setShowMoreOptions(!showMoreOptions)}
+              >
+                <Ionicons name="ellipsis-horizontal" size={22} color="white" />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.headerIconBtn}
+                onPress={() => navigation.goBack()}
+              >
+                <Ionicons name="close" size={26} color="white" />
+              </TouchableOpacity>
+            </View>
           </View>
-        </SafeAreaView>
+        </View>
 
-        {/* Bottom actions - Reply input */}
+        {/* Paused Indicator */}
+        {isLongPressed && (
+          <View style={styles.pausedIndicator}>
+            <Text style={styles.pausedText}>Paused</Text>
+          </View>
+        )}
+
+        {/* Bottom Gradient Overlay */}
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.4)']}
+          style={styles.bottomGradient}
+          pointerEvents="none"
+        />
+
+        {/* Bottom actions - Instagram Style Reply */}
         <KeyboardAvoidingView 
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.footer}
           keyboardVerticalOffset={0}
         >
-          <SafeAreaView edges={['bottom']}>
-            <View style={styles.footerContent}>
+          <View style={[styles.footerContent, { paddingBottom: insets.bottom + 8 }]}>
+            <View style={styles.replyInputWrapper}>
               <TextInput
                 ref={inputRef}
                 style={styles.replyTextInput}
-                placeholder="Send message..."
+                placeholder={`Reply to ${currentFarmer.farmer.farmName}...`}
                 placeholderTextColor="rgba(255,255,255,0.6)"
                 value={replyMessage}
                 onChangeText={setReplyMessage}
@@ -455,19 +591,28 @@ const StoriesScreen = () => {
                 onSubmitEditing={handleSendReply}
                 editable={!isSendingReply}
               />
-              <TouchableOpacity 
-                style={[styles.sendBtn, (!replyMessage.trim() || isSendingReply) && styles.sendBtnDisabled]}
-                onPress={handleSendReply}
-                disabled={!replyMessage.trim() || isSendingReply}
-              >
-                {isSendingReply ? (
-                  <ActivityIndicator size="small" color="white" />
-                ) : (
-                  <Ionicons name="paper-plane" size={24} color="white" />
-                )}
-              </TouchableOpacity>
             </View>
-          </SafeAreaView>
+            
+            {/* Action buttons */}
+            <TouchableOpacity 
+              style={styles.actionBtn}
+              onPress={() => {/* Like story */}}
+            >
+              <Ionicons name="heart-outline" size={26} color="white" />
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.sendMsgBtn, (!replyMessage.trim() || isSendingReply) && styles.sendBtnDisabled]}
+              onPress={handleSendReply}
+              disabled={!replyMessage.trim() || isSendingReply}
+            >
+              {isSendingReply ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Ionicons name="paper-plane-outline" size={24} color="white" />
+              )}
+            </TouchableOpacity>
+          </View>
         </KeyboardAvoidingView>
       </Animated.View>
     </View>
@@ -481,13 +626,22 @@ const styles = StyleSheet.create({
   },
   storyContainer: {
     flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
   },
   storyView: {
     flex: 1,
+    backgroundColor: '#000',
   },
   storyImage: {
     width,
     height,
+  },
+  imageLoading: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#1a1a1a',
   },
   textStory: {
     flex: 1,
@@ -499,80 +653,116 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontFamily: FONTS.bold,
     textAlign: 'center',
+    lineHeight: 38,
   },
-  captionGradient: {
+  // Caption styles - Instagram style at bottom
+  captionContainer: {
     position: 'absolute',
-    bottom: 100,
+    bottom: 120,
     left: 0,
     right: 0,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.lg,
-    paddingBottom: SPACING.xl,
+    paddingHorizontal: SPACING.lg,
   },
   caption: {
     color: 'white',
-    fontSize: FONT_SIZES.lg,
+    fontSize: FONT_SIZES.md,
+    fontFamily: FONTS.regular,
     textAlign: 'center',
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
-  linkButton: {
+  // Link/Swipe up styles
+  linkContainer: {
     position: 'absolute',
-    bottom: 120,
+    bottom: 100,
     alignSelf: 'center',
-    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.sm,
-    borderRadius: 20,
-    gap: 4,
+  },
+  linkChevron: {
+    marginBottom: 4,
   },
   linkText: {
     color: 'white',
     fontFamily: FONTS.medium,
+    fontSize: FONT_SIZES.sm,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
+  // Gradient overlays
+  topGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 150,
+  },
+  bottomGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 200,
+  },
+  // Header styles - Instagram style
   header: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
+    zIndex: 10,
   },
   progressContainer: {
     flexDirection: 'row',
     paddingHorizontal: SPACING.sm,
-    paddingTop: SPACING.sm,
-    gap: 4,
+    gap: 3,
   },
   progressBarWrapper: {
     flex: 1,
-    height: 3,
+    height: 2,
   },
   progressBarBg: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.35)',
+    borderRadius: 1,
     overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
     backgroundColor: 'white',
+    borderRadius: 1,
   },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
+    paddingTop: SPACING.sm,
+    paddingBottom: SPACING.xs,
   },
   farmerInfo: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+  },
+  // Instagram-style avatar with gradient ring
+  avatarRing: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    padding: 2,
+  },
+  avatarInner: {
+    flex: 1,
+    borderRadius: 17,
+    backgroundColor: '#000',
+    padding: 2,
   },
   farmerAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 2,
-    borderColor: 'white',
+    width: '100%',
+    height: '100%',
+    borderRadius: 15,
   },
   avatarPlaceholder: {
     backgroundColor: COLORS.primary,
@@ -582,61 +772,102 @@ const styles = StyleSheet.create({
   avatarText: {
     color: 'white',
     fontFamily: FONTS.bold,
-    fontSize: 16,
+    fontSize: 13,
   },
   farmerTextInfo: {
     marginLeft: SPACING.sm,
+    flex: 1,
   },
   farmerName: {
     color: 'white',
     fontFamily: FONTS.semiBold,
-    fontSize: FONT_SIZES.md,
+    fontSize: FONT_SIZES.sm,
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   storyTime: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: FONT_SIZES.xs,
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 11,
+    fontFamily: FONTS.regular,
+    marginTop: 1,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+  },
+  headerIconBtn: {
+    padding: SPACING.xs,
   },
   closeBtn: {
     padding: SPACING.xs,
   },
+  // Paused indicator
+  pausedIndicator: {
+    position: 'absolute',
+    top: '50%',
+    alignSelf: 'center',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    borderRadius: 20,
+  },
+  pausedText: {
+    color: 'white',
+    fontFamily: FONTS.medium,
+    fontSize: FONT_SIZES.sm,
+  },
+  // Footer styles - Instagram style
   footer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(0,0,0,0.3)',
   },
   footerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
+    paddingTop: SPACING.sm,
     gap: SPACING.sm,
+  },
+  replyInputWrapper: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   replyTextInput: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 20,
+    backgroundColor: 'transparent',
+    borderRadius: 22,
     paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
+    paddingVertical: Platform.OS === 'ios' ? 10 : 8,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderColor: 'rgba(255,255,255,0.4)',
     color: 'white',
     fontSize: FONT_SIZES.md,
     fontFamily: FONTS.regular,
-    minHeight: 40,
+    minHeight: 44,
+  },
+  actionBtn: {
+    padding: SPACING.xs,
+  },
+  sendMsgBtn: {
+    padding: SPACING.xs,
   },
   sendBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   sendBtnDisabled: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    opacity: 0.5,
   },
+  // Empty & Loading states
   centerContent: {
     justifyContent: 'center',
     alignItems: 'center',
@@ -652,12 +883,13 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     padding: SPACING.md,
+    paddingTop: 60,
   },
   closeButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
   },
