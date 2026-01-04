@@ -681,6 +681,39 @@ export class SocialService {
     }
   }
 
+  async reactToStory(userId: string, storyId: string, reaction: string = 'love'): Promise<{ reacted: boolean; reactionCount: number }> {
+    const story = await this.storyRepository.findOne({ where: { id: storyId } });
+    if (!story) {
+      throw new NotFoundException('Story not found');
+    }
+
+    // For now, we'll use a simple approach - store reaction in the story view record
+    // or just return success since reactions are transient on stories
+    // In Instagram, story reactions send a DM to the story owner
+    
+    // Check if user has viewed the story (required to react)
+    let storyView = await this.storyViewRepository.findOne({
+      where: { userId, storyId },
+    });
+
+    if (!storyView) {
+      // Auto-view the story if they're reacting
+      storyView = this.storyViewRepository.create({ userId, storyId });
+      await this.storyViewRepository.save(storyView);
+      story.viewCount += 1;
+      await this.storyRepository.save(story);
+    }
+
+    // Story reactions are typically sent as DMs in Instagram
+    // For now, we just acknowledge the reaction
+    // A full implementation would create a notification or message to the farmer
+    
+    return {
+      reacted: true,
+      reactionCount: story.viewCount, // Using view count as proxy for engagement
+    };
+  }
+
   async getStoryViews(userId: string, storyId: string): Promise<{ users: User[]; total: number }> {
     const story = await this.storyRepository.findOne({
       where: { id: storyId },

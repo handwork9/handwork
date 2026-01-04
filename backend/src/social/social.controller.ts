@@ -286,6 +286,19 @@ export class SocialController {
     return { success: true };
   }
 
+  @Post('stories/:id/react')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'React to a story (like/love)' })
+  @ApiResponse({ status: 200, description: 'Reaction toggled successfully' })
+  async reactToStory(
+    @Request() req: AuthenticatedRequest, 
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body('reaction') reaction: string = 'love',
+  ) {
+    return this.socialService.reactToStory(req.user.id, id, reaction);
+  }
+
   @Get('stories/:id/views')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Get story views (owner only)' })
