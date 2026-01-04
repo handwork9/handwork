@@ -313,6 +313,132 @@ export const FreshSunIcon = ({ size = 10, color = '#FF9500' }: IconProps) => (
   </Svg>
 );
 
+// ============================================
+// FARM-TO-TABLE JOURNEY ICONS
+// ============================================
+
+/**
+ * Farm Origin Icon - Barn/Farm building for journey step
+ */
+export const FarmIcon = ({ size = 24, color = '#4CAF50' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    {/* Barn roof */}
+    <Path 
+      d="M3 12L12 4l9 8" 
+      stroke={color} 
+      strokeWidth="1.8" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    />
+    {/* Barn body */}
+    <Path 
+      d="M5 10v10h14V10" 
+      stroke={color} 
+      strokeWidth="1.8" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    />
+    {/* Barn door */}
+    <Path 
+      d="M9 20v-6a3 3 0 0 1 6 0v6" 
+      stroke={color} 
+      strokeWidth="1.8" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    />
+    {/* Hay loft window */}
+    <Circle cx="12" cy="12" r="1.5" stroke={color} strokeWidth="1.5" fill="none" />
+  </Svg>
+);
+
+/**
+ * Harvest Icon - Calendar with leaf for harvest date
+ */
+export const HarvestIcon = ({ size = 24, color = '#FF9800' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    {/* Calendar body */}
+    <Rect 
+      x="3" y="4" 
+      width="18" height="18" 
+      rx="2" 
+      stroke={color} 
+      strokeWidth="1.8" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    />
+    {/* Calendar top hooks */}
+    <Path d="M8 2v4" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+    <Path d="M16 2v4" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+    {/* Divider line */}
+    <Path d="M3 10h18" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+    {/* Small plant/sprout in calendar */}
+    <Path 
+      d="M12 14c-1.5 0-2.5 1-2.5 2.5S12 19 12 19s2.5-1 2.5-2.5S13.5 14 12 14z" 
+      stroke={color} 
+      strokeWidth="1.5" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+      fill="none"
+    />
+  </Svg>
+);
+
+/**
+ * Quality Check Icon - Shield with checkmark
+ */
+export const QualityCheckIcon = ({ size = 24, color = '#2196F3' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    {/* Shield */}
+    <Path 
+      d="M12 3L4 7v5c0 5.25 3.4 10.1 8 11 4.6-.9 8-5.75 8-11V7l-8-4z" 
+      stroke={color} 
+      strokeWidth="1.8" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    />
+    {/* Checkmark */}
+    <Path 
+      d="M8.5 12l2.5 2.5 4.5-4.5" 
+      stroke={color} 
+      strokeWidth="1.8" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+/**
+ * Delivery Home Icon - House with door for delivery destination
+ */
+export const DeliveryHomeIcon = ({ size = 24, color = '#22C55E' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    {/* House roof */}
+    <Path 
+      d="M3 11l9-8 9 8" 
+      stroke={color} 
+      strokeWidth="1.8" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    />
+    {/* House body */}
+    <Path 
+      d="M5 10v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10" 
+      stroke={color} 
+      strokeWidth="1.8" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    />
+    {/* Door */}
+    <Path 
+      d="M9 21v-6a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v6" 
+      stroke={color} 
+      strokeWidth="1.8" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
 export default {
   ProductPlusIcon,
   ProductsIcon,
@@ -328,4 +454,8 @@ export default {
   VerifiedIcon,
   OrganicLeafIcon,
   FreshSunIcon,
+  FarmIcon,
+  HarvestIcon,
+  QualityCheckIcon,
+  DeliveryHomeIcon,
 };

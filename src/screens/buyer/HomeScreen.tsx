@@ -63,6 +63,7 @@ import SeedsIllustration from '../../assets/illustrations/categories/SeedsIllust
 import { FarmerActivationIllustration, GoPremiumIllustration, VerifiedSellerIllustration, LiveSupportIllustration } from '../../assets/illustrations/hero';
 import LiveSupportBanner from '../../components/common/LiveSupportBanner';
 import FlashSaleBanner from '../../components/common/FlashSaleBanner';
+import { socialService, FarmerStories, LiveStream } from '../../services/socialService';
 
 type NavigationProp = CompositeNavigationProp<
   BottomTabNavigationProp<BuyerTabParamList, 'Home'>,
@@ -459,6 +460,23 @@ export default function HomeScreen() {
     },
     staleTime: 30 * 1000, // 30 seconds for live updates
   });
+
+  // Fetch farmer stories
+  const { data: storiesData } = useQuery({
+    queryKey: ['stories'],
+    queryFn: () => socialService.getStories(),
+    staleTime: 60 * 1000, // 1 minute
+  });
+
+  // Fetch live streams
+  const { data: liveStreamsData } = useQuery({
+    queryKey: ['liveStreams'],
+    queryFn: () => socialService.getLiveStreams(),
+    staleTime: 30 * 1000, // 30 seconds for live updates
+  });
+
+  const stories: FarmerStories[] = storiesData || [];
+  const liveStreams: LiveStream[] = liveStreamsData?.streams || [];
 
   const promotedProducts = promotedData?.products || [];
   const sponsoredProducts = sponsoredData?.products || [];
@@ -1996,9 +2014,156 @@ export default function HomeScreen() {
     );
   };
 
+  // Render Stories Row (Instagram-style)
+  const renderStoriesRow = () => {
+    if (!stories || stories.length === 0) return null;
+
+    const handleStoryPress = (index: number) => {
+      triggerHaptic();
+      navigation.navigate('Stories' as never, { stories, initialIndex: index } as never);
+    };
+
+    return (
+      <View style={styles.storiesSection}>
+        <View style={styles.storiesSectionHeader}>
+          <Text style={[styles.storiesSectionTitle, { color: colors.text }]}>Stories</Text>
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('SocialFeed' as never)}
+            style={styles.seeAllButton}
+          >
+            <Text style={[styles.seeAllText, { color: colors.primary }]}>See All</Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.storiesScrollContent}
+        >
+          {stories.map((farmerStory, index) => (
+            <TouchableOpacity 
+              key={farmerStory.farmer.id} 
+              style={styles.storyItem}
+              onPress={() => handleStoryPress(index)}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={farmerStory.hasUnviewed 
+                  ? ['#F58529', '#DD2A7B', '#8134AF', '#515BD4'] 
+                  : [isDark ? '#333' : '#ccc', isDark ? '#333' : '#ccc']
+                }
+                style={styles.storyGradientRing}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <View style={[styles.storyImageWrapper, { backgroundColor: colors.background }]}>
+                  {farmerStory.farmer.user.avatar ? (
+                    <Image 
+                      source={{ uri: farmerStory.farmer.user.avatar }} 
+                      style={styles.storyAvatar} 
+                    />
+                  ) : (
+                    <View style={[styles.storyAvatar, styles.storyAvatarPlaceholder]}>
+                      <Text style={styles.storyAvatarText}>
+                        {farmerStory.farmer.farmName.charAt(0).toUpperCase()}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </LinearGradient>
+              <Text 
+                style={[styles.storyFarmName, { color: colors.text }]} 
+                numberOfLines={1}
+              >
+                {farmerStory.farmer.farmName}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+    );
+  };
+
+  // Render Live Now Section
+  const renderLiveNowSection = () => {
+    if (!liveStreams || liveStreams.length === 0) return null;
+
+    return (
+      <View style={styles.liveNowSection}>
+        <View style={styles.liveNowHeader}>
+          <View style={styles.liveNowTitleRow}>
+            <View style={styles.liveDot} />
+            <Text style={[styles.liveNowTitle, { color: colors.text }]}>Live Now</Text>
+          </View>
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('LiveStreams' as never)}
+            style={styles.seeAllButton}
+          >
+            <Text style={[styles.seeAllText, { color: colors.primary }]}>Watch All</Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.liveNowScrollContent}
+        >
+          {liveStreams.slice(0, 5).map((stream) => (
+            <TouchableOpacity 
+              key={stream.id} 
+              style={[styles.liveStreamCard, { backgroundColor: isDark ? '#2C2C2E' : '#F5F5F5' }]}
+              onPress={() => {
+                triggerHaptic();
+                navigation.navigate('LiveStreamWatch' as never, { streamId: stream.id } as never);
+              }}
+              activeOpacity={0.8}
+            >
+              {stream.thumbnailUrl ? (
+                <Image source={{ uri: stream.thumbnailUrl }} style={styles.liveStreamThumbnail} />
+              ) : (
+                <View style={[styles.liveStreamThumbnail, styles.liveStreamPlaceholder]}>
+                  <Ionicons name="videocam" size={32} color={isDark ? '#666' : '#999'} />
+                </View>
+              )}
+              <View style={styles.liveBadge}>
+                <View style={styles.liveBadgeDot} />
+                <Text style={styles.liveBadgeText}>LIVE</Text>
+              </View>
+              <View style={styles.viewerCount}>
+                <Ionicons name="eye" size={12} color="#FFFFFF" />
+                <Text style={styles.viewerCountText}>{stream.viewerCount}</Text>
+              </View>
+              <View style={styles.liveStreamInfo}>
+                <View style={styles.liveStreamFarmerRow}>
+                  {stream.farmer.user.avatar ? (
+                    <Image source={{ uri: stream.farmer.user.avatar }} style={styles.liveStreamFarmerAvatar} />
+                  ) : (
+                    <View style={[styles.liveStreamFarmerAvatar, styles.liveStreamAvatarPlaceholder]}>
+                      <Text style={styles.liveStreamAvatarText}>
+                        {stream.farmer.farmName.charAt(0)}
+                      </Text>
+                    </View>
+                  )}
+                  <Text style={[styles.liveStreamFarmerName, { color: colors.text }]} numberOfLines={1}>
+                    {stream.farmer.farmName}
+                  </Text>
+                </View>
+                <Text style={[styles.liveStreamTitle, { color: colors.textSecondary }]} numberOfLines={1}>
+                  {stream.title}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+    );
+  };
+
   const renderListHeader = () => (
     <>
       <View style={[styles.mainContentCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+        {renderStoriesRow()}
+        {renderLiveNowSection()}
         {renderAdBanner()}
         {renderCategories()}
         {renderFlashSales()}
@@ -2136,6 +2301,191 @@ const styles = StyleSheet.create({
   listContent: {
     paddingBottom: 100,
     flexGrow: 1,
+  },
+
+  // Stories Section Styles
+  storiesSection: {
+    paddingTop: 16,
+    paddingBottom: 12,
+  },
+  storiesSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  storiesSectionTitle: {
+    fontSize: 16,
+    fontFamily: FONTS.semiBold,
+    letterSpacing: 0.3,
+  },
+  storiesScrollContent: {
+    paddingHorizontal: 12,
+    gap: 12,
+  },
+  storyItem: {
+    alignItems: 'center',
+    width: 72,
+  },
+  storyGradientRing: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 2,
+  },
+  storyImageWrapper: {
+    width: 62,
+    height: 62,
+    borderRadius: 31,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  storyAvatar: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+  },
+  storyAvatarPlaceholder: {
+    backgroundColor: '#4CAF50',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  storyAvatarText: {
+    fontSize: 22,
+    fontFamily: FONTS.bold,
+    color: '#FFFFFF',
+  },
+  storyFarmName: {
+    fontSize: 11,
+    fontFamily: FONTS.medium,
+    marginTop: 4,
+    textAlign: 'center',
+    maxWidth: 68,
+  },
+
+  // Live Now Section Styles
+  liveNowSection: {
+    paddingVertical: 12,
+  },
+  liveNowHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  liveNowTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  liveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#EF4444',
+  },
+  liveNowTitle: {
+    fontSize: 16,
+    fontFamily: FONTS.semiBold,
+    letterSpacing: 0.3,
+  },
+  liveNowScrollContent: {
+    paddingHorizontal: 12,
+    gap: 12,
+  },
+  liveStreamCard: {
+    width: 160,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  liveStreamThumbnail: {
+    width: '100%',
+    height: 100,
+    backgroundColor: '#E5E5E5',
+  },
+  liveStreamPlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#E0E0E0',
+  },
+  liveBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 4,
+    gap: 4,
+  },
+  liveBadgeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FFFFFF',
+  },
+  liveBadgeText: {
+    fontSize: 10,
+    fontFamily: FONTS.bold,
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  viewerCount: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 4,
+    gap: 4,
+  },
+  viewerCountText: {
+    fontSize: 10,
+    fontFamily: FONTS.semiBold,
+    color: '#FFFFFF',
+  },
+  liveStreamInfo: {
+    padding: 8,
+  },
+  liveStreamFarmerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  liveStreamFarmerAvatar: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+  },
+  liveStreamAvatarPlaceholder: {
+    backgroundColor: '#4CAF50',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  liveStreamAvatarText: {
+    fontSize: 10,
+    fontFamily: FONTS.bold,
+    color: '#FFFFFF',
+  },
+  liveStreamFarmerName: {
+    fontSize: 12,
+    fontFamily: FONTS.semiBold,
+    flex: 1,
+  },
+  liveStreamTitle: {
+    fontSize: 11,
+    fontFamily: FONTS.regular,
   },
 
   // Header Styles

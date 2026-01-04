@@ -23,6 +23,7 @@ import { useAppDispatch, useAppSelector } from '../../store';
 import { addToCart } from '../../store/slices/cartSlice';
 import { useTheme } from '../../context/ThemeContext';
 import { fixImageUrl } from '../../utils/formatters';
+import { FarmIcon, HarvestIcon, QualityCheckIcon, DeliveryHomeIcon } from '../../assets/icons';
 
 type Props = NativeStackScreenProps<BuyerStackParamList, 'ProductDetail'>;
 
@@ -435,7 +436,7 @@ export default function ProductDetailScreen({ navigation, route }: Props) {
             {/* Farm Origin */}
             <View style={styles.journeyStep}>
               <View style={[styles.journeyDot, { backgroundColor: '#4CAF50' }]}>
-                <Ionicons name="leaf" size={14} color="#FFFFFF" />
+                <FarmIcon size={14} color="#FFFFFF" />
               </View>
               <View style={[styles.journeyLine, { backgroundColor: '#E0E0E0' }]} />
               <View style={styles.journeyContent}>
@@ -453,7 +454,7 @@ export default function ProductDetailScreen({ navigation, route }: Props) {
             {product.harvestDate && (
               <View style={styles.journeyStep}>
                 <View style={[styles.journeyDot, { backgroundColor: '#FF9800' }]}>
-                  <Ionicons name="calendar" size={14} color="#FFFFFF" />
+                  <HarvestIcon size={14} color="#FFFFFF" />
                 </View>
                 <View style={[styles.journeyLine, { backgroundColor: '#E0E0E0' }]} />
                 <View style={styles.journeyContent}>
@@ -473,7 +474,7 @@ export default function ProductDetailScreen({ navigation, route }: Props) {
             {/* Quality Assurance */}
             <View style={styles.journeyStep}>
               <View style={[styles.journeyDot, { backgroundColor: '#2196F3' }]}>
-                <Ionicons name="shield-checkmark" size={14} color="#FFFFFF" />
+                <QualityCheckIcon size={14} color="#FFFFFF" />
               </View>
               <View style={[styles.journeyLine, { backgroundColor: '#E0E0E0' }]} />
               <View style={styles.journeyContent}>
@@ -506,7 +507,7 @@ export default function ProductDetailScreen({ navigation, route }: Props) {
             {/* Ready for You */}
             <View style={[styles.journeyStep, { paddingBottom: 0 }]}>
               <View style={[styles.journeyDot, { backgroundColor: colors.primary }]}>
-                <Ionicons name="home" size={14} color="#FFFFFF" />
+                <DeliveryHomeIcon size={14} color="#FFFFFF" />
               </View>
               <View style={styles.journeyContent}>
                 <Text style={[styles.journeyLabel, { color: colors.textSecondary }]}>Ready for Delivery</Text>
