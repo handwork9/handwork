@@ -2174,7 +2174,6 @@ export default function HomeScreen() {
 
   const renderListHeader = () => (
     <>
-      {renderStoriesRow()}
       <View style={[styles.mainContentCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
         {renderLiveNowSection()}
         {renderAdBanner()}
