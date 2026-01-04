@@ -61,7 +61,7 @@ import SeeAllIllustration from '../../assets/illustrations/categories/SeeAllIllu
 import ProcessedIllustration from '../../assets/illustrations/categories/ProcessedIllustration';
 import SeedsIllustration from '../../assets/illustrations/categories/SeedsIllustration';
 import { FarmerActivationIllustration, GoPremiumIllustration, VerifiedSellerIllustration, LiveSupportIllustration } from '../../assets/illustrations/hero';
-import LiveSupportBanner from '../../components/common/LiveSupportBanner';
+import StatusCommunityCard from '../../components/common/StatusCommunityCard';
 import FlashSaleBanner from '../../components/common/FlashSaleBanner';
 import { socialService, FarmerStories, LiveStream } from '../../services/socialService';
 import { ViewAllStoriesIcon } from '../../assets/icons';
@@ -1996,9 +1996,12 @@ export default function HomeScreen() {
     );
   };
 
-  // Render Live Support Banner
-  const renderLiveSupportBanner = () => (
-    <LiveSupportBanner variant="compact" style={{ marginHorizontal: 8, marginTop: 8 }} />
+  // Render Status & Community Card
+  const renderStatusCommunityCard = () => (
+    <StatusCommunityCard 
+      storiesCount={stories?.length || 0} 
+      liveCount={liveStreams?.length || 0}
+    />
   );
 
   // Render Flash Sales Banner with countdown
@@ -2177,7 +2180,7 @@ export default function HomeScreen() {
         {renderAdBanner()}
         {renderCategories()}
         {renderFlashSales()}
-        {renderLiveSupportBanner()}
+        {renderStatusCommunityCard()}
         {renderPromoBanner()}
         {renderCategorySections()}
       </View>
