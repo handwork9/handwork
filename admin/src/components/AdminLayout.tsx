@@ -648,9 +648,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
         {/* Menu Section - iOS Style */}
         <div style={{ 
-          height: 'calc(100vh - 100px - 180px)', 
+          height: 'calc(100vh - 100px - 160px)', 
           overflow: 'auto', 
-          padding: '8px 12px',
+          padding: '8px 12px 120px 12px',
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
         }}>
