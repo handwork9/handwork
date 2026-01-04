@@ -122,11 +122,11 @@ class FeatureFlagsService {
 
   private async fetchRemoteFlags(): Promise<void> {
     try {
-      const response = await apiClient.get('/config/feature-flags', {
+      const response = await apiClient.get<{ flags?: Record<string, boolean>; experiments?: Experiment[] }>('/config/feature-flags', {
         params: { userId: this.userId, bucket: this.userBucket },
       });
 
-      const data = response.data as any;
+      const data = response as any;
       if (data?.flags) {
         this.flags = { ...DEFAULT_FLAGS, ...data.flags };
         await AsyncStorage.setItem(FEATURE_FLAGS_KEY, JSON.stringify(this.flags));

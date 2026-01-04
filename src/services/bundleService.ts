@@ -57,8 +57,8 @@ class BundleService {
     city?: string;
     limit?: number;
   }): Promise<Bundle[]> {
-    const response = await apiClient.get('/bundles', { params });
-    const data = response.data as any;
+    const response = await apiClient.get<{ success: boolean; data: Bundle[] } | Bundle[]>('/bundles', { params });
+    const data = response as any;
     return data?.data || data || [];
   }
 
@@ -66,8 +66,8 @@ class BundleService {
    * Get bundle by ID
    */
   async getBundleById(bundleId: string): Promise<Bundle> {
-    const response = await apiClient.get(`/bundles/${bundleId}`);
-    const data = response.data as any;
+    const response = await apiClient.get<{ success: boolean; data: Bundle } | Bundle>(`/bundles/${bundleId}`);
+    const data = response as any;
     return data?.data || data;
   }
 
@@ -75,8 +75,8 @@ class BundleService {
    * Get farmer's own bundles
    */
   async getMyBundles(): Promise<Bundle[]> {
-    const response = await apiClient.get('/bundles/farmer/my-bundles');
-    const data = response.data as any;
+    const response = await apiClient.get<{ success: boolean; data: Bundle[] } | Bundle[]>('/bundles/farmer/my-bundles');
+    const data = response as any;
     return data?.data || data || [];
   }
 
@@ -84,8 +84,8 @@ class BundleService {
    * Create a new bundle (farmers only)
    */
   async createBundle(dto: CreateBundleDto): Promise<Bundle> {
-    const response = await apiClient.post('/bundles', dto);
-    const data = response.data as any;
+    const response = await apiClient.post<{ success: boolean; data: Bundle } | Bundle>('/bundles', dto);
+    const data = response as any;
     return data?.data || data;
   }
 
@@ -93,8 +93,8 @@ class BundleService {
    * Update a bundle (farmers only)
    */
   async updateBundle(bundleId: string, dto: UpdateBundleDto): Promise<Bundle> {
-    const response = await apiClient.put(`/bundles/${bundleId}`, dto);
-    const data = response.data as any;
+    const response = await apiClient.put<{ success: boolean; data: Bundle } | Bundle>(`/bundles/${bundleId}`, dto);
+    const data = response as any;
     return data?.data || data;
   }
 

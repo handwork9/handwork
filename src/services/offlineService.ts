@@ -1,8 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
 import { QueryClient } from '@tanstack/react-query';
-import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
-import { persistQueryClient } from '@tanstack/react-query-persist-client';
+import { AppState, AppStateStatus } from 'react-native';
 
 const OFFLINE_DATA_PREFIX = '@offline_';
 const PENDING_ACTIONS_KEY = '@pending_offline_actions';
@@ -24,65 +22,60 @@ class OfflineService {
   private isOnline: boolean = true;
   private listeners: Set<NetworkStatusCallback> = new Set();
   private pendingActions: PendingAction[] = [];
-  private unsubscribeNetInfo: (() => void) | null = null;
   private queryClient: QueryClient | null = null;
+  private appStateSubscription: any = null;
 
   async initialize(queryClient: QueryClient): Promise<void> {
     this.queryClient = queryClient;
 
-    // Setup React Query persistence
-    await this.setupQueryPersistence(queryClient);
-
     // Load pending actions
     await this.loadPendingActions();
 
-    // Subscribe to network changes
-    this.unsubscribeNetInfo = NetInfo.addEventListener((state: NetInfoState) => {
+    // Check network on app state change
+    this.appStateSubscription = AppState.addEventListener('change', this.handleAppStateChange);
+
+    // Initial network check
+    await this.checkNetworkStatus();
+  }
+
+  private handleAppStateChange = async (nextAppState: AppStateStatus) => {
+    if (nextAppState === 'active') {
       const wasOnline = this.isOnline;
-      this.isOnline = state.isConnected ?? true;
-
-      // Notify listeners
-      this.listeners.forEach(callback => callback(this.isOnline));
-
+      await this.checkNetworkStatus();
+      
       // Sync when coming back online
       if (!wasOnline && this.isOnline) {
         this.syncPendingActions();
       }
-    });
+    }
+  };
 
-    // Initial network check
-    const state = await NetInfo.fetch();
-    this.isOnline = state.isConnected ?? true;
+  private async checkNetworkStatus(): Promise<void> {
+    try {
+      // Simple fetch to check connectivity
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      
+      await fetch('https://www.google.com/generate_204', {
+        method: 'HEAD',
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+      this.setOnlineStatus(true);
+    } catch {
+      this.setOnlineStatus(false);
+    }
   }
 
-  private async setupQueryPersistence(queryClient: QueryClient): Promise<void> {
-    const asyncStoragePersister = createAsyncStoragePersister({
-      storage: AsyncStorage,
-      key: 'REACT_QUERY_OFFLINE_CACHE',
-      throttleTime: 1000,
-    });
+  private setOnlineStatus(isOnline: boolean): void {
+    const wasOnline = this.isOnline;
+    this.isOnline = isOnline;
 
-    await persistQueryClient({
-      queryClient,
-      persister: asyncStoragePersister,
-      maxAge: CACHE_TTL,
-      dehydrateOptions: {
-        shouldDehydrateQuery: (query) => {
-          // Only persist certain queries
-          const queryKey = query.queryKey[0] as string;
-          const persistableQueries = [
-            'products',
-            'categories',
-            'favorites',
-            'cart',
-            'user-profile',
-            'farmer-profile',
-            'recent-orders',
-          ];
-          return persistableQueries.some(key => queryKey.includes(key));
-        },
-      },
-    });
+    // Notify listeners if status changed
+    if (wasOnline !== isOnline) {
+      this.listeners.forEach(callback => callback(isOnline));
+    }
   }
 
   // Check if currently online
@@ -203,7 +196,7 @@ class OfflineService {
         await apiClient.post('/orders', action.payload);
         break;
       default:
-        throw new Error(`Unknown action type: ${action.type}`);
+        throw new Error(`Unknown action type: ${(action as any).type}`);
     }
   }
 
@@ -254,8 +247,8 @@ class OfflineService {
 
   // Cleanup
   destroy(): void {
-    if (this.unsubscribeNetInfo) {
-      this.unsubscribeNetInfo();
+    if (this.appStateSubscription) {
+      this.appStateSubscription.remove();
     }
     this.listeners.clear();
   }

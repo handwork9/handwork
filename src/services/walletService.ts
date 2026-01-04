@@ -230,7 +230,6 @@ export const walletService = {
   async topUp(data: TopUpRequest): Promise<WalletTransaction> {
     const response = await apiClient.post<WalletTransaction>('/wallet/top-up', data);
     return response;
-    }
   },
 
   /**
