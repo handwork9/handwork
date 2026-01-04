@@ -886,23 +886,27 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             top: 0, 
             zIndex: 10, 
             height: 64,
+            lineHeight: 'normal',
           }}
         >
           {/* Left Section - Greeting & Role */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <span style={{ 
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div>
+              <div style={{ 
                 color: '#8e8e93', 
                 fontSize: 12,
                 fontWeight: 500,
                 fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
-              }}>Welcome back</span>
-              <span style={{ 
+                lineHeight: 1.3,
+                marginBottom: 2,
+              }}>Welcome back</div>
+              <div style={{ 
                 color: '#1c1c1e', 
                 fontSize: 16,
                 fontWeight: 600,
                 fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif',
-              }}>{user?.name || 'Admin'}</span>
+                lineHeight: 1.3,
+              }}>{user?.name || 'Admin'}</div>
             </div>
             <span style={{ 
               padding: '4px 10px', 
@@ -913,6 +917,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               textTransform: 'capitalize',
               fontWeight: 600,
               fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
+              lineHeight: 1,
             }}>
               {user?.role || 'admin'}
             </span>
