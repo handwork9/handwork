@@ -389,8 +389,8 @@ export default function FarmerOrderDetailScreen({ route, navigation }: Props) {
             border-radius: 20px;
             font-size: 12px;
             font-weight: 600;
-            background: ${STATUS_CONFIG[order.status]?.bgColor || '#f0f0f0'};
-            color: ${STATUS_CONFIG[order.status]?.color || '#666'};
+            background: ${STATUS_CONFIG[order.status as OrderStatus]?.bgColor || '#f0f0f0'};
+            color: ${STATUS_CONFIG[order.status as OrderStatus]?.color || '#666'};
           }
         </style>
       </head>
@@ -412,7 +412,7 @@ export default function FarmerOrderDetailScreen({ route, navigation }: Props) {
           </div>
           <div class="info-row">
             <span class="info-label">Status:</span>
-            <span class="status">${STATUS_CONFIG[order.status]?.label || order.status}</span>
+            <span class="status">${STATUS_CONFIG[order.status as OrderStatus]?.label || order.status}</span>
           </div>
           <div class="info-row">
             <span class="info-label">Customer:</span>
@@ -426,7 +426,7 @@ export default function FarmerOrderDetailScreen({ route, navigation }: Props) {
         
         <div class="items-section">
           <h2>Items</h2>
-          ${order.items?.map(item => `
+          ${order.items?.map((item: { name?: string; title?: string; quantity?: number; price?: number }) => `
             <div class="item">
               <div class="item-details">
                 <div class="item-name">${item.name || item.title || 'Product'}</div>
