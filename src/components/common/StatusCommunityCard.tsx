@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Easing,
   Image,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
@@ -43,6 +44,11 @@ const StatusCommunityCard: React.FC<StatusCommunityCardProps> = ({
   const hasNewContent = totalActivity > 0;
   const hasLive = liveCount > 0;
 
+  // Track if user has seen the current content
+  const [hasSeen, setHasSeen] = useState(false);
+  const [lastSeenCount, setLastSeenCount] = useState(0);
+  const animationsRef = useRef<Animated.CompositeAnimation[]>([]);
+
   // Animation values
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const glowAnim = useRef(new Animated.Value(0)).current;
@@ -51,8 +57,46 @@ const StatusCommunityCard: React.FC<StatusCommunityCardProps> = ({
   const bounceAnim = useRef(new Animated.Value(0)).current;
   const ringRotateAnim = useRef(new Animated.Value(0)).current;
 
+  // Load seen state from storage
   useEffect(() => {
-    if (hasNewContent) {
+    const loadSeenState = async () => {
+      try {
+        const stored = await AsyncStorage.getItem('@status_card_seen');
+        if (stored) {
+          const { count, seen } = JSON.parse(stored);
+          // Reset seen if content count changed (new content arrived)
+          if (count !== totalActivity) {
+            setHasSeen(false);
+            setLastSeenCount(totalActivity);
+          } else {
+            setHasSeen(seen);
+            setLastSeenCount(count);
+          }
+        }
+      } catch (e) {
+        console.log('Error loading seen state:', e);
+      }
+    };
+    loadSeenState();
+  }, [totalActivity]);
+
+  // Should animate only if there's new content AND user hasn't seen it
+  const shouldAnimate = hasNewContent && !hasSeen;
+
+  // Stop all animations
+  const stopAllAnimations = () => {
+    animationsRef.current.forEach(anim => anim.stop());
+    animationsRef.current = [];
+    // Reset to default values
+    pulseAnim.setValue(1);
+    glowAnim.setValue(0);
+    dotPulseAnim.setValue(1);
+    shimmerAnim.setValue(0);
+    bounceAnim.setValue(0);
+  };
+
+  useEffect(() => {
+    if (shouldAnimate) {
       // Pulse animation for the badge
       const pulse = Animated.loop(
         Animated.sequence([
@@ -133,6 +177,9 @@ const StatusCommunityCard: React.FC<StatusCommunityCardProps> = ({
         ])
       );
 
+      // Store references
+      animationsRef.current = [pulse, glow, dotPulse, shimmer, bounce];
+
       pulse.start();
       glow.start();
       dotPulse.start();
@@ -140,16 +187,14 @@ const StatusCommunityCard: React.FC<StatusCommunityCardProps> = ({
       bounce.start();
 
       return () => {
-        pulse.stop();
-        glow.stop();
-        dotPulse.stop();
-        shimmer.stop();
-        bounce.stop();
+        stopAllAnimations();
       };
+    } else {
+      stopAllAnimations();
     }
-  }, [hasNewContent]);
+  }, [shouldAnimate]);
 
-  // Ring rotation animation for live content
+  // Ring rotation animation for live content (keeps rotating even after seen)
   useEffect(() => {
     if (hasLive) {
       const rotate = Animated.loop(
@@ -165,8 +210,23 @@ const StatusCommunityCard: React.FC<StatusCommunityCardProps> = ({
     }
   }, [hasLive]);
 
-  const handlePress = () => {
+  const handlePress = async () => {
     triggerHaptic();
+    
+    // Mark as seen and stop animations
+    setHasSeen(true);
+    stopAllAnimations();
+    
+    // Persist seen state
+    try {
+      await AsyncStorage.setItem('@status_card_seen', JSON.stringify({
+        count: totalActivity,
+        seen: true,
+      }));
+    } catch (e) {
+      console.log('Error saving seen state:', e);
+    }
+    
     (navigation as any).navigate('SocialFeed');
   };
 
@@ -189,7 +249,7 @@ const StatusCommunityCard: React.FC<StatusCommunityCardProps> = ({
     <Animated.View
       style={[
         styles.container,
-        hasNewContent && {
+        shouldAnimate && {
           shadowOpacity: animatedShadowOpacity,
         },
         style,
@@ -213,7 +273,7 @@ const StatusCommunityCard: React.FC<StatusCommunityCardProps> = ({
           </View>
 
           {/* Shimmer effect overlay */}
-          {hasNewContent && (
+          {shouldAnimate && (
             <Animated.View
               style={[
                 styles.shimmerContainer,
@@ -237,14 +297,14 @@ const StatusCommunityCard: React.FC<StatusCommunityCardProps> = ({
                 <Animated.View 
                   style={[
                     styles.activityBadge,
-                    { transform: [{ scale: pulseAnim }] }
+                    shouldAnimate && { transform: [{ scale: pulseAnim }] }
                   ]}
                 >
                   <Animated.View 
                     style={[
                       styles.activityDot,
                       hasLive && styles.liveDot,
-                      { transform: [{ scale: dotPulseAnim }] }
+                      shouldAnimate && { transform: [{ scale: dotPulseAnim }] }
                     ]} 
                   />
                   <Text style={styles.activityText}>
@@ -259,14 +319,14 @@ const StatusCommunityCard: React.FC<StatusCommunityCardProps> = ({
                 <Animated.View 
                   style={[
                     styles.liveFarmerContainer,
-                    { transform: [{ scale: pulseAnim }] }
+                    shouldAnimate && { transform: [{ scale: pulseAnim }] }
                   ]}
                 >
                   <View style={styles.liveFarmerAvatarContainer}>
                     <Animated.View 
                       style={[
                         styles.avatarRing,
-                        { transform: [{ rotate: ringRotation }] }
+                        shouldAnimate && { transform: [{ rotate: ringRotation }] }
                       ]}
                     />
                     {liveFarmer.avatar ? (
@@ -312,7 +372,7 @@ const StatusCommunityCard: React.FC<StatusCommunityCardProps> = ({
             <Animated.View 
               style={[
                 styles.illustrationContainer,
-                hasNewContent && {
+                shouldAnimate && {
                   transform: [
                     { translateY: bounceAnim },
                     ...(hasLive ? [{ rotate: ringRotation }] : []),
@@ -325,7 +385,7 @@ const StatusCommunityCard: React.FC<StatusCommunityCardProps> = ({
                 <Animated.View 
                   style={[
                     styles.liveRing,
-                    { transform: [{ rotate: ringRotation }] }
+                    shouldAnimate && { transform: [{ rotate: ringRotation }] }
                   ]}
                 />
               )}
@@ -338,13 +398,13 @@ const StatusCommunityCard: React.FC<StatusCommunityCardProps> = ({
             <Animated.View 
               style={[
                 styles.liveBadge,
-                { transform: [{ scale: pulseAnim }] }
+                shouldAnimate && { transform: [{ scale: pulseAnim }] }
               ]}
             >
               <Animated.View 
                 style={[
                   styles.liveBadgeDot,
-                  { transform: [{ scale: dotPulseAnim }] }
+                  shouldAnimate && { transform: [{ scale: dotPulseAnim }] }
                 ]} 
               />
               <Text style={styles.liveBadgeText}>LIVE</Text>

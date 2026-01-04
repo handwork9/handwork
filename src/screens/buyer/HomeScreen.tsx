@@ -33,6 +33,7 @@ import apiClient from '../../services/apiClient';
 import { useAppSelector, useAppDispatch } from '../../store';
 import { fetchFavoriteIds } from '../../store/slices/favoritesSlice';
 import { addToCart } from '../../store/slices/cartSlice';
+import { setDefaultAddress } from '../../store/slices/addressSlice';
 import { useLocation } from '../../hooks/useLocation';
 import { PRODUCT_CATEGORIES } from '../../constants/config';
 import { useTheme } from '../../context/ThemeContext';
@@ -169,7 +170,8 @@ export default function HomeScreen() {
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
   const { itemCount } = useAppSelector((state) => state.cart);
-  const defaultAddress = useAppSelector((state) => state.address.addresses.find(a => a.isDefault));
+  const addresses = useAppSelector((state) => state.address.addresses);
+  const defaultAddress = addresses.find(a => a.isDefault);
   const { location } = useLocation();
   const { colors, isDark, accessibility, getAnimationDuration } = useTheme();
   const { t } = useTranslation();
@@ -181,6 +183,7 @@ export default function HomeScreen() {
   const [selectedStateFilter, setSelectedStateFilter] = useState<string | null>(null);
   const [stateFilterModalVisible, setStateFilterModalVisible] = useState(false);
   const [quickMenuVisible, setQuickMenuVisible] = useState(false);
+  const [addressDropdownVisible, setAddressDropdownVisible] = useState(false);
   const [promoClaimed, setPromoClaimed] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [promoDismissed, setPromoDismissed] = useState(false);
@@ -577,32 +580,19 @@ export default function HomeScreen() {
 
   const renderHeader = () => (
     <View style={[styles.headerContainer, { paddingTop: insets.top, backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
-      {/* Top Bar - Simplified */}
+      {/* Top Bar - Instagram Style */}
       <View style={[styles.topBar, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
-        <View style={styles.headerLeft}>
-          <TouchableOpacity 
-            style={styles.locationButton}
-            activeOpacity={0.7}
-            onPress={() => {
-              triggerHaptic();
-              navigation.navigate('MyAddress' as never);
-            }}
-          >
-            <Ionicons name="location" size={20} color={colors.primary} />
-            <View style={styles.locationTextContainer}>
-              <View style={styles.locationRow}>
-                <Text 
-                  style={[styles.locationText, { color: colors.text }]}
-                  numberOfLines={1}
-                  ellipsizeMode="tail"
-                >
-                  {getSelectedAddressText()}
-                </Text>
-                <Ionicons name="chevron-down" size={14} color={colors.textSecondary} style={{ marginLeft: 4 }} />
-              </View>
-            </View>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity 
+          style={styles.brandButton}
+          activeOpacity={0.7}
+          onPress={() => {
+            triggerHaptic();
+            setAddressDropdownVisible(true);
+          }}
+        >
+          <Text style={[styles.brandText, { color: colors.text }]}>handwork</Text>
+          <Ionicons name="chevron-down" size={16} color={colors.text} style={{ marginLeft: 2 }} />
+        </TouchableOpacity>
         
         <View style={styles.headerActions}>
           <TouchableOpacity
@@ -780,6 +770,102 @@ export default function HomeScreen() {
               <Text style={[styles.quickMenuItemSubtitle, { color: colors.textSecondary }]}>Weekly farm deliveries</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+
+  const renderAddressDropdown = () => (
+    <Modal
+      visible={addressDropdownVisible}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setAddressDropdownVisible(false)}
+    >
+      <TouchableOpacity 
+        style={styles.addressDropdownOverlay} 
+        activeOpacity={1} 
+        onPress={() => setAddressDropdownVisible(false)}
+      >
+        <View style={[styles.addressDropdownContainer, { backgroundColor: isDark ? colors.card : '#FFFFFF', top: insets.top + 50 }]}>
+          {/* Current delivery location */}
+          <View style={styles.addressDropdownHeader}>
+            <Ionicons name="location" size={16} color={colors.primary} />
+            <Text style={[styles.addressDropdownLabel, { color: colors.textSecondary }]}>
+              Delivering to
+            </Text>
+          </View>
+          
+          {/* Address list */}
+          <ScrollView style={styles.addressDropdownList} showsVerticalScrollIndicator={false}>
+            {addresses.length > 0 ? (
+              addresses.map((address) => (
+                <TouchableOpacity
+                  key={address.id}
+                  style={[
+                    styles.addressDropdownItem,
+                    address.isDefault && styles.addressDropdownItemActive,
+                    { borderBottomColor: isDark ? '#333' : '#F0F0F0' }
+                  ]}
+                  onPress={() => {
+                    triggerSelectionHaptic();
+                    dispatch(setDefaultAddress(address.id));
+                    setAddressDropdownVisible(false);
+                  }}
+                >
+                  <View style={styles.addressDropdownItemLeft}>
+                    <View style={[
+                      styles.addressDropdownIcon,
+                      { backgroundColor: address.isDefault ? (isDark ? '#1A472A' : '#E8F5E9') : (isDark ? '#2C2C2E' : '#F5F5F5') }
+                    ]}>
+                      <Ionicons 
+                        name={address.label?.toLowerCase() === 'home' ? 'home' : address.label?.toLowerCase() === 'work' ? 'briefcase' : 'location'} 
+                        size={18} 
+                        color={address.isDefault ? colors.primary : colors.textSecondary} 
+                      />
+                    </View>
+                    <View style={styles.addressDropdownItemText}>
+                      <Text style={[styles.addressDropdownItemLabel, { color: colors.text }]}>
+                        {address.label || 'Address'}
+                      </Text>
+                      <Text 
+                        style={[styles.addressDropdownItemAddress, { color: colors.textSecondary }]}
+                        numberOfLines={1}
+                      >
+                        {[address.addressLine1, address.city].filter(Boolean).join(', ')}
+                      </Text>
+                    </View>
+                  </View>
+                  {address.isDefault && (
+                    <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
+                  )}
+                </TouchableOpacity>
+              ))
+            ) : (
+              <View style={styles.addressDropdownEmpty}>
+                <Ionicons name="location-outline" size={32} color={colors.textSecondary} />
+                <Text style={[styles.addressDropdownEmptyText, { color: colors.textSecondary }]}>
+                  No saved addresses
+                </Text>
+              </View>
+            )}
+          </ScrollView>
+          
+          {/* Add new address */}
+          <TouchableOpacity
+            style={[styles.addressDropdownAddButton, { borderTopColor: isDark ? '#333' : '#F0F0F0' }]}
+            onPress={() => {
+              setAddressDropdownVisible(false);
+              navigation.navigate('MyAddress' as never);
+            }}
+          >
+            <View style={[styles.addressDropdownIcon, { backgroundColor: isDark ? '#2C2C2E' : '#F5F5F5' }]}>
+              <Ionicons name="add" size={18} color={colors.primary} />
+            </View>
+            <Text style={[styles.addressDropdownAddText, { color: colors.primary }]}>
+              Add new address
+            </Text>
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
@@ -2288,6 +2374,7 @@ export default function HomeScreen() {
       />
       {renderPreviewModal()}
       {renderQuickMenu()}
+      {renderAddressDropdown()}
       <FloatingSocialMenu isFarmer={false} />
       
       {/* State Filter Modal */}
@@ -2532,6 +2619,16 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
     backgroundColor: '#FFFFFF',
   },
+  brandButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  brandText: {
+    fontSize: 26,
+    fontFamily: 'Poppins-Bold',
+    fontStyle: 'italic',
+    letterSpacing: -0.5,
+  },
   headerLeft: {
     flex: 1,
     marginRight: 12,
@@ -2614,6 +2711,99 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  // Address Dropdown Styles
+  addressDropdownOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+  },
+  addressDropdownContainer: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    maxHeight: 380,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 12,
+    overflow: 'hidden',
+  },
+  addressDropdownHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+    gap: 6,
+  },
+  addressDropdownLabel: {
+    fontSize: 12,
+    fontFamily: FONTS.medium,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  addressDropdownList: {
+    maxHeight: 240,
+  },
+  addressDropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  addressDropdownItemActive: {
+    backgroundColor: 'rgba(76, 175, 80, 0.05)',
+  },
+  addressDropdownItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  addressDropdownIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  addressDropdownItemText: {
+    flex: 1,
+  },
+  addressDropdownItemLabel: {
+    fontSize: 15,
+    fontFamily: FONTS.semiBold,
+    marginBottom: 2,
+  },
+  addressDropdownItemAddress: {
+    fontSize: 13,
+    fontFamily: FONTS.regular,
+  },
+  addressDropdownEmpty: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 32,
+    gap: 8,
+  },
+  addressDropdownEmptyText: {
+    fontSize: 14,
+    fontFamily: FONTS.medium,
+  },
+  addressDropdownAddButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderTopWidth: 1,
+    gap: 12,
+  },
+  addressDropdownAddText: {
+    fontSize: 15,
+    fontFamily: FONTS.semiBold,
   },
   quickMenuOverlay: {
     flex: 1,
