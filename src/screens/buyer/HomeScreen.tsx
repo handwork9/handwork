@@ -2025,16 +2025,6 @@ export default function HomeScreen() {
 
     return (
       <View style={styles.storiesSection}>
-        <View style={styles.storiesSectionHeader}>
-          <Text style={[styles.storiesSectionTitle, { color: colors.text }]}>Stories</Text>
-          <TouchableOpacity 
-            onPress={() => navigation.navigate('SocialFeed' as never)}
-            style={styles.seeAllButton}
-          >
-            <Text style={[styles.seeAllText, { color: colors.primary }]}>See All</Text>
-            <Ionicons name="chevron-forward" size={16} color={colors.primary} />
-          </TouchableOpacity>
-        </View>
         <ScrollView 
           horizontal 
           showsHorizontalScrollIndicator={false}
@@ -2079,6 +2069,25 @@ export default function HomeScreen() {
               </Text>
             </TouchableOpacity>
           ))}
+          {/* View All Circle */}
+          <TouchableOpacity 
+            style={styles.storyItem}
+            onPress={() => {
+              triggerHaptic();
+              navigation.navigate('SocialFeed' as never);
+            }}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.viewAllCircle, { backgroundColor: isDark ? '#2C2C2E' : '#F0F0F0' }]}>
+              <Ionicons name="chevron-forward" size={24} color={colors.primary} />
+            </View>
+            <Text 
+              style={[styles.storyFarmName, { color: colors.textSecondary }]} 
+              numberOfLines={1}
+            >
+              View All
+            </Text>
+          </TouchableOpacity>
         </ScrollView>
       </View>
     );
@@ -2161,8 +2170,8 @@ export default function HomeScreen() {
 
   const renderListHeader = () => (
     <>
+      {renderStoriesRow()}
       <View style={[styles.mainContentCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
-        {renderStoriesRow()}
         {renderLiveNowSection()}
         {renderAdBanner()}
         {renderCategories()}
@@ -2305,24 +2314,13 @@ const styles = StyleSheet.create({
 
   // Stories Section Styles
   storiesSection: {
-    paddingTop: 16,
-    paddingBottom: 12,
-  },
-  storiesSectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 12,
-  },
-  storiesSectionTitle: {
-    fontSize: 16,
-    fontFamily: FONTS.semiBold,
-    letterSpacing: 0.3,
+    paddingTop: 12,
+    paddingBottom: 8,
+    marginHorizontal: 8,
   },
   storiesScrollContent: {
-    paddingHorizontal: 12,
-    gap: 12,
+    paddingHorizontal: 4,
+    gap: 10,
   },
   storyItem: {
     alignItems: 'center',
@@ -2365,6 +2363,16 @@ const styles = StyleSheet.create({
     marginTop: 4,
     textAlign: 'center',
     maxWidth: 68,
+  },
+  viewAllCircle: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#E0E0E0',
+    borderStyle: 'dashed',
   },
 
   // Live Now Section Styles
