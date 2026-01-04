@@ -1997,12 +1997,24 @@ export default function HomeScreen() {
   };
 
   // Render Status & Community Card
-  const renderStatusCommunityCard = () => (
-    <StatusCommunityCard 
-      storiesCount={stories?.length || 0} 
-      liveCount={liveStreams?.length || 0}
-    />
-  );
+  const renderStatusCommunityCard = () => {
+    // Get the first live farmer's info
+    const firstLiveStream = liveStreams.find(s => s.status === 'live');
+    const liveFarmer = firstLiveStream ? {
+      id: firstLiveStream.farmer.id,
+      farmName: firstLiveStream.farmer.farmName,
+      avatar: firstLiveStream.farmer.user?.avatar,
+      title: firstLiveStream.title,
+    } : undefined;
+
+    return (
+      <StatusCommunityCard 
+        storiesCount={stories?.length || 0} 
+        liveCount={liveStreams?.filter(s => s.status === 'live').length || 0}
+        liveFarmer={liveFarmer}
+      />
+    );
+  };
 
   // Render Flash Sales Banner with countdown
   const renderFlashSales = () => {

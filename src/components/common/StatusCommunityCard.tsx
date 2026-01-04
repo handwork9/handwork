@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Animated,
   Easing,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -15,15 +16,24 @@ import { useTheme } from '../../context/ThemeContext';
 import { triggerHaptic } from '../../utils/haptics';
 import { StatusCommunityIllustration } from '../../assets/illustrations/hero';
 
+interface LiveFarmer {
+  id: string;
+  farmName: string;
+  avatar?: string;
+  title?: string;
+}
+
 interface StatusCommunityCardProps {
   storiesCount?: number;
   liveCount?: number;
+  liveFarmer?: LiveFarmer;
   style?: object;
 }
 
 const StatusCommunityCard: React.FC<StatusCommunityCardProps> = ({
   storiesCount = 0,
   liveCount = 0,
+  liveFarmer,
   style,
 }) => {
   const navigation = useNavigation();
@@ -243,12 +253,59 @@ const StatusCommunityCard: React.FC<StatusCommunityCardProps> = ({
                 </Animated.View>
               )}
               <Text style={styles.title}>Status & Community</Text>
-              <Text style={styles.subtitle}>
-                View stories, updates & connect with farmers
-              </Text>
+              
+              {/* Live farmer info */}
+              {hasLive && liveFarmer && (
+                <Animated.View 
+                  style={[
+                    styles.liveFarmerContainer,
+                    { transform: [{ scale: pulseAnim }] }
+                  ]}
+                >
+                  <View style={styles.liveFarmerAvatarContainer}>
+                    <Animated.View 
+                      style={[
+                        styles.avatarRing,
+                        { transform: [{ rotate: ringRotation }] }
+                      ]}
+                    />
+                    {liveFarmer.avatar ? (
+                      <Image 
+                        source={{ uri: liveFarmer.avatar }} 
+                        style={styles.liveFarmerAvatar} 
+                      />
+                    ) : (
+                      <View style={[styles.liveFarmerAvatar, styles.avatarPlaceholder]}>
+                        <Text style={styles.avatarInitial}>
+                          {liveFarmer.farmName.charAt(0)}
+                        </Text>
+                      </View>
+                    )}
+                    <View style={styles.liveIndicatorDot} />
+                  </View>
+                  <View style={styles.liveFarmerInfo}>
+                    <Text style={styles.liveFarmerName} numberOfLines={1}>
+                      {liveFarmer.farmName}
+                    </Text>
+                    <Text style={styles.liveFarmerStatus}>is live now</Text>
+                    {liveFarmer.title && (
+                      <Text style={styles.liveFarmerTitle} numberOfLines={1}>
+                        {liveFarmer.title}
+                      </Text>
+                    )}
+                  </View>
+                </Animated.View>
+              )}
+              
+              {!hasLive && (
+                <Text style={styles.subtitle}>
+                  View stories, updates & connect with farmers
+                </Text>
+              )}
+              
               <View style={styles.button}>
-                <Text style={styles.buttonText}>Explore</Text>
-                <Ionicons name="arrow-forward" size={14} color="#7C3AED" />
+                <Text style={styles.buttonText}>{hasLive ? 'Watch Now' : 'Explore'}</Text>
+                <Ionicons name={hasLive ? 'play' : 'arrow-forward'} size={14} color="#7C3AED" />
               </View>
             </View>
 
@@ -416,6 +473,76 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.semiBold,
     fontSize: 13,
     color: '#7C3AED',
+  },
+  liveFarmerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    marginTop: 4,
+  },
+  liveFarmerAvatarContainer: {
+    position: 'relative',
+    marginRight: 10,
+  },
+  avatarRing: {
+    position: 'absolute',
+    top: -3,
+    left: -3,
+    right: -3,
+    bottom: -3,
+    borderRadius: 25,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    borderTopColor: '#EF4444',
+    borderRightColor: '#F472B6',
+    borderBottomColor: '#A855F7',
+  },
+  liveFarmerAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  avatarPlaceholder: {
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInitial: {
+    fontFamily: FONTS.bold,
+    fontSize: 16,
+    color: '#FFFFFF',
+  },
+  liveIndicatorDot: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#EF4444',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  liveFarmerInfo: {
+    flex: 1,
+  },
+  liveFarmerName: {
+    fontFamily: FONTS.bold,
+    fontSize: 14,
+    color: '#FFFFFF',
+  },
+  liveFarmerStatus: {
+    fontFamily: FONTS.regular,
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.8)',
+  },
+  liveFarmerTitle: {
+    fontFamily: FONTS.medium,
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.9)',
+    marginTop: 2,
   },
   illustrationContainer: {
     marginLeft: 8,
