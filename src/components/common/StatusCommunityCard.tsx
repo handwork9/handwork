@@ -28,7 +28,7 @@ const StatusCommunityCard: React.FC<StatusCommunityCardProps> = ({
 
   const handlePress = () => {
     triggerHaptic();
-    (navigation as any).navigate('Social');
+    (navigation as any).navigate('SocialFeed');
   };
 
   const totalActivity = storiesCount + liveCount;
