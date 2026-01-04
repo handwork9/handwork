@@ -86,7 +86,7 @@ const AnimatedProgressBar = ({ progress, color }: { progress: number; color: str
   );
 };
 
-// Stat Card with trend indicator
+// Stat Card with trend indicator - iOS Style
 interface StatCardProps {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
@@ -105,10 +105,10 @@ const StatCard = ({ icon, label, value, color, trend, onPress, isDark, cardBg, t
   
   const handlePressIn = () => {
     Animated.spring(scaleAnim, {
-      toValue: 0.96,
+      toValue: 0.97,
       useNativeDriver: true,
-      tension: 100,
-      friction: 10,
+      tension: 150,
+      friction: 8,
     }).start();
   };
   
@@ -116,48 +116,23 @@ const StatCard = ({ icon, label, value, color, trend, onPress, isDark, cardBg, t
     Animated.spring(scaleAnim, {
       toValue: 1,
       useNativeDriver: true,
-      tension: 100,
-      friction: 10,
+      tension: 150,
+      friction: 8,
     }).start();
   };
 
-  // Get gradient colors based on the stat color
-  const getGradientColors = (baseColor: string): [string, string, string] => {
-    if (baseColor === COLORS.warning) return ['#FFB347', '#FF9500', '#E67E00'];
-    if (baseColor === COLORS.info) return ['#5AC8FA', '#007AFF', '#0056B3'];
-    if (baseColor === COLORS.primary) return ['#7ED957', COLORS.primary, '#2E7D32'];
-    if (baseColor === COLORS.error) return ['#FF6B6B', '#FF3B30', '#C62828'];
-    return [baseColor, baseColor, baseColor];
-  };
-
-  // Get accent color for glow/highlights
-  const getAccentColor = (baseColor: string): string => {
-    if (baseColor === COLORS.warning) return '#FFE0B2';
-    if (baseColor === COLORS.info) return '#BBDEFB';
-    if (baseColor === COLORS.primary) return '#C8E6C9';
-    if (baseColor === COLORS.error) return '#FFCDD2';
-    return baseColor;
-  };
-
-  // Render the appropriate illustration
-  const renderIllustration = () => {
-    const size = 64;
+  // Get SVG gradient colors based on stat type
+  const getSvgColors = () => {
     switch (illustrationType) {
-      case 'pending':
-        return <PendingOrdersIllustration width={size} height={size} />;
-      case 'processing':
-        return <ProcessingOrdersIllustration width={size} height={size} />;
-      case 'products':
-        return <InventoryIllustration width={size} height={size} />;
-      case 'lowStock':
-        return <LowStockIllustration width={size} height={size} />;
-      default:
-        return <PendingOrdersIllustration width={size} height={size} />;
+      case 'pending': return { primary: '#FF9500', secondary: '#FFCC00' };
+      case 'processing': return { primary: '#007AFF', secondary: '#5AC8FA' };
+      case 'products': return { primary: '#34C759', secondary: '#30D158' };
+      case 'lowStock': return { primary: '#FF3B30', secondary: '#FF6961' };
+      default: return { primary: color, secondary: color };
     }
   };
 
-  const gradientColors = getGradientColors(color);
-  const accentColor = getAccentColor(color);
+  const svgColors = getSvgColors();
   
   return (
     <TouchableOpacity
@@ -168,53 +143,61 @@ const StatCard = ({ icon, label, value, color, trend, onPress, isDark, cardBg, t
     >
       <Animated.View 
         style={[
-          styles.statCard, 
+          styles.iosStatCard, 
           { 
-            backgroundColor: cardBg, 
+            backgroundColor: isDark ? cardBg : '#FFFFFF',
             transform: [{ scale: scaleAnim }],
-            borderColor: isDark ? 'transparent' : '#F0F0F0',
-            borderWidth: 1,
           }
         ]}
       >
-        {/* Header with Illustration */}
-        <View style={[styles.statCardHeader, { backgroundColor: `${color}12` }]}>
-          <View style={styles.statCardIllustrationContainer}>
-            {renderIllustration()}
-          </View>
+        {/* SVG Background Pattern */}
+        <View style={styles.iosStatCardSvg}>
+          <Svg width="100%" height="100%" viewBox="0 0 180 150" preserveAspectRatio="xMaxYMin slice">
+            <Defs>
+              <SvgLinearGradient id={`statGrad-${illustrationType}`} x1="0" y1="0" x2="1" y2="1">
+                <Stop offset="0" stopColor={svgColors.primary} stopOpacity={0.12} />
+                <Stop offset="1" stopColor={svgColors.secondary} stopOpacity={0.05} />
+              </SvgLinearGradient>
+            </Defs>
+            <Circle cx="140" cy="20" r="60" fill={`url(#statGrad-${illustrationType})`} />
+            <Circle cx="160" cy="100" r="40" fill={svgColors.primary} fillOpacity={0.06} />
+            <Circle cx="100" cy="140" r="25" fill={svgColors.secondary} fillOpacity={0.08} />
+          </Svg>
         </View>
         
-        {/* Content */}
-        <View style={[styles.statCardContent, { backgroundColor: isDark ? cardBg : '#FFFFFF' }]}>
-          <Text style={[styles.statValue, { color: isDark ? '#FFFFFF' : color }]}>
-            {formatNumber(value)}
-          </Text>
-          <Text style={[styles.statLabel, { color: textSecondary }]}>{label}</Text>
-          
-          {trend !== undefined && trend !== 0 && (
-            <View style={[
-              styles.trendBadge, 
-              { 
-                backgroundColor: trend > 0 ? `${COLORS.success}15` : `${COLORS.error}15`,
-                borderColor: trend > 0 ? `${COLORS.success}30` : `${COLORS.error}30`,
-                borderWidth: 1,
-              }
-            ]}>
-              <Ionicons 
-                name={trend > 0 ? 'trending-up' : 'trending-down'} 
-                size={12} 
-                color={trend > 0 ? COLORS.success : COLORS.error} 
-              />
-              <Text style={[styles.trendText, { color: trend > 0 ? COLORS.success : COLORS.error }]}>
-                {Math.abs(trend)}%
-              </Text>
-            </View>
-          )}
-          
-          {/* Tap indicator */}
-          <View style={styles.statCardTapHint}>
-            <Ionicons name="chevron-forward" size={14} color={textSecondary} />
+        {/* Icon Container */}
+        <View style={[styles.iosStatIconContainer, { backgroundColor: `${color}15` }]}>
+          <Ionicons name={icon} size={22} color={color} />
+        </View>
+        
+        {/* Value */}
+        <Text style={[styles.iosStatValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+          {formatNumber(value)}
+        </Text>
+        
+        {/* Label */}
+        <Text style={[styles.iosStatLabel, { color: textSecondary }]}>{label}</Text>
+        
+        {/* Trend Badge */}
+        {trend !== undefined && trend !== 0 && (
+          <View style={[
+            styles.iosStatTrend, 
+            { backgroundColor: trend > 0 ? 'rgba(52, 199, 89, 0.12)' : 'rgba(255, 59, 48, 0.12)' }
+          ]}>
+            <Ionicons 
+              name={trend > 0 ? 'arrow-up' : 'arrow-down'} 
+              size={10} 
+              color={trend > 0 ? '#34C759' : '#FF3B30'} 
+            />
+            <Text style={[styles.iosStatTrendText, { color: trend > 0 ? '#34C759' : '#FF3B30' }]}>
+              {Math.abs(trend)}%
+            </Text>
           </View>
+        )}
+        
+        {/* Chevron */}
+        <View style={styles.iosStatChevron}>
+          <Ionicons name="chevron-forward" size={14} color={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(60,60,67,0.3)'} />
         </View>
       </Animated.View>
     </TouchableOpacity>
@@ -512,7 +495,7 @@ export default function DashboardScreen() {
   const stats: { icon: keyof typeof Ionicons.glyphMap; label: string; value: number; color: string; trend?: number; screen?: string; illustrationType: 'pending' | 'processing' | 'products' | 'lowStock' }[] = [
     { icon: 'cube-outline', label: 'Pending Orders', value: pendingOrders, color: COLORS.warning, screen: 'FarmerOrders', illustrationType: 'pending' },
     { icon: 'sync-outline', label: 'Processing', value: processingOrders, color: COLORS.info, trend: ordersTrend, screen: 'FarmerOrders', illustrationType: 'processing' },
-    { icon: 'leaf-outline', label: 'Products', value: totalProducts, color: COLORS.primary, screen: 'Products', illustrationType: 'products' },
+    { icon: 'storefront-outline', label: 'Products', value: totalProducts, color: COLORS.primary, screen: 'Products', illustrationType: 'products' },
     { icon: 'alert-circle-outline', label: 'Low Stock', value: lowStockProducts, color: COLORS.error, screen: 'Products', illustrationType: 'lowStock' },
   ];
 
@@ -709,229 +692,295 @@ export default function DashboardScreen() {
           ))}
         </View>
 
-        {/* Revenue Goal Progress Card - Clean Style */}
+        {/* Revenue Goal Progress Card - iOS Style */}
         {revenueGoal > 0 && (
           <View style={styles.section}>
             <TouchableOpacity 
-              style={[styles.goalCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.04)' }]}
+              style={[styles.iosGoalCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}
               onPress={() => navigation.navigate('Analytics')}
-              activeOpacity={0.8}
+              activeOpacity={0.9}
             >
-              {/* SVG Background */}
-              <View style={styles.goalCardSvgBackground}>
-                <Svg width="100%" height="100%" viewBox="0 0 400 150" preserveAspectRatio="xMaxYMid slice">
+              {/* Enhanced SVG Background */}
+              <View style={styles.iosGoalCardSvg}>
+                <Svg width="100%" height="100%" viewBox="0 0 400 180" preserveAspectRatio="xMaxYMid slice">
                   <Defs>
-                    <SvgLinearGradient id="goalGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <Stop offset="0%" stopColor={goalProgress >= 100 ? '#4CAF50' : '#667eea'} stopOpacity="0.08" />
-                      <Stop offset="100%" stopColor={goalProgress >= 100 ? '#81C784' : '#764ba2'} stopOpacity="0.15" />
+                    <SvgLinearGradient id="goalGrad1" x1="0" y1="0" x2="1" y2="1">
+                      <Stop offset="0" stopColor={goalProgress >= 100 ? '#34C759' : '#5856D6'} stopOpacity={0.15} />
+                      <Stop offset="1" stopColor={goalProgress >= 100 ? '#30D158' : '#AF52DE'} stopOpacity={0.06} />
+                    </SvgLinearGradient>
+                    <SvgLinearGradient id="goalGrad2" x1="0" y1="0" x2="0" y2="1">
+                      <Stop offset="0" stopColor={goalProgress >= 100 ? '#34C759' : '#5856D6'} stopOpacity={0.08} />
+                      <Stop offset="1" stopColor={goalProgress >= 100 ? '#30D158' : '#BF5AF2'} stopOpacity={0.02} />
                     </SvgLinearGradient>
                   </Defs>
-                  <Circle cx="380" cy="20" r="80" fill="url(#goalGradient)" />
-                  <Circle cx="350" cy="120" r="50" fill="url(#goalGradient)" />
-                  <Path d="M320,0 Q400,75 320,150" fill="url(#goalGradient)" />
-                </Svg>
-              </View>
-              <View style={[styles.goalCardHeader, { borderBottomColor: isDark ? '#2D2D2D' : '#F0F0F0' }]}>
-                <View style={styles.goalCardHeaderInfo}>
-                  <Text style={[styles.goalCardTitle, { color: colors.text }]}>
-                    {goalProgress >= 100 ? '🎉 Goal Achieved!' : 'Monthly Revenue Goal'}
-                  </Text>
-                  <Text style={[styles.goalCardSubtitle, { color: colors.textSecondary }]}>
-                    {formatCurrency(currentRevenue)} of {formatCurrency(revenueGoal)}
-                  </Text>
-                </View>
-                <View style={[styles.goalPercentBadge, { backgroundColor: goalProgress >= 100 ? '#E8F5E9' : '#EDE7F6' }]}>
-                  <Text style={[styles.goalPercentText, { color: goalProgress >= 100 ? '#4CAF50' : '#667eea' }]}>
-                    {Math.round(goalProgress)}%
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.goalProgressSection}>
-                <AnimatedProgressBar 
-                  progress={goalProgress} 
-                  color={goalProgress >= 100 ? COLORS.success : '#667eea'} 
-                />
-                <Text style={[styles.goalMotivation, { color: colors.textSecondary }]}>
-                  {goalProgress >= 100 
-                    ? 'Amazing work! You crushed your goal this month!' 
-                    : goalProgress >= 75 
-                      ? 'Almost there! Keep pushing!' 
-                      : goalProgress >= 50 
-                        ? 'Halfway there! You can do it!' 
-                        : 'Every sale counts. Stay focused!'}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Pending Balance Card */}
-        {pendingBalance > 0 && (
-          <View style={styles.section}>
-            <TouchableOpacity 
-              style={[styles.pendingBalanceCard, { backgroundColor: isDark ? '#1A3A1A' : '#E8F5E9', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.04)' }]}
-              onPress={() => navigation.navigate('Withdraw')}
-              activeOpacity={0.8}
-            >
-              <View style={styles.pendingBalanceContent}>
-                <View style={[styles.pendingBalanceIconContainer, { backgroundColor: isDark ? '#2E7D32' : COLORS.success }]}>
-                  <Ionicons name="wallet-outline" size={24} color={COLORS.white} />
-                </View>
-                <View style={styles.pendingBalanceInfo}>
-                  <Text style={[styles.pendingBalanceLabel, { color: isDark ? '#A5D6A7' : '#2E7D32' }]}>
-                    Available for Withdrawal
-                  </Text>
-                  <Text style={[styles.pendingBalanceAmount, { color: isDark ? COLORS.white : '#1B5E20' }]}>
-                    {formatCurrency(pendingBalance)}
-                  </Text>
-                </View>
-                <TouchableOpacity 
-                  style={[styles.withdrawButton, { backgroundColor: COLORS.success }]}
-                  onPress={() => navigation.navigate('Withdraw')}
-                >
-                  <Text style={styles.withdrawButtonText}>Withdraw</Text>
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Earnings Summary - Clean White Card */}
-        <View style={styles.section}>
-          <View style={[styles.earningsMediaCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.04)' }]}>
-            {/* Header with Illustration */}
-            <View style={[styles.earningsCardHeader, { borderBottomColor: isDark ? '#2D2D2D' : '#F0F0F0' }]}>
-              <View style={styles.earningsHeaderLeft}>
-                <Text style={[styles.earningsCardTitle, { color: colors.text }]}>Earnings Summary</Text>
-                <Text style={[styles.earningsCardSubtitle, { color: colors.textSecondary }]}>Track your income</Text>
-              </View>
-              <View style={styles.earningsIllustrationContainer}>
-                <EarningsCardIllustration width={70} height={70} />
-              </View>
-            </View>
-            
-            {/* Main Earnings Amount */}
-            <View style={styles.earningsMainAmount}>
-              {/* SVG Background for Month Amount */}
-              <View style={styles.earningsMainAmountSvgBg}>
-                <Svg width="100%" height="100%" viewBox="0 0 300 100" preserveAspectRatio="xMidYMid slice">
-                  <Defs>
-                    <SvgLinearGradient id="monthEarningsGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <Stop offset="0%" stopColor="#10B981" stopOpacity="0.06" />
-                      <Stop offset="50%" stopColor="#34D399" stopOpacity="0.12" />
-                      <Stop offset="100%" stopColor="#6EE7B7" stopOpacity="0.08" />
-                    </SvgLinearGradient>
-                  </Defs>
-                  <Circle cx="50" cy="20" r="60" fill="url(#monthEarningsGradient)" />
-                  <Circle cx="250" cy="80" r="45" fill="url(#monthEarningsGradient)" />
-                  <Circle cx="150" cy="50" r="30" fill="url(#monthEarningsGradient)" />
+                  {/* Large decorative circles */}
+                  <Circle cx="360" cy="30" r="90" fill="url(#goalGrad1)" />
+                  <Circle cx="320" cy="140" r="60" fill="url(#goalGrad2)" />
+                  <Circle cx="380" cy="100" r="40" fill={goalProgress >= 100 ? '#34C759' : '#5856D6'} fillOpacity={0.06} />
+                  {/* Curved wave path */}
                   <Path 
-                    d="M0 70 Q75 40 150 60 T300 50" 
-                    stroke="#10B981" 
-                    strokeWidth="2" 
-                    strokeOpacity="0.15" 
+                    d="M0,120 Q100,90 200,110 T400,80" 
+                    stroke={goalProgress >= 100 ? '#34C759' : '#5856D6'} 
+                    strokeWidth="1.5" 
+                    strokeOpacity={0.12}
+                    fill="none"
+                  />
+                  <Path 
+                    d="M0,140 Q150,100 300,130 T400,100" 
+                    stroke={goalProgress >= 100 ? '#30D158' : '#AF52DE'} 
+                    strokeWidth="1" 
+                    strokeOpacity={0.08}
                     fill="none"
                   />
                 </Svg>
               </View>
-              <View style={styles.earningsMainAmountContent}>
-                <Text style={[styles.earningsAmountLabel, { color: colors.textSecondary }]}>This Month</Text>
-                <Text style={[styles.earningsAmountValue, { color: colors.text }]}>{formatCurrency(monthEarnings)}</Text>
-              </View>
-            </View>
-            
-            {/* Stats Grid */}
-            <View style={[styles.earningsStatsGrid, { borderTopColor: isDark ? '#2D2D2D' : '#F0F0F0' }]}>
-              {/* Today's Earnings */}
-              <View style={[styles.earningsStatItem, { borderRightWidth: 1, borderRightColor: isDark ? '#2D2D2D' : '#F0F0F0' }]}>
-                <View style={styles.earningsStatSvgBackground}>
-                  <Svg width="100%" height="100%" viewBox="0 0 150 80" preserveAspectRatio="xMaxYMid slice">
-                    <Defs>
-                      <SvgLinearGradient id="todayGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <Stop offset="0%" stopColor="#F59E0B" stopOpacity="0.08" />
-                        <Stop offset="100%" stopColor="#FBBF24" stopOpacity="0.15" />
-                      </SvgLinearGradient>
-                    </Defs>
-                    <Circle cx="130" cy="10" r="40" fill="url(#todayGradient)" />
-                    <Circle cx="120" cy="60" r="25" fill="url(#todayGradient)" />
-                  </Svg>
+              
+              {/* Card Header */}
+              <View style={styles.iosGoalCardHeader}>
+                <View style={styles.iosGoalHeaderLeft}>
+                  <View>
+                    <Text style={[styles.iosGoalTitle, { color: colors.text }]}>
+                      {goalProgress >= 100 ? 'Goal Achieved!' : 'Revenue Goal'}
+                    </Text>
+                    <Text style={[styles.iosGoalSubtitle, { color: colors.textSecondary }]}>
+                      Monthly Target
+                    </Text>
+                  </View>
                 </View>
-                <Text style={[styles.earningsStatLabel, { color: colors.textSecondary }]}>Today</Text>
-                <Text style={[styles.earningsStatValue, { color: colors.text }]}>{formatCurrency(todayEarnings)}</Text>
+                <View style={[
+                  styles.iosGoalPercentBadge, 
+                  { backgroundColor: goalProgress >= 100 ? 'rgba(52, 199, 89, 0.15)' : 'rgba(88, 86, 214, 0.12)' }
+                ]}>
+                  <Text style={[
+                    styles.iosGoalPercentText, 
+                    { color: goalProgress >= 100 ? '#34C759' : '#5856D6' }
+                  ]}>
+                    {Math.round(goalProgress)}%
+                  </Text>
+                </View>
               </View>
               
-              {/* This Week */}
-              <View style={styles.earningsStatItem}>
-                <View style={styles.earningsStatSvgBackground}>
-                  <Svg width="100%" height="100%" viewBox="0 0 150 80" preserveAspectRatio="xMaxYMid slice">
-                    <Defs>
-                      <SvgLinearGradient id="weekGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <Stop offset="0%" stopColor="#3B82F6" stopOpacity="0.08" />
-                        <Stop offset="100%" stopColor="#60A5FA" stopOpacity="0.15" />
-                      </SvgLinearGradient>
-                    </Defs>
-                    <Circle cx="130" cy="10" r="40" fill="url(#weekGradient)" />
-                    <Circle cx="120" cy="60" r="25" fill="url(#weekGradient)" />
-                  </Svg>
+              {/* Amount Display */}
+              <View style={styles.iosGoalAmountRow}>
+                <Text style={[styles.iosGoalCurrentAmount, { color: colors.text }]}>
+                  {formatCurrency(currentRevenue)}
+                </Text>
+                <Text style={[styles.iosGoalOfText, { color: colors.textSecondary }]}>of</Text>
+                <Text style={[styles.iosGoalTargetAmount, { color: colors.textSecondary }]}>
+                  {formatCurrency(revenueGoal)}
+                </Text>
+              </View>
+              
+              {/* Progress Bar */}
+              <View style={styles.iosGoalProgressWrapper}>
+                <View style={[styles.iosGoalProgressBg, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
+                  <Animated.View 
+                    style={[
+                      styles.iosGoalProgressFill, 
+                      { 
+                        width: `${Math.min(goalProgress, 100)}%`,
+                        backgroundColor: goalProgress >= 100 ? '#34C759' : '#5856D6'
+                      }
+                    ]} 
+                  />
                 </View>
-                <Text style={[styles.earningsStatLabel, { color: colors.textSecondary }]}>This Week</Text>
-                <Text style={[styles.earningsStatValue, { color: colors.text }]}>{formatCurrency(weekEarnings)}</Text>
+              </View>
+              
+              {/* Motivational Footer */}
+              <View style={styles.iosGoalFooter}>
+                <Text style={[styles.iosGoalMotivation, { color: colors.textSecondary }]}>
+                  {goalProgress >= 100 
+                    ? '🎉 Amazing work! You crushed your goal!' 
+                    : goalProgress >= 75 
+                      ? '💪 Almost there! Keep pushing!' 
+                      : goalProgress >= 50 
+                        ? '🚀 Halfway there! You can do it!' 
+                        : '✨ Every sale counts. Stay focused!'}
+                </Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
+              </View>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Pending Balance Card - iOS Style */}
+        {pendingBalance > 0 && (
+          <View style={styles.section}>
+            <TouchableOpacity 
+              style={[styles.iosPendingCard, { backgroundColor: isDark ? 'rgba(52, 199, 89, 0.1)' : '#F0FDF4' }]}
+              onPress={() => navigation.navigate('Withdraw')}
+              activeOpacity={0.9}
+            >
+              {/* SVG Background */}
+              <View style={styles.iosPendingSvg}>
+                <Svg width="100%" height="100%" viewBox="0 0 400 100" preserveAspectRatio="xMaxYMid slice">
+                  <Defs>
+                    <SvgLinearGradient id="pendingGrad" x1="0" y1="0" x2="1" y2="1">
+                      <Stop offset="0" stopColor="#34C759" stopOpacity={0.15} />
+                      <Stop offset="1" stopColor="#30D158" stopOpacity={0.05} />
+                    </SvgLinearGradient>
+                  </Defs>
+                  <Circle cx="350" cy="20" r="60" fill="url(#pendingGrad)" />
+                  <Circle cx="380" cy="80" r="35" fill="#34C759" fillOpacity={0.08} />
+                  <Circle cx="320" cy="90" r="25" fill="#30D158" fillOpacity={0.06} />
+                </Svg>
+              </View>
+              
+              <View style={styles.iosPendingContent}>
+                <View style={[styles.iosPendingIcon, { backgroundColor: '#34C759' }]}>
+                  <Ionicons name="wallet" size={20} color="#FFFFFF" />
+                </View>
+                <View style={styles.iosPendingInfo}>
+                  <Text style={[styles.iosPendingLabel, { color: isDark ? '#86EFAC' : '#166534' }]}>
+                    Available for Withdrawal
+                  </Text>
+                  <Text style={[styles.iosPendingAmount, { color: isDark ? '#FFFFFF' : '#15803D' }]}>
+                    {formatCurrency(pendingBalance)}
+                  </Text>
+                </View>
+                <View style={[styles.iosPendingButton, { backgroundColor: '#34C759' }]}>
+                  <Text style={styles.iosPendingButtonText}>Withdraw</Text>
+                  <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
+                </View>
+              </View>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Earnings Summary - iOS Style */}
+        <View style={styles.section}>
+          <View style={[styles.iosEarningsCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+            {/* Enhanced SVG Background */}
+            <View style={styles.iosEarningsSvg}>
+              <Svg width="100%" height="100%" viewBox="0 0 400 300" preserveAspectRatio="xMaxYMin slice">
+                <Defs>
+                  <SvgLinearGradient id="earningsGrad1" x1="0" y1="0" x2="1" y2="1">
+                    <Stop offset="0" stopColor="#10B981" stopOpacity={0.12} />
+                    <Stop offset="1" stopColor="#34D399" stopOpacity={0.04} />
+                  </SvgLinearGradient>
+                  <SvgLinearGradient id="earningsGrad2" x1="0" y1="0" x2="0" y2="1">
+                    <Stop offset="0" stopColor="#6EE7B7" stopOpacity={0.08} />
+                    <Stop offset="1" stopColor="#10B981" stopOpacity={0.02} />
+                  </SvgLinearGradient>
+                </Defs>
+                {/* Decorative circles */}
+                <Circle cx="360" cy="40" r="80" fill="url(#earningsGrad1)" />
+                <Circle cx="380" cy="120" r="50" fill="url(#earningsGrad2)" />
+                <Circle cx="320" cy="180" r="35" fill="#34D399" fillOpacity={0.06} />
+                {/* Wave patterns */}
+                <Path d="M0,100 Q100,70 200,90 T400,60" stroke="#10B981" strokeWidth="1.5" strokeOpacity={0.1} fill="none" />
+                <Path d="M0,130 Q150,100 300,120 T400,90" stroke="#34D399" strokeWidth="1" strokeOpacity={0.06} fill="none" />
+              </Svg>
+            </View>
+            
+            {/* Header */}
+            <View style={[styles.iosEarningsHeader, { borderBottomColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
+              <View style={styles.iosEarningsHeaderLeft}>
+                <View>
+                  <Text style={[styles.iosEarningsTitle, { color: colors.text }]}>Earnings Summary</Text>
+                  <Text style={[styles.iosEarningsSubtitle, { color: colors.textSecondary }]}>Track your income</Text>
+                </View>
               </View>
             </View>
             
-            {/* Withdraw CTA */}
+            {/* Main Amount */}
+            <View style={styles.iosEarningsMain}>
+              <Text style={[styles.iosEarningsMainLabel, { color: colors.textSecondary }]}>This Month</Text>
+              <Text style={[styles.iosEarningsMainValue, { color: '#10B981' }]}>{formatCurrency(monthEarnings)}</Text>
+            </View>
+            
+            {/* Stats Row */}
+            <View style={[styles.iosEarningsStatsRow, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F9FAFB' }]}>
+              {/* Today */}
+              <View style={styles.iosEarningsStatBox}>
+                <View style={[styles.iosEarningsStatIcon, { backgroundColor: 'rgba(245, 158, 11, 0.12)' }]}>
+                  <Ionicons name="sunny" size={14} color="#F59E0B" />
+                </View>
+                <Text style={[styles.iosEarningsStatLabel, { color: colors.textSecondary }]}>Today</Text>
+                <Text style={[styles.iosEarningsStatValue, { color: colors.text }]}>{formatCurrency(todayEarnings)}</Text>
+              </View>
+              
+              {/* Separator */}
+              <View style={[styles.iosEarningsStatSeparator, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]} />
+              
+              {/* This Week */}
+              <View style={styles.iosEarningsStatBox}>
+                <View style={[styles.iosEarningsStatIcon, { backgroundColor: 'rgba(59, 130, 246, 0.12)' }]}>
+                  <Ionicons name="calendar" size={14} color="#3B82F6" />
+                </View>
+                <Text style={[styles.iosEarningsStatLabel, { color: colors.textSecondary }]}>This Week</Text>
+                <Text style={[styles.iosEarningsStatValue, { color: colors.text }]}>{formatCurrency(weekEarnings)}</Text>
+              </View>
+            </View>
+            
+            {/* Withdraw Button */}
             <TouchableOpacity 
-              style={[styles.earningsWithdrawBtn, { backgroundColor: '#10B981' }]}
+              style={styles.iosEarningsWithdrawBtn}
               onPress={() => navigation.navigate('Withdraw')}
-              activeOpacity={0.8}
+              activeOpacity={0.9}
             >
-              <Ionicons name="wallet-outline" size={18} color="#FFFFFF" />
-              <Text style={styles.earningsWithdrawText}>Withdraw Funds</Text>
-              <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+              <Text style={styles.iosEarningsWithdrawText}>Withdraw Funds</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Peak Hours Widget - Clean White Card */}
+        {/* Peak Hours Widget - iOS Style */}
         {peakHoursData && peakHoursData.length > 0 && (
           <View style={styles.section}>
-            <View style={[styles.peakHoursEnhancedCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.04)' }]}>
-              {/* Header with Illustration */}
-              <View style={[styles.peakHoursCardHeader, { borderBottomColor: isDark ? '#2D2D2D' : '#F0F0F0' }]}>
-                <View style={styles.peakHoursHeaderLeft}>
-                  <View style={styles.peakHoursLabelRow}>
-                    <View style={[styles.peakHoursInsightBadge, { backgroundColor: '#F3E8FF' }]}>
-                      <Ionicons name="analytics" size={12} color="#8B5CF6" />
-                      <Text style={styles.peakHoursInsightText}>INSIGHTS</Text>
-                    </View>
+            <View style={[styles.iosPeakCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+              {/* Enhanced SVG Background */}
+              <View style={styles.iosPeakSvg}>
+                <Svg width="100%" height="100%" viewBox="0 0 400 400" preserveAspectRatio="xMaxYMin slice">
+                  <Defs>
+                    <SvgLinearGradient id="peakGrad1" x1="0" y1="0" x2="1" y2="1">
+                      <Stop offset="0" stopColor="#8B5CF6" stopOpacity={0.12} />
+                      <Stop offset="1" stopColor="#A78BFA" stopOpacity={0.04} />
+                    </SvgLinearGradient>
+                    <SvgLinearGradient id="peakGrad2" x1="0" y1="0" x2="0" y2="1">
+                      <Stop offset="0" stopColor="#C4B5FD" stopOpacity={0.08} />
+                      <Stop offset="1" stopColor="#8B5CF6" stopOpacity={0.02} />
+                    </SvgLinearGradient>
+                  </Defs>
+                  <Circle cx="360" cy="50" r="80" fill="url(#peakGrad1)" />
+                  <Circle cx="380" cy="150" r="50" fill="url(#peakGrad2)" />
+                  <Circle cx="340" cy="220" r="35" fill="#8B5CF6" fillOpacity={0.05} />
+                  <Path d="M0,80 Q100,50 200,70 T400,40" stroke="#8B5CF6" strokeWidth="1.5" strokeOpacity={0.08} fill="none" />
+                </Svg>
+              </View>
+              
+              {/* Header */}
+              <View style={[styles.iosPeakHeader, { borderBottomColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
+                <View style={styles.iosPeakHeaderLeft}>
+                  <View>
+                    <Text style={[styles.iosPeakTitle, { color: colors.text }]}>Peak Selling Hours</Text>
+                    <Text style={[styles.iosPeakSubtitle, { color: colors.textSecondary }]}>Maximize your sales</Text>
                   </View>
-                  <Text style={[styles.peakHoursCardTitle, { color: colors.text }]}>Peak Selling Hours</Text>
-                  <Text style={[styles.peakHoursCardSubtitle, { color: colors.textSecondary }]}>Maximize your sales</Text>
                 </View>
-                <View style={styles.peakHoursIllustration}>
-                  <PeakHoursIllustration width={70} height={70} />
+                <View style={[styles.iosPeakInsightBadge, { backgroundColor: 'rgba(139, 92, 246, 0.1)' }]}>
+                  <Ionicons name="analytics" size={12} color="#8B5CF6" />
+                  <Text style={styles.iosPeakInsightText}>INSIGHTS</Text>
                 </View>
               </View>
               
-              {/* Stats Summary Bar */}
-              <View style={[styles.peakHoursSummaryBar, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.08)' : '#FAFAFA' }]}>
-                <View style={styles.peakHoursSummaryItem}>
-                  <Text style={[styles.peakHoursSummaryValue, { color: colors.text }]}>
+              {/* Summary Stats */}
+              <View style={[styles.iosPeakSummary, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.06)' : '#FAFAFA' }]}>
+                <View style={styles.iosPeakSummaryItem}>
+                  <Text style={[styles.iosPeakSummaryValue, { color: colors.text }]}>
                     {peakHoursData.reduce((sum: number, p: any) => sum + (p.orders || 0), 0)}
                   </Text>
-                  <Text style={[styles.peakHoursSummaryLabel, { color: colors.textSecondary }]}>Total Orders</Text>
+                  <Text style={[styles.iosPeakSummaryLabel, { color: colors.textSecondary }]}>Total Orders</Text>
                 </View>
-                <View style={[styles.peakHoursSummaryDivider, { backgroundColor: isDark ? '#3D3D3D' : '#E5E5EA' }]} />
-                <View style={styles.peakHoursSummaryItem}>
-                  <Text style={[styles.peakHoursSummaryValue, { color: colors.text }]}>
+                <View style={[styles.iosPeakSummarySeparator, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }]} />
+                <View style={styles.iosPeakSummaryItem}>
+                  <Text style={[styles.iosPeakSummaryValue, { color: colors.text }]}>
                     {formatCurrency(peakHoursData.reduce((sum: number, p: any) => sum + (p.revenue || 0), 0))}
                   </Text>
-                  <Text style={[styles.peakHoursSummaryLabel, { color: colors.textSecondary }]}>Total Revenue</Text>
+                  <Text style={[styles.iosPeakSummaryLabel, { color: colors.textSecondary }]}>Total Revenue</Text>
                 </View>
               </View>
               
               {/* Peak Hours List */}
-              <View style={styles.peakHoursListBody}>
+              <View style={styles.iosPeakList}>
                 {peakHoursData.slice(0, 3).map((peak: any, index: number) => {
                   const hour = peak.hour;
                   const period = hour >= 12 ? 'PM' : 'AM';
@@ -945,32 +994,27 @@ export default function DashboardScreen() {
                     <View 
                       key={index} 
                       style={[
-                        styles.peakHoursListItem,
-                        index < 2 && { borderBottomWidth: 1, borderBottomColor: isDark ? '#2D2D2D' : '#F0F0F0' }
+                        styles.iosPeakListItem,
+                        index < 2 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }
                       ]}
                     >
-                      {/* Rank */}
-                      <View style={[styles.peakHoursRankIcon, { backgroundColor: `${rankColors[index]}20` }]}>
-                        <Ionicons name={rankIcons[index]} size={16} color={rankColors[index]} />
+                      <View style={[styles.iosPeakRank, { backgroundColor: `${rankColors[index]}18` }]}>
+                        <Ionicons name={rankIcons[index]} size={14} color={rankColors[index]} />
                       </View>
-                      
-                      {/* Time & Orders */}
-                      <View style={styles.peakHoursTimeInfo}>
-                        <Text style={[styles.peakHoursTime, { color: colors.text }]}>
+                      <View style={styles.iosPeakTimeInfo}>
+                        <Text style={[styles.iosPeakTime, { color: colors.text }]}>
                           {displayHour}:00 {period}
                         </Text>
-                        <Text style={[styles.peakHoursOrders, { color: colors.textSecondary }]}>
+                        <Text style={[styles.iosPeakOrders, { color: colors.textSecondary }]}>
                           {peak.orders || 0} orders
                         </Text>
                       </View>
-                      
-                      {/* Revenue & Progress */}
-                      <View style={styles.peakHoursRevenueInfo}>
-                        <Text style={[styles.peakHoursRevenue, { color: colors.text }]}>
+                      <View style={styles.iosPeakRevenueInfo}>
+                        <Text style={[styles.iosPeakRevenue, { color: colors.text }]}>
                           {formatCurrency(peak.revenue || 0)}
                         </Text>
-                        <View style={[styles.peakHoursProgressBg, { backgroundColor: isDark ? '#2D2D2D' : '#F0F0F0' }]}>
-                          <View style={[styles.peakHoursProgressBar, { width: `${barWidth}%`, backgroundColor: rankColors[index] }]} />
+                        <View style={[styles.iosPeakProgressBg, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
+                          <View style={[styles.iosPeakProgressFill, { width: `${barWidth}%`, backgroundColor: rankColors[index] }]} />
                         </View>
                       </View>
                     </View>
@@ -979,45 +1023,59 @@ export default function DashboardScreen() {
               </View>
               
               {/* Pro Tip Footer */}
-              <View style={[styles.peakHoursFooter, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.06)' : '#F9FAFB' }]}>
-                <View style={[styles.peakHoursTipIcon, { backgroundColor: '#F3E8FF' }]}>
+              <View style={[styles.iosPeakFooter, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.05)' : '#F9FAFB' }]}>
+                <View style={[styles.iosPeakTipIcon, { backgroundColor: 'rgba(139, 92, 246, 0.12)' }]}>
                   <Ionicons name="bulb" size={14} color="#8B5CF6" />
                 </View>
-                <View style={styles.peakHoursTipContent}>
-                  <Text style={[styles.peakHoursTipText, { color: colors.textSecondary }]}>
-                    Run flash sales during peak hours to boost conversions!
-                  </Text>
-                </View>
+                <Text style={[styles.iosPeakTipText, { color: colors.textSecondary }]}>
+                  Run flash sales during peak hours to boost conversions!
+                </Text>
               </View>
             </View>
           </View>
         )}
 
-        {/* Top Selling Products - Clean White Card */}
+        {/* Top Selling Products - iOS Style */}
         <View style={styles.section}>
-          <View style={[styles.topSellersCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.04)' }]}>
+          <View style={[styles.iosTopSellersCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+            {/* Enhanced SVG Background */}
+            <View style={styles.iosTopSellersSvg}>
+              <Svg width="100%" height="100%" viewBox="0 0 400 400" preserveAspectRatio="xMaxYMin slice">
+                <Defs>
+                  <SvgLinearGradient id="topGrad1" x1="0" y1="0" x2="1" y2="1">
+                    <Stop offset="0" stopColor="#F59E0B" stopOpacity={0.12} />
+                    <Stop offset="1" stopColor="#FBBF24" stopOpacity={0.04} />
+                  </SvgLinearGradient>
+                  <SvgLinearGradient id="topGrad2" x1="0" y1="0" x2="0" y2="1">
+                    <Stop offset="0" stopColor="#FCD34D" stopOpacity={0.08} />
+                    <Stop offset="1" stopColor="#F59E0B" stopOpacity={0.02} />
+                  </SvgLinearGradient>
+                </Defs>
+                <Circle cx="360" cy="40" r="70" fill="url(#topGrad1)" />
+                <Circle cx="380" cy="130" r="45" fill="url(#topGrad2)" />
+                <Circle cx="340" cy="190" r="30" fill="#F59E0B" fillOpacity={0.05} />
+              </Svg>
+            </View>
+            
             {/* Header */}
-            <View style={[styles.topSellersCardHeader, { borderBottomColor: isDark ? '#2D2D2D' : '#F0F0F0' }]}>
-              <View style={styles.topSellersHeaderLeft}>
-                <View style={[styles.topSellersBadge, { backgroundColor: '#FFF3E0' }]}>
-                  <Ionicons name="trophy" size={12} color="#FF8F00" />
-                  <Text style={[styles.topSellersBadgeText, { color: '#FF8F00' }]}>TOP PERFORMERS</Text>
+            <View style={[styles.iosTopSellersHeader, { borderBottomColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
+              <View style={styles.iosTopSellersHeaderLeft}>
+                <View>
+                  <Text style={[styles.iosTopSellersTitle, { color: colors.text }]}>Best Sellers</Text>
+                  <Text style={[styles.iosTopSellersSubtitle, { color: colors.textSecondary }]}>Top performing products</Text>
                 </View>
-                <Text style={[styles.topSellersCardTitle, { color: colors.text }]}>Best Sellers</Text>
-                <Text style={[styles.topSellersCardSubtitle, { color: colors.textSecondary }]}>Highest performing products</Text>
               </View>
-              <View style={styles.topSellersIllustrationWrapper}>
-                <TopSellersIllustration width={65} height={65} />
+              <View style={[styles.iosTopSellersBadge, { backgroundColor: 'rgba(245, 158, 11, 0.1)' }]}>
+                <Text style={styles.iosTopSellersBadgeText}>TOP 3</Text>
               </View>
             </View>
             
             {/* Products List */}
-            <View style={styles.topSellersProductsList}>
+            <View style={styles.iosTopSellersList}>
               {topProducts.length > 0 ? (
                 topProducts.slice(0, 3).map((product: any, index: number) => {
                   if (!product || !product.id) return null;
                   
-                  // Handle image URL
                   let imageUrl: string | null = null;
                   const rawImage = product.images?.[0];
                   if (rawImage) {
@@ -1028,14 +1086,7 @@ export default function DashboardScreen() {
                     }
                   }
                   
-                  const rankConfig = [
-                    { color: '#FFD700', bgColor: 'rgba(255, 215, 0, 0.15)', icon: 'trophy', label: '1st' },
-                    { color: '#C0C0C0', bgColor: 'rgba(192, 192, 192, 0.15)', icon: 'medal', label: '2nd' },
-                    { color: '#CD7F32', bgColor: 'rgba(205, 127, 50, 0.15)', icon: 'ribbon', label: '3rd' },
-                  ];
-                  const rank = rankConfig[index];
-                  
-                  // Calculate progress bar width based on sales (relative to top seller)
+                  const rankColors = ['#FFB300', '#94A3B8', '#CD7F32'];
                   const maxSales = Math.max(...topProducts.map((p: any) => p.sales || 0));
                   const progressWidth = maxSales > 0 ? ((product.sales || 0) / maxSales) * 100 : 0;
                   
@@ -1043,113 +1094,62 @@ export default function DashboardScreen() {
                     <TouchableOpacity
                       key={product.id || `product-${index}`}
                       style={[
-                        styles.topSellerProductItem,
+                        styles.iosTopSellerItem,
                         index < Math.min(topProducts.length, 3) - 1 && {
-                          borderBottomWidth: 1,
+                          borderBottomWidth: StyleSheet.hairlineWidth,
                           borderBottomColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
                         }
                       ]}
                       onPress={() => product.id && navigation.navigate('ProductAnalyticsDetail', { productId: product.id })}
                       activeOpacity={0.7}
                     >
-                      {/* Rank Badge */}
-                      <View style={[styles.topSellerRankBadge, { backgroundColor: rank.bgColor }]}>
-                        <Ionicons name={rank.icon as any} size={16} color={rank.color} />
-                        <Text style={[styles.topSellerRankLabel, { color: rank.color }]}>{rank.label}</Text>
+                      {/* Rank */}
+                      <View style={[styles.iosTopSellerRank, { backgroundColor: `${rankColors[index]}18` }]}>
+                        <Text style={[styles.iosTopSellerRankText, { color: rankColors[index] }]}>{index + 1}</Text>
                       </View>
                       
                       {/* Product Image */}
-                      <View style={styles.topSellerImageWrapper}>
+                      <View style={styles.iosTopSellerImage}>
                         {imageUrl ? (
-                          <Image 
-                            source={{ uri: imageUrl }} 
-                            style={styles.topSellerProductImage}
-                            resizeMode="cover"
-                          />
+                          <Image source={{ uri: imageUrl }} style={styles.iosTopSellerImageInner} resizeMode="cover" />
                         ) : (
-                          <View style={[styles.topSellerImagePlaceholder, { backgroundColor: isDark ? '#3A3A3C' : '#F0F0F0' }]}>
-                            <Ionicons name="leaf" size={22} color={COLORS.primary} />
+                          <View style={[styles.iosTopSellerImagePlaceholder, { backgroundColor: isDark ? '#3A3A3C' : '#F0F0F0' }]}>
+                            <Ionicons name="leaf" size={18} color={COLORS.primary} />
                           </View>
-                        )}
-                        {/* Image border glow for top seller */}
-                        {index === 0 && (
-                          <View style={styles.topSellerImageGlow} />
                         )}
                       </View>
                       
                       {/* Product Info */}
-                      <View style={styles.topSellerProductInfo}>
-                        <Text style={[styles.topSellerProductName, { color: colors.text }]} numberOfLines={1}>
+                      <View style={styles.iosTopSellerInfo}>
+                        <Text style={[styles.iosTopSellerName, { color: colors.text }]} numberOfLines={1}>
                           {product.title || product.name}
                         </Text>
-                        
-                        {/* Sales Progress Bar */}
-                        <View style={styles.topSellerProgressContainer}>
-                          <View style={[styles.topSellerProgressBg, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
-                            <LinearGradient
-                              colors={[rank.color, index === 0 ? '#FFA000' : rank.color]}
-                              start={{ x: 0, y: 0 }}
-                              end={{ x: 1, y: 0 }}
-                              style={[styles.topSellerProgressFill, { width: `${progressWidth}%` }]}
-                            />
-                          </View>
-                          <Text style={[styles.topSellerSalesCount, { color: colors.textSecondary }]}>
-                            {product.sales || 0} units
-                          </Text>
-                        </View>
-                        
-                        {/* Revenue & Growth */}
-                        <View style={styles.topSellerMetrics}>
-                          <Text style={[styles.topSellerRevenue, { color: COLORS.success }]}>
+                        <View style={styles.iosTopSellerMetrics}>
+                          <Text style={[styles.iosTopSellerRevenue, { color: '#34C759' }]}>
                             {formatCurrency(product.revenue || 0)}
                           </Text>
-                          {product.growth !== undefined && product.growth !== 0 && (
-                            <View style={[
-                              styles.topSellerGrowthBadge,
-                              { backgroundColor: product.growth > 0 ? 'rgba(76, 175, 80, 0.12)' : 'rgba(244, 67, 54, 0.12)' }
-                            ]}>
-                              <Ionicons 
-                                name={product.growth > 0 ? 'trending-up' : 'trending-down'} 
-                                size={11} 
-                                color={product.growth > 0 ? COLORS.success : COLORS.error} 
-                              />
-                              <Text style={[
-                                styles.topSellerGrowthText,
-                                { color: product.growth > 0 ? COLORS.success : COLORS.error }
-                              ]}>
-                                {Math.abs(product.growth)}%
-                              </Text>
-                            </View>
-                          )}
+                          <Text style={[styles.iosTopSellerSales, { color: colors.textSecondary }]}>
+                            • {product.sales || 0} sold
+                          </Text>
+                        </View>
+                        {/* Progress Bar */}
+                        <View style={[styles.iosTopSellerProgressBg, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }]}>
+                          <View style={[styles.iosTopSellerProgressFill, { width: `${progressWidth}%`, backgroundColor: rankColors[index] }]} />
                         </View>
                       </View>
                       
-                      <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} style={{ marginLeft: 4 }} />
+                      <Ionicons name="chevron-forward" size={16} color={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)'} />
                     </TouchableOpacity>
                   );
                 })
               ) : (
-                <View style={styles.bestSellersEmpty}>
-                  <View style={styles.bestSellersEmptySvgBackground}>
-                    <Svg width="120" height="120" viewBox="0 0 120 120">
-                      <Defs>
-                        <SvgLinearGradient id="bestSellersEmptyGradient1" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <Stop offset="0%" stopColor="#FF8F00" stopOpacity={0.15} />
-                          <Stop offset="100%" stopColor="#FFB300" stopOpacity={0.08} />
-                        </SvgLinearGradient>
-                        <SvgLinearGradient id="bestSellersEmptyGradient2" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <Stop offset="0%" stopColor="#FFB300" stopOpacity={0.12} />
-                          <Stop offset="100%" stopColor="#FF8F00" stopOpacity={0.05} />
-                        </SvgLinearGradient>
-                      </Defs>
-                      <Circle cx="60" cy="60" r="50" fill="url(#bestSellersEmptyGradient1)" />
-                      <Circle cx="85" cy="35" r="25" fill="url(#bestSellersEmptyGradient2)" />
-                      <Circle cx="35" cy="80" r="18" fill="url(#bestSellersEmptyGradient2)" />
-                    </Svg>
+                <View style={styles.iosTopSellersEmpty}>
+                  <View style={[styles.iosTopSellersEmptyIcon, { backgroundColor: 'rgba(245, 158, 11, 0.1)' }]}>
+                    <Ionicons name="trophy-outline" size={28} color="#F59E0B" />
                   </View>
-                  <Text style={[styles.bestSellersEmptyTitle, { color: colors.text }]}>No sales yet</Text>
-                  <Text style={[styles.bestSellersEmptyText, { color: colors.textSecondary }]}>
-                    Your best selling products will appear here
+                  <Text style={[styles.iosTopSellersEmptyTitle, { color: colors.text }]}>No sales yet</Text>
+                  <Text style={[styles.iosTopSellersEmptyText, { color: colors.textSecondary }]}>
+                    Your best sellers will appear here
                   </Text>
                 </View>
               )}
@@ -1157,43 +1157,61 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        {/* Recent Orders - Clean White Card */}
+        {/* Recent Orders - iOS Style */}
         <View style={styles.section}>
-          <View style={[styles.recentOrdersCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.04)' }]}>
+          <View style={[styles.iosRecentOrdersCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+            {/* Enhanced SVG Background */}
+            <View style={styles.iosRecentOrdersSvg}>
+              <Svg width="100%" height="100%" viewBox="0 0 400 400" preserveAspectRatio="xMaxYMin slice">
+                <Defs>
+                  <SvgLinearGradient id="ordersGrad1" x1="0" y1="0" x2="1" y2="1">
+                    <Stop offset="0" stopColor="#3B82F6" stopOpacity={0.12} />
+                    <Stop offset="1" stopColor="#60A5FA" stopOpacity={0.04} />
+                  </SvgLinearGradient>
+                  <SvgLinearGradient id="ordersGrad2" x1="0" y1="0" x2="0" y2="1">
+                    <Stop offset="0" stopColor="#93C5FD" stopOpacity={0.08} />
+                    <Stop offset="1" stopColor="#3B82F6" stopOpacity={0.02} />
+                  </SvgLinearGradient>
+                </Defs>
+                <Circle cx="360" cy="40" r="70" fill="url(#ordersGrad1)" />
+                <Circle cx="380" cy="130" r="45" fill="url(#ordersGrad2)" />
+                <Circle cx="340" cy="190" r="30" fill="#3B82F6" fillOpacity={0.05} />
+              </Svg>
+            </View>
+            
             {/* Header */}
-            <View style={[styles.recentOrdersCardHeader, { borderBottomColor: isDark ? '#2D2D2D' : '#F0F0F0' }]}>
-              <View style={styles.recentOrdersHeaderLeft}>
-                <View style={[styles.recentOrdersBadge, { backgroundColor: '#E3F2FD' }]}>
-                  <Ionicons name="time" size={12} color="#1976D2" />
-                  <Text style={[styles.recentOrdersBadgeText, { color: '#1976D2' }]}>LATEST ACTIVITY</Text>
+            <View style={[styles.iosRecentOrdersHeader, { borderBottomColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
+              <View style={styles.iosRecentOrdersHeaderLeft}>
+                <View>
+                  <Text style={[styles.iosRecentOrdersTitle, { color: colors.text }]}>Recent Orders</Text>
+                  <Text style={[styles.iosRecentOrdersSubtitle, { color: colors.textSecondary }]}>
+                    {orders.length > 0 ? `${orders.length} pending` : 'No orders'}
+                  </Text>
                 </View>
-                <Text style={[styles.recentOrdersCardTitle, { color: colors.text }]}>Recent Orders</Text>
-                <Text style={[styles.recentOrdersCardSubtitle, { color: colors.textSecondary }]}>
-                  {orders.length > 0 
-                    ? `${orders.length} order${orders.length > 1 ? 's' : ''} in queue`
-                    : 'No pending orders'}
-                </Text>
               </View>
-              <View style={styles.recentOrdersIllustrationWrapper}>
-                <RecentOrdersIllustration width={65} height={65} />
-              </View>
+              <TouchableOpacity 
+                style={[styles.iosRecentOrdersViewAll, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}
+                onPress={() => navigation.navigate('FarmerOrders')}
+              >
+                <Text style={styles.iosRecentOrdersViewAllText}>View All</Text>
+              </TouchableOpacity>
             </View>
             
             {/* Orders List */}
-            <View style={styles.recentOrdersList}>
+            <View style={styles.iosRecentOrdersList}>
               {orders.length > 0 ? (
                 orders.slice(0, 3).filter((order): order is Order => order != null && order.id != null).map((order: Order, index: number) => {
-                  const statusConfig: Record<string, { color: string; bgColor: string; icon: string }> = {
-                    pending: { color: '#FF9800', bgColor: 'rgba(255, 152, 0, 0.12)', icon: 'time-outline' },
-                    created: { color: '#FF9800', bgColor: 'rgba(255, 152, 0, 0.12)', icon: 'create-outline' },
-                    confirmed: { color: '#2196F3', bgColor: 'rgba(33, 150, 243, 0.12)', icon: 'checkmark-circle-outline' },
-                    preparing: { color: '#9C27B0', bgColor: 'rgba(156, 39, 176, 0.12)', icon: 'restaurant-outline' },
-                    ready_for_pickup: { color: '#00BCD4', bgColor: 'rgba(0, 188, 212, 0.12)', icon: 'bag-check-outline' },
-                    rider_assigned: { color: '#3F51B5', bgColor: 'rgba(63, 81, 181, 0.12)', icon: 'bicycle-outline' },
-                    picked_up: { color: '#009688', bgColor: 'rgba(0, 150, 136, 0.12)', icon: 'car-outline' },
-                    in_transit: { color: '#4CAF50', bgColor: 'rgba(76, 175, 80, 0.12)', icon: 'navigate-outline' },
-                    delivered: { color: '#4CAF50', bgColor: 'rgba(76, 175, 80, 0.12)', icon: 'checkmark-done-outline' },
-                    cancelled: { color: '#F44336', bgColor: 'rgba(244, 67, 54, 0.12)', icon: 'close-circle-outline' },
+                  const statusConfig: Record<string, { color: string; bgColor: string }> = {
+                    pending: { color: '#FF9500', bgColor: 'rgba(255, 149, 0, 0.12)' },
+                    created: { color: '#FF9500', bgColor: 'rgba(255, 149, 0, 0.12)' },
+                    confirmed: { color: '#007AFF', bgColor: 'rgba(0, 122, 255, 0.12)' },
+                    preparing: { color: '#5856D6', bgColor: 'rgba(88, 86, 214, 0.12)' },
+                    ready_for_pickup: { color: '#32ADE6', bgColor: 'rgba(50, 173, 230, 0.12)' },
+                    rider_assigned: { color: '#AF52DE', bgColor: 'rgba(175, 82, 222, 0.12)' },
+                    picked_up: { color: '#00C7BE', bgColor: 'rgba(0, 199, 190, 0.12)' },
+                    in_transit: { color: '#34C759', bgColor: 'rgba(52, 199, 89, 0.12)' },
+                    delivered: { color: '#34C759', bgColor: 'rgba(52, 199, 89, 0.12)' },
+                    cancelled: { color: '#FF3B30', bgColor: 'rgba(255, 59, 48, 0.12)' },
                   };
                   const status = statusConfig[order.status] || statusConfig.pending;
                   
@@ -1226,70 +1244,53 @@ export default function DashboardScreen() {
                     <TouchableOpacity
                       key={order.id}
                       style={[
-                        styles.recentOrderItem,
+                        styles.iosRecentOrderItem,
                         index < Math.min(orders.length, 3) - 1 && {
-                          borderBottomWidth: 1,
+                          borderBottomWidth: StyleSheet.hairlineWidth,
                           borderBottomColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
                         }
                       ]}
                       onPress={() => navigation.navigate('FarmerOrderDetail', { orderId: order.id })}
                       activeOpacity={0.7}
                     >
-                      {/* Status Icon */}
-                      <View style={[styles.recentOrderStatusIcon, { backgroundColor: status.bgColor }]}>
-                        <Ionicons name={status.icon as any} size={20} color={status.color} />
-                      </View>
-                      
-                      {/* Order Info */}
-                      <View style={styles.recentOrderInfo}>
-                        <View style={styles.recentOrderTopRow}>
-                          <Text style={[styles.recentOrderId, { color: colors.text }]}>
-                            #{order.id.slice(-6)}
-                          </Text>
-                          <View style={[styles.recentOrderStatusBadge, { backgroundColor: status.bgColor }]}>
-                            <Text style={[styles.recentOrderStatusText, { color: status.color }]}>
-                              {statusLabels[order.status] || 'Pending'}
-                            </Text>
-                          </View>
-                        </View>
-                        
-                        <Text style={[styles.recentOrderItems, { color: colors.textSecondary }]} numberOfLines={1}>
-                          {order.items.length} item{order.items.length > 1 ? 's' : ''} • {(order.items || []).map((item: any) => item.title || item.productName || 'Item').slice(0, 2).join(', ')}
-                          {order.items.length > 2 ? '...' : ''}
+                      {/* Order ID & Status */}
+                      <View style={styles.iosRecentOrderTop}>
+                        <Text style={[styles.iosRecentOrderId, { color: colors.text }]}>
+                          #{order.id.slice(-6)}
                         </Text>
-                        
-                        <View style={styles.recentOrderBottomRow}>
-                          <Text style={[styles.recentOrderAmount, { color: COLORS.success }]}>
-                            ₦{Number(order.total || 0).toLocaleString()}
-                          </Text>
-                          <Text style={[styles.recentOrderTime, { color: colors.textSecondary }]}>
-                            {formatDate(order.createdAt)}
+                        <View style={[styles.iosRecentOrderStatus, { backgroundColor: status.bgColor }]}>
+                          <Text style={[styles.iosRecentOrderStatusText, { color: status.color }]}>
+                            {statusLabels[order.status] || 'Pending'}
                           </Text>
                         </View>
                       </View>
                       
-                      <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+                      {/* Items Summary */}
+                      <Text style={[styles.iosRecentOrderItems, { color: colors.textSecondary }]} numberOfLines={1}>
+                        {order.items.length} item{order.items.length > 1 ? 's' : ''} • {(order.items || []).map((item: any) => item.title || item.productName || 'Item').slice(0, 2).join(', ')}
+                      </Text>
+                      
+                      {/* Amount & Time */}
+                      <View style={styles.iosRecentOrderBottom}>
+                        <Text style={[styles.iosRecentOrderAmount, { color: '#34C759' }]}>
+                          ₦{Number(order.total || 0).toLocaleString()}
+                        </Text>
+                        <Text style={[styles.iosRecentOrderTime, { color: colors.textSecondary }]}>
+                          {formatDate(order.createdAt)}
+                        </Text>
+                        <Ionicons name="chevron-forward" size={14} color={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)'} />
+                      </View>
                     </TouchableOpacity>
                   );
                 })
               ) : (
-                <View style={styles.recentOrdersEmpty}>
-                  <View style={styles.recentOrdersEmptySvgBackground}>
-                    <Svg width="100%" height="100%" viewBox="0 0 300 150" preserveAspectRatio="xMidYMid slice">
-                      <Defs>
-                        <SvgLinearGradient id="emptyOrdersGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <Stop offset="0%" stopColor="#2196F3" stopOpacity="0.06" />
-                          <Stop offset="100%" stopColor="#64B5F6" stopOpacity="0.12" />
-                        </SvgLinearGradient>
-                      </Defs>
-                      <Circle cx="50" cy="30" r="60" fill="url(#emptyOrdersGradient)" />
-                      <Circle cx="250" cy="120" r="50" fill="url(#emptyOrdersGradient)" />
-                      <Circle cx="150" cy="80" r="35" fill="url(#emptyOrdersGradient)" />
-                    </Svg>
+                <View style={styles.iosRecentOrdersEmpty}>
+                  <View style={[styles.iosRecentOrdersEmptyIcon, { backgroundColor: 'rgba(52, 199, 89, 0.1)' }]}>
+                    <Ionicons name="bag-handle-outline" size={28} color="#34C759" />
                   </View>
-                  <Text style={[styles.recentOrdersEmptyTitle, { color: colors.text }]}>No orders yet</Text>
-                  <Text style={[styles.recentOrdersEmptyText, { color: colors.textSecondary }]}>
-                    When customers place orders, they'll appear here
+                  <Text style={[styles.iosRecentOrdersEmptyTitle, { color: colors.text }]}>No orders yet</Text>
+                  <Text style={[styles.iosRecentOrdersEmptyText, { color: colors.textSecondary }]}>
+                    Orders will appear here
                   </Text>
                 </View>
               )}
@@ -1317,245 +1318,174 @@ export default function DashboardScreen() {
           </View>
         )}
 
-        {/* Quick Actions - Clean Card Style */}
+        {/* Quick Actions - iOS Style List */}
         <View style={styles.section}>
-          <View style={[styles.quickActionsCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
-            {/* Actions Grid */}
-            <View style={styles.quickActionsGrid}>
-              {/* Row 1 */}
-              <View style={styles.quickActionsRow}>
-                {/* Add Product */}
-                <TouchableOpacity
-                  style={[styles.quickActionItem, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
-                  onPress={() => navigation.navigate('AddProduct')}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.quickActionIconWrapper}>
-                    <Svg width="48" height="48" viewBox="0 0 48 48">
-                      <Defs>
-                        <SvgLinearGradient id="addGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <Stop offset="0%" stopColor="#4CAF50" stopOpacity={0.15} />
-                          <Stop offset="100%" stopColor="#2E7D32" stopOpacity={0.25} />
-                        </SvgLinearGradient>
-                      </Defs>
-                      <Circle cx="24" cy="24" r="22" fill="url(#addGrad)" />
-                      <Circle cx="24" cy="24" r="16" fill="#E8F5E9" />
-                    </Svg>
-                    <View style={styles.quickActionIconOverlay}>
-                      <Ionicons name="add-circle" size={22} color="#4CAF50" />
-                    </View>
-                  </View>
-                  <Text style={[styles.quickActionLabel, { color: colors.text }]}>Add Product</Text>
-                  <Text style={[styles.quickActionHint, { color: colors.textSecondary }]}>New listing</Text>
-                </TouchableOpacity>
-                
-                {/* View Orders */}
-                <TouchableOpacity
-                  style={[styles.quickActionItem, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
-                  onPress={() => navigation.navigate('FarmerOrders')}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.quickActionIconWrapper}>
-                    <Svg width="48" height="48" viewBox="0 0 48 48">
-                      <Defs>
-                        <SvgLinearGradient id="orderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <Stop offset="0%" stopColor="#2196F3" stopOpacity={0.15} />
-                          <Stop offset="100%" stopColor="#1565C0" stopOpacity={0.25} />
-                        </SvgLinearGradient>
-                      </Defs>
-                      <Circle cx="24" cy="24" r="22" fill="url(#orderGrad)" />
-                      <Circle cx="24" cy="24" r="16" fill="#E3F2FD" />
-                    </Svg>
-                    <View style={styles.quickActionIconOverlay}>
-                      <Ionicons name="clipboard" size={20} color="#1976D2" />
-                    </View>
-                  </View>
-                  <Text style={[styles.quickActionLabel, { color: colors.text }]}>Orders</Text>
-                  <Text style={[styles.quickActionHint, { color: colors.textSecondary }]}>View all</Text>
-                </TouchableOpacity>
-                
-                {/* Withdraw */}
-                <TouchableOpacity
-                  style={[styles.quickActionItem, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
-                  onPress={() => navigation.navigate('Withdraw')}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.quickActionIconWrapper}>
-                    <Svg width="48" height="48" viewBox="0 0 48 48">
-                      <Defs>
-                        <SvgLinearGradient id="withdrawGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <Stop offset="0%" stopColor="#FF9800" stopOpacity={0.15} />
-                          <Stop offset="100%" stopColor="#E65100" stopOpacity={0.25} />
-                        </SvgLinearGradient>
-                      </Defs>
-                      <Circle cx="24" cy="24" r="22" fill="url(#withdrawGrad)" />
-                      <Circle cx="24" cy="24" r="16" fill="#FFF3E0" />
-                    </Svg>
-                    <View style={styles.quickActionIconOverlay}>
-                      <Ionicons name="wallet" size={20} color="#F57C00" />
-                    </View>
-                  </View>
-                  <Text style={[styles.quickActionLabel, { color: colors.text }]}>Withdraw</Text>
-                  <Text style={[styles.quickActionHint, { color: colors.textSecondary }]}>Get paid</Text>
-                </TouchableOpacity>
+          {/* Section Header */}
+          <Text style={[styles.iosSectionHeader, { color: colors.textSecondary }]}>QUICK ACTIONS</Text>
+          
+          {/* iOS Grouped List */}
+          <View style={[styles.iosGroupedCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+            {/* Add Product */}
+            <TouchableOpacity
+              style={styles.iosListItem}
+              onPress={() => navigation.navigate('AddProduct')}
+              activeOpacity={0.6}
+            >
+              <View style={[styles.iosListIcon, { backgroundColor: '#34C759' }]}>
+                <Ionicons name="add" size={20} color="#FFFFFF" />
               </View>
-              
-              {/* Row 2 */}
-              <View style={styles.quickActionsRow}>
-                {/* Analytics */}
-                <TouchableOpacity
-                  style={[styles.quickActionItem, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
-                  onPress={() => navigation.navigate('Analytics')}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.quickActionIconWrapper}>
-                    <Svg width="48" height="48" viewBox="0 0 48 48">
-                      <Defs>
-                        <SvgLinearGradient id="analyticsGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <Stop offset="0%" stopColor="#9C27B0" stopOpacity={0.15} />
-                          <Stop offset="100%" stopColor="#6A1B9A" stopOpacity={0.25} />
-                        </SvgLinearGradient>
-                      </Defs>
-                      <Circle cx="24" cy="24" r="22" fill="url(#analyticsGrad)" />
-                      <Circle cx="24" cy="24" r="16" fill="#F3E5F5" />
-                    </Svg>
-                    <View style={styles.quickActionIconOverlay}>
-                      <Ionicons name="stats-chart" size={20} color="#8E24AA" />
-                    </View>
-                  </View>
-                  <Text style={[styles.quickActionLabel, { color: colors.text }]}>Analytics</Text>
-                  <Text style={[styles.quickActionHint, { color: colors.textSecondary }]}>Insights</Text>
-                </TouchableOpacity>
-                
-                {/* Products */}
-                <TouchableOpacity
-                  style={[styles.quickActionItem, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
-                  onPress={() => navigation.navigate('FarmerProducts')}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.quickActionIconWrapper}>
-                    <Svg width="48" height="48" viewBox="0 0 48 48">
-                      <Defs>
-                        <SvgLinearGradient id="productsGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <Stop offset="0%" stopColor="#00BCD4" stopOpacity={0.15} />
-                          <Stop offset="100%" stopColor="#00838F" stopOpacity={0.25} />
-                        </SvgLinearGradient>
-                      </Defs>
-                      <Circle cx="24" cy="24" r="22" fill="url(#productsGrad)" />
-                      <Circle cx="24" cy="24" r="16" fill="#E0F7FA" />
-                    </Svg>
-                    <View style={styles.quickActionIconOverlay}>
-                      <Ionicons name="storefront" size={20} color="#00ACC1" />
-                    </View>
-                  </View>
-                  <Text style={[styles.quickActionLabel, { color: colors.text }]}>Products</Text>
-                  <Text style={[styles.quickActionHint, { color: colors.textSecondary }]}>Manage</Text>
-                </TouchableOpacity>
-                
-                {/* Support */}
-                <TouchableOpacity
-                  style={[styles.quickActionItem, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
-                  onPress={() => navigation.navigate('LiveChat' as any)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.quickActionIconWrapper}>
-                    <Svg width="48" height="48" viewBox="0 0 48 48">
-                      <Defs>
-                        <SvgLinearGradient id="supportGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <Stop offset="0%" stopColor="#E91E63" stopOpacity={0.15} />
-                          <Stop offset="100%" stopColor="#AD1457" stopOpacity={0.25} />
-                        </SvgLinearGradient>
-                      </Defs>
-                      <Circle cx="24" cy="24" r="22" fill="url(#supportGrad)" />
-                      <Circle cx="24" cy="24" r="16" fill="#FCE4EC" />
-                    </Svg>
-                    <View style={styles.quickActionIconOverlay}>
-                      <Ionicons name="headset" size={20} color="#D81B60" />
-                    </View>
-                  </View>
-                  <Text style={[styles.quickActionLabel, { color: colors.text }]}>Support</Text>
-                  <Text style={[styles.quickActionHint, { color: colors.textSecondary }]}>Get help</Text>
-                </TouchableOpacity>
+              <View style={styles.iosListContent}>
+                <Text style={[styles.iosListTitle, { color: colors.text }]}>Add Product</Text>
+                <Text style={[styles.iosListSubtitle, { color: colors.textSecondary }]}>Create new listing</Text>
               </View>
-              
-              {/* Row 3 - Flash Sales */}
-              <View style={styles.quickActionsRow}>
-                {/* Flash Sales */}
-                <TouchableOpacity
-                  style={[styles.quickActionItem, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
-                  onPress={() => navigation.navigate('FlashSales' as any)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.quickActionIconWrapper}>
-                    <Svg width="48" height="48" viewBox="0 0 48 48">
-                      <Defs>
-                        <SvgLinearGradient id="flashGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <Stop offset="0%" stopColor="#F44336" stopOpacity={0.15} />
-                          <Stop offset="100%" stopColor="#C62828" stopOpacity={0.25} />
-                        </SvgLinearGradient>
-                      </Defs>
-                      <Circle cx="24" cy="24" r="22" fill="url(#flashGrad)" />
-                      <Circle cx="24" cy="24" r="16" fill="#FFEBEE" />
-                    </Svg>
-                    <View style={styles.quickActionIconOverlay}>
-                      <Ionicons name="flash" size={20} color="#EF4444" />
-                    </View>
-                  </View>
-                  <Text style={[styles.quickActionLabel, { color: colors.text }]}>Flash Sales</Text>
-                  <Text style={[styles.quickActionHint, { color: colors.textSecondary }]}>Create deals</Text>
-                </TouchableOpacity>
-                
-                {/* Messages */}
-                <TouchableOpacity
-                  style={[styles.quickActionItem, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
-                  onPress={() => navigation.navigate('FarmerMessages')}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.quickActionIconWrapper}>
-                    <Svg width="48" height="48" viewBox="0 0 48 48">
-                      <Defs>
-                        <SvgLinearGradient id="msgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <Stop offset="0%" stopColor="#4CAF50" stopOpacity={0.15} />
-                          <Stop offset="100%" stopColor="#2E7D32" stopOpacity={0.25} />
-                        </SvgLinearGradient>
-                      </Defs>
-                      <Circle cx="24" cy="24" r="22" fill="url(#msgGrad)" />
-                      <Circle cx="24" cy="24" r="16" fill="#E8F5E9" />
-                    </Svg>
-                    <View style={styles.quickActionIconOverlay}>
-                      <Ionicons name="chatbubbles" size={20} color="#4CAF50" />
-                    </View>
-                  </View>
-                  <Text style={[styles.quickActionLabel, { color: colors.text }]}>Messages</Text>
-                  <Text style={[styles.quickActionHint, { color: colors.textSecondary }]}>Chat</Text>
-                </TouchableOpacity>
-                
-                {/* Reports */}
-                <TouchableOpacity
-                  style={[styles.quickActionItem, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
-                  onPress={() => navigation.navigate('BusinessReports' as any)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.quickActionIconWrapper}>
-                    <Svg width="48" height="48" viewBox="0 0 48 48">
-                      <Defs>
-                        <SvgLinearGradient id="reportGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <Stop offset="0%" stopColor="#2196F3" stopOpacity={0.15} />
-                          <Stop offset="100%" stopColor="#1565C0" stopOpacity={0.25} />
-                        </SvgLinearGradient>
-                      </Defs>
-                      <Circle cx="24" cy="24" r="22" fill="url(#reportGrad)" />
-                      <Circle cx="24" cy="24" r="16" fill="#E3F2FD" />
-                    </Svg>
-                    <View style={styles.quickActionIconOverlay}>
-                      <Ionicons name="document-text" size={20} color="#1976D2" />
-                    </View>
-                  </View>
-                  <Text style={[styles.quickActionLabel, { color: colors.text }]}>Reports</Text>
-                  <Text style={[styles.quickActionHint, { color: colors.textSecondary }]}>Download</Text>
-                </TouchableOpacity>
+              <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
+            </TouchableOpacity>
+            
+            <View style={[styles.iosListDivider, { backgroundColor: isDark ? '#38383A' : '#E5E5EA' }]} />
+            
+            {/* Orders */}
+            <TouchableOpacity
+              style={styles.iosListItem}
+              onPress={() => navigation.navigate('FarmerOrders')}
+              activeOpacity={0.6}
+            >
+              <View style={[styles.iosListIcon, { backgroundColor: '#007AFF' }]}>
+                <Ionicons name="bag-handle-outline" size={18} color="#FFFFFF" />
               </View>
-            </View>
+              <View style={styles.iosListContent}>
+                <Text style={[styles.iosListTitle, { color: colors.text }]}>Orders</Text>
+                <Text style={[styles.iosListSubtitle, { color: colors.textSecondary }]}>View & manage orders</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
+            </TouchableOpacity>
+            
+            <View style={[styles.iosListDivider, { backgroundColor: isDark ? '#38383A' : '#E5E5EA' }]} />
+            
+            {/* Withdraw */}
+            <TouchableOpacity
+              style={styles.iosListItem}
+              onPress={() => navigation.navigate('Withdraw')}
+              activeOpacity={0.6}
+            >
+              <View style={[styles.iosListIcon, { backgroundColor: '#FF9500' }]}>
+                <Ionicons name="wallet-outline" size={18} color="#FFFFFF" />
+              </View>
+              <View style={styles.iosListContent}>
+                <Text style={[styles.iosListTitle, { color: colors.text }]}>Withdraw Funds</Text>
+                <Text style={[styles.iosListSubtitle, { color: colors.textSecondary }]}>Transfer to bank</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
+            </TouchableOpacity>
+            
+            <View style={[styles.iosListDivider, { backgroundColor: isDark ? '#38383A' : '#E5E5EA' }]} />
+            
+            {/* Products */}
+            <TouchableOpacity
+              style={styles.iosListItem}
+              onPress={() => navigation.navigate('FarmerProducts')}
+              activeOpacity={0.6}
+            >
+              <View style={[styles.iosListIcon, { backgroundColor: '#5856D6' }]}>
+                <Ionicons name="cube-outline" size={18} color="#FFFFFF" />
+              </View>
+              <View style={styles.iosListContent}>
+                <Text style={[styles.iosListTitle, { color: colors.text }]}>My Products</Text>
+                <Text style={[styles.iosListSubtitle, { color: colors.textSecondary }]}>Manage inventory</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
+            </TouchableOpacity>
+          </View>
+          
+          {/* Second Group */}
+          <View style={[styles.iosGroupedCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', marginTop: 20 }]}>
+            {/* Analytics */}
+            <TouchableOpacity
+              style={styles.iosListItem}
+              onPress={() => navigation.navigate('Analytics')}
+              activeOpacity={0.6}
+            >
+              <View style={[styles.iosListIcon, { backgroundColor: '#AF52DE' }]}>
+                <Ionicons name="bar-chart-outline" size={18} color="#FFFFFF" />
+              </View>
+              <View style={styles.iosListContent}>
+                <Text style={[styles.iosListTitle, { color: colors.text }]}>Analytics</Text>
+                <Text style={[styles.iosListSubtitle, { color: colors.textSecondary }]}>Sales & performance</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
+            </TouchableOpacity>
+            
+            <View style={[styles.iosListDivider, { backgroundColor: isDark ? '#38383A' : '#E5E5EA' }]} />
+            
+            {/* Flash Sales */}
+            <TouchableOpacity
+              style={styles.iosListItem}
+              onPress={() => navigation.navigate('FlashSales' as any)}
+              activeOpacity={0.6}
+            >
+              <View style={[styles.iosListIcon, { backgroundColor: '#FF3B30' }]}>
+                <Ionicons name="flash-outline" size={18} color="#FFFFFF" />
+              </View>
+              <View style={styles.iosListContent}>
+                <Text style={[styles.iosListTitle, { color: colors.text }]}>Flash Sales</Text>
+                <Text style={[styles.iosListSubtitle, { color: colors.textSecondary }]}>Create limited deals</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
+            </TouchableOpacity>
+            
+            <View style={[styles.iosListDivider, { backgroundColor: isDark ? '#38383A' : '#E5E5EA' }]} />
+            
+            {/* Reports */}
+            <TouchableOpacity
+              style={styles.iosListItem}
+              onPress={() => navigation.navigate('BusinessReports' as any)}
+              activeOpacity={0.6}
+            >
+              <View style={[styles.iosListIcon, { backgroundColor: '#007AFF' }]}>
+                <Ionicons name="document-text-outline" size={18} color="#FFFFFF" />
+              </View>
+              <View style={styles.iosListContent}>
+                <Text style={[styles.iosListTitle, { color: colors.text }]}>Reports</Text>
+                <Text style={[styles.iosListSubtitle, { color: colors.textSecondary }]}>Download statements</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
+            </TouchableOpacity>
+          </View>
+          
+          {/* Third Group - Communication */}
+          <View style={[styles.iosGroupedCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', marginTop: 20 }]}>
+            {/* Messages */}
+            <TouchableOpacity
+              style={styles.iosListItem}
+              onPress={() => navigation.navigate('FarmerMessages')}
+              activeOpacity={0.6}
+            >
+              <View style={[styles.iosListIcon, { backgroundColor: '#34C759' }]}>
+                <Ionicons name="chatbubbles-outline" size={18} color="#FFFFFF" />
+              </View>
+              <View style={styles.iosListContent}>
+                <Text style={[styles.iosListTitle, { color: colors.text }]}>Messages</Text>
+                <Text style={[styles.iosListSubtitle, { color: colors.textSecondary }]}>Chat with buyers</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
+            </TouchableOpacity>
+            
+            <View style={[styles.iosListDivider, { backgroundColor: isDark ? '#38383A' : '#E5E5EA' }]} />
+            
+            {/* Support */}
+            <TouchableOpacity
+              style={styles.iosListItem}
+              onPress={() => navigation.navigate('LiveChat' as any)}
+              activeOpacity={0.6}
+            >
+              <View style={[styles.iosListIcon, { backgroundColor: '#FF2D55' }]}>
+                <Ionicons name="headset-outline" size={18} color="#FFFFFF" />
+              </View>
+              <View style={styles.iosListContent}>
+                <Text style={[styles.iosListTitle, { color: colors.text }]}>Support</Text>
+                <Text style={[styles.iosListSubtitle, { color: colors.textSecondary }]}>Get help from team</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
+            </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
@@ -1656,9 +1586,73 @@ const styles = StyleSheet.create({
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    padding: SPACING.md,
-    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 12,
   },
+  // iOS Stat Card Styles
+  iosStatCard: {
+    width: CARD_WIDTH,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 16,
+    paddingBottom: 14,
+    minHeight: 130,
+    position: 'relative',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  iosStatCardSvg: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    opacity: 1,
+  },
+  iosStatIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  iosStatValue: {
+    fontSize: 28,
+    fontWeight: '700',
+    letterSpacing: -0.5,
+    marginBottom: 2,
+  },
+  iosStatLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    opacity: 0.7,
+  },
+  iosStatTrend: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    gap: 3,
+  },
+  iosStatTrendText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  iosStatChevron: {
+    position: 'absolute',
+    top: 16,
+    right: 12,
+  },
+  // Legacy stat card styles (kept for reference)
   statCard: {
     width: CARD_WIDTH,
     backgroundColor: COLORS.surface,
@@ -3465,8 +3459,90 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   // Clean Quick Actions Card Styles
+  quickActionsSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  quickActionsSectionLeft: {
+    flex: 1,
+  },
+  // iOS Settings-Style List Styles
+  iosSectionHeader: {
+    fontSize: 13,
+    fontFamily: FONTS.regular,
+    fontWeight: '400',
+    letterSpacing: -0.08,
+    textTransform: 'uppercase',
+    marginBottom: 8,
+    marginLeft: 16,
+  },
+  iosGroupedCard: {
+    borderRadius: 10,
+    overflow: 'hidden',
+    marginHorizontal: 0,
+  },
+  iosListItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    minHeight: 58,
+  },
+  iosListIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  iosListContent: {
+    flex: 1,
+  },
+  iosListTitle: {
+    fontSize: 17,
+    fontFamily: FONTS.regular,
+    fontWeight: '400',
+    letterSpacing: -0.41,
+  },
+  iosListSubtitle: {
+    fontSize: 13,
+    fontFamily: FONTS.regular,
+    fontWeight: '400',
+    marginTop: 1,
+  },
+  iosListDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 62,
+  },
+  quickActionsSectionTitle: {
+    fontSize: 20,
+    fontFamily: FONTS.bold,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  quickActionsSectionSubtitle: {
+    fontSize: 13,
+    fontFamily: FONTS.regular,
+  },
+  quickActionsSeeAll: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 2,
+  },
+  quickActionsSeeAllText: {
+    fontSize: 13,
+    fontFamily: FONTS.semiBold,
+    fontWeight: '600',
+  },
   quickActionsCard: {
-    borderRadius: 12,
+    borderRadius: 14,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -3475,6 +3551,14 @@ const styles = StyleSheet.create({
     elevation: 3,
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.04)',
+  },
+  quickActionIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
   },
   quickActionsCardHeader: {
     flexDirection: 'row',
@@ -3534,5 +3618,684 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: SPACING.xs,
+  },
+  // ===== iOS Goal Card Styles =====
+  iosGoalCard: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 2,
+    position: 'relative',
+  },
+  iosGoalCardSvg: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  iosGoalCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
+  },
+  iosGoalHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  iosGoalIconBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iosGoalTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  iosGoalSubtitle: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  iosGoalPercentBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  iosGoalPercentText: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  iosGoalAmountRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    paddingHorizontal: 16,
+    gap: 6,
+  },
+  iosGoalCurrentAmount: {
+    fontSize: 28,
+    fontWeight: '700',
+    letterSpacing: -0.5,
+  },
+  iosGoalOfText: {
+    fontSize: 15,
+  },
+  iosGoalTargetAmount: {
+    fontSize: 17,
+    fontWeight: '500',
+  },
+  iosGoalProgressWrapper: {
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 8,
+  },
+  iosGoalProgressBg: {
+    height: 8,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  iosGoalProgressFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  iosGoalFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 14,
+    paddingTop: 4,
+  },
+  iosGoalMotivation: {
+    fontSize: 13,
+    flex: 1,
+  },
+  // ===== iOS Pending Balance Styles =====
+  iosPendingCard: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  iosPendingSvg: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  iosPendingContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    gap: 12,
+  },
+  iosPendingIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iosPendingInfo: {
+    flex: 1,
+  },
+  iosPendingLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  iosPendingAmount: {
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+  iosPendingButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+    gap: 4,
+  },
+  iosPendingButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  // ===== iOS Earnings Card Styles =====
+  iosEarningsCard: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 2,
+    position: 'relative',
+  },
+  iosEarningsSvg: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  iosEarningsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  iosEarningsHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  iosEarningsIconBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iosEarningsTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  iosEarningsSubtitle: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  iosEarningsMain: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
+  iosEarningsMainLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  iosEarningsMainValue: {
+    fontSize: 34,
+    fontWeight: '700',
+    letterSpacing: -0.5,
+  },
+  iosEarningsStatsRow: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 16,
+  },
+  iosEarningsStatBox: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 14,
+    gap: 6,
+  },
+  iosEarningsStatIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iosEarningsStatLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  iosEarningsStatValue: {
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  iosEarningsStatSeparator: {
+    width: StyleSheet.hairlineWidth,
+    marginVertical: 12,
+  },
+  iosEarningsWithdrawBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#10B981',
+    marginHorizontal: 16,
+    marginBottom: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+  },
+  iosEarningsWithdrawText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  // ===== iOS Peak Hours Styles =====
+  iosPeakCard: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 2,
+    position: 'relative',
+  },
+  iosPeakSvg: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  iosPeakHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  iosPeakHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  iosPeakIconBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iosPeakTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  iosPeakSubtitle: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  iosPeakInsightBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+  },
+  iosPeakInsightText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#8B5CF6',
+    letterSpacing: 0.5,
+  },
+  iosPeakSummary: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginTop: 12,
+    borderRadius: 10,
+    paddingVertical: 12,
+  },
+  iosPeakSummaryItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  iosPeakSummarySeparator: {
+    width: StyleSheet.hairlineWidth,
+    marginVertical: 4,
+  },
+  iosPeakSummaryValue: {
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  iosPeakSummaryLabel: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  iosPeakList: {
+    paddingTop: 8,
+  },
+  iosPeakListItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+  },
+  iosPeakRank: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iosPeakTimeInfo: {
+    flex: 1,
+  },
+  iosPeakTime: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  iosPeakOrders: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  iosPeakRevenueInfo: {
+    alignItems: 'flex-end',
+  },
+  iosPeakRevenue: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  iosPeakProgressBg: {
+    width: 60,
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  iosPeakProgressFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  iosPeakFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginTop: 8,
+    gap: 10,
+  },
+  iosPeakTipIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iosPeakTipText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  // ===== iOS Top Sellers Styles =====
+  iosTopSellersCard: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 2,
+    position: 'relative',
+  },
+  iosTopSellersSvg: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  iosTopSellersHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  iosTopSellersHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  iosTopSellersIconBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iosTopSellersTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  iosTopSellersSubtitle: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  iosTopSellersBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  iosTopSellersBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#F59E0B',
+    letterSpacing: 0.3,
+  },
+  iosTopSellersList: {
+    paddingTop: 4,
+  },
+  iosTopSellerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+  },
+  iosTopSellerRank: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iosTopSellerRankText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  iosTopSellerImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  iosTopSellerImageInner: {
+    width: '100%',
+    height: '100%',
+  },
+  iosTopSellerImagePlaceholder: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iosTopSellerInfo: {
+    flex: 1,
+  },
+  iosTopSellerName: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  iosTopSellerMetrics: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  iosTopSellerRevenue: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  iosTopSellerSales: {
+    fontSize: 13,
+    marginLeft: 4,
+  },
+  iosTopSellerProgressBg: {
+    height: 3,
+    borderRadius: 1.5,
+    marginTop: 6,
+    overflow: 'hidden',
+  },
+  iosTopSellerProgressFill: {
+    height: '100%',
+    borderRadius: 1.5,
+  },
+  iosTopSellersEmpty: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: 24,
+  },
+  iosTopSellersEmptyIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  iosTopSellersEmptyTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  iosTopSellersEmptyText: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  // ===== iOS Recent Orders Styles =====
+  iosRecentOrdersCard: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 2,
+    position: 'relative',
+  },
+  iosRecentOrdersSvg: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  iosRecentOrdersHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  iosRecentOrdersHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  iosRecentOrdersIconBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iosRecentOrdersTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  iosRecentOrdersSubtitle: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  iosRecentOrdersViewAll: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  iosRecentOrdersViewAllText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#3B82F6',
+  },
+  iosRecentOrdersList: {
+    paddingTop: 4,
+  },
+  iosRecentOrderItem: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  iosRecentOrderTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  iosRecentOrderId: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  iosRecentOrderStatus: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  iosRecentOrderStatusText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  iosRecentOrderItems: {
+    fontSize: 14,
+    marginBottom: 6,
+  },
+  iosRecentOrderBottom: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  iosRecentOrderAmount: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  iosRecentOrderTime: {
+    fontSize: 13,
+    flex: 1,
+  },
+  iosRecentOrdersEmpty: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: 24,
+  },
+  iosRecentOrdersEmptyIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  iosRecentOrdersEmptyTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  iosRecentOrdersEmptyText: {
+    fontSize: 14,
+    textAlign: 'center',
   },
 });

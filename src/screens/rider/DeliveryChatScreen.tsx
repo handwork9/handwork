@@ -16,6 +16,7 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Svg, { Circle, Path, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, NavigationProp } from '@react-navigation/native';
 import * as Location from 'expo-location';
@@ -688,7 +689,7 @@ const DeliveryChatScreen: React.FC = () => {
       <Animated.View
         style={[
           styles.header,
-          dynamicStyles.headerBg,
+          { backgroundColor: '#FFFFFF' },
           {
             paddingTop: insets.top,
             transform: [
@@ -703,17 +704,37 @@ const DeliveryChatScreen: React.FC = () => {
           },
         ]}
       >
+        {/* SVG Background Decoration */}
+        <View style={styles.headerSvgBackground}>
+          <Svg width="100%" height="120" viewBox="0 0 400 120" preserveAspectRatio="xMidYMid slice">
+            <Defs>
+              <SvgLinearGradient id="deliveryChatGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                <Stop offset="0%" stopColor="#FF9500" stopOpacity={0.12} />
+                <Stop offset="100%" stopColor="#FF6B00" stopOpacity={0.06} />
+              </SvgLinearGradient>
+              <SvgLinearGradient id="deliveryChatGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+                <Stop offset="0%" stopColor="#FF6B00" stopOpacity={0.08} />
+                <Stop offset="100%" stopColor="#FF9500" stopOpacity={0.03} />
+              </SvgLinearGradient>
+            </Defs>
+            <Circle cx="350" cy="15" r="70" fill="url(#deliveryChatGrad1)" />
+            <Circle cx="380" cy="70" r="45" fill="url(#deliveryChatGrad2)" />
+            <Circle cx="30" cy="90" r="55" fill="url(#deliveryChatGrad2)" />
+            <Path d="M0,80 Q100,40 200,80 T400,60" fill="none" stroke="url(#deliveryChatGrad1)" strokeWidth="35" opacity={0.3} />
+          </Svg>
+        </View>
+
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="chevron-back" size={28} color={colors.text} />
+          <Ionicons name="chevron-back" size={28} color="#1C1C1E" />
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.headerCenter} onPress={handleViewContactProfile}>
           <View style={[
             styles.avatar,
-            { backgroundColor: contact.role === 'buyer' ? COLORS.success : COLORS.primary }
+            { backgroundColor: contact.role === 'buyer' ? '#34C759' : '#34C759' }
           ]}>
             <Ionicons 
               name={contact.role === 'buyer' ? 'cart' : 'leaf'} 
@@ -722,19 +743,19 @@ const DeliveryChatScreen: React.FC = () => {
             />
           </View>
           <View style={styles.headerInfo}>
-            <Text style={[styles.headerName, { color: colors.text }]}>{contact.name}</Text>
-            <Text style={[styles.headerRole, { color: colors.textSecondary }]}>
+            <Text style={[styles.headerName, { color: '#1C1C1E' }]}>{contact.name}</Text>
+            <Text style={[styles.headerRole, { color: '#8E8E93' }]}>
               {contact.role === 'buyer' ? 'Buyer' : 'Farmer'} • Order #{orderId.slice(-6)}
             </Text>
           </View>
         </TouchableOpacity>
 
         <View style={styles.headerActions}>
-          <TouchableOpacity style={styles.headerButton} onPress={handleCall}>
-            <Ionicons name="call" size={22} color={COLORS.primary} />
+          <TouchableOpacity style={[styles.headerButton, { backgroundColor: '#FFF3E0' }]} onPress={handleCall}>
+            <Ionicons name="call" size={22} color="#FF9500" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.headerButton} onPress={handleVideoCall}>
-            <Ionicons name="videocam" size={24} color={COLORS.primary} />
+          <TouchableOpacity style={[styles.headerButton, { backgroundColor: '#FFF3E0' }]} onPress={handleVideoCall}>
+            <Ionicons name="videocam" size={24} color="#FF9500" />
           </TouchableOpacity>
         </View>
       </Animated.View>
@@ -915,8 +936,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.sm,
     paddingBottom: SPACING.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: COLORS.border,
-    ...SHADOWS.small,
+    borderBottomColor: '#E5E5EA',
+    position: 'relative',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  headerSvgBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   backButton: {
     padding: SPACING.xs,

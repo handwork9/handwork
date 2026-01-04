@@ -15,6 +15,7 @@ import {
   Animated,
   Image,
   Pressable,
+  Dimensions,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -47,12 +48,18 @@ import deliverySchedulingService, { DeliverySlot } from '../../services/delivery
 
 type Props = NativeStackScreenProps<BuyerStackParamList, 'Checkout'>;
 
-// Enhanced section component with collapsible functionality
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+// iOS-style Section Header (grouped list style)
+const SectionLabel: React.FC<{ title: string; colors: any }> = ({ title, colors }) => (
+  <Text style={[styles.iosGroupLabel, { color: colors.textSecondary }]}>
+    {title.toUpperCase()}
+  </Text>
+);
+
+// iOS-style inset grouped card
 interface SectionProps {
-  title: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  iconColor?: string;
-  iconBgColor?: string;
+  title?: string;
   children: React.ReactNode;
   collapsible?: boolean;
   defaultExpanded?: boolean;
@@ -61,13 +68,11 @@ interface SectionProps {
   error?: boolean;
   colors: any;
   isDark: boolean;
+  noPadding?: boolean;
 }
 
 const Section: React.FC<SectionProps> = ({
   title,
-  icon,
-  iconColor,
-  iconBgColor,
   children,
   collapsible = false,
   defaultExpanded = true,
@@ -76,6 +81,7 @@ const Section: React.FC<SectionProps> = ({
   error,
   colors,
   isDark,
+  noPadding = false,
 }) => {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const animatedHeight = useRef(new Animated.Value(defaultExpanded ? 1 : 0)).current;
@@ -91,90 +97,130 @@ const Section: React.FC<SectionProps> = ({
   };
 
   return (
-    <View style={[
-      styles.sectionContainer,
-      { backgroundColor: isDark ? colors.card : '#FFFFFF' },
-      error && styles.sectionError,
-    ]}>
-      <TouchableOpacity
-        activeOpacity={collapsible ? 0.7 : 1}
-        onPress={toggleExpand}
-        style={styles.sectionHeader}
-      >
-        <View style={[
-          styles.sectionIconContainer,
-          { backgroundColor: error ? '#FEE2E2' : (iconBgColor || (isDark ? 'rgba(0, 122, 255, 0.15)' : '#E5F1FF')) },
-        ]}>
-          <Ionicons name={icon} size={18} color={error ? '#EF4444' : (iconColor || colors.primary)} />
-        </View>
-        <View style={styles.sectionTitleContainer}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+    <View style={styles.iosSectionWrapper}>
+      {title && (
+        <TouchableOpacity
+          activeOpacity={collapsible ? 0.7 : 1}
+          onPress={toggleExpand}
+          style={styles.iosSectionHeaderRow}
+        >
+          <View style={styles.iosSectionTitleRow}>
             <Text style={[
-              styles.sectionTitle,
-              { color: error ? '#EF4444' : colors.text },
+              styles.iosGroupLabel,
+              { color: error ? '#EF4444' : colors.textSecondary },
             ]}>
-              {title}
+              {title.toUpperCase()}
             </Text>
             {required && <Text style={styles.requiredStar}> *</Text>}
+            {badge && (
+              <View style={[styles.iosBadge, { backgroundColor: '#34C75920' }]}>
+                <Text style={[styles.iosBadgeText, { color: '#34C759' }]}>{badge}</Text>
+              </View>
+            )}
           </View>
-          {badge && (
-            <View style={[styles.sectionBadge, { backgroundColor: colors.primary + '20' }]}>
-              <Text style={[styles.sectionBadgeText, { color: colors.primary }]}>{badge}</Text>
-            </View>
+          {collapsible && (
+            <Ionicons
+              name={expanded ? 'chevron-up' : 'chevron-down'}
+              size={16}
+              color={colors.textSecondary}
+            />
           )}
-        </View>
-        {collapsible && (
-          <Ionicons
-            name={expanded ? 'chevron-up' : 'chevron-down'}
-            size={20}
-            color={colors.textSecondary}
-          />
-        )}
-      </TouchableOpacity>
+        </TouchableOpacity>
+      )}
       {(!collapsible || expanded) && (
-        <View style={styles.sectionContent}>{children}</View>
+        <View style={[
+          styles.iosCard,
+          { backgroundColor: isDark ? colors.card : '#FFFFFF' },
+          error && styles.iosCardError,
+          noPadding && { padding: 0 },
+        ]}>
+          {children}
+        </View>
       )}
     </View>
   );
 };
 
-// Progress indicator for checkout steps
-const CheckoutProgress: React.FC<{ currentStep: number; colors: any }> = ({ currentStep, colors }) => {
-  const steps = [
-    { label: 'Address', icon: 'location' as const },
-    { label: 'Delivery', icon: 'bicycle' as const },
-    { label: 'Payment', icon: 'card' as const },
-    { label: 'Confirm', icon: 'checkmark-circle' as const },
-  ];
+// iOS-style Row component
+interface RowItemProps {
+  label: string;
+  value?: string;
+  subtitle?: string;
+  valueColor?: string;
+  onPress?: () => void;
+  leftIcon?: keyof typeof Ionicons.glyphMap;
+  leftIconColor?: string;
+  rightElement?: React.ReactNode;
+  showChevron?: boolean;
+  isLast?: boolean;
+  colors: any;
+  isDark: boolean;
+}
+
+const RowItem: React.FC<RowItemProps> = ({
+  label,
+  value,
+  subtitle,
+  valueColor,
+  onPress,
+  leftIcon,
+  leftIconColor,
+  rightElement,
+  showChevron = true,
+  isLast = false,
+  colors,
+  isDark,
+}) => (
+  <TouchableOpacity
+    style={[
+      styles.iosRowItem,
+      !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(60,60,67,0.12)' },
+    ]}
+    onPress={onPress}
+    activeOpacity={onPress ? 0.6 : 1}
+    disabled={!onPress}
+  >
+    {leftIcon && (
+      <Ionicons name={leftIcon} size={20} color={leftIconColor || colors.primary} style={styles.iosRowIcon} />
+    )}
+    <View style={styles.iosRowContent}>
+      <Text style={[styles.iosRowLabel, { color: colors.text }]} numberOfLines={1}>{label}</Text>
+      {subtitle && <Text style={[styles.iosRowSubtitle, { color: colors.textSecondary }]} numberOfLines={1}>{subtitle}</Text>}
+    </View>
+    {value && <Text style={[styles.iosRowValue, { color: valueColor || colors.textSecondary }]} numberOfLines={1}>{value}</Text>}
+    {rightElement}
+    {showChevron && onPress && <Ionicons name="chevron-forward" size={18} color={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(60,60,67,0.3)'} style={{ marginLeft: 2 }} />}
+  </TouchableOpacity>
+);
+
+// Compact Progress indicator
+const CheckoutProgress: React.FC<{ currentStep: number; colors: any; isDark: boolean }> = ({ currentStep, colors, isDark }) => {
+  const steps = ['Address', 'Delivery', 'Payment', 'Confirm'];
 
   return (
-    <View style={styles.progressContainer}>
+    <View style={styles.iosProgressContainer}>
       {steps.map((step, index) => {
         const isActive = index <= currentStep;
         const isComplete = index < currentStep;
         return (
-          <React.Fragment key={step.label}>
-            <View style={styles.progressStep}>
+          <React.Fragment key={step}>
+            <View style={styles.iosProgressStep}>
               <View style={[
-                styles.progressDot,
+                styles.iosProgressDot,
                 isActive && { backgroundColor: colors.primary },
-                !isActive && { backgroundColor: colors.border },
+                !isActive && { backgroundColor: isDark ? 'rgba(255,255,255,0.2)' : '#E5E5EA' },
               ]}>
-                {isComplete ? (
-                  <Ionicons name="checkmark" size={12} color="#FFFFFF" />
-                ) : (
-                  <Ionicons name={step.icon} size={12} color={isActive ? '#FFFFFF' : colors.textSecondary} />
-                )}
+                {isComplete && <Ionicons name="checkmark" size={10} color="#FFFFFF" />}
               </View>
               <Text style={[
-                styles.progressLabel,
+                styles.iosProgressLabel,
                 { color: isActive ? colors.primary : colors.textSecondary },
-              ]}>{step.label}</Text>
+              ]}>{step}</Text>
             </View>
             {index < steps.length - 1 && (
               <View style={[
-                styles.progressLine,
-                { backgroundColor: index < currentStep ? colors.primary : colors.border },
+                styles.iosProgressLine,
+                { backgroundColor: index < currentStep ? colors.primary : (isDark ? 'rgba(255,255,255,0.15)' : '#E5E5EA') },
               ]} />
             )}
           </React.Fragment>
@@ -184,67 +230,48 @@ const CheckoutProgress: React.FC<{ currentStep: number; colors: any }> = ({ curr
   );
 };
 
-// Order item preview card
-const OrderItemPreview: React.FC<{ items: any[]; colors: any; isDark: boolean }> = ({ items, colors, isDark }) => {
+// Compact Order item preview
+const OrderItemPreview: React.FC<{ items: any[]; colors: any; isDark: boolean; total: number }> = ({ items, colors, isDark, total }) => {
   const totalItems = items.reduce((sum, i) => sum + i.quantity, 0);
-  const displayItems = items.slice(0, 3);
-  const moreCount = items.length - 3;
+  const displayItems = items.slice(0, 4);
+  const moreCount = items.length - 4;
 
   return (
-    <View style={[styles.orderPreview, { backgroundColor: isDark ? colors.surface : '#F8F9FA' }]}>
-      <View style={styles.orderPreviewImages}>
+    <View style={[styles.iosOrderPreview, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+      <View style={styles.iosOrderImages}>
         {displayItems.map((item, index) => (
-          <View
-            key={item.productId}
-            style={[
-              styles.orderPreviewImageWrapper,
-              { marginLeft: index > 0 ? -10 : 0, zIndex: displayItems.length - index },
-            ]}
-          >
+          <View key={item.productId} style={[styles.iosOrderImageWrap, { marginLeft: index > 0 ? -8 : 0, zIndex: 10 - index }]}>
             {item.product?.images?.[0] ? (
-              <Image
-                source={{ uri: item.product.images[0] }}
-                style={styles.orderPreviewImage}
-                resizeMode="cover"
-              />
+              <Image source={{ uri: item.product.images[0] }} style={styles.iosOrderImage} resizeMode="cover" />
             ) : (
-              <View style={[styles.orderPreviewImagePlaceholder, { backgroundColor: colors.border }]}>
-                <Ionicons name="leaf" size={16} color={colors.textSecondary} />
+              <View style={[styles.iosOrderImagePlaceholder, { backgroundColor: isDark ? colors.surface : '#F2F2F7' }]}>
+                <Ionicons name="cube-outline" size={14} color={colors.textSecondary} />
               </View>
             )}
             {item.quantity > 1 && (
-              <View style={[styles.orderPreviewQty, { backgroundColor: colors.primary }]}>
-                <Text style={styles.orderPreviewQtyText}>{item.quantity}</Text>
+              <View style={[styles.iosOrderQtyBadge, { backgroundColor: colors.primary }]}>
+                <Text style={styles.iosOrderQtyText}>{item.quantity}</Text>
               </View>
             )}
           </View>
         ))}
         {moreCount > 0 && (
-          <View style={[styles.orderPreviewMore, { backgroundColor: colors.border }]}>
-            <Text style={[styles.orderPreviewMoreText, { color: colors.text }]}>+{moreCount}</Text>
+          <View style={[styles.iosOrderMoreBadge, { backgroundColor: isDark ? colors.surface : '#F2F2F7' }]}>
+            <Text style={[styles.iosOrderMoreText, { color: colors.text }]}>+{moreCount}</Text>
           </View>
         )}
       </View>
-      <Text style={[styles.orderPreviewText, { color: colors.textSecondary }]}>
-        {totalItems} {totalItems === 1 ? 'item' : 'items'} in your order
-      </Text>
+      <View style={styles.iosOrderInfo}>
+        <Text style={[styles.iosOrderCount, { color: colors.text }]}>{totalItems} item{totalItems !== 1 ? 's' : ''}</Text>
+        <Text style={[styles.iosOrderTotal, { color: colors.primary }]}>₦{total.toLocaleString()}</Text>
+      </View>
     </View>
   );
 };
 
-const DELIVERY_OPTIONS: { type: DeliveryType; label: string; description: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  {
-    type: 'ASAP',
-    label: 'ASAP',
-    description: 'Get it in 30-60 min',
-    icon: 'car-sport',
-  },
-  {
-    type: 'SCHEDULED',
-    label: 'Scheduled',
-    description: 'Pick a time slot',
-    icon: 'calendar',
-  },
+const DELIVERY_OPTIONS: { type: DeliveryType; label: string; description: string }[] = [
+  { type: 'ASAP', label: 'Express', description: '30-60 min' },
+  { type: 'SCHEDULED', label: 'Schedule', description: 'Pick time' },
 ];
 
 type PaymentMethod = 'card' | 'wallet' | 'payForMe';
@@ -1148,28 +1175,23 @@ export default function CheckoutScreen({ navigation }: Props) {
 
   return (
     <View style={[styles.container, { backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
-      {/* Enhanced Fixed Header with Gradient */}
-      <View style={[styles.fixedHeader, { paddingTop: insets.top + 8, backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
+      {/* iOS-style Header */}
+      <View style={[styles.iosHeader, { paddingTop: insets.top, backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iosHeaderBtn}>
+          <Ionicons name="chevron-back" size={28} color={colors.primary} />
         </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <Text style={[styles.fixedHeaderTitle, { color: colors.text }]}>Checkout</Text>
-          <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
-            {items.reduce((sum, i) => sum + i.quantity, 0)} items • ₦{total.toLocaleString()}
-          </Text>
-        </View>
-        <View style={[styles.headerSecureIcon, { backgroundColor: isDark ? 'rgba(0, 122, 255, 0.2)' : 'rgba(0, 122, 255, 0.1)' }]}>
-          <Ionicons name="shield-checkmark" size={18} color={colors.primary} />
+        <Text style={[styles.iosHeaderTitle, { color: colors.text }]}>Checkout</Text>
+        <View style={styles.iosHeaderBtn}>
+          <Ionicons name="lock-closed" size={18} color={colors.textSecondary} />
         </View>
       </View>
 
       <ScrollView 
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={styles.iosScrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Order Preview */}
-        <OrderItemPreview items={items} colors={colors} isDark={isDark} />
+        {/* Order Preview Card */}
+        <OrderItemPreview items={items} colors={colors} isDark={isDark} total={total} />
 
         {/* Progress Indicator */}
         <CheckoutProgress 
@@ -1178,259 +1200,110 @@ export default function CheckoutScreen({ navigation }: Props) {
             deliveryMethod === 'home_delivery' && deliveryType === 'SCHEDULED' && !selectedTimeSlot ? 1 : 
             paymentMethod === 'card' ? 2 : 3
           } 
-          colors={colors} 
+          colors={colors}
+          isDark={isDark}
         />
 
-        {/* Delivery Address */}
-        <Section
-          title="Delivery Address"
-          icon="location"
-          required
-          error={addressError}
-          colors={colors}
-          isDark={isDark}
-        >
-          <TouchableOpacity 
-            style={styles.addressRow}
-            onPress={() => {
-              setAddressError(false);
-              setShowAddressPicker(true);
-            }}
-            activeOpacity={0.7}
-          >
-            <View style={styles.addressDetails}>
-              <Text 
-                style={[styles.addressLabel, { color: addressError ? '#EF4444' : colors.text }]}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-              >
-                {selectedAddress 
-                  ? selectedAddress.addressLine1 
-                  : (user?.address || 'No address saved')}
-              </Text>
-              <Text 
-                style={[styles.addressText, { color: addressError ? '#EF4444' : colors.textSecondary }]}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-              >
-                {selectedAddress 
-                  ? `${selectedAddress.city}, ${selectedAddress.state}` 
-                  : (user?.address ? `${user?.city || ''}, ${user?.state || ''}` : 'Tap to add address')}
-              </Text>
-            </View>
-            <View style={[styles.changeButton, { backgroundColor: colors.primary + '15' }]}>
-              <Text style={[styles.changeText, { color: colors.primary }]}>
-                {(selectedAddress || user?.address) ? 'Change' : 'Add'}
-              </Text>
-              <Ionicons name="chevron-forward" size={16} color={colors.primary} />
-            </View>
-          </TouchableOpacity>
-          {addressError && (
-            <View style={styles.errorMessage}>
-              <Ionicons name="alert-circle" size={14} color="#EF4444" />
-              <Text style={styles.errorText}>Please add a delivery address to continue</Text>
-            </View>
-          )}
-        </Section>
-
-        {/* Send as Gift Option */}
-        <Section
-          title="Send as Gift"
-          icon="gift"
-          iconColor={isGift ? '#E91E63' : undefined}
-          iconBgColor={isGift ? '#FCE4EC' : undefined}
-          badge={isGift ? 'Active' : undefined}
-          colors={colors}
-          isDark={isDark}
-        >
-          <TouchableOpacity
-            style={styles.giftToggleRow}
-            onPress={() => setIsGift(!isGift)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.giftToggleContent}>
-              <Text style={[styles.giftToggleLabel, { color: colors.text }]}>Send as a Gift</Text>
-              <Text style={[styles.giftToggleDesc, { color: colors.textSecondary }]}>
-                {isGift ? 'Gift details below' : 'Add gift message & recipient'}
-              </Text>
-            </View>
-            <View style={[
-              styles.toggleSwitch,
-              { backgroundColor: isGift ? '#E91E63' : (isDark ? 'rgba(255,255,255,0.2)' : '#E5E5EA') }
-            ]}>
-              <View style={[
-                styles.toggleKnob,
-                { transform: [{ translateX: isGift ? 18 : 2 }] }
-              ]} />
-            </View>
-          </TouchableOpacity>
+        {/* DELIVERY SECTION */}
+        <Section title="Delivery" required error={addressError} colors={colors} isDark={isDark} noPadding>
+          {/* Address Row */}
+          <RowItem
+            label={selectedAddress?.addressLine1 || user?.address || 'Add delivery address'}
+            subtitle={selectedAddress ? `${selectedAddress.city}, ${selectedAddress.state}` : (user?.city ? `${user.city}, ${user.state}` : 'Tap to select')}
+            leftIcon="location-outline"
+            leftIconColor={addressError ? '#EF4444' : colors.primary}
+            onPress={() => { setAddressError(false); setShowAddressPicker(true); }}
+            colors={colors}
+            isDark={isDark}
+          />
           
-          {/* Gift Details - Shown when isGift is true */}
-          {isGift && (
-            <View style={[styles.giftDetailsContainer, { borderTopColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60, 60, 67, 0.12)' }]}>
-              <View style={styles.giftInputGroup}>
-                <Text style={[styles.giftInputLabel, { color: colors.text }]}>Recipient's Name *</Text>
-                <View style={[styles.giftInputWrapper, { backgroundColor: isDark ? colors.surface : '#F2F2F7', borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E5EA' }]}>
-                  <Ionicons name="person-outline" size={18} color={colors.textSecondary} style={styles.giftInputIcon} />
-                  <RNTextInput
-                    placeholder="Enter recipient's name"
-                    value={giftRecipientName}
-                    onChangeText={setGiftRecipientName}
-                    style={[styles.giftInput, { color: colors.text }]}
-                    placeholderTextColor={isDark ? 'rgba(255, 255, 255, 0.4)' : colors.textSecondary}
-                    keyboardAppearance={isDark ? 'dark' : 'light'}
-                  />
-                </View>
-              </View>
-              
-              <View style={styles.giftInputGroup}>
-                <Text style={[styles.giftInputLabel, { color: colors.text }]}>Recipient's Phone *</Text>
-                <View style={[styles.giftInputWrapper, { backgroundColor: isDark ? colors.surface : '#F2F2F7', borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E5EA' }]}>
-                  <Ionicons name="call-outline" size={18} color={colors.textSecondary} style={styles.giftInputIcon} />
-                  <RNTextInput
-                    placeholder="Enter phone number"
-                    value={giftRecipientPhone}
-                    onChangeText={setGiftRecipientPhone}
-                    keyboardType="phone-pad"
-                    style={[styles.giftInput, { color: colors.text }]}
-                    placeholderTextColor={isDark ? 'rgba(255, 255, 255, 0.4)' : colors.textSecondary}
-                    keyboardAppearance={isDark ? 'dark' : 'light'}
-                  />
-                </View>
-              </View>
-              
-              <View style={styles.giftInputGroup}>
-                <Text style={[styles.giftInputLabel, { color: colors.text }]}>Gift Message</Text>
-                <View style={[styles.giftInputWrapper, styles.giftMessageWrapper, { backgroundColor: isDark ? colors.surface : '#F2F2F7', borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E5EA' }]}>
-                  <Ionicons name="chatbubble-outline" size={18} color={colors.textSecondary} style={[styles.giftInputIcon, { marginTop: 12 }]} />
-                  <RNTextInput
-                    placeholder="Add a personal message (optional)"
-                    value={giftMessage}
-                    onChangeText={setGiftMessage}
-                    multiline
-                    numberOfLines={3}
-                    style={[styles.giftMessageInput, { color: colors.text }]}
-                    placeholderTextColor={isDark ? 'rgba(255, 255, 255, 0.4)' : colors.textSecondary}
-                    keyboardAppearance={isDark ? 'dark' : 'light'}
-                    textAlignVertical="top"
-                  />
-                </View>
-              </View>
-            </View>
-          )}
-        </Section>
-
-        {/* Delivery Time Section */}
-        <Section
-          title="Delivery Time"
-          icon="time"
-          colors={colors}
-          isDark={isDark}
-        >
-          <View style={styles.deliveryOptionsRow}>
+          {/* Delivery Time Options */}
+          <View style={[styles.iosDeliveryOptions, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(60,60,67,0.12)' }]}>
             {DELIVERY_OPTIONS.map((option) => {
               const isSelected = deliveryType === option.type;
               return (
                 <TouchableOpacity
                   key={option.type}
                   style={[
-                    styles.deliveryOption,
-                    { 
-                      backgroundColor: isDark ? colors.card : '#FFFFFF',
-                      borderColor: isSelected 
-                        ? colors.primary 
-                        : (isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.08)'),
-                    },
-                    isSelected && { borderWidth: 2 },
+                    styles.iosDeliveryOption,
+                    isSelected && { backgroundColor: colors.primary + '15', borderColor: colors.primary },
                   ]}
                   onPress={() => setDeliveryType(option.type)}
                   activeOpacity={0.7}
-              >
-                <View style={[
-                  styles.deliveryIconContainer,
-                  { backgroundColor: isSelected 
-                    ? (isDark ? 'rgba(0, 122, 255, 0.15)' : '#E5F1FF') 
-                    : (isDark ? colors.surface : '#F2F2F7') 
-                  }
-                ]}>
-                  <Ionicons 
-                    name={option.icon} 
-                    size={20} 
-                    color={isSelected ? colors.primary : colors.textSecondary} 
-                  />
-                </View>
-                <Text style={[
-                  styles.deliveryLabel,
-                  { color: isSelected ? colors.primary : colors.text },
-                ]}>
-                  {option.label}
-                </Text>
-                <Text style={[styles.deliveryDescription, { color: colors.textSecondary }]}>
-                  {option.description}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
+                >
+                  <Text style={[styles.iosDeliveryLabel, { color: isSelected ? colors.primary : colors.text }]}>{option.label}</Text>
+                  <Text style={[styles.iosDeliveryDesc, { color: isSelected ? colors.primary : colors.textSecondary }]}>{option.description}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
-          {/* Time Slot Picker - Only show when Scheduled is selected */}
+          {/* Time Slot Selection */}
           {deliveryType === 'SCHEDULED' && (
-            <View style={{ marginTop: 12 }}>
-              <TouchableOpacity
-                style={[styles.timeSlotSelector, { backgroundColor: isDark ? colors.surface : '#F2F2F7' }]}
-                onPress={() => setShowTimeSlotModal(true)}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.timeSlotSelectorIcon, { backgroundColor: isDark ? 'rgba(0, 122, 255, 0.15)' : '#E5F1FF' }]}>
-                  <Ionicons name="time-outline" size={20} color={colors.primary} />
-                </View>
-                <View style={styles.timeSlotSelectorContent}>
-                  {selectedSlot && selectedDate ? (
-                    <>
-                      <Text style={[styles.timeSlotSelectorLabel, { color: colors.text }]}>
-                        {deliverySchedulingService.getNextDays(3).find(d => d.date === selectedDate)?.label || selectedDate}
-                      </Text>
-                      <Text style={[styles.timeSlotSelectorValue, { color: colors.textSecondary }]}>
-                        {selectedSlot.displayTime} ({selectedSlot.name})
-                        {selectedSlot.additionalFee > 0 && ` +₦${selectedSlot.additionalFee}`}
-                      </Text>
-                    </>
-                  ) : selectedTimeSlot ? (
-                    <>
-                      <Text style={[styles.timeSlotSelectorLabel, { color: colors.text }]}>
-                        {timeSlots.find(s => s.id === selectedTimeSlot)?.date}
-                      </Text>
-                      <Text style={[styles.timeSlotSelectorValue, { color: colors.textSecondary }]}>
-                        {timeSlots.find(s => s.id === selectedTimeSlot)?.time}
-                      </Text>
-                    </>
-                  ) : (
-                    <>
-                      <Text style={[styles.timeSlotSelectorLabel, { color: colors.text }]}>
-                        Choose delivery time
-                      </Text>
-                      <Text style={[styles.timeSlotSelectorValue, { color: colors.textSecondary }]}>
-                        Tap to select a time slot
-                      </Text>
-                    </>
-                  )}
-                </View>
-                <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-              </TouchableOpacity>
+            <RowItem
+              label={selectedSlot?.name || 'Select time slot'}
+              subtitle={selectedSlot ? selectedSlot.displayTime : 'Choose delivery window'}
+              leftIcon="time-outline"
+              onPress={() => setShowTimeSlotModal(true)}
+              colors={colors}
+              isDark={isDark}
+            />
+          )}
+
+          {/* Gift Toggle */}
+          <TouchableOpacity
+            style={[styles.iosRowItem, { borderBottomWidth: isGift ? StyleSheet.hairlineWidth : 0, borderBottomColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(60,60,67,0.12)' }]}
+            onPress={() => setIsGift(!isGift)}
+            activeOpacity={0.6}
+          >
+            <Ionicons name="gift-outline" size={20} color="#E91E63" style={styles.iosRowIcon} />
+            <View style={styles.iosRowContent}>
+              <Text style={[styles.iosRowLabel, { color: colors.text }]}>Send as Gift</Text>
+            </View>
+            <View style={[styles.iosToggle, { backgroundColor: isGift ? '#34C759' : (isDark ? 'rgba(255,255,255,0.2)' : '#E5E5EA') }]}>
+              <View style={[styles.iosToggleKnob, { transform: [{ translateX: isGift ? 20 : 2 }] }]} />
+            </View>
+          </TouchableOpacity>
+
+          {/* Gift Details */}
+          {isGift && (
+            <View style={styles.iosGiftDetails}>
+              <View style={styles.iosInputRow}>
+                <RNTextInput
+                  placeholder="Recipient's name"
+                  value={giftRecipientName}
+                  onChangeText={setGiftRecipientName}
+                  style={[styles.iosTextInput, { backgroundColor: isDark ? colors.surface : '#F2F2F7', color: colors.text }]}
+                  placeholderTextColor={colors.textSecondary}
+                />
+              </View>
+              <View style={styles.iosInputRow}>
+                <RNTextInput
+                  placeholder="Recipient's phone"
+                  value={giftRecipientPhone}
+                  onChangeText={setGiftRecipientPhone}
+                  keyboardType="phone-pad"
+                  style={[styles.iosTextInput, { backgroundColor: isDark ? colors.surface : '#F2F2F7', color: colors.text }]}
+                  placeholderTextColor={colors.textSecondary}
+                />
+              </View>
+              <View style={styles.iosInputRow}>
+                <RNTextInput
+                  placeholder="Gift message (optional)"
+                  value={giftMessage}
+                  onChangeText={setGiftMessage}
+                  multiline
+                  numberOfLines={2}
+                  style={[styles.iosTextInput, styles.iosTextArea, { backgroundColor: isDark ? colors.surface : '#F2F2F7', color: colors.text }]}
+                  placeholderTextColor={colors.textSecondary}
+                />
+              </View>
             </View>
           )}
         </Section>
 
-        {/* Enhanced Delivery Options - Speed, Pickup Points */}
-        <Section
-          title="Delivery Options"
-          icon="car"
-          iconColor="#8E44AD"
-          iconBgColor={isDark ? 'rgba(142, 68, 173, 0.15)' : '#F5EEF8'}
-          badge={deliveryMethod === 'pickup_point' ? 'Save 20%' : undefined}
-          colors={colors}
-          isDark={isDark}
-        >
+        {/* DELIVERY OPTIONS - Speed & Pickup */}
+        <Section title="Delivery Options" badge={deliveryMethod === 'pickup_point' ? '20% off' : undefined} colors={colors} isDark={isDark} noPadding>
           <DeliveryOptions
             baseDeliveryFee={deliveryPricing.deliveryFee}
             userLatitude={selectedAddress?.lat || user?.latitude}
@@ -1458,120 +1331,84 @@ export default function CheckoutScreen({ navigation }: Props) {
           />
         </Section>
 
-        {/* Payment Method Section */}
-        <Section
-          title="Payment Method"
-          icon="card"
-          iconColor={colors.primary}
-          iconBgColor={isDark ? 'rgba(0, 122, 255, 0.15)' : '#E5F1FF'}
-          colors={colors}
-          isDark={isDark}
-        >
+        {/* PAYMENT SECTION */}
+        <Section title="Payment" colors={colors} isDark={isDark} noPadding>
           {/* Wallet Option */}
           <TouchableOpacity
-            style={[
-              styles.paymentListRow,
-              { borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60, 60, 67, 0.12)' },
-            ]}
+            style={[styles.iosRowItem, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(60,60,67,0.12)' }]}
             onPress={() => setPaymentMethod('wallet')}
-            activeOpacity={0.7}
+            activeOpacity={0.6}
           >
-            <View style={[styles.paymentIconBg, { backgroundColor: '#E8F5E9' }]}>
+            <View style={[styles.iosPaymentIcon, { backgroundColor: '#E8F5E9' }]}>
               <Ionicons name="wallet" size={18} color="#43A047" />
             </View>
-            <View style={styles.paymentOptionInfo}>
-              <Text style={[styles.paymentOptionLabel, { color: colors.text }]}>Wallet Balance</Text>
+            <View style={styles.iosRowContent}>
+              <Text style={[styles.iosRowLabel, { color: colors.text }]}>Wallet</Text>
               {isLoadingWallet ? (
                 <ActivityIndicator size="small" color={colors.textSecondary} />
               ) : (
-                <Text style={[
-                  styles.paymentOptionBalance,
-                  { color: canAffordWithWallet ? '#43A047' : COLORS.error }
-                ]}>
-                  ₦{(walletBalance?.available || 0).toLocaleString()}
-                  {!canAffordWithWallet && ' (Insufficient)'}
+                <Text style={[styles.iosRowSubtitle, { color: canAffordWithWallet ? '#43A047' : '#EF4444' }]}>
+                  ₦{(walletBalance?.available || 0).toLocaleString()}{!canAffordWithWallet && ' (Low)'}
                 </Text>
               )}
             </View>
-            <View style={[
-              styles.radioButton,
-              { borderColor: paymentMethod === 'wallet' ? colors.primary : (isDark ? 'rgba(255,255,255,0.2)' : '#C7C7CC') },
-            ]}>
-              {paymentMethod === 'wallet' && <View style={[styles.radioButtonInner, { backgroundColor: colors.primary }]} />}
+            <View style={[styles.iosRadio, paymentMethod === 'wallet' && styles.iosRadioSelected]}>
+              {paymentMethod === 'wallet' && <View style={styles.iosRadioInner} />}
             </View>
           </TouchableOpacity>
 
-          {/* Card Payment Option */}
+          {/* Card Option */}
           <TouchableOpacity
-            style={[
-              styles.paymentListRow,
-              { borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60, 60, 67, 0.12)' },
-            ]}
+            style={[styles.iosRowItem, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(60,60,67,0.12)' }]}
             onPress={() => setPaymentMethod('card')}
-            activeOpacity={0.7}
+            activeOpacity={0.6}
           >
-            <View style={[styles.paymentIconBg, { backgroundColor: '#E3F2FD' }]}>
+            <View style={[styles.iosPaymentIcon, { backgroundColor: '#E3F2FD' }]}>
               <Ionicons name="card" size={18} color="#1976D2" />
             </View>
-            <View style={styles.paymentOptionInfo}>
-              <Text style={[styles.paymentOptionLabel, { color: colors.text }]}>
-                {savedCards.length > 0 ? `Card •••• ${savedCards[0]?.cardNumber?.slice(-4) || ''}` : 'Pay with Card'}
+            <View style={styles.iosRowContent}>
+              <Text style={[styles.iosRowLabel, { color: colors.text }]}>
+                {savedCards.length > 0 ? `Card •••• ${savedCards[0]?.cardNumber?.slice(-4) || ''}` : 'Card'}
               </Text>
-              <Text style={[styles.paymentOptionDesc, { color: colors.textSecondary }]}>
-                {savedCards.length > 0 ? 'Secure payment' : 'Visa, Mastercard, Verve'}
-              </Text>
+              <Text style={[styles.iosRowSubtitle, { color: colors.textSecondary }]}>Visa, Mastercard, Verve</Text>
             </View>
-            <View style={[
-              styles.radioButton,
-              { borderColor: paymentMethod === 'card' ? colors.primary : (isDark ? 'rgba(255,255,255,0.2)' : '#C7C7CC') },
-            ]}>
-              {paymentMethod === 'card' && <View style={[styles.radioButtonInner, { backgroundColor: colors.primary }]} />}
+            <View style={[styles.iosRadio, paymentMethod === 'card' && styles.iosRadioSelected]}>
+              {paymentMethod === 'card' && <View style={styles.iosRadioInner} />}
             </View>
           </TouchableOpacity>
 
           {/* Pay for Me Option */}
           <TouchableOpacity
-            style={[styles.paymentListRow, { borderBottomWidth: 0 }]}
+            style={styles.iosRowItem}
             onPress={() => setPaymentMethod('payForMe')}
-            activeOpacity={0.7}
+            activeOpacity={0.6}
           >
-            <View style={[styles.paymentIconBg, { backgroundColor: '#FFF3E0' }]}>
+            <View style={[styles.iosPaymentIcon, { backgroundColor: '#FFF3E0' }]}>
               <Ionicons name="people" size={18} color="#FF6B00" />
             </View>
-            <View style={styles.paymentOptionInfo}>
-              <Text style={[styles.paymentOptionLabel, { color: colors.text }]}>Pay for Me</Text>
-              <Text style={[styles.paymentOptionDesc, { color: colors.textSecondary }]}>Send payment link to someone</Text>
+            <View style={styles.iosRowContent}>
+              <Text style={[styles.iosRowLabel, { color: colors.text }]}>Pay for Me</Text>
+              <Text style={[styles.iosRowSubtitle, { color: colors.textSecondary }]}>Send link to someone</Text>
             </View>
-            <View style={[
-              styles.radioButton,
-              { borderColor: paymentMethod === 'payForMe' ? colors.primary : (isDark ? 'rgba(255,255,255,0.2)' : '#C7C7CC') },
-            ]}>
-              {paymentMethod === 'payForMe' && <View style={[styles.radioButtonInner, { backgroundColor: colors.primary }]} />}
+            <View style={[styles.iosRadio, paymentMethod === 'payForMe' && styles.iosRadioSelected]}>
+              {paymentMethod === 'payForMe' && <View style={styles.iosRadioInner} />}
             </View>
           </TouchableOpacity>
-          
-          {/* Top Up Link - Inside payment section */}
+
+          {/* Top Up Link */}
           {paymentMethod === 'wallet' && !canAffordWithWallet && (
             <TouchableOpacity 
-              style={[styles.topUpLink, { marginTop: 12 }]}
+              style={styles.iosTopUpLink}
               onPress={() => navigation.navigate('TopUp' as any)}
             >
-              <Ionicons name="add-circle-outline" size={18} color={colors.primary} />
-              <Text style={[styles.topUpLinkText, { color: colors.primary }]}>Top up your wallet</Text>
+              <Text style={[styles.iosTopUpText, { color: colors.primary }]}>Top up wallet</Text>
+              <Ionicons name="arrow-forward" size={16} color={colors.primary} />
             </TouchableOpacity>
           )}
         </Section>
 
-        {/* Coupon Code Section */}
-        <Section
-          title="Coupon Code"
-          icon="pricetag"
-          iconColor="#FF6B00"
-          iconBgColor={isDark ? 'rgba(255, 107, 0, 0.15)' : '#FFF3E0'}
-          badge={appliedCoupon ? 'Applied' : undefined}
-          colors={colors}
-          isDark={isDark}
-        >
+        {/* COUPON SECTION */}
+        <Section title="Coupon" badge={appliedCoupon ? 'Applied' : undefined} colors={colors} isDark={isDark}>
           <CouponInput
             subtotal={total}
             deliveryFee={deliveryPricing.deliveryFee}
@@ -1582,169 +1419,104 @@ export default function CheckoutScreen({ navigation }: Props) {
           />
         </Section>
 
-        {/* Message for Farmer Section */}
-        <Section
-          title="Message for Farmer"
-          icon="leaf"
-          iconColor="#43A047"
-          iconBgColor={isDark ? 'rgba(76, 175, 80, 0.15)' : '#E8F5E9'}
-          collapsible
-          defaultCollapsed
-          colors={colors}
-          isDark={isDark}
-        >
-          <View style={styles.farmerMessageHeader}>
-            <View style={styles.farmerMessageHeaderText}>
-              <Text style={[styles.farmerMessageSubtitle, { color: colors.textSecondary }]}>
-                Let the farmer know your preferences
-              </Text>
-            </View>
+        {/* NOTES SECTION - Collapsible */}
+        <Section title="Notes" collapsible defaultExpanded={false} colors={colors} isDark={isDark}>
+          <View style={styles.iosNotesContainer}>
+            <Text style={[styles.iosNoteLabel, { color: colors.textSecondary }]}>For Farmer</Text>
+            <RNTextInput
+              placeholder="e.g., Pick ripe ones only..."
+              value={farmerMessage}
+              onChangeText={setFarmerMessage}
+              multiline
+              numberOfLines={2}
+              style={[styles.iosNoteInput, { backgroundColor: isDark ? colors.surface : '#F2F2F7', color: colors.text, borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60,60,67,0.12)' }]}
+              placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : colors.textSecondary}
+              keyboardAppearance={isDark ? 'dark' : 'light'}
+              textAlignVertical="top"
+            />
+            
+            <Text style={[styles.iosNoteLabel, { color: colors.textSecondary, marginTop: 16 }]}>Delivery Instructions</Text>
+            <RNTextInput
+              placeholder="Gate code, leave at door..."
+              value={orderNotes}
+              onChangeText={setOrderNotes}
+              multiline
+              numberOfLines={2}
+              style={[styles.iosNoteInput, { backgroundColor: isDark ? colors.surface : '#F2F2F7', color: colors.text, borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60,60,67,0.12)' }]}
+              placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : colors.textSecondary}
+              keyboardAppearance={isDark ? 'dark' : 'light'}
+              textAlignVertical="top"
+            />
+            
+            <Text style={[styles.iosNoteLabel, { color: colors.textSecondary, marginTop: 16 }]}>For Rider</Text>
+            <RNTextInput
+              placeholder="Call when you arrive..."
+              value={riderNote}
+              onChangeText={setRiderNote}
+              multiline
+              numberOfLines={2}
+              style={[styles.iosNoteInput, { backgroundColor: isDark ? colors.surface : '#F2F2F7', color: colors.text, borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60,60,67,0.12)' }]}
+              placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : colors.textSecondary}
+              keyboardAppearance={isDark ? 'dark' : 'light'}
+              textAlignVertical="top"
+            />
           </View>
-          <TextInput
-            placeholder="e.g., Pick ripe ones only, no stems, extra fresh..."
-            value={farmerMessage}
-            onChangeText={setFarmerMessage}
-            multiline
-            numberOfLines={3}
-            containerStyle={styles.farmerMessageInput}
-            style={{ minHeight: 70, textAlignVertical: 'top', fontSize: 13 }}
-          />
         </Section>
 
-        {/* Delivery Instructions Section */}
-        <Section
-          title="Delivery Instructions"
-          icon="document-text"
-          colors={colors}
-          isDark={isDark}
-          collapsible
-          defaultCollapsed
-        >
-          <TextInput
-            placeholder="Gate code, leave at door, etc."
-            value={orderNotes}
-            onChangeText={setOrderNotes}
-            containerStyle={styles.notesInput}
-            style={{ minHeight: 40 }}
-          />
-        </Section>
-
-        {/* Note for Rider Section */}
-        <Section
-          title="Note for Rider"
-          icon="bicycle"
-          iconColor={colors.primary}
-          iconBgColor={isDark ? 'rgba(0, 122, 255, 0.15)' : '#E5F1FF'}
-          collapsible
-          defaultCollapsed
-          colors={colors}
-          isDark={isDark}
-        >
-          <Text style={[styles.riderNoteHeaderText, { color: colors.textSecondary, marginBottom: 8 }]}>
-            Special instructions for the delivery rider
-          </Text>
-          <TextInput
-            placeholder="e.g., Call when you arrive, use back entrance, look for the red gate..."
-            value={riderNote}
-            onChangeText={setRiderNote}
-            multiline
-            numberOfLines={2}
-            containerStyle={styles.riderNoteInput}
-            style={{ minHeight: 50, textAlignVertical: 'top' }}
-          />
-        </Section>
-
-        {/* Order Summary Section */}
-        <Section
-          title="Order Summary"
-          icon="receipt"
-          colors={colors}
-          isDark={isDark}
-        >
-          <View style={[styles.summaryRow, styles.summaryRowBorder, { borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60, 60, 67, 0.12)' }]}>
-            <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
-              Items ({items.reduce((sum, i) => sum + i.quantity, 0)})
-            </Text>
-            <Text style={[styles.summaryValue, { color: colors.text }]}>₦{total.toLocaleString()}</Text>
+        {/* ORDER SUMMARY */}
+        <Section title="Summary" colors={colors} isDark={isDark} noPadding>
+          <View style={styles.iosSummaryRow}>
+            <Text style={[styles.iosSummaryLabel, { color: colors.textSecondary }]}>Subtotal ({items.reduce((sum, i) => sum + i.quantity, 0)} items)</Text>
+            <Text style={[styles.iosSummaryValue, { color: colors.text }]}>₦{total.toLocaleString()}</Text>
           </View>
-          <View style={[styles.summaryRow, styles.summaryRowBorder, { borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60, 60, 67, 0.12)' }]}>
-            <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
-              Delivery ({estimatedDistanceKm.toFixed(1)} km)
-            </Text>
+          <View style={styles.iosSummaryRow}>
+            <Text style={[styles.iosSummaryLabel, { color: colors.textSecondary }]}>Delivery ({estimatedDistanceKm.toFixed(1)} km)</Text>
             {hasFreeDelivery ? (
-              <Text style={[styles.summaryValue, { color: '#34C759', fontWeight: '600' }]}>FREE</Text>
+              <Text style={[styles.iosSummaryValue, { color: '#34C759' }]}>FREE</Text>
             ) : (
-              <Text style={[styles.summaryValue, { color: colors.text }]}>{formatDeliveryFee(deliveryFee)}</Text>
+              <Text style={[styles.iosSummaryValue, { color: colors.text }]}>{formatDeliveryFee(deliveryFee)}</Text>
             )}
           </View>
           {!hasFreeDelivery && amountForFreeDelivery > 0 && (
-            <TouchableOpacity 
-              style={styles.freeDeliveryHint} 
-              onPress={() => navigation.goBack()}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="information-circle" size={14} color={colors.primary} />
-              <Text style={[styles.freeDeliveryHintText, { color: colors.primary }]}>
-                Add ₦{amountForFreeDelivery.toLocaleString()} more for free delivery
+            <TouchableOpacity style={styles.iosFreeDeliveryHint} onPress={() => navigation.goBack()}>
+              <Text style={[styles.iosFreeDeliveryText, { color: colors.primary }]}>
+                Add ₦{amountForFreeDelivery.toLocaleString()} for free delivery →
               </Text>
-              <Ionicons name="chevron-forward" size={14} color={colors.primary} />
             </TouchableOpacity>
           )}
-          {deliveryType === 'ASAP' && deliveryPricing.breakdown.expressPremium > 0 && (
-            <View style={[styles.summaryRow, styles.summaryRowBorder, { borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60, 60, 67, 0.12)' }]}>
-              <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Express Premium</Text>
-              <Text style={[styles.summaryValue, { color: colors.text }]}>
-                +₦{deliveryPricing.breakdown.expressPremium.toLocaleString()}
-              </Text>
-            </View>
-          )}
           {appliedCoupon && discount > 0 && (
-            <View style={[styles.summaryRow, styles.summaryRowBorder, { borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60, 60, 67, 0.12)' }]}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Ionicons name="pricetag" size={14} color="#34C759" style={{ marginRight: 4 }} />
-                <Text style={[styles.summaryLabel, { color: '#34C759' }]}>
-                  Coupon ({appliedCoupon.code})
-                </Text>
-              </View>
-              <Text style={[styles.summaryValue, { color: '#34C759' }]}>-₦{discount.toLocaleString()}</Text>
+            <View style={styles.iosSummaryRow}>
+              <Text style={[styles.iosSummaryLabel, { color: '#34C759' }]}>Coupon ({appliedCoupon.code})</Text>
+              <Text style={[styles.iosSummaryValue, { color: '#34C759' }]}>-₦{discount.toLocaleString()}</Text>
             </View>
           )}
-          <View style={[styles.summaryRow, styles.summaryRowBorder, { borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60, 60, 67, 0.12)' }]}>
-            <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Service Fee (2%)</Text>
-            <Text style={[styles.summaryValue, { color: colors.text }]}>₦{serviceFee.toLocaleString()}</Text>
+          <View style={styles.iosSummaryRow}>
+            <Text style={[styles.iosSummaryLabel, { color: colors.textSecondary }]}>Service Fee</Text>
+            <Text style={[styles.iosSummaryValue, { color: colors.text }]}>₦{serviceFee.toLocaleString()}</Text>
           </View>
-          <View style={styles.summaryRow}>
-            <Text style={[styles.totalLabel, { color: colors.text }]}>Total</Text>
-            <Text style={[styles.totalValue, { color: colors.primary }]}>₦{finalTotal.toLocaleString()}</Text>
+          <View style={[styles.iosSummaryRow, styles.iosTotalRow]}>
+            <Text style={[styles.iosTotalLabel, { color: colors.text }]}>Total</Text>
+            <Text style={[styles.iosTotalValue, { color: colors.primary }]}>₦{finalTotal.toLocaleString()}</Text>
           </View>
-          <Text style={[styles.estimatedTimeText, { color: colors.textSecondary }]}>
-            Estimated delivery: {deliveryPricing.estimatedTime} mins
+          <Text style={[styles.iosEstimatedTime, { color: colors.textSecondary }]}>
+            Est. delivery: {deliveryPricing.estimatedTime} mins
           </Text>
         </Section>
 
-        {/* Terms of Use Section */}
-        <View style={[styles.termsSection, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
-          <Text style={[styles.termsText, { color: colors.textSecondary }]}>
-            By placing this order, you agree to our{' '}
-            <Text style={[styles.termsLink, { color: colors.primary }]}>Terms of Service</Text>
-            {' '}and{' '}
-            <Text style={[styles.termsLink, { color: colors.primary }]}>Privacy Policy</Text>.
+        {/* Terms */}
+        <View style={styles.iosTermsContainer}>
+          <Text style={[styles.iosTermsText, { color: colors.textSecondary }]}>
+            By ordering, you agree to our Terms & Privacy Policy
           </Text>
-          <View style={styles.termsInfo}>
-            <Ionicons name="shield-checkmark-outline" size={16} color={colors.textSecondary} />
-            <Text style={[styles.termsInfoText, { color: colors.textSecondary }]}>
-              Your payment information is securely encrypted
-            </Text>
-          </View>
         </View>
 
-        <View style={{ height: 120 }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Fixed Bottom Bar */}
-      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12, backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+      {/* Bottom CTA */}
+      <View style={[styles.iosBottomBar, { paddingBottom: insets.bottom + 8, backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
         <Button
-          title={`Place Order • ₦${finalTotal.toLocaleString()}`}
+          title={`Pay ₦${finalTotal.toLocaleString()}`}
           onPress={handlePlaceOrder}
           loading={createOrderMutation.isPending || isProcessingPayment}
           disabled={paymentMethod === 'wallet' && !canAffordWithWallet}
@@ -1756,39 +1528,36 @@ export default function CheckoutScreen({ navigation }: Props) {
       <Modal
         visible={showPaymentModal}
         animationType="slide"
-        presentationStyle="fullScreen"
+        presentationStyle="pageSheet"
         onRequestClose={handleClosePaymentModal}
       >
-        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-        <View style={[styles.paymentModalContainer, { backgroundColor: '#FFFFFF', paddingTop: insets.top }]}>
-          <View style={[styles.paymentModalHeader, { backgroundColor: '#FFFFFF' }]}>
-            <TouchableOpacity onPress={handleClosePaymentModal} style={styles.paymentModalCloseBtn}>
-              <Ionicons name="close" size={24} color="#1F2937" />
+        <View style={[styles.iosModalContainer, { backgroundColor: '#FFFFFF', paddingTop: insets.top }]}>
+          <View style={styles.iosModalHeader}>
+            <TouchableOpacity onPress={handleClosePaymentModal} style={styles.iosModalCloseBtn}>
+              <Text style={[styles.iosModalCancelText, { color: colors.primary }]}>Cancel</Text>
             </TouchableOpacity>
-            <Text style={[styles.paymentModalTitle, { color: '#1F2937' }]}>Complete Payment</Text>
-            <View style={styles.placeholder} />
+            <Text style={styles.iosModalTitle}>Payment</Text>
+            <View style={{ width: 60 }} />
           </View>
-          
           {paymentUrl ? (
             <WebView
               source={{ uri: paymentUrl }}
               onNavigationStateChange={handlePaymentWebViewNavigation}
               onShouldStartLoadWithRequest={handleShouldStartLoad}
               injectedJavaScript={injectedJavaScript}
-              style={styles.paymentWebView}
+              style={{ flex: 1 }}
               startInLoadingState
               javaScriptEnabled
               domStorageEnabled
               renderLoading={() => (
-                <View style={styles.webViewLoading}>
+                <View style={styles.iosWebViewLoading}>
                   <ActivityIndicator size="large" color={colors.primary} />
-                  <Text style={[styles.webViewLoadingText, { color: colors.textSecondary }]}>
-                    Loading secure payment...
+                  <Text style={[styles.iosWebViewLoadingText, { color: colors.textSecondary }]}>
+                    Loading payment...
                   </Text>
                 </View>
               )}
               onMessage={(event) => {
-                // Handle messages from injected JS or Paystack
                 try {
                   const data = JSON.parse(event.nativeEvent.data);
                   if (data.status === 'success' || data.event === 'successful' || data.event === 'payment_complete') {
@@ -1796,13 +1565,11 @@ export default function CheckoutScreen({ navigation }: Props) {
                     setPaymentUrl('');
                     verifyPaymentAndCreateOrder(paymentReference);
                   }
-                } catch (e) {
-                  // Not a JSON message, ignore
-                }
+                } catch (e) {}
               }}
             />
           ) : (
-            <View style={styles.webViewLoading}>
+            <View style={styles.iosWebViewLoading}>
               <ActivityIndicator size="large" color={colors.primary} />
             </View>
           )}
@@ -1813,441 +1580,232 @@ export default function CheckoutScreen({ navigation }: Props) {
       <Modal
         visible={showPayForMeModal}
         animationType="slide"
-        transparent
+        presentationStyle="pageSheet"
         onRequestClose={handleClosePayForMeModal}
       >
         <KeyboardAvoidingView 
-          style={styles.modalOverlay}
+          style={{ flex: 1, backgroundColor: isDark ? colors.background : '#F2F2F7' }}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
         >
-          <View style={[styles.payForMeModalContent, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Pay for Me</Text>
-              <TouchableOpacity onPress={handleClosePayForMeModal}>
-                <Ionicons name="close" size={24} color={colors.text} />
-              </TouchableOpacity>
-            </View>
+          <View style={[styles.iosModalHeader, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+            <TouchableOpacity onPress={handleClosePayForMeModal} style={styles.iosModalCloseBtn}>
+              <Text style={[styles.iosModalCancelText, { color: colors.primary }]}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={[styles.iosModalTitle, { color: colors.text }]}>Pay for Me</Text>
+            <View style={{ width: 60 }} />
+          </View>
 
-            {!payLinkGenerated ? (
-              <ScrollView style={styles.payForMeForm} showsVerticalScrollIndicator={false}>
-                <Text style={[styles.payForMeDescription, { color: colors.textSecondary }]}>
-                  Enter the details of the person who will pay for your order. We'll generate a secure payment link to share with them.
-                </Text>
+          {!payLinkGenerated ? (
+            <ScrollView style={styles.iosModalContent} showsVerticalScrollIndicator={false}>
+              <Text style={[styles.iosModalDesc, { color: colors.textSecondary }]}>
+                Enter details of the person who will pay. We'll generate a secure payment link.
+              </Text>
 
-                <View style={styles.payForMeInputGroup}>
-                  <Text style={[styles.payForMeLabel, { color: colors.text }]}>Their Name *</Text>
-                  <View style={[styles.payForMeInputContainer, { backgroundColor: isDark ? colors.surface : '#F2F2F7', borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E5EA' }]}>
-                    <Ionicons name="person-outline" size={18} color={colors.textSecondary} style={styles.payForMeInputIcon} />
-                    <RNTextInput
-                      placeholder="Enter their name"
-                      value={payForMeName}
-                      onChangeText={setPayForMeName}
-                      style={[styles.payForMeInput, { color: colors.text }]}
-                      placeholderTextColor={isDark ? 'rgba(255, 255, 255, 0.4)' : colors.textSecondary}
-                      keyboardAppearance={isDark ? 'dark' : 'light'}
-                    />
-                  </View>
-                </View>
+              <View style={styles.iosInputGroup}>
+                <Text style={[styles.iosInputLabel, { color: colors.textSecondary }]}>NAME</Text>
+                <RNTextInput
+                  placeholder="Their name"
+                  value={payForMeName}
+                  onChangeText={setPayForMeName}
+                  style={[styles.iosModalInput, { backgroundColor: isDark ? colors.card : '#FFFFFF', color: colors.text }]}
+                  placeholderTextColor={colors.textSecondary}
+                />
+              </View>
 
-                <View style={styles.payForMeInputGroup}>
-                  <Text style={[styles.payForMeLabel, { color: colors.text }]}>Their Email *</Text>
-                  <View style={[styles.payForMeInputContainer, { backgroundColor: isDark ? colors.surface : '#F2F2F7', borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E5EA' }]}>
-                    <Ionicons name="mail-outline" size={18} color={colors.textSecondary} style={styles.payForMeInputIcon} />
-                    <RNTextInput
-                      placeholder="Enter their email"
-                      value={payForMeEmail}
-                      onChangeText={setPayForMeEmail}
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      style={[styles.payForMeInput, { color: colors.text }]}
-                      placeholderTextColor={isDark ? 'rgba(255, 255, 255, 0.4)' : colors.textSecondary}
-                      keyboardAppearance={isDark ? 'dark' : 'light'}
-                    />
-                  </View>
-                </View>
+              <View style={styles.iosInputGroup}>
+                <Text style={[styles.iosInputLabel, { color: colors.textSecondary }]}>EMAIL</Text>
+                <RNTextInput
+                  placeholder="Their email"
+                  value={payForMeEmail}
+                  onChangeText={setPayForMeEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  style={[styles.iosModalInput, { backgroundColor: isDark ? colors.card : '#FFFFFF', color: colors.text }]}
+                  placeholderTextColor={colors.textSecondary}
+                />
+              </View>
 
-                <View style={styles.payForMeInputGroup}>
-                  <Text style={[styles.payForMeLabel, { color: colors.text }]}>Their Phone (Optional)</Text>
-                  <View style={[styles.payForMeInputContainer, { backgroundColor: isDark ? colors.surface : '#F2F2F7', borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E5EA' }]}>
-                    <Ionicons name="call-outline" size={18} color={colors.textSecondary} style={styles.payForMeInputIcon} />
-                    <RNTextInput
-                      placeholder="Enter their phone number"
-                      value={payForMePhone}
-                      onChangeText={setPayForMePhone}
-                      keyboardType="phone-pad"
-                      style={[styles.payForMeInput, { color: colors.text }]}
-                      placeholderTextColor={isDark ? 'rgba(255, 255, 255, 0.4)' : colors.textSecondary}
-                      keyboardAppearance={isDark ? 'dark' : 'light'}
-                    />
-                  </View>
-                </View>
+              <View style={styles.iosInputGroup}>
+                <Text style={[styles.iosInputLabel, { color: colors.textSecondary }]}>PHONE (OPTIONAL)</Text>
+                <RNTextInput
+                  placeholder="Their phone"
+                  value={payForMePhone}
+                  onChangeText={setPayForMePhone}
+                  keyboardType="phone-pad"
+                  style={[styles.iosModalInput, { backgroundColor: isDark ? colors.card : '#FFFFFF', color: colors.text }]}
+                  placeholderTextColor={colors.textSecondary}
+                />
+              </View>
 
-                <View style={[styles.payForMeAmountCard, { backgroundColor: isDark ? colors.surface : '#F8F9FA' }]}>
-                  <Text style={[styles.payForMeAmountLabel, { color: colors.textSecondary }]}>Amount to Pay</Text>
-                  <Text style={[styles.payForMeAmount, { color: colors.primary }]}>₦{finalTotal.toLocaleString()}</Text>
-                </View>
+              <View style={[styles.iosAmountCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+                <Text style={[styles.iosAmountLabel, { color: colors.textSecondary }]}>Amount</Text>
+                <Text style={[styles.iosAmountValue, { color: colors.primary }]}>₦{finalTotal.toLocaleString()}</Text>
+              </View>
 
-                <View style={[styles.payForMeInfoCard, { backgroundColor: isDark ? 'rgba(0, 122, 255, 0.1)' : '#E5F1FF' }]}>
-                  <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
-                  <Text style={[styles.payForMeInfoText, { color: colors.primary }]}>
-                    The payment link expires in 24 hours. You'll be notified when the payment is completed.
-                  </Text>
-                </View>
-
+              <View style={styles.iosModalActions}>
                 <Button
-                  title={isGeneratingPayLink ? 'Generating Link...' : 'Generate Payment Link'}
+                  title={isGeneratingPayLink ? 'Generating...' : 'Generate Link'}
                   onPress={handleGeneratePayForMeLink}
                   loading={isGeneratingPayLink}
                   fullWidth
-                  style={{ marginTop: 16 }}
                 />
-              </ScrollView>
-            ) : (
-              <View style={styles.payForMeSuccess}>
-                {/* Status-based UI */}
-                {payForMeStatus === 'pending' && (
-                  <>
-                    <View style={[styles.payForMeSuccessIcon, { backgroundColor: '#E5F1FF' }]}>
-                      <Ionicons name="link-outline" size={48} color={colors.primary} />
-                    </View>
-                    <Text style={[styles.payForMeSuccessTitle, { color: colors.text }]}>Payment Link Ready!</Text>
-                    <Text style={[styles.payForMeSuccessDesc, { color: colors.textSecondary }]}>
-                      Share this link with {payForMeName} to complete the payment.
-                    </Text>
-
-                    <View style={[styles.payForMeLinkBox, { backgroundColor: isDark ? colors.surface : '#F2F2F7' }]}>
-                      <Text style={[styles.payForMeLinkText, { color: colors.text }]} numberOfLines={2}>
-                        {payForMeLink}
-                      </Text>
-                    </View>
-
-                    <View style={styles.payForMeActions}>
-                      <TouchableOpacity 
-                        style={[styles.payForMeActionBtn, { backgroundColor: colors.primary }]}
-                        onPress={handleSharePayForMeLink}
-                      >
-                        <Ionicons name="share-outline" size={20} color="#FFFFFF" />
-                        <Text style={styles.payForMeActionBtnText}>Share Link</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity 
-                        style={[styles.payForMeActionBtn, { backgroundColor: isDark ? colors.surface : '#F2F2F7' }]}
-                        onPress={handleCopyPayForMeLink}
-                      >
-                        <Ionicons name="copy-outline" size={20} color={colors.text} />
-                        <Text style={[styles.payForMeActionBtnText, { color: colors.text }]}>Copy</Text>
-                      </TouchableOpacity>
-                    </View>
-
-                    {/* Polling status indicator */}
-                    <View style={[styles.payForMePollingCard, { backgroundColor: isDark ? 'rgba(0, 122, 255, 0.1)' : '#E5F1FF' }]}>
-                      <ActivityIndicator size="small" color={colors.primary} />
-                      <Text style={[styles.payForMePollingText, { color: colors.primary }]}>
-                        Waiting for payment from {payForMeName}...
-                      </Text>
-                    </View>
-                  </>
-                )}
-
-                {payForMeStatus === 'paid' && (
-                  <>
-                    <View style={[styles.payForMeSuccessIcon, { backgroundColor: '#E8F5E9' }]}>
-                      <Ionicons name="checkmark-circle" size={48} color="#43A047" />
-                    </View>
-                    <Text style={[styles.payForMeSuccessTitle, { color: colors.text }]}>Payment Received! 🎉</Text>
-                    <Text style={[styles.payForMeSuccessDesc, { color: colors.textSecondary }]}>
-                      {payForMeName} has paid ₦{finalTotal.toLocaleString()}. Creating your order...
-                    </Text>
-                    <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 20 }} />
-                  </>
-                )}
-
-                {payForMeStatus === 'creating_order' && (
-                  <>
-                    <View style={[styles.payForMeSuccessIcon, { backgroundColor: '#E5F1FF' }]}>
-                      <ActivityIndicator size="large" color={colors.primary} />
-                    </View>
-                    <Text style={[styles.payForMeSuccessTitle, { color: colors.text }]}>Creating Your Order...</Text>
-                    <Text style={[styles.payForMeSuccessDesc, { color: colors.textSecondary }]}>
-                      Please wait while we process your order.
-                    </Text>
-                  </>
-                )}
-
-                {payForMeStatus === 'completed' && (
-                  <>
-                    <View style={[styles.payForMeSuccessIcon, { backgroundColor: '#E8F5E9' }]}>
-                      <Ionicons name="bag-check" size={48} color="#43A047" />
-                    </View>
-                    <Text style={[styles.payForMeSuccessTitle, { color: colors.text }]}>Order Placed! 🎉</Text>
-                    <Text style={[styles.payForMeSuccessDesc, { color: colors.textSecondary }]}>
-                      Your order has been placed successfully. Thank {payForMeName} for paying!
-                    </Text>
-                    <Button
-                      title="View Orders"
-                      onPress={() => {
-                        resetPayForMeState();
-                        navigation.navigate('Orders' as any);
-                      }}
-                      fullWidth
-                      style={{ marginTop: 20 }}
-                    />
-                  </>
-                )}
-
-                {payForMeStatus === 'failed' && (
-                  <>
-                    <View style={[styles.payForMeSuccessIcon, { backgroundColor: '#FFEBEE' }]}>
-                      <Ionicons name="alert-circle" size={48} color="#EF4444" />
-                    </View>
-                    <Text style={[styles.payForMeSuccessTitle, { color: colors.text }]}>Order Failed</Text>
-                    <Text style={[styles.payForMeSuccessDesc, { color: colors.textSecondary }]}>
-                      There was a problem creating your order. Please try again.
-                    </Text>
-                    <Button
-                      title="Try Again"
-                      onPress={() => {
-                        setPayForMeStatus('pending');
-                        if (paymentReference) {
-                          createPayForMeOrder(paymentReference);
-                        }
-                      }}
-                      fullWidth
-                      style={{ marginTop: 20 }}
-                    />
-                    <TouchableOpacity 
-                      style={[styles.payForMeDoneBtn, { marginTop: 12 }]}
-                      onPress={resetPayForMeState}
-                    >
-                      <Text style={[styles.payForMeDoneBtnText, { color: colors.textSecondary }]}>Cancel</Text>
-                    </TouchableOpacity>
-                  </>
-                )}
               </View>
-            )}
-          </View>
+            </ScrollView>
+          ) : (
+            <View style={styles.iosPayForMeSuccess}>
+              {payForMeStatus === 'pending' && (
+                <>
+                  <View style={[styles.iosSuccessIcon, { backgroundColor: '#E5F1FF' }]}>
+                    <Ionicons name="link" size={40} color={colors.primary} />
+                  </View>
+                  <Text style={[styles.iosSuccessTitle, { color: colors.text }]}>Link Ready!</Text>
+                  <Text style={[styles.iosSuccessDesc, { color: colors.textSecondary }]}>
+                    Share with {payForMeName}
+                  </Text>
+                  <View style={styles.iosPayForMeActions}>
+                    <TouchableOpacity 
+                      style={[styles.iosActionBtn, { backgroundColor: colors.primary }]}
+                      onPress={handleSharePayForMeLink}
+                    >
+                      <Ionicons name="share-outline" size={20} color="#FFFFFF" />
+                      <Text style={styles.iosActionBtnText}>Share</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={[styles.iosActionBtn, { backgroundColor: isDark ? colors.surface : '#F2F2F7' }]}
+                      onPress={handleCopyPayForMeLink}
+                    >
+                      <Ionicons name="copy-outline" size={20} color={colors.text} />
+                      <Text style={[styles.iosActionBtnText, { color: colors.text }]}>Copy</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <View style={[styles.iosPollingCard, { backgroundColor: isDark ? 'rgba(0,122,255,0.1)' : '#E5F1FF' }]}>
+                    <ActivityIndicator size="small" color={colors.primary} />
+                    <Text style={[styles.iosPollingText, { color: colors.primary }]}>Waiting for payment...</Text>
+                  </View>
+                </>
+              )}
+              {payForMeStatus === 'paid' && (
+                <>
+                  <View style={[styles.iosSuccessIcon, { backgroundColor: '#E8F5E9' }]}>
+                    <Ionicons name="checkmark-circle" size={40} color="#43A047" />
+                  </View>
+                  <Text style={[styles.iosSuccessTitle, { color: colors.text }]}>Paid! 🎉</Text>
+                  <Text style={[styles.iosSuccessDesc, { color: colors.textSecondary }]}>Creating order...</Text>
+                  <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 16 }} />
+                </>
+              )}
+              {payForMeStatus === 'completed' && (
+                <>
+                  <View style={[styles.iosSuccessIcon, { backgroundColor: '#E8F5E9' }]}>
+                    <Ionicons name="bag-check" size={40} color="#43A047" />
+                  </View>
+                  <Text style={[styles.iosSuccessTitle, { color: colors.text }]}>Order Placed!</Text>
+                  <Button
+                    title="View Orders"
+                    onPress={() => { resetPayForMeState(); navigation.navigate('Orders' as any); }}
+                    fullWidth
+                    style={{ marginTop: 20 }}
+                  />
+                </>
+              )}
+            </View>
+          )}
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* Time Slot Selection Modal */}
+      {/* Time Slot Modal */}
       <Modal
         visible={showTimeSlotModal}
         animationType="slide"
-        transparent
+        presentationStyle="pageSheet"
         onRequestClose={() => setShowTimeSlotModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.timeSlotModalContent, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Select Time Slot</Text>
-              <TouchableOpacity onPress={() => setShowTimeSlotModal(false)}>
-                <Ionicons name="close" size={24} color={colors.text} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.timeSlotModalList} showsVerticalScrollIndicator={false}>
-              <Text style={[styles.timeSlotModalDescription, { color: colors.textSecondary }]}>
-                Choose your preferred delivery time. We'll do our best to deliver within the selected window.
-              </Text>
-
-              {isLoadingSlots ? (
-                <View style={styles.noSlotsContainer}>
-                  <ActivityIndicator size="large" color={colors.primary} />
-                  <Text style={[styles.noSlotsText, { color: colors.textSecondary, marginTop: 12 }]}>
-                    Loading available slots...
-                  </Text>
-                </View>
-              ) : apiSlots.size === 0 && timeSlots.length === 0 ? (
-                <View style={styles.noSlotsContainer}>
-                  <View style={[styles.noSlotsIcon, { backgroundColor: isDark ? colors.surface : '#F2F2F7' }]}>
-                    <Ionicons name="time-outline" size={32} color={colors.textSecondary} />
-                  </View>
-                  <Text style={[styles.noSlotsTitle, { color: colors.text }]}>No Slots Available</Text>
-                  <Text style={[styles.noSlotsText, { color: colors.textSecondary }]}>
-                    No time slots available. Please check back later.
-                  </Text>
-                </View>
-              ) : apiSlots.size > 0 ? (
-                <>
-                  {/* Date selector tabs */}
-                  <View style={styles.dateSelectorContainer}>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                      {deliverySchedulingService.getNextDays(3).map((day) => {
-                        const daySlots = apiSlots.get(day.date) || [];
-                        const hasAvailableSlots = daySlots.some(s => s.isAvailable);
-                        const isSelectedDay = selectedDate === day.date;
-                        
-                        return (
-                          <TouchableOpacity
-                            key={day.date}
-                            style={[
-                              styles.dateSelectorTab,
-                              { 
-                                backgroundColor: isSelectedDay 
-                                  ? colors.primary 
-                                  : (isDark ? colors.surface : '#F2F2F7'),
-                                opacity: hasAvailableSlots ? 1 : 0.5,
-                              },
-                            ]}
-                            onPress={() => hasAvailableSlots && setSelectedDate(day.date)}
-                            disabled={!hasAvailableSlots}
-                          >
-                            <Text style={[
-                              styles.dateSelectorText,
-                              { color: isSelectedDay ? '#FFFFFF' : colors.text },
-                            ]}>
-                              {day.label}
-                            </Text>
-                            {!hasAvailableSlots && (
-                              <Text style={[styles.dateSelectorSubtext, { color: colors.textSecondary }]}>
-                                Full
-                              </Text>
-                            )}
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </ScrollView>
-                  </View>
-
-                  {/* Slots for selected date */}
-                  {selectedDate && (
-                    <View style={styles.timeSlotDateGroup}>
-                      {(apiSlots.get(selectedDate) || []).map((slot) => {
-                        const isSelected = selectedSlot?.id === slot.id && selectedDate === selectedDate;
-                        const isAvailable = slot.isAvailable;
-                        
-                        return (
-                          <TouchableOpacity
-                            key={slot.id}
-                            style={[
-                              styles.timeSlotOption,
-                              { 
-                                backgroundColor: isSelected 
-                                  ? (isDark ? 'rgba(0, 122, 255, 0.15)' : '#E5F1FF') 
-                                  : (isDark ? colors.surface : '#F8F9FA'),
-                                borderColor: isSelected ? colors.primary : 'transparent',
-                                opacity: isAvailable ? 1 : 0.5,
-                              },
-                            ]}
-                            onPress={() => {
-                              if (isAvailable) {
-                                setSelectedSlot(slot);
-                                setSelectedTimeSlot(slot.id);
-                                setShowTimeSlotModal(false);
-                              }
-                            }}
-                            disabled={!isAvailable}
-                            activeOpacity={0.7}
-                          >
-                            <View style={[
-                              styles.timeSlotOptionIcon,
-                              { backgroundColor: isSelected 
-                                ? (isDark ? 'rgba(0, 122, 255, 0.2)' : '#CCE4FF') 
-                                : (isDark ? 'rgba(255,255,255,0.1)' : '#FFFFFF') 
-                              }
-                            ]}>
-                              <Ionicons 
-                                name={slot.name.includes('Express') ? 'flash-outline' : 'time-outline'}
-                                size={20} 
-                                color={isSelected ? colors.primary : colors.textSecondary} 
-                              />
-                            </View>
-                            <View style={styles.timeSlotOptionTextContainer}>
-                              <Text style={[
-                                styles.timeSlotOptionText,
-                                { color: isSelected ? colors.primary : colors.text },
-                              ]}>
-                                {slot.name}
-                              </Text>
-                              <Text style={[
-                                styles.timeSlotOptionSubtext,
-                                { color: isSelected ? colors.primary : colors.textSecondary },
-                              ]}>
-                                {slot.displayTime}
-                                {slot.additionalFee > 0 && ` • +₦${slot.additionalFee.toLocaleString()}`}
-                              </Text>
-                            </View>
-                            {!isAvailable ? (
-                              <Text style={[styles.slotFullText, { color: colors.error }]}>Full</Text>
-                            ) : isSelected ? (
-                              <View style={[styles.timeSlotCheckmark, { backgroundColor: colors.primary }]}>
-                                <Ionicons name="checkmark" size={14} color="#FFFFFF" />
-                              </View>
-                            ) : (
-                              <Text style={[styles.slotCapacityText, { color: colors.success }]}>
-                                {slot.availableCapacity} left
-                              </Text>
-                            )}
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-                  )}
-                </>
-              ) : (
-                <>
-                  {/* Fallback to local time slots */}
-                  {['Today', 'Tomorrow'].map(dateGroup => {
-                    const slotsForDate = timeSlots.filter(s => s.date === dateGroup);
-                    if (slotsForDate.length === 0) return null;
-                    
-                    return (
-                      <View key={dateGroup} style={styles.timeSlotDateGroup}>
-                        <Text style={[styles.timeSlotDateHeader, { color: colors.text }]}>{dateGroup}</Text>
-                        {slotsForDate.map((slot) => {
-                          const isSelected = selectedTimeSlot === slot.id;
-                          return (
-                            <TouchableOpacity
-                              key={slot.id}
-                              style={[
-                                styles.timeSlotOption,
-                                { 
-                                  backgroundColor: isSelected 
-                                    ? (isDark ? 'rgba(0, 122, 255, 0.15)' : '#E5F1FF') 
-                                    : (isDark ? colors.surface : '#F8F9FA'),
-                                  borderColor: isSelected ? colors.primary : 'transparent',
-                                },
-                              ]}
-                              onPress={() => {
-                                setSelectedTimeSlot(slot.id);
-                                setShowTimeSlotModal(false);
-                              }}
-                              activeOpacity={0.7}
-                            >
-                              <View style={[
-                                styles.timeSlotOptionIcon,
-                                { backgroundColor: isSelected 
-                                  ? (isDark ? 'rgba(0, 122, 255, 0.2)' : '#CCE4FF') 
-                                  : (isDark ? 'rgba(255,255,255,0.1)' : '#FFFFFF') 
-                                }
-                              ]}>
-                                <Ionicons 
-                                  name="time-outline" 
-                                  size={20} 
-                                  color={isSelected ? colors.primary : colors.textSecondary} 
-                                />
-                              </View>
-                              <Text style={[
-                                styles.timeSlotOptionText,
-                                { color: isSelected ? colors.primary : colors.text },
-                              ]}>
-                                {slot.time}
-                              </Text>
-                              {isSelected && (
-                                <View style={[styles.timeSlotCheckmark, { backgroundColor: colors.primary }]}>
-                                  <Ionicons name="checkmark" size={14} color="#FFFFFF" />
-                                </View>
-                              )}
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </View>
-                    );
-                  })}
-                </>
-              )}
-            </ScrollView>
+        <View style={[styles.iosModalContainer, { backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
+          <View style={[styles.iosModalHeader, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+            <View style={{ width: 60 }} />
+            <Text style={[styles.iosModalTitle, { color: colors.text }]}>Select Time</Text>
+            <TouchableOpacity onPress={() => setShowTimeSlotModal(false)} style={styles.iosModalCloseBtn}>
+              <Text style={[styles.iosModalDoneText, { color: colors.primary }]}>Done</Text>
+            </TouchableOpacity>
           </View>
+          
+          <ScrollView style={styles.iosModalContent} showsVerticalScrollIndicator={false}>
+            {isLoadingSlots ? (
+              <View style={styles.iosLoadingContainer}>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text style={[styles.iosLoadingText, { color: colors.textSecondary }]}>Loading slots...</Text>
+              </View>
+            ) : apiSlots.size > 0 ? (
+              <>
+                <View style={styles.iosDateTabs}>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    {deliverySchedulingService.getNextDays(3).map((day) => {
+                      const daySlots = apiSlots.get(day.date) || [];
+                      const hasSlots = daySlots.some(s => s.isAvailable);
+                      const isActive = selectedDate === day.date;
+                      return (
+                        <TouchableOpacity
+                          key={day.date}
+                          style={[
+                            styles.iosDateTab,
+                            { backgroundColor: isActive ? colors.primary : (isDark ? colors.card : '#FFFFFF') },
+                            !hasSlots && { opacity: 0.5 },
+                          ]}
+                          onPress={() => hasSlots && setSelectedDate(day.date)}
+                          disabled={!hasSlots}
+                        >
+                          <Text style={[styles.iosDateTabText, { color: isActive ? '#FFFFFF' : colors.text }]}>{day.label}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+                {selectedDate && (
+                  <View style={[styles.iosCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', marginTop: 16 }]}>
+                    {(apiSlots.get(selectedDate) || []).map((slot, index, arr) => (
+                      <TouchableOpacity
+                        key={slot.id}
+                        style={[
+                          styles.iosRowItem,
+                          index < arr.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(60,60,67,0.12)' },
+                        ]}
+                        onPress={() => {
+                          if (slot.isAvailable) {
+                            setSelectedSlot(slot);
+                            setSelectedTimeSlot(slot.id);
+                            setShowTimeSlotModal(false);
+                          }
+                        }}
+                        disabled={!slot.isAvailable}
+                        activeOpacity={0.6}
+                      >
+                        <View style={styles.iosRowContent}>
+                          <Text style={[styles.iosRowLabel, { color: slot.isAvailable ? colors.text : colors.textSecondary }]}>{slot.name}</Text>
+                          <Text style={[styles.iosRowSubtitle, { color: colors.textSecondary }]}>
+                            {slot.displayTime}{slot.additionalFee > 0 && ` +₦${slot.additionalFee}`}
+                          </Text>
+                        </View>
+                        {slot.isAvailable ? (
+                          selectedSlot?.id === slot.id ? (
+                            <Ionicons name="checkmark-circle-outline" size={24} color={colors.primary} />
+                          ) : (
+                            <Text style={[styles.iosSlotCapacity, { color: '#34C759' }]}>{slot.availableCapacity} left</Text>
+                          )
+                        ) : (
+                          <Text style={[styles.iosSlotFull, { color: '#EF4444' }]}>Full</Text>
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </>
+            ) : (
+              <View style={styles.iosEmptyState}>
+                <Ionicons name="time-outline" size={48} color={colors.textSecondary} />
+                <Text style={[styles.iosEmptyText, { color: colors.textSecondary }]}>No slots available</Text>
+              </View>
+            )}
+          </ScrollView>
         </View>
       </Modal>
 
@@ -2255,105 +1813,71 @@ export default function CheckoutScreen({ navigation }: Props) {
       <Modal
         visible={showAddressPicker}
         animationType="slide"
-        transparent
+        presentationStyle="pageSheet"
         onRequestClose={() => setShowAddressPicker(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Select Delivery Address</Text>
-              <TouchableOpacity onPress={() => setShowAddressPicker(false)}>
-                <Ionicons name="close" size={24} color={colors.text} />
-              </TouchableOpacity>
-            </View>
-            
-            <ScrollView style={styles.addressList}>
-              {allAddresses.length === 0 ? (
-                <View style={styles.emptyAddresses}>
-                  <Ionicons name="location-outline" size={48} color={colors.textSecondary} />
-                  <Text style={[styles.emptyAddressesText, { color: colors.textSecondary }]}>
-                    No saved addresses
-                  </Text>
-                  <Button
-                    title="Add New Address"
-                    variant="outline"
-                    size="medium"
-                    onPress={() => {
-                      setShowAddressPicker(false);
-                      navigation.navigate('MyAddress' as any);
-                    }}
-                  />
-                </View>
-              ) : (
-                allAddresses.map((address) => (
+        <View style={[styles.iosModalContainer, { backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
+          <View style={[styles.iosModalHeader, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+            <View style={{ width: 60 }} />
+            <Text style={[styles.iosModalTitle, { color: colors.text }]}>Delivery Address</Text>
+            <TouchableOpacity onPress={() => setShowAddressPicker(false)} style={styles.iosModalCloseBtn}>
+              <Text style={[styles.iosModalDoneText, { color: colors.primary }]}>Done</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <ScrollView style={styles.iosModalContent}>
+            {allAddresses.length === 0 ? (
+              <View style={styles.iosEmptyState}>
+                <Ionicons name="location-outline" size={48} color={colors.textSecondary} />
+                <Text style={[styles.iosEmptyText, { color: colors.textSecondary }]}>No saved addresses</Text>
+                <Button
+                  title="Add Address"
+                  variant="outline"
+                  onPress={() => { setShowAddressPicker(false); navigation.navigate('MyAddress' as any); }}
+                />
+              </View>
+            ) : (
+              <View style={[styles.iosCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+                {allAddresses.map((address, index) => (
                   <TouchableOpacity
                     key={address.id}
                     style={[
-                      styles.addressOption,
-                      { borderColor: selectedAddress?.id === address.id ? colors.primary : (isDark ? 'rgba(255,255,255,0.1)' : '#E5E5EA') },
-                      selectedAddress?.id === address.id && { backgroundColor: isDark ? 'rgba(0, 122, 255, 0.1)' : '#E5F1FF' },
+                      styles.iosRowItem,
+                      index < allAddresses.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(60,60,67,0.12)' },
                     ]}
-                    onPress={() => {
-                      setSelectedAddress(address);
-                      setShowAddressPicker(false);
-                    }}
+                    onPress={() => { setSelectedAddress(address); setShowAddressPicker(false); }}
+                    activeOpacity={0.6}
                   >
-                    <View style={styles.addressOptionContent}>
-                      <View style={styles.addressOptionHeader}>
-                        <Text style={[styles.addressOptionLabel, { color: colors.text }]}>
-                          {address.label || 'Address'}
-                        </Text>
+                    <View style={styles.iosRowContent}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={[styles.iosRowLabel, { color: colors.text }]}>{address.label || 'Address'}</Text>
                         {address.isDefault && (
-                          <View style={[styles.defaultBadge, { backgroundColor: colors.primary }]}>
-                            <Text style={styles.defaultBadgeText}>Default</Text>
+                          <View style={[styles.iosDefaultBadge, { backgroundColor: colors.primary }]}>
+                            <Text style={styles.iosDefaultBadgeText}>Default</Text>
                           </View>
                         )}
                       </View>
-                      <Text 
-                        style={[styles.addressOptionLine1, { color: colors.text }]}
-                        numberOfLines={2}
-                        ellipsizeMode="tail"
-                      >
-                        {address.addressLine1}
-                      </Text>
-                      {address.addressLine2 && (
-                        <Text 
-                          style={[styles.addressOptionLine2, { color: colors.textSecondary }]}
-                          numberOfLines={1}
-                          ellipsizeMode="tail"
-                        >
-                          {address.addressLine2}
-                        </Text>
-                      )}
-                      <Text 
-                        style={[styles.addressOptionCity, { color: colors.textSecondary }]}
-                        numberOfLines={1}
-                        ellipsizeMode="tail"
-                      >
-                        {address.city}, {address.state}
+                      <Text style={[styles.iosRowSubtitle, { color: colors.textSecondary }]} numberOfLines={1}>
+                        {address.addressLine1}, {address.city}
                       </Text>
                     </View>
                     {selectedAddress?.id === address.id && (
                       <Ionicons name="checkmark-circle" size={24} color={colors.primary} />
                     )}
                   </TouchableOpacity>
-                ))
-              )}
-            </ScrollView>
-            
+                ))}
+              </View>
+            )}
             {allAddresses.length > 0 && (
               <TouchableOpacity 
-                style={[styles.addNewAddressButton, { borderTopColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E5EA' }]}
-                onPress={() => {
-                  setShowAddressPicker(false);
-                  navigation.navigate('MyAddress' as any);
-                }}
+                style={styles.iosAddNewBtn}
+                onPress={() => { setShowAddressPicker(false); navigation.navigate('MyAddress' as any); }}
               >
                 <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
-                <Text style={[styles.addNewAddressText, { color: colors.primary }]}>Add New Address</Text>
+                <Text style={[styles.iosAddNewText, { color: colors.primary }]}>Add New Address</Text>
               </TouchableOpacity>
             )}
-          </View>
+          </ScrollView>
         </View>
       </Modal>
     </View>
@@ -2364,711 +1888,477 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  fixedHeader: {
+  // iOS Header Styles
+  iosHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 8,
     paddingBottom: 8,
   },
-  fixedHeaderTitle: {
+  iosHeaderBtn: {
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  iosHeaderTitle: {
     fontSize: 17,
     fontWeight: '600',
+    fontFamily: FONTS.semiBold,
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+  iosScrollContent: {
+    paddingBottom: 120,
   },
-  headerSecureIcon: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 122, 255, 0.1)',
-    borderRadius: 20,
-  },
-  placeholder: {
-    width: 40,
-  },
-  scrollContent: {
-    paddingTop: 8,
-  },
-  sectionTitle: {
+  // iOS Group Label
+  iosGroupLabel: {
     fontSize: 13,
-    fontWeight: '500',
-    letterSpacing: 0.5,
+    fontWeight: '400',
+    letterSpacing: -0.08,
+    paddingHorizontal: 16,
+    marginBottom: 6,
     textTransform: 'uppercase',
-    marginBottom: 8,
-    marginLeft: 32,
-    marginTop: 16,
   },
-  insetCard: {
+  // iOS Section Wrapper
+  iosSectionWrapper: {
+    marginTop: 20,
+  },
+  iosSectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingRight: 16,
+  },
+  iosSectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  iosBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  iosBadgeText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  requiredStar: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#EF4444',
+  },
+  // iOS Card
+  iosCard: {
     marginHorizontal: 16,
     borderRadius: 12,
     overflow: 'hidden',
   },
-  addressRow: {
+  iosCardError: {
+    borderWidth: 1,
+    borderColor: '#EF4444',
+  },
+  // iOS Row Item
+  iosRowItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    minHeight: 44,
   },
-  addressIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+  iosRowIcon: {
+    marginRight: 12,
   },
-  addressDetails: {
+  iosRowContent: {
     flex: 1,
   },
-  addressLabel: {
-    fontSize: 15,
-    fontFamily: FONTS.semiBold,
-    marginBottom: 2,
+  iosRowLabel: {
+    fontSize: 17,
+    fontWeight: '400',
   },
-  addressText: {
-    fontSize: 13,
-    fontFamily: FONTS.regular,
+  iosRowSubtitle: {
+    fontSize: 14,
+    marginTop: 2,
   },
-  changeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    gap: 4,
+  iosRowValue: {
+    fontSize: 17,
+    marginRight: 4,
   },
-  changeText: {
-    fontSize: 13,
-    fontFamily: FONTS.semiBold,
-  },
-  errorMessage: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(239, 68, 68, 0.2)',
-    gap: 6,
-  },
-  errorText: {
-    fontSize: 12,
-    fontFamily: FONTS.medium,
-    color: '#EF4444',
-  },
-  deliveryOptionsRow: {
+  // iOS Delivery Options
+  iosDeliveryOptions: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    gap: 12,
+    paddingVertical: 12,
+    gap: 10,
   },
-  deliveryOption: {
+  iosDeliveryOption: {
     flex: 1,
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.08)',
-  },
-  deliveryIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
+    borderColor: 'transparent',
+    backgroundColor: 'rgba(0,0,0,0.03)',
     alignItems: 'center',
-    marginBottom: 8,
   },
-  deliveryLabel: {
+  iosDeliveryLabel: {
     fontSize: 15,
-    fontFamily: FONTS.semiBold,
-    marginBottom: 2,
+    fontWeight: '600',
   },
-  deliveryDescription: {
+  iosDeliveryDesc: {
     fontSize: 12,
-    fontFamily: FONTS.regular,
-    textAlign: 'center',
+    marginTop: 2,
   },
-  paymentOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
+  // iOS Toggle
+  iosToggle: {
+    width: 51,
+    height: 31,
+    borderRadius: 16,
+    justifyContent: 'center',
   },
-  paymentOptionBorder: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
+  iosToggleKnob: {
+    width: 27,
+    height: 27,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 3,
   },
-  paymentIconBg: {
+  // iOS Gift Details
+  iosGiftDetails: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  iosInputRow: {
+    marginBottom: 10,
+  },
+  iosTextInput: {
+    height: 44,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    fontSize: 17,
+  },
+  iosTextArea: {
+    height: 80,
+    paddingTop: 12,
+    textAlignVertical: 'top',
+  },
+  // iOS Payment Icon
+  iosPaymentIcon: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 12,
   },
-  paymentOptionInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  paymentOptionLabel: {
-    fontSize: 15,
-    fontFamily: FONTS.medium,
-  },
-  paymentOptionBalance: {
-    fontSize: 13,
-    fontFamily: FONTS.regular,
-    marginTop: 2,
-  },
-  paymentOptionDesc: {
-    fontSize: 13,
-    fontFamily: FONTS.regular,
-    marginTop: 2,
-  },
-  radioButton: {
+  // iOS Radio
+  iosRadio: {
     width: 22,
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
+    borderColor: '#C7C7CC',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  radioButtonInner: {
+  iosRadioSelected: {
+    borderColor: '#007AFF',
+  },
+  iosRadioInner: {
     width: 12,
     height: 12,
     borderRadius: 6,
+    backgroundColor: '#007AFF',
   },
-  defaultMethodBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginRight: 8,
-  },
-  defaultMethodBadgeText: {
-    fontSize: 11,
-    fontFamily: FONTS.medium,
-  },
-  addCardLink: {
+  // iOS Top Up Link
+  iosTopUpLink: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
     paddingVertical: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(60,60,67,0.12)',
   },
-  addCardLinkText: {
-    fontSize: 14,
-    fontFamily: FONTS.semiBold,
+  iosTopUpText: {
+    fontSize: 15,
+    fontWeight: '500',
   },
-  topUpLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    marginTop: 12,
-    paddingVertical: 8,
+  // iOS Notes
+  iosNotesContainer: {
+    padding: 16,
   },
-  topUpLinkText: {
-    fontSize: 14,
-    fontFamily: FONTS.semiBold,
+  iosNoteLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 8,
   },
-  promoContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
+  iosNoteInput: {
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 16,
+    minHeight: 60,
+    borderWidth: StyleSheet.hairlineWidth,
   },
-  promoInput: {
-    flex: 1,
-    marginBottom: 0,
-  },
-  summaryRow: {
+  // iOS Summary
+  iosSummaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    paddingVertical: 10,
     paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  summaryRowBorder: {
     borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(60,60,67,0.12)',
   },
-  summaryLabel: {
+  iosSummaryLabel: {
     fontSize: 15,
-    fontFamily: FONTS.regular,
   },
-  summaryValue: {
+  iosSummaryValue: {
     fontSize: 15,
-    fontFamily: FONTS.regular,
   },
-  freeDeliveryHint: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+  iosTotalRow: {
+    paddingVertical: 14,
+    borderBottomWidth: 0,
+  },
+  iosTotalLabel: {
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  iosTotalValue: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  iosEstimatedTime: {
+    fontSize: 13,
+    textAlign: 'center',
+    paddingBottom: 14,
+  },
+  iosFreeDeliveryHint: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    marginTop: 4,
   },
-  freeDeliveryHintText: {
-    fontSize: 12,
-    fontFamily: FONTS.regular,
-  },
-  totalLabel: {
-    fontSize: 17,
-    fontFamily: FONTS.semiBold,
-  },
-  totalValue: {
-    fontSize: 20,
-    fontFamily: FONTS.bold,
-  },
-  estimatedTimeText: {
+  iosFreeDeliveryText: {
     fontSize: 13,
-    fontFamily: FONTS.regular,
-    textAlign: 'center',
-    paddingBottom: 16,
   },
-  bottomBar: {
+  // iOS Terms
+  iosTermsContainer: {
+    paddingHorizontal: 32,
+    paddingVertical: 20,
+    alignItems: 'center',
+  },
+  iosTermsText: {
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  // iOS Bottom Bar
+  iosBottomBar: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    paddingTop: 16,
+    paddingTop: 12,
     paddingHorizontal: 16,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(60,60,67,0.12)',
   },
-  timeSlotsScrollContent: {
-    paddingHorizontal: 16,
-    paddingVertical: 4,
-    gap: 12,
-  },
-  timeSlotCard: {
-    width: 110,
-    borderRadius: 12,
-    padding: 12,
+  // iOS Order Preview
+  iosOrderPreview: {
+    flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'transparent',
+    marginHorizontal: 16,
+    marginTop: 8,
+    padding: 14,
+    borderRadius: 12,
+  },
+  iosOrderImages: {
+    flexDirection: 'row',
+    marginRight: 14,
+  },
+  iosOrderImageWrap: {
     position: 'relative',
   },
-  timeSlotIconContainer: {
+  iosOrderImage: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  iosOrderImagePlaceholder: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
-  timeSlotCardDate: {
-    fontSize: 14,
-    fontFamily: FONTS.semiBold,
-    marginBottom: 2,
-    textAlign: 'center',
-  },
-  timeSlotCardTime: {
-    fontSize: 11,
-    fontFamily: FONTS.regular,
-    textAlign: 'center',
-  },
-  selectedCheckmark: {
+  iosOrderQtyBadge: {
     position: 'absolute',
-    top: 6,
-    right: 6,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    bottom: -4,
+    right: -4,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  noSlotsContainer: {
-    alignItems: 'center',
+  iosOrderQtyText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  iosOrderMoreBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
     justifyContent: 'center',
-    paddingVertical: 24,
-    paddingHorizontal: 16,
-    gap: 8,
+    alignItems: 'center',
+    marginLeft: -8,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
-  noSlotsText: {
-    fontSize: 14,
-    fontFamily: FONTS.regular,
-    textAlign: 'center',
+  iosOrderMoreText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
-  notesInput: {
-    marginBottom: 0,
-  },
-  // Address Picker Modal Styles
-  modalOverlay: {
+  iosOrderInfo: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
   },
-  modalContent: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '80%',
-    paddingBottom: 24,
+  iosOrderCount: {
+    fontSize: 15,
+    fontWeight: '500',
   },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
-  },
-  modalTitle: {
+  iosOrderTotal: {
     fontSize: 17,
-    fontFamily: FONTS.semiBold,
+    fontWeight: '700',
+    marginTop: 2,
   },
-  addressList: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-  },
-  emptyAddresses: {
+  // iOS Progress
+  iosProgressContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 48,
-    gap: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
   },
-  emptyAddressesText: {
-    fontSize: 16,
-    fontFamily: FONTS.regular,
-  },
-  addressOption: {
-    flexDirection: 'row',
+  iosProgressStep: {
     alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 12,
   },
-  addressOptionContent: {
-    flex: 1,
-  },
-  addressOptionHeader: {
-    flexDirection: 'row',
+  iosProgressDot: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
     marginBottom: 4,
   },
-  addressOptionLabel: {
-    fontSize: 15,
-    fontFamily: FONTS.semiBold,
+  iosProgressLabel: {
+    fontSize: 10,
+    fontWeight: '500',
   },
-  defaultBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
+  iosProgressLine: {
+    height: 2,
+    width: 32,
+    marginHorizontal: 4,
+    borderRadius: 1,
+    marginBottom: 14,
   },
-  defaultBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontFamily: FONTS.medium,
-  },
-  addressOptionLine1: {
-    fontSize: 14,
-    fontFamily: FONTS.regular,
-    marginBottom: 2,
-  },
-  addressOptionLine2: {
-    fontSize: 13,
-    fontFamily: FONTS.regular,
-    marginBottom: 2,
-  },
-  addressOptionCity: {
-    fontSize: 13,
-    fontFamily: FONTS.regular,
-  },
-  addNewAddressButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 16,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  addNewAddressText: {
-    fontSize: 15,
-    fontFamily: FONTS.semiBold,
-  },
-  // Paystack Payment Modal Styles
-  paymentModalContainer: {
+  // iOS Modal
+  iosModalContainer: {
     flex: 1,
   },
-  paymentModalHeader: {
+  iosModalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
     paddingVertical: 12,
+    paddingHorizontal: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+    borderBottomColor: 'rgba(60,60,67,0.12)',
   },
-  paymentModalCloseBtn: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+  iosModalCloseBtn: {
+    minWidth: 60,
+    paddingHorizontal: 8,
   },
-  paymentModalTitle: {
+  iosModalCancelText: {
     fontSize: 17,
-    fontFamily: FONTS.semiBold,
   },
-  paymentWebView: {
-    flex: 1,
+  iosModalDoneText: {
+    fontSize: 17,
+    fontWeight: '600',
+    textAlign: 'right',
   },
-  webViewLoading: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 12,
-  },
-  webViewLoadingText: {
-    fontSize: 14,
-    fontFamily: FONTS.regular,
-  },
-  // Gift Option Styles
-  giftToggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-  },
-  giftIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  giftToggleContent: {
-    flex: 1,
-  },
-  giftToggleLabel: {
-    fontSize: 16,
-    fontFamily: FONTS.semiBold,
-    marginBottom: 2,
-  },
-  giftToggleDesc: {
-    fontSize: 13,
-    fontFamily: FONTS.regular,
-  },
-  toggleSwitch: {
-    width: 50,
-    height: 30,
-    borderRadius: 15,
-    justifyContent: 'center',
-  },
-  toggleKnob: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  giftDetailsContainer: {
-    borderTopWidth: 1,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-  },
-  giftInputGroup: {
-    marginBottom: 16,
-  },
-  giftInputLabel: {
-    fontSize: 14,
-    fontFamily: FONTS.medium,
-    marginBottom: 8,
-  },
-  giftInputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    height: 48,
-  },
-  giftMessageWrapper: {
-    height: 'auto',
-    minHeight: 90,
-    alignItems: 'flex-start',
-    paddingVertical: 4,
-  },
-  giftInputIcon: {
-    marginRight: 10,
-    width: 20,
-  },
-  giftInput: {
-    flex: 1,
-    fontSize: 15,
-    fontFamily: FONTS.regular,
-    padding: 0,
-    height: '100%',
-  },
-  giftMessageInput: {
-    flex: 1,
-    fontSize: 15,
-    fontFamily: FONTS.regular,
-    padding: 0,
-    paddingTop: 12,
-    paddingBottom: 12,
-    minHeight: 80,
-  },
-  riderNoteHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-  },
-  riderNoteIconBg: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  riderNoteHeaderText: {
-    flex: 1,
-    fontSize: 14,
-    fontFamily: FONTS.regular,
-  },
-  riderNoteInputContainer: {
-    borderTopWidth: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  riderNoteInput: {
-    marginBottom: 0,
-  },
-  riderNoteInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    marginHorizontal: 16,
-    marginTop: 8,
-    marginBottom: 16,
-  },
-  riderNoteText: {
-    flex: 1,
-    marginLeft: 12,
-    fontSize: 13,
-    fontFamily: FONTS.regular,
-    lineHeight: 18,
-  },
-  termsSection: {
-    marginHorizontal: 16,
-    marginTop: 8,
-    marginBottom: 16,
-    padding: 16,
-    borderRadius: 16,
-  },
-  termsText: {
-    fontSize: 13,
-    fontFamily: FONTS.regular,
-    lineHeight: 20,
+  iosModalTitle: {
+    fontSize: 17,
+    fontWeight: '600',
     textAlign: 'center',
   },
-  termsLink: {
-    fontFamily: FONTS.medium,
+  iosModalContent: {
+    flex: 1,
+    padding: 16,
   },
-  termsInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(60, 60, 67, 0.12)',
-  },
-  termsInfoText: {
-    fontSize: 12,
-    fontFamily: FONTS.regular,
-    marginLeft: 6,
-  },
-  // Payment List Row Styles
-  paymentListRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  // Pay for Me Modal Styles
-  payForMeModalContent: {
-    marginHorizontal: 16,
-    borderRadius: 20,
-    maxHeight: '85%',
-  },
-  payForMeForm: {
-    padding: 20,
-  },
-  payForMeDescription: {
-    fontSize: 14,
-    fontFamily: FONTS.regular,
+  iosModalDesc: {
+    fontSize: 15,
     lineHeight: 20,
     marginBottom: 20,
   },
-  payForMeInputGroup: {
+  iosInputGroup: {
     marginBottom: 16,
   },
-  payForMeLabel: {
-    fontSize: 14,
-    fontFamily: FONTS.medium,
-    marginBottom: 8,
+  iosInputLabel: {
+    fontSize: 13,
+    letterSpacing: -0.08,
+    marginBottom: 6,
+    paddingLeft: 4,
   },
-  payForMeInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    height: 48,
+  iosModalInput: {
+    height: 44,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    fontSize: 17,
   },
-  payForMeInputIcon: {
-    marginRight: 10,
-  },
-  payForMeInput: {
-    flex: 1,
-    fontSize: 15,
-    fontFamily: FONTS.regular,
-  },
-  payForMeAmountCard: {
+  iosAmountCard: {
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
     marginVertical: 16,
   },
-  payForMeAmountLabel: {
+  iosAmountLabel: {
     fontSize: 13,
-    fontFamily: FONTS.regular,
     marginBottom: 4,
   },
-  payForMeAmount: {
+  iosAmountValue: {
     fontSize: 28,
-    fontFamily: FONTS.bold,
+    fontWeight: '700',
   },
-  payForMeInfoCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    padding: 12,
-    borderRadius: 10,
-    gap: 10,
+  iosModalActions: {
+    marginTop: 8,
   },
-  payForMeInfoText: {
+  iosWebViewLoading: {
     flex: 1,
-    fontSize: 13,
-    fontFamily: FONTS.regular,
-    lineHeight: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
   },
-  payForMeSuccess: {
+  iosWebViewLoadingText: {
+    fontSize: 15,
+  },
+  // iOS Pay For Me Success
+  iosPayForMeSuccess: {
+    flex: 1,
     padding: 24,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  payForMeSuccessIcon: {
+  iosSuccessIcon: {
     width: 80,
     height: 80,
     borderRadius: 40,
@@ -3076,385 +2366,105 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
-  payForMeSuccessTitle: {
-    fontSize: 20,
-    fontFamily: FONTS.bold,
+  iosSuccessTitle: {
+    fontSize: 22,
+    fontWeight: '700',
     marginBottom: 8,
   },
-  payForMeSuccessDesc: {
-    fontSize: 14,
-    fontFamily: FONTS.regular,
-    textAlign: 'center',
-    marginBottom: 20,
+  iosSuccessDesc: {
+    fontSize: 15,
+    marginBottom: 24,
   },
-  payForMeLinkBox: {
-    padding: 16,
-    borderRadius: 12,
-    width: '100%',
-    marginBottom: 20,
-  },
-  payForMeLinkText: {
-    fontSize: 13,
-    fontFamily: FONTS.regular,
-    textAlign: 'center',
-  },
-  payForMeActions: {
+  iosPayForMeActions: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 16,
+    marginBottom: 20,
   },
-  payForMeActionBtn: {
+  iosActionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
     gap: 8,
   },
-  payForMeActionBtnText: {
+  iosActionBtnText: {
     fontSize: 15,
-    fontFamily: FONTS.semiBold,
+    fontWeight: '600',
     color: '#FFFFFF',
   },
-  payForMeDoneBtn: {
-    paddingVertical: 12,
-  },
-  payForMeDoneBtnText: {
-    fontSize: 15,
-    fontFamily: FONTS.semiBold,
-  },
-  payForMePollingCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    marginTop: 16,
-    gap: 12,
-  },
-  payForMePollingText: {
-    flex: 1,
-    fontSize: 14,
-    fontFamily: FONTS.medium,
-  },
-  // Farmer Message Styles
-  farmerMessageHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-  },
-  farmerMessageIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  farmerMessageHeaderText: {
-    flex: 1,
-  },
-  farmerMessageTitle: {
-    fontSize: 16,
-    fontFamily: FONTS.semiBold,
-    marginBottom: 2,
-  },
-  farmerMessageSubtitle: {
-    fontSize: 13,
-    fontFamily: FONTS.regular,
-  },
-  farmerMessageInputContainer: {
-    borderTopWidth: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  farmerMessageInput: {
-    marginBottom: 0,
-  },
-  // Time Slot Selector Styles
-  timeSlotSelector: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-  },
-  timeSlotSelectorIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 14,
-  },
-  timeSlotSelectorContent: {
-    flex: 1,
-  },
-  timeSlotSelectorLabel: {
-    fontSize: 16,
-    fontFamily: FONTS.semiBold,
-    marginBottom: 2,
-  },
-  timeSlotSelectorValue: {
-    fontSize: 14,
-    fontFamily: FONTS.regular,
-  },
-  // Time Slot Modal Styles
-  timeSlotModalContent: {
-    marginHorizontal: 16,
-    borderRadius: 20,
-    maxHeight: '80%',
-  },
-  timeSlotModalList: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-  },
-  timeSlotModalDescription: {
-    fontSize: 14,
-    fontFamily: FONTS.regular,
-    lineHeight: 20,
-    marginTop: 16,
-    marginBottom: 20,
-  },
-  timeSlotDateGroup: {
-    marginBottom: 20,
-  },
-  timeSlotDateHeader: {
-    fontSize: 16,
-    fontFamily: FONTS.semiBold,
-    marginBottom: 12,
-  },
-  timeSlotOption: {
+  iosPollingCard: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 14,
-    borderRadius: 12,
-    marginBottom: 10,
-    borderWidth: 2,
+    borderRadius: 10,
+    gap: 10,
   },
-  timeSlotOptionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 14,
+  iosPollingText: {
+    fontSize: 14,
+    fontWeight: '500',
   },
-  timeSlotOptionTextContainer: {
-    flex: 1,
+  // iOS Date Tabs
+  iosDateTabs: {
+    marginBottom: 8,
   },
-  timeSlotOptionText: {
-    flex: 1,
-    fontSize: 15,
-    fontFamily: FONTS.medium,
-  },
-  timeSlotOptionSubtext: {
-    fontSize: 13,
-    fontFamily: FONTS.regular,
-    marginTop: 2,
-  },
-  timeSlotCheckmark: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  dateSelectorContainer: {
-    marginBottom: 16,
-  },
-  dateSelectorTab: {
+  iosDateTab: {
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
-    marginRight: 10,
-    minWidth: 80,
-    alignItems: 'center',
+    marginRight: 8,
   },
-  dateSelectorText: {
+  iosDateTabText: {
     fontSize: 14,
-    fontFamily: FONTS.medium,
+    fontWeight: '500',
   },
-  dateSelectorSubtext: {
-    fontSize: 11,
-    fontFamily: FONTS.regular,
-    marginTop: 2,
+  iosSlotCapacity: {
+    fontSize: 13,
+    fontWeight: '500',
   },
-  slotFullText: {
-    fontSize: 12,
-    fontFamily: FONTS.medium,
+  iosSlotFull: {
+    fontSize: 13,
+    fontWeight: '500',
   },
-  slotCapacityText: {
-    fontSize: 12,
-    fontFamily: FONTS.regular,
-  },
-  noSlotsIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    justifyContent: 'center',
+  // iOS Loading & Empty States
+  iosLoadingContainer: {
+    paddingVertical: 40,
     alignItems: 'center',
-    marginBottom: 16,
+    gap: 12,
   },
-  noSlotsTitle: {
-    fontSize: 18,
-    fontFamily: FONTS.semiBold,
-    marginBottom: 8,
-  },
-  // Section Component Styles
-  sectionContainer: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  sectionError: {
-    borderWidth: 1,
-    borderColor: '#EF4444',
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-  },
-  sectionIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  sectionTitleContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  sectionTitle: {
+  iosLoadingText: {
     fontSize: 15,
-    fontFamily: FONTS.semiBold,
   },
-  requiredStar: {
-    fontSize: 14,
-    fontFamily: FONTS.semiBold,
-    color: '#EF4444',
-  },
-  sectionBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-  },
-  sectionBadgeText: {
-    fontSize: 10,
-    fontFamily: FONTS.semiBold,
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
-  },
-  sectionContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-  },
-  // Checkout Progress Styles
-  progressContainer: {
-    flexDirection: 'row',
+  iosEmptyState: {
+    paddingVertical: 40,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    marginHorizontal: 16,
+    gap: 12,
   },
-  progressStep: {
-    alignItems: 'center',
+  iosEmptyText: {
+    fontSize: 15,
   },
-  progressDot: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 4,
+  // iOS Default Badge
+  iosDefaultBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
-  progressLabel: {
-    fontSize: 10,
-    fontFamily: FONTS.medium,
-    textAlign: 'center',
-  },
-  progressLine: {
-    height: 2,
-    width: 40,
-    marginHorizontal: 4,
-    borderRadius: 1,
-    marginBottom: 16,
-  },
-  // Order Item Preview Styles
-  orderPreview: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: 16,
-    marginTop: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-  },
-  orderPreviewImages: {
-    flexDirection: 'row',
-    marginRight: 12,
-  },
-  orderPreviewImageWrapper: {
-    position: 'relative',
-  },
-  orderPreviewImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
-  orderPreviewImagePlaceholder: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
-  orderPreviewQty: {
-    position: 'absolute',
-    bottom: -4,
-    right: -4,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  orderPreviewQtyText: {
-    fontSize: 10,
-    fontFamily: FONTS.bold,
+  iosDefaultBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
     color: '#FFFFFF',
   },
-  orderPreviewMore: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    justifyContent: 'center',
+  // iOS Add New Button
+  iosAddNewBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginLeft: -10,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 14,
+    marginTop: 12,
   },
-  orderPreviewMoreText: {
-    fontSize: 12,
-    fontFamily: FONTS.semiBold,
-  },
-  orderPreviewText: {
-    flex: 1,
-    fontSize: 13,
-    fontFamily: FONTS.medium,
+  iosAddNewText: {
+    fontSize: 15,
+    fontWeight: '500',
   },
 });

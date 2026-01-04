@@ -1086,7 +1086,7 @@ export default function FarmerOrdersScreen() {
               </Svg>
             </View>
             <View style={[styles.emptyIconBg, { backgroundColor: '#FFF3E0' }]}>
-              <Ionicons name="clipboard" size={40} color="#FF9500" />
+              <Ionicons name="bag-handle" size={40} color="#FF9500" />
             </View>
             <Text style={[styles.emptyTitle, { color: colors.text }]}>
               {hasActiveFilters ? 'No matching orders' : 'No orders found'}

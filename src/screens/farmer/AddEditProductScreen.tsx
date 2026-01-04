@@ -544,9 +544,6 @@ export default function AddEditProductScreen() {
           {/* Images Section */}
           <View style={[styles.section, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
             <View style={styles.sectionHeader}>
-              <View style={[styles.sectionIconContainer, { backgroundColor: '#E3F2FD' }]}>
-                <Ionicons name="images" size={18} color="#1976D2" />
-              </View>
               <View>
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Product Images</Text>
                 <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>Add up to 5 photos</Text>
@@ -584,9 +581,6 @@ export default function AddEditProductScreen() {
           {/* Basic Info */}
           <View style={[styles.section, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
             <View style={styles.sectionHeader}>
-              <View style={[styles.sectionIconContainer, { backgroundColor: '#E8F5E9' }]}>
-                <Ionicons name="information-circle" size={18} color="#4CAF50" />
-              </View>
               <View>
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Basic Information</Text>
                 <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>Name and description</Text>
@@ -627,9 +621,6 @@ export default function AddEditProductScreen() {
           {/* Category */}
           <View style={[styles.section, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
             <View style={styles.sectionHeader}>
-              <View style={[styles.sectionIconContainer, { backgroundColor: '#FFF3E0' }]}>
-                <Ionicons name="grid" size={18} color="#FF9800" />
-              </View>
               <View>
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Category</Text>
                 <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>Select product type</Text>
@@ -680,9 +671,6 @@ export default function AddEditProductScreen() {
           {/* Pricing & Stock */}
           <View style={[styles.section, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
             <View style={styles.sectionHeader}>
-              <View style={[styles.sectionIconContainer, { backgroundColor: '#E8F5E9' }]}>
-                <Ionicons name="pricetag" size={18} color="#4CAF50" />
-              </View>
               <View>
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Pricing & Stock</Text>
                 <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>Set your price and inventory</Text>
@@ -759,9 +747,6 @@ export default function AddEditProductScreen() {
           {/* Certifications */}
           <View style={[styles.section, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
             <View style={styles.sectionHeader}>
-              <View style={[styles.sectionIconContainer, { backgroundColor: '#F3E5F5' }]}>
-                <Ionicons name="shield-checkmark" size={18} color="#9C27B0" />
-              </View>
               <View>
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Certifications</Text>
                 <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>Quality badges for your product</Text>
@@ -801,9 +786,6 @@ export default function AddEditProductScreen() {
           {/* Harvest Date */}
           <View style={[styles.section, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
             <View style={styles.sectionHeader}>
-              <View style={[styles.sectionIconContainer, { backgroundColor: '#E0F7FA' }]}>
-                <Ionicons name="calendar" size={18} color="#00BCD4" />
-              </View>
               <View>
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Harvest Information</Text>
                 <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>When was it harvested?</Text>
@@ -838,9 +820,6 @@ export default function AddEditProductScreen() {
           {/* Minimum Order & Bulk Discount */}
           <View style={[styles.section, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
             <View style={styles.sectionHeader}>
-              <View style={[styles.sectionIconContainer, { backgroundColor: '#FFF8E1' }]}>
-                <Ionicons name="settings" size={18} color="#FFC107" />
-              </View>
               <View>
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Order Settings</Text>
                 <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>Minimum orders & bulk discounts</Text>
@@ -1069,14 +1048,13 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: COLORS.surface,
+    backgroundColor: '#F2F2F7',
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: FONT_SIZES.lg,
-    fontWeight: '700',
-    fontFamily: FONTS.bold,
+    fontSize: 17,
+    fontWeight: '600',
     color: COLORS.textPrimary,
   },
   placeholder: {
@@ -1090,40 +1068,34 @@ const styles = StyleSheet.create({
   },
   section: {
     backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.lg,
+    borderRadius: 14,
     padding: SPACING.md,
     marginBottom: SPACING.md,
-    ...SHADOWS.small,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
     marginBottom: SPACING.md,
-    gap: SPACING.sm,
-  },
-  sectionIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   sectionTitle: {
-    fontSize: FONT_SIZES.md,
-    fontWeight: '700',
-    fontFamily: FONTS.bold,
+    fontSize: 17,
+    fontWeight: '600',
     color: COLORS.textPrimary,
   },
   sectionSubtitle: {
-    fontSize: FONT_SIZES.xs,
-    fontFamily: FONTS.regular,
-    marginTop: 1,
+    fontSize: 13,
+    fontWeight: '400',
+    color: '#8E8E93',
+    marginTop: 2,
   },
   imagesContainer: {
-    gap: SPACING.sm,
-    paddingBottom: SPACING.sm,
-    paddingTop: SPACING.sm,
-    paddingRight: SPACING.sm,
+    gap: 10,
+    paddingBottom: 10,
+    paddingTop: 10,
+    paddingRight: 10,
   },
   imageWrapper: {
     position: 'relative',
@@ -1132,7 +1104,7 @@ const styles = StyleSheet.create({
   productImage: {
     width: 100,
     height: 100,
-    borderRadius: BORDER_RADIUS.md,
+    borderRadius: 12,
     backgroundColor: COLORS.background,
   },
   removeImageButton: {
@@ -1155,67 +1127,65 @@ const styles = StyleSheet.create({
   removeImageText: {
     color: COLORS.white,
     fontWeight: '700',
-    fontFamily: FONTS.bold,
     fontSize: 12,
   },
   addImageButton: {
     width: 100,
     height: 100,
-    borderRadius: BORDER_RADIUS.md,
+    borderRadius: 12,
     borderWidth: 2,
     borderStyle: 'dashed',
-    borderColor: COLORS.border,
+    borderColor: '#C6C6C8',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORS.background,
+    backgroundColor: '#F2F2F7',
   },
   addImageIcon: {
     fontSize: 28,
-    marginBottom: SPACING.xs,
+    marginBottom: 4,
   },
   addImageText: {
-    fontSize: FONT_SIZES.sm,
-    fontFamily: FONTS.regular,
-    color: COLORS.textSecondary,
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#8E8E93',
   },
   helperText: {
-    fontSize: FONT_SIZES.sm,
-    fontFamily: FONTS.regular,
-    color: COLORS.textSecondary,
-    marginTop: SPACING.xs,
+    fontSize: 13,
+    fontWeight: '400',
+    color: '#8E8E93',
+    marginTop: 8,
   },
   categoriesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: SPACING.sm,
+    gap: 10,
   },
   categoryChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderRadius: BORDER_RADIUS.round,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
     backgroundColor: COLORS.background,
     borderWidth: 1,
     borderColor: COLORS.border,
+    gap: 6,
   },
   categoryChipActive: {
-    backgroundColor: COLORS.primaryLight,
-    borderColor: COLORS.primary,
+    backgroundColor: '#34C759',
+    borderColor: '#34C759',
   },
   categoryIcon: {
     fontSize: 16,
-    marginRight: SPACING.xs,
   },
   categoryLabel: {
-    fontSize: FONT_SIZES.sm,
-    fontFamily: FONTS.regular,
+    fontSize: 14,
+    fontWeight: '500',
     color: COLORS.textSecondary,
   },
   categoryLabelActive: {
-    color: COLORS.primary,
+    color: '#FFFFFF',
     fontWeight: '600',
-    fontFamily: FONTS.semiBold,
   },
   row: {
     flexDirection: 'row',
@@ -1224,39 +1194,37 @@ const styles = StyleSheet.create({
     width: SPACING.md,
   },
   label: {
-    fontSize: FONT_SIZES.md,
+    fontSize: 15,
     fontWeight: '600',
-    fontFamily: FONTS.semiBold,
     color: COLORS.textPrimary,
-    marginBottom: SPACING.sm,
-    marginTop: SPACING.sm,
+    marginBottom: 10,
+    marginTop: 12,
   },
   unitsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: SPACING.sm,
+    gap: 10,
   },
   unitChip: {
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderRadius: BORDER_RADIUS.round,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
     backgroundColor: COLORS.background,
     borderWidth: 1,
     borderColor: COLORS.border,
   },
   unitChipActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
+    backgroundColor: '#34C759',
+    borderColor: '#34C759',
   },
   unitText: {
-    fontSize: FONT_SIZES.sm,
-    fontFamily: FONTS.regular,
+    fontSize: 14,
+    fontWeight: '500',
     color: COLORS.textSecondary,
   },
   unitTextActive: {
-    color: COLORS.white,
+    color: '#FFFFFF',
     fontWeight: '600',
-    fontFamily: FONTS.semiBold,
   },
   toggleRow: {
     flexDirection: 'row',
@@ -1264,32 +1232,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   toggleLabel: {
-    fontSize: FONT_SIZES.md,
+    fontSize: 17,
     fontWeight: '600',
-    fontFamily: FONTS.semiBold,
     color: COLORS.textPrimary,
   },
   toggleHelper: {
-    fontSize: FONT_SIZES.sm,
-    fontFamily: FONTS.regular,
-    color: COLORS.textSecondary,
+    fontSize: 13,
+    fontWeight: '400',
+    color: '#8E8E93',
     marginTop: 2,
   },
   toggle: {
-    width: 50,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: COLORS.border,
+    width: 51,
+    height: 31,
+    borderRadius: 16,
+    backgroundColor: '#E9E9EA',
     padding: 2,
   },
   toggleActive: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: '#34C759',
   },
   toggleKnob: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: COLORS.white,
+    width: 27,
+    height: 27,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 2,
   },
   toggleKnobActive: {
     transform: [{ translateX: 20 }],
@@ -1302,62 +1274,62 @@ const styles = StyleSheet.create({
   certificationsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: SPACING.sm,
+    gap: 10,
   },
   certificationChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderRadius: BORDER_RADIUS.round,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
     borderWidth: 1,
-    gap: SPACING.xs,
+    gap: 6,
   },
   certificationLabel: {
-    fontSize: FONT_SIZES.sm,
-    fontFamily: FONTS.regular,
+    fontSize: 14,
+    fontWeight: '500',
   },
   // Date Picker
   datePickerButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.lg,
-    gap: SPACING.sm,
+    padding: 14,
+    borderRadius: 12,
+    gap: 12,
   },
   datePickerContent: {
     flex: 1,
   },
   datePickerLabel: {
-    fontSize: FONT_SIZES.xs,
-    fontFamily: FONTS.regular,
+    fontSize: 12,
+    fontWeight: '400',
+    color: '#8E8E93',
     marginBottom: 2,
   },
   datePickerValue: {
-    fontSize: FONT_SIZES.md,
-    fontFamily: FONTS.medium,
+    fontSize: 16,
+    fontWeight: '500',
   },
   // Bulk Discount
   bulkDiscountSection: {
-    marginTop: SPACING.md,
-    paddingTop: SPACING.md,
-    borderTopWidth: 1,
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
   bulkDiscountHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.xs,
-    marginBottom: SPACING.xs,
+    gap: 6,
+    marginBottom: 4,
   },
   bulkDiscountTitle: {
-    fontSize: FONT_SIZES.md,
+    fontSize: 16,
     fontWeight: '600',
-    fontFamily: FONTS.semiBold,
   },
   // Modal styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'flex-end',
   },
   modalBackdrop: {
@@ -1368,99 +1340,102 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
   modalContent: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: SPACING.lg,
-    paddingBottom: SPACING.xl,
+    borderTopLeftRadius: 14,
+    borderTopRightRadius: 14,
+    paddingHorizontal: 20,
+    paddingBottom: 34,
   },
   modalHandle: {
-    width: 40,
-    height: 4,
+    width: 36,
+    height: 5,
     backgroundColor: '#D1D1D6',
-    borderRadius: 2,
+    borderRadius: 2.5,
     alignSelf: 'center',
-    marginTop: SPACING.sm,
-    marginBottom: SPACING.lg,
+    marginTop: 8,
+    marginBottom: 20,
   },
   modalTitle: {
-    fontSize: FONT_SIZES.lg,
-    fontWeight: '700',
-    fontFamily: FONTS.bold,
+    fontSize: 17,
+    fontWeight: '600',
     textAlign: 'center',
-    marginBottom: SPACING.lg,
+    marginBottom: 20,
   },
   modalOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: SPACING.md,
-    gap: SPACING.md,
+    paddingVertical: 14,
+    gap: 14,
   },
   modalOptionIcon: {
-    width: 48,
-    height: 48,
+    width: 44,
+    height: 44,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalOptionText: {
     flex: 1,
-    fontSize: FONT_SIZES.md,
-    fontFamily: FONTS.medium,
+    fontSize: 17,
+    fontWeight: '400',
   },
   modalCancelButton: {
-    marginTop: SPACING.md,
-    paddingVertical: SPACING.md,
-    borderRadius: BORDER_RADIUS.lg,
+    marginTop: 12,
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: 'center',
+    backgroundColor: '#F2F2F7',
   },
   modalCancelText: {
-    fontSize: FONT_SIZES.md,
+    fontSize: 17,
     fontWeight: '600',
-    fontFamily: FONTS.semiBold,
+    color: '#007AFF',
   },
   // Date Picker Modal
   datePickerModal: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingBottom: SPACING.xl,
+    borderTopLeftRadius: 14,
+    borderTopRightRadius: 14,
+    paddingBottom: 34,
   },
   datePickerHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.1)',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#C6C6C8',
   },
   datePickerCancel: {
-    fontSize: FONT_SIZES.md,
-    fontFamily: FONTS.regular,
+    fontSize: 17,
+    fontWeight: '400',
   },
   datePickerTitle: {
-    fontSize: FONT_SIZES.md,
+    fontSize: 17,
     fontWeight: '600',
-    fontFamily: FONTS.semiBold,
   },
   datePickerDone: {
-    fontSize: FONT_SIZES.md,
+    fontSize: 17,
     fontWeight: '600',
-    fontFamily: FONTS.semiBold,
+    color: '#007AFF',
   },
   datePicker: {
     height: 200,
-    marginTop: SPACING.sm,
+    marginTop: 8,
   },
   // Activation Card Styles
   activationCard: {
-    borderRadius: BORDER_RADIUS.lg,
-    padding: SPACING.lg,
-    marginBottom: SPACING.md,
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 16,
     position: 'relative',
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(255, 107, 53, 0.2)',
-    ...SHADOWS.small,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   activationCardSvg: {
     position: 'absolute',

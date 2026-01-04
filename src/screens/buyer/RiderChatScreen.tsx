@@ -16,6 +16,7 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Svg, { Circle, Path, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as Location from 'expo-location';
@@ -727,7 +728,7 @@ const RiderChatScreen: React.FC = () => {
       <Animated.View
         style={[
           styles.header,
-          dynamicStyles.headerBg,
+          { backgroundColor: '#FFFFFF' },
           {
             paddingTop: insets.top,
             transform: [
@@ -742,11 +743,31 @@ const RiderChatScreen: React.FC = () => {
           },
         ]}
       >
+        {/* SVG Background Decoration */}
+        <View style={styles.headerSvgBackground}>
+          <Svg width="100%" height="120" viewBox="0 0 400 120" preserveAspectRatio="xMidYMid slice">
+            <Defs>
+              <SvgLinearGradient id="riderChatGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                <Stop offset="0%" stopColor="#1976D2" stopOpacity={0.12} />
+                <Stop offset="100%" stopColor="#2196F3" stopOpacity={0.06} />
+              </SvgLinearGradient>
+              <SvgLinearGradient id="riderChatGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+                <Stop offset="0%" stopColor="#2196F3" stopOpacity={0.08} />
+                <Stop offset="100%" stopColor="#1976D2" stopOpacity={0.03} />
+              </SvgLinearGradient>
+            </Defs>
+            <Circle cx="350" cy="15" r="70" fill="url(#riderChatGrad1)" />
+            <Circle cx="380" cy="70" r="45" fill="url(#riderChatGrad2)" />
+            <Circle cx="30" cy="90" r="55" fill="url(#riderChatGrad2)" />
+            <Path d="M0,80 Q100,40 200,80 T400,60" fill="none" stroke="url(#riderChatGrad1)" strokeWidth="35" opacity={0.3} />
+          </Svg>
+        </View>
+
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="chevron-back" size={28} color={colors.text} />
+          <Ionicons name="chevron-back" size={28} color="#1C1C1E" />
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.headerCenter} onPress={handleViewRiderProfile}>
@@ -754,10 +775,10 @@ const RiderChatScreen: React.FC = () => {
             <Ionicons name="bicycle" size={20} color="#FFFFFF" />
           </View>
           <View style={styles.headerInfo}>
-            <Text style={[styles.headerName, { color: colors.text }]}>{rider.name}</Text>
+            <Text style={[styles.headerName, { color: '#1C1C1E' }]}>{rider.name}</Text>
             <View style={styles.headerSubRow}>
               <View style={[styles.onlineDot, { backgroundColor: rider.isOnline ? '#34C759' : '#8E8E93' }]} />
-              <Text style={[styles.headerRole, { color: colors.textSecondary }]}>
+              <Text style={[styles.headerRole, { color: '#8E8E93' }]}>
                 {rider.isOnline ? 'Active' : 'Away'} • ⭐ {rider.rating}
               </Text>
             </View>
@@ -765,8 +786,8 @@ const RiderChatScreen: React.FC = () => {
         </TouchableOpacity>
 
         <View style={styles.headerActions}>
-          <TouchableOpacity style={styles.headerButton} onPress={handleCall}>
-            <Ionicons name="call" size={22} color={COLORS.primary} />
+          <TouchableOpacity style={[styles.headerButton, { backgroundColor: '#E3F2FD' }]} onPress={handleCall}>
+            <Ionicons name="call" size={22} color="#1976D2" />
           </TouchableOpacity>
         </View>
       </Animated.View>
@@ -948,8 +969,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.sm,
     paddingBottom: SPACING.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: COLORS.border,
-    ...SHADOWS.small,
+    borderBottomColor: '#E5E5EA',
+    position: 'relative',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  headerSvgBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   backButton: {
     padding: SPACING.xs,

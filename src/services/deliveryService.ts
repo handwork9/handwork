@@ -19,7 +19,7 @@ export const DELIVERY_SPEEDS: DeliverySpeedOption[] = [
     description: 'Delivered within 1-2 hours',
     estimatedTime: '1-2 hours',
     priceMultiplier: 1.5,
-    icon: 'flash',
+    icon: 'rocket',
     available: true,
   },
   {

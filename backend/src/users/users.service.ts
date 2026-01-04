@@ -791,7 +791,7 @@ export class UsersService {
       .createQueryBuilder()
       .from('orders', 'o')
       .where('o."buyerId" = :userId', { userId })
-      .andWhere('o.status NOT IN (:...statuses)', { statuses: ['CANCELLED', 'REFUNDED'] })
+      .andWhere('o.status NOT IN (:...statuses)', { statuses: ['cancelled', 'refunded'] })
       .getCount();
 
     if (orderCount > 0) {

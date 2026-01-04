@@ -17,7 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Circle } from 'react-native-svg';
+import Svg, { Circle, Path, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, FONTS } from '../../constants/theme';
@@ -158,6 +158,21 @@ export default function FarmerSubscriptionScreen() {
   const slideAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const badgeRotate = useRef(new Animated.Value(0)).current;
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const introScrollY = useRef(new Animated.Value(0)).current;
+  
+  // Header title opacity based on scroll position
+  const headerTitleOpacity = scrollY.interpolate({
+    inputRange: [0, 60, 100],
+    outputRange: [0, 0, 1],
+    extrapolate: 'clamp',
+  });
+  
+  const introHeaderTitleOpacity = introScrollY.interpolate({
+    inputRange: [0, 60, 100],
+    outputRange: [0, 0, 1],
+    extrapolate: 'clamp',
+  });
 
   // Query hook
   const { data: currentSubscription, isLoading: isLoadingSubscription, error: subscriptionError } = useQuery({
@@ -279,19 +294,44 @@ export default function FarmerSubscriptionScreen() {
     return (
       <View style={{ flex: 1, backgroundColor: isDark ? colors.background : '#F2F2F7' }}>
         {/* Header */}
-        <View style={{ paddingTop: insets.top + 10, paddingHorizontal: 16, paddingBottom: 16, backgroundColor: isDark ? colors.background : '#F2F2F7' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <TouchableOpacity 
-              style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#FFFFFF', alignItems: 'center', justifyContent: 'center' }}
-              onPress={() => navigation.goBack()}
-            >
-              <Ionicons name="chevron-back" size={24} color={colors.text} />
-            </TouchableOpacity>
-            <Text style={{ color: colors.text, fontSize: 18, fontWeight: '600' }}>Verified Seller</Text>
-            <View style={{ width: 40 }} />
+        <View style={[styles.header, { paddingTop: insets.top + 10, backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+          {/* SVG Background Decoration */}
+          <View style={styles.headerSvgBackground}>
+            <Svg width="100%" height="120" viewBox="0 0 400 120" preserveAspectRatio="xMidYMid slice">
+              <Defs>
+                <SvgLinearGradient id="blueTickIntroGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <Stop offset="0%" stopColor="#1DA1F2" stopOpacity={isDark ? 0.2 : 0.12} />
+                  <Stop offset="100%" stopColor="#0D8ECF" stopOpacity={isDark ? 0.12 : 0.06} />
+                </SvgLinearGradient>
+                <SvgLinearGradient id="blueTickIntroGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <Stop offset="0%" stopColor="#0D8ECF" stopOpacity={isDark ? 0.15 : 0.08} />
+                  <Stop offset="100%" stopColor="#1DA1F2" stopOpacity={isDark ? 0.08 : 0.03} />
+                </SvgLinearGradient>
+              </Defs>
+              <Circle cx="350" cy="15" r="70" fill="url(#blueTickIntroGrad1)" />
+              <Circle cx="380" cy="70" r="45" fill="url(#blueTickIntroGrad2)" />
+              <Circle cx="30" cy="90" r="55" fill="url(#blueTickIntroGrad2)" />
+              <Path d="M0,80 Q100,40 200,80 T400,60" fill="none" stroke="url(#blueTickIntroGrad1)" strokeWidth="35" opacity={0.3} />
+            </Svg>
           </View>
+          <TouchableOpacity 
+            style={[styles.backButton, { backgroundColor: isDark ? 'rgba(29, 161, 242, 0.2)' : '#E1F5FE' }]}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="chevron-back" size={24} color={isDark ? '#FFFFFF' : '#1C1C1E'} />
+          </TouchableOpacity>
+          <Animated.Text style={[styles.headerNavTitle, { color: isDark ? '#FFFFFF' : '#1C1C1E', opacity: introHeaderTitleOpacity }]}>Verified Seller</Animated.Text>
+          <View style={{ width: 40 }} />
         </View>
-        <ScrollView contentContainerStyle={{ padding: 20 }} showsVerticalScrollIndicator={false}>
+        <Animated.ScrollView 
+          contentContainerStyle={{ padding: 20, paddingTop: 16 }} 
+          showsVerticalScrollIndicator={false}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: introScrollY } } }],
+            { useNativeDriver: true }
+          )}
+          scrollEventThrottle={16}
+        >
           {/* Hero Section */}
           <View style={{ alignItems: 'center', marginBottom: 24 }}>
             <View style={{ marginBottom: 20 }}>
@@ -438,7 +478,7 @@ export default function FarmerSubscriptionScreen() {
           >
             <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '600' }}>View Subscription Plans</Text>
           </TouchableOpacity>
-        </ScrollView>
+        </Animated.ScrollView>
       </View>
     );
   }
@@ -534,21 +574,45 @@ export default function FarmerSubscriptionScreen() {
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 10, backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 10, backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+        {/* SVG Background Decoration */}
+        <View style={styles.headerSvgBackground}>
+          <Svg width="100%" height="120" viewBox="0 0 400 120" preserveAspectRatio="xMidYMid slice">
+            <Defs>
+              <SvgLinearGradient id="blueTickHeaderGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                <Stop offset="0%" stopColor="#1DA1F2" stopOpacity={isDark ? 0.2 : 0.12} />
+                <Stop offset="100%" stopColor="#0D8ECF" stopOpacity={isDark ? 0.12 : 0.06} />
+              </SvgLinearGradient>
+              <SvgLinearGradient id="blueTickHeaderGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+                <Stop offset="0%" stopColor="#0D8ECF" stopOpacity={isDark ? 0.15 : 0.08} />
+                <Stop offset="100%" stopColor="#1DA1F2" stopOpacity={isDark ? 0.08 : 0.03} />
+              </SvgLinearGradient>
+            </Defs>
+            <Circle cx="350" cy="15" r="70" fill="url(#blueTickHeaderGrad1)" />
+            <Circle cx="380" cy="70" r="45" fill="url(#blueTickHeaderGrad2)" />
+            <Circle cx="30" cy="90" r="55" fill="url(#blueTickHeaderGrad2)" />
+            <Path d="M0,80 Q100,40 200,80 T400,60" fill="none" stroke="url(#blueTickHeaderGrad1)" strokeWidth="35" opacity={0.3} />
+          </Svg>
+        </View>
         <TouchableOpacity
-          style={[styles.backButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#FFFFFF' }]}
+          style={[styles.backButton, { backgroundColor: isDark ? 'rgba(29, 161, 242, 0.2)' : '#E1F5FE' }]}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="chevron-back" size={24} color={colors.text} />
+          <Ionicons name="chevron-back" size={24} color={isDark ? '#FFFFFF' : '#1C1C1E'} />
         </TouchableOpacity>
-        <Text style={[styles.headerNavTitle, { color: colors.text }]}>Verified Seller</Text>
+        <Animated.Text style={[styles.headerNavTitle, { color: isDark ? '#FFFFFF' : '#1C1C1E', opacity: headerTitleOpacity }]}>Verified Seller</Animated.Text>
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView
+      <Animated.ScrollView
         style={styles.content}
-        contentContainerStyle={styles.contentContainer}
+        contentContainerStyle={[styles.contentContainer, { paddingTop: 16 }]}
         showsVerticalScrollIndicator={false}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true }
+        )}
+        scrollEventThrottle={16}
       >
         {/* Hero Card */}
         <View style={styles.heroSection}>
@@ -772,7 +836,7 @@ export default function FarmerSubscriptionScreen() {
         </View>
 
         <View style={{ height: 120 }} />
-      </ScrollView>
+      </Animated.ScrollView>
 
       {/* Fixed Subscribe Button */}
       <View style={[styles.footer, { paddingBottom: insets.bottom + 16, backgroundColor: colors.background }]}>
@@ -913,6 +977,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: SPACING.md,
     paddingBottom: SPACING.md,
+    position: 'relative',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  headerSvgBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   headerNavTitle: {
     fontSize: 18,

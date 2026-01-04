@@ -18,7 +18,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Circle, Path, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
@@ -428,29 +428,46 @@ export default function AIChatbotScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <LinearGradient
-        colors={['#16A34A', '#15803D']}
-        style={[styles.header, { paddingTop: insets.top }]}
-      >
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#FFF" />
+      <View style={[styles.header, { paddingTop: insets.top, backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+        {/* SVG Background Decoration */}
+        <View style={styles.headerSvgBackground}>
+          <Svg width="100%" height="120" viewBox="0 0 400 120" preserveAspectRatio="xMidYMid slice">
+            <Defs>
+              <SvgLinearGradient id="aiChatGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                <Stop offset="0%" stopColor="#16A34A" stopOpacity={isDark ? 0.2 : 0.12} />
+                <Stop offset="100%" stopColor="#22C55E" stopOpacity={isDark ? 0.12 : 0.06} />
+              </SvgLinearGradient>
+              <SvgLinearGradient id="aiChatGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+                <Stop offset="0%" stopColor="#22C55E" stopOpacity={isDark ? 0.15 : 0.08} />
+                <Stop offset="100%" stopColor="#16A34A" stopOpacity={isDark ? 0.08 : 0.03} />
+              </SvgLinearGradient>
+            </Defs>
+            <Circle cx="350" cy="15" r="70" fill="url(#aiChatGrad1)" />
+            <Circle cx="380" cy="70" r="45" fill="url(#aiChatGrad2)" />
+            <Circle cx="30" cy="90" r="55" fill="url(#aiChatGrad2)" />
+            <Path d="M0,80 Q100,40 200,80 T400,60" fill="none" stroke="url(#aiChatGrad1)" strokeWidth="35" opacity={0.3} />
+          </Svg>
+        </View>
+
+        <TouchableOpacity style={[styles.backButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#F2F2F7' }]} onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={24} color={isDark ? '#FFFFFF' : '#1C1C1E'} />
         </TouchableOpacity>
         <View style={styles.headerInfo}>
-          <View style={styles.headerAvatar}>
+          <View style={[styles.headerAvatar, { backgroundColor: '#16A34A' }]}>
             <MaterialCommunityIcons name="robot-happy" size={28} color="#FFF" />
           </View>
           <View style={styles.headerText}>
-            <Text style={styles.headerTitle}>AI Assistant</Text>
+            <Text style={[styles.headerTitle, { color: isDark ? '#FFFFFF' : '#1C1C1E' }]}>AI Assistant</Text>
             <View style={styles.statusRow}>
               <View style={styles.statusDot} />
-              <Text style={styles.statusText}>Always online</Text>
+              <Text style={[styles.statusText, { color: isDark ? '#8E8E93' : '#8E8E93' }]}>Always online</Text>
             </View>
           </View>
         </View>
-        <TouchableOpacity style={styles.menuButton} onPress={handleEscalate}>
-          <Ionicons name="person" size={22} color="#FFF" />
+        <TouchableOpacity style={[styles.menuButton, { backgroundColor: isDark ? 'rgba(22, 163, 74, 0.2)' : '#E8F8EE' }]} onPress={handleEscalate}>
+          <Ionicons name="person" size={22} color="#16A34A" />
         </TouchableOpacity>
-      </LinearGradient>
+      </View>
 
       <KeyboardAvoidingView
         style={styles.content}
@@ -540,10 +557,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingBottom: 12,
+    position: 'relative',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  headerSvgBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   backButton: {
     width: 40,
     height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -589,6 +621,7 @@ const styles = StyleSheet.create({
   menuButton: {
     width: 40,
     height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },

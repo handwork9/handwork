@@ -12,9 +12,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import LottieView from 'lottie-react-native';
 import { BuyerStackParamList } from '../../types';
-import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, FONTS } from '../../constants/theme';
+import { COLORS } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
 import { triggerSuccessHaptic } from '../../utils/haptics';
 
@@ -22,8 +21,8 @@ type Props = NativeStackScreenProps<BuyerStackParamList, 'OrderConfirmation'>;
 
 const { width, height } = Dimensions.get('window');
 
-// Confetti colors
-const CONFETTI_COLORS = ['#4CAF50', '#8BC34A', '#CDDC39', '#FFC107', '#FF9800', '#03A9F4'];
+// Subtle confetti colors matching iOS
+const CONFETTI_COLORS = ['#34C759', '#5AC8FA', '#FF9F0A', '#FF375F', '#BF5AF2', '#64D2FF'];
 
 interface ConfettiPiece {
   id: number;
@@ -53,10 +52,10 @@ export default function OrderConfirmationScreen({ route, navigation }: Props) {
   const [processingStep, setProcessingStep] = useState(0);
 
   const processingSteps = [
-    { text: 'Payment verified', icon: 'card-outline' as const },
-    { text: 'Creating your order', icon: 'receipt-outline' as const },
-    { text: 'Notifying farmer', icon: 'notifications-outline' as const },
-    { text: 'Order confirmed!', icon: 'checkmark-circle' as const },
+    { text: 'Payment verified', icon: 'checkmark-circle' as const },
+    { text: 'Creating order', icon: 'document-text-outline' as const },
+    { text: 'Notifying farmer', icon: 'leaf-outline' as const },
+    { text: 'All set!', icon: 'sparkles' as const },
   ];
 
   useEffect(() => {
@@ -232,59 +231,62 @@ export default function OrderConfirmationScreen({ route, navigation }: Props) {
     return (
       <View style={styles.processingContainer}>
         <View style={[styles.processingCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
-          {/* Loading spinner */}
-          <View style={styles.loadingContainer}>
-            <Animated.View style={styles.spinnerOuter}>
-              <LinearGradient
-                colors={[COLORS.primary, COLORS.primaryLight]}
-                style={styles.spinnerGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              />
-            </Animated.View>
+          {/* iOS-style animated ring */}
+          <View style={styles.loadingRingContainer}>
+            <View style={[styles.loadingRingOuter, { borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]} />
+            <Animated.View style={[styles.loadingRingProgress, { borderColor: COLORS.primary }]} />
+            <View style={styles.loadingIconCenter}>
+              <Ionicons name="bag-check" size={28} color={COLORS.primary} />
+            </View>
           </View>
 
-          {/* Processing steps */}
+          {/* Processing steps - iOS style list */}
           <View style={styles.stepsContainer}>
             {processingSteps.map((step, index) => {
               const isActive = index === processingStep;
               const isCompleted = index < processingStep;
               
               return (
-                <View key={index} style={styles.stepRow}>
+                <View 
+                  key={index} 
+                  style={[
+                    styles.stepRow,
+                    index < processingSteps.length - 1 && { 
+                      borderBottomWidth: StyleSheet.hairlineWidth, 
+                      borderBottomColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(60,60,67,0.12)' 
+                    }
+                  ]}
+                >
                   <View style={[
                     styles.stepIconContainer,
-                    isCompleted && styles.stepIconCompleted,
-                    isActive && styles.stepIconActive,
                     { 
                       backgroundColor: isCompleted 
-                        ? COLORS.primary 
+                        ? '#34C759'
                         : isActive 
-                          ? isDark ? 'rgba(76, 175, 80, 0.2)' : '#E8F5E9'
-                          : isDark ? colors.surface : '#F5F5F5'
+                          ? isDark ? 'rgba(52, 199, 89, 0.2)' : 'rgba(52, 199, 89, 0.12)'
+                          : isDark ? 'rgba(255,255,255,0.08)' : 'rgba(60,60,67,0.06)'
                     }
                   ]}>
                     {isCompleted ? (
-                      <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                      <Ionicons name="checkmark" size={14} color="#FFFFFF" />
                     ) : (
                       <Ionicons 
                         name={step.icon} 
-                        size={18} 
-                        color={isActive ? COLORS.primary : colors.textSecondary} 
+                        size={16} 
+                        color={isActive ? '#34C759' : colors.textSecondary} 
                       />
                     )}
                   </View>
                   <Text style={[
                     styles.stepText,
-                    { color: isActive || isCompleted ? colors.text : colors.textSecondary },
-                    isActive && styles.stepTextActive,
+                    { color: isCompleted || isActive ? colors.text : colors.textSecondary },
+                    isActive && { fontWeight: '600' },
                   ]}>
                     {step.text}
                   </Text>
-                  {isActive && (
-                    <View style={styles.stepLoadingDots}>
-                      <LoadingDots />
-                    </View>
+                  {isActive && <LoadingDots color={COLORS.primary} />}
+                  {isCompleted && (
+                    <Ionicons name="checkmark" size={18} color="#34C759" />
                   )}
                 </View>
               );
@@ -303,7 +305,7 @@ export default function OrderConfirmationScreen({ route, navigation }: Props) {
         showsVerticalScrollIndicator={false}
         bounces={false}
       >
-        {/* Success checkmark */}
+        {/* iOS-style Success checkmark */}
         <Animated.View style={[
           styles.checkContainer,
           {
@@ -313,16 +315,12 @@ export default function OrderConfirmationScreen({ route, navigation }: Props) {
         ]}>
           <Animated.View style={[
             styles.checkCircle,
-            { transform: [{ scale: pulseAnim }] }
+            { 
+              transform: [{ scale: pulseAnim }],
+              backgroundColor: '#34C759',
+            }
           ]}>
-            <LinearGradient
-              colors={[COLORS.primary, COLORS.primaryLight]}
-              style={styles.checkGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <Ionicons name="checkmark" size={60} color="#FFFFFF" />
-            </LinearGradient>
+            <Ionicons name="checkmark" size={56} color="#FFFFFF" />
           </Animated.View>
         </Animated.View>
 
@@ -335,117 +333,125 @@ export default function OrderConfirmationScreen({ route, navigation }: Props) {
           }
         ]}>
           <Text style={[styles.successTitle, { color: colors.text }]}>
-            Order Confirmed!
+            Order Placed!
           </Text>
           <Text style={[styles.successSubtitle, { color: colors.textSecondary }]}>
-            Thank you for your order. We're getting it ready for you.
+            Your order is on its way to being prepared
           </Text>
 
-          {/* Order details card */}
+          {/* iOS-style Order details card */}
           <View style={[styles.orderCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
-            <View style={styles.orderRow}>
-              <Text style={[styles.orderLabel, { color: colors.textSecondary }]}>Order Number</Text>
-              <Text style={[styles.orderValue, { color: colors.text }]}>#{orderNumber}</Text>
-            </View>
-            <View style={[styles.divider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#F0F0F0' }]} />
-            <View style={styles.orderRow}>
-              <Text style={[styles.orderLabel, { color: colors.textSecondary }]}>Items</Text>
-              <Text style={[styles.orderValue, { color: colors.text }]}>{itemCount} item{itemCount !== 1 ? 's' : ''}</Text>
-            </View>
-            <View style={[styles.divider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#F0F0F0' }]} />
-            <View style={styles.orderRow}>
-              <Text style={[styles.orderLabel, { color: colors.textSecondary }]}>Total Paid</Text>
-              <Text style={[styles.orderValueHighlight, { color: COLORS.primary }]}>₦{total.toLocaleString()}</Text>
-            </View>
-            <View style={[styles.divider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#F0F0F0' }]} />
-            <View style={styles.orderRow}>
-              <Text style={[styles.orderLabel, { color: colors.textSecondary }]}>Payment</Text>
-              <View style={styles.paymentBadge}>
-                <Ionicons 
-                  name={paymentMethod === 'wallet' ? 'wallet' : 'card'} 
-                  size={14} 
-                  color={COLORS.primary} 
-                />
-                <Text style={[styles.paymentText, { color: COLORS.primary }]}>
-                  {paymentMethod === 'wallet' ? 'Wallet' : 'Card'}
-                </Text>
+            <View style={styles.orderCardHeader}>
+              <View style={[styles.orderIconCircle, { backgroundColor: isDark ? 'rgba(52, 199, 89, 0.15)' : 'rgba(52, 199, 89, 0.1)' }]}>
+                <Ionicons name="receipt-outline" size={20} color="#34C759" />
+              </View>
+              <View style={styles.orderHeaderText}>
+                <Text style={[styles.orderNumberLabel, { color: colors.textSecondary }]}>Order</Text>
+                <Text style={[styles.orderNumberValue, { color: colors.text }]}>#{orderNumber}</Text>
               </View>
             </View>
+            
+            <View style={[styles.orderDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(60,60,67,0.12)' }]} />
+            
+            <View style={styles.orderDetailsGrid}>
+              <View style={styles.orderDetailItem}>
+                <Text style={[styles.orderDetailLabel, { color: colors.textSecondary }]}>Items</Text>
+                <Text style={[styles.orderDetailValue, { color: colors.text }]}>{itemCount}</Text>
+              </View>
+              <View style={[styles.orderDetailDividerV, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(60,60,67,0.12)' }]} />
+              <View style={styles.orderDetailItem}>
+                <Text style={[styles.orderDetailLabel, { color: colors.textSecondary }]}>Total</Text>
+                <Text style={[styles.orderDetailValue, { color: '#34C759' }]}>₦{total.toLocaleString()}</Text>
+              </View>
+              <View style={[styles.orderDetailDividerV, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(60,60,67,0.12)' }]} />
+              <View style={styles.orderDetailItem}>
+                <Text style={[styles.orderDetailLabel, { color: colors.textSecondary }]}>Payment</Text>
+                <View style={styles.paymentBadge}>
+                  <Ionicons 
+                    name={paymentMethod === 'wallet' ? 'wallet-outline' : 'card-outline'} 
+                    size={14} 
+                    color={colors.primary} 
+                  />
+                </View>
+              </View>
+            </View>
+            
             {estimatedDelivery && (
               <>
-                <View style={[styles.divider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#F0F0F0' }]} />
-                <View style={styles.orderRow}>
-                  <Text style={[styles.orderLabel, { color: colors.textSecondary }]}>Est. Delivery</Text>
-                  <Text style={[styles.orderValue, { color: colors.text }]}>{estimatedDelivery}</Text>
+                <View style={[styles.orderDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(60,60,67,0.12)' }]} />
+                <View style={styles.deliveryEstimate}>
+                  <Ionicons name="time-outline" size={16} color={colors.textSecondary} />
+                  <Text style={[styles.deliveryEstimateText, { color: colors.textSecondary }]}>
+                    Est. delivery: <Text style={{ color: colors.text, fontWeight: '600' }}>{estimatedDelivery}</Text>
+                  </Text>
                 </View>
               </>
             )}
           </View>
 
-          {/* What's next section */}
+          {/* iOS-style What's next steps */}
           <View style={[styles.nextStepsCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
-            <Text style={[styles.nextStepsTitle, { color: colors.text }]}>What happens next?</Text>
-            <View style={styles.nextStep}>
-              <View style={[styles.nextStepIcon, { backgroundColor: isDark ? 'rgba(76, 175, 80, 0.2)' : '#E8F5E9' }]}>
-                <Ionicons name="storefront-outline" size={20} color={COLORS.primary} />
+            <Text style={[styles.nextStepsTitle, { color: colors.text }]}>What's Next</Text>
+            
+            <View style={styles.nextStepsList}>
+              <View style={styles.nextStep}>
+                <View style={[styles.nextStepNumber, { backgroundColor: '#34C759' }]}>
+                  <Text style={styles.nextStepNumberText}>1</Text>
+                </View>
+                <View style={styles.nextStepContent}>
+                  <Text style={[styles.nextStepText, { color: colors.text }]}>Farmer prepares your order</Text>
+                </View>
               </View>
-              <View style={styles.nextStepContent}>
-                <Text style={[styles.nextStepText, { color: colors.text }]}>Farmer prepares your order</Text>
-                <Text style={[styles.nextStepSubtext, { color: colors.textSecondary }]}>Fresh from the farm</Text>
+              
+              <View style={[styles.nextStepLine, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60,60,67,0.1)' }]} />
+              
+              <View style={styles.nextStep}>
+                <View style={[styles.nextStepNumber, { backgroundColor: '#5AC8FA' }]}>
+                  <Text style={styles.nextStepNumberText}>2</Text>
+                </View>
+                <View style={styles.nextStepContent}>
+                  <Text style={[styles.nextStepText, { color: colors.text }]}>Rider picks up & delivers</Text>
+                </View>
               </View>
-            </View>
-            <View style={styles.nextStep}>
-              <View style={[styles.nextStepIcon, { backgroundColor: isDark ? 'rgba(33, 150, 243, 0.2)' : '#E3F2FD' }]}>
-                <Ionicons name="bicycle-outline" size={20} color="#2196F3" />
-              </View>
-              <View style={styles.nextStepContent}>
-                <Text style={[styles.nextStepText, { color: colors.text }]}>Rider picks up & delivers</Text>
-                <Text style={[styles.nextStepSubtext, { color: colors.textSecondary }]}>Track in real-time</Text>
-              </View>
-            </View>
-            <View style={styles.nextStep}>
-              <View style={[styles.nextStepIcon, { backgroundColor: isDark ? 'rgba(255, 152, 0, 0.2)' : '#FFF3E0' }]}>
-                <Ionicons name="happy-outline" size={20} color="#FF9800" />
-              </View>
-              <View style={styles.nextStepContent}>
-                <Text style={[styles.nextStepText, { color: colors.text }]}>Enjoy your fresh produce!</Text>
-                <Text style={[styles.nextStepSubtext, { color: colors.textSecondary }]}>Rate your experience</Text>
+              
+              <View style={[styles.nextStepLine, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60,60,67,0.1)' }]} />
+              
+              <View style={styles.nextStep}>
+                <View style={[styles.nextStepNumber, { backgroundColor: '#FF9F0A' }]}>
+                  <Text style={styles.nextStepNumberText}>3</Text>
+                </View>
+                <View style={styles.nextStepContent}>
+                  <Text style={[styles.nextStepText, { color: colors.text }]}>Enjoy fresh produce!</Text>
+                </View>
               </View>
             </View>
           </View>
         </Animated.View>
 
-        {/* Buttons */}
+        {/* iOS-style Buttons */}
         <Animated.View style={[
           styles.buttonContainer,
           {
             opacity: buttonOpacity,
             transform: [{ translateY: buttonTranslate }],
-            paddingBottom: insets.bottom + SPACING.md,
+            paddingBottom: insets.bottom + 16,
           }
         ]}>
           <TouchableOpacity
-            style={styles.trackButton}
+            style={[styles.primaryButton, { backgroundColor: COLORS.primary }]}
             onPress={handleTrackOrder}
-            activeOpacity={0.9}
+            activeOpacity={0.8}
           >
-            <LinearGradient
-              colors={[COLORS.primary, COLORS.primaryDark]}
-              style={styles.trackButtonGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-            >
-              <Ionicons name="location-outline" size={20} color="#FFFFFF" />
-              <Text style={styles.trackButtonText}>Track My Order</Text>
-            </LinearGradient>
+            <Ionicons name="location-outline" size={20} color="#FFFFFF" />
+            <Text style={styles.primaryButtonText}>Track Order</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.continueButton, { backgroundColor: isDark ? colors.card : '#F5F5F5' }]}
+            style={[styles.secondaryButton, { backgroundColor: isDark ? colors.card : 'rgba(60,60,67,0.06)' }]}
             onPress={handleContinueShopping}
-            activeOpacity={0.8}
+            activeOpacity={0.7}
           >
-            <Text style={[styles.continueButtonText, { color: colors.text }]}>Continue Shopping</Text>
+            <Text style={[styles.secondaryButtonText, { color: colors.primary }]}>Continue Shopping</Text>
           </TouchableOpacity>
         </Animated.View>
       </ScrollView>
@@ -462,7 +468,7 @@ export default function OrderConfirmationScreen({ route, navigation }: Props) {
 }
 
 // Loading dots component
-const LoadingDots = () => {
+const LoadingDots = ({ color = COLORS.primary }: { color?: string }) => {
   const dot1 = useRef(new Animated.Value(0)).current;
   const dot2 = useRef(new Animated.Value(0)).current;
   const dot3 = useRef(new Animated.Value(0)).current;
@@ -498,6 +504,7 @@ const LoadingDots = () => {
           key={index}
           style={[
             styles.dot,
+            { backgroundColor: color },
             {
               opacity: dot.interpolate({
                 inputRange: [0, 1],
@@ -506,7 +513,7 @@ const LoadingDots = () => {
               transform: [{
                 scale: dot.interpolate({
                   inputRange: [0, 1],
-                  outputRange: [1, 1.3],
+                  outputRange: [1, 1.2],
                 }),
               }],
             },
@@ -531,243 +538,289 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: SPACING.xl,
+    paddingBottom: 24,
   },
+  // Processing State - iOS Style
   processingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: SPACING.xl,
+    paddingHorizontal: 24,
   },
   processingCard: {
     width: '100%',
-    padding: SPACING.xl,
-    borderRadius: BORDER_RADIUS.xl,
+    paddingVertical: 28,
+    paddingHorizontal: 20,
+    borderRadius: 16,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
     shadowRadius: 12,
-    elevation: 8,
+    elevation: 4,
   },
-  loadingContainer: {
-    width: 80,
-    height: 80,
-    marginBottom: SPACING.xl,
-  },
-  spinnerOuter: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    overflow: 'hidden',
-  },
-  spinnerGradient: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
+  loadingRingContainer: {
+    width: 72,
+    height: 72,
+    marginBottom: 24,
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingRingOuter: {
+    position: 'absolute',
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 3,
+  },
+  loadingRingProgress: {
+    position: 'absolute',
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 3,
+    borderTopColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderBottomColor: 'transparent',
+  },
+  loadingIconCenter: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(52, 199, 89, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   stepsContainer: {
     width: '100%',
-    gap: SPACING.md,
   },
   stepRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.md,
+    paddingVertical: 14,
+    gap: 12,
   },
   stepIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  stepIconCompleted: {
-    backgroundColor: COLORS.primary,
-  },
-  stepIconActive: {
-    borderWidth: 2,
-    borderColor: COLORS.primary,
-  },
   stepText: {
     flex: 1,
-    fontSize: FONT_SIZES.md,
-    fontFamily: FONTS.regular,
+    fontSize: 15,
   },
-  stepTextActive: {
-    fontFamily: FONTS.semiBold,
-  },
-  stepLoadingDots: {
-    marginLeft: SPACING.sm,
-  },
+  // Loading dots
   dotsContainer: {
     flexDirection: 'row',
     gap: 4,
   },
   dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: COLORS.primary,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
   },
+  // Success State - iOS Style
   checkContainer: {
     alignItems: 'center',
-    marginTop: SPACING.xl,
-    marginBottom: SPACING.lg,
+    marginTop: 40,
+    marginBottom: 20,
   },
   checkCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    overflow: 'hidden',
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 12,
-  },
-  checkGradient: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#34C759',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 8,
   },
   content: {
     flex: 1,
-    paddingHorizontal: SPACING.lg,
-    paddingBottom: SPACING.md,
+    paddingHorizontal: 20,
   },
   successTitle: {
     fontSize: 28,
-    fontFamily: FONTS.bold,
+    fontWeight: '700',
     textAlign: 'center',
-    marginBottom: SPACING.xs,
+    marginBottom: 8,
+    letterSpacing: -0.5,
   },
   successSubtitle: {
-    fontSize: FONT_SIZES.md,
-    fontFamily: FONTS.regular,
+    fontSize: 16,
     textAlign: 'center',
-    marginBottom: SPACING.xl,
+    marginBottom: 28,
     lineHeight: 22,
   },
+  // Order Card - iOS Style
   orderCard: {
-    padding: SPACING.lg,
-    borderRadius: BORDER_RADIUS.lg,
-    marginBottom: SPACING.lg,
+    borderRadius: 14,
+    marginBottom: 16,
+    overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
-    elevation: 3,
+    elevation: 2,
   },
-  orderRow: {
+  orderCardHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: SPACING.sm,
+    padding: 16,
+    gap: 12,
   },
-  orderLabel: {
-    fontSize: FONT_SIZES.sm,
-    fontFamily: FONTS.regular,
+  orderIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  orderValue: {
-    fontSize: FONT_SIZES.md,
-    fontFamily: FONTS.semiBold,
+  orderHeaderText: {
+    flex: 1,
   },
-  orderValueHighlight: {
-    fontSize: FONT_SIZES.lg,
-    fontFamily: FONTS.bold,
+  orderNumberLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  divider: {
-    height: 1,
-    width: '100%',
+  orderNumberValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+  orderDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginHorizontal: 16,
+  },
+  orderDetailsGrid: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+  },
+  orderDetailItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  orderDetailLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+    marginBottom: 4,
+  },
+  orderDetailValue: {
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  orderDetailDividerV: {
+    width: StyleSheet.hairlineWidth,
+    height: 32,
   },
   paymentBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(52, 199, 89, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deliveryEstimate: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: 4,
-    backgroundColor: 'rgba(76, 175, 80, 0.1)',
-    borderRadius: BORDER_RADIUS.md,
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
   },
-  paymentText: {
-    fontSize: FONT_SIZES.sm,
-    fontFamily: FONTS.medium,
+  deliveryEstimateText: {
+    fontSize: 14,
   },
+  // What's Next - iOS Style
   nextStepsCard: {
-    padding: SPACING.lg,
-    borderRadius: BORDER_RADIUS.lg,
+    padding: 20,
+    borderRadius: 14,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
-    elevation: 3,
+    elevation: 2,
   },
   nextStepsTitle: {
-    fontSize: FONT_SIZES.md,
-    fontFamily: FONTS.semiBold,
-    marginBottom: SPACING.md,
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 16,
+    letterSpacing: -0.3,
+  },
+  nextStepsList: {
+    gap: 0,
   },
   nextStep: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.md,
-    paddingVertical: SPACING.sm,
+    gap: 14,
   },
-  nextStepIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
+  nextStepNumber: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nextStepNumberText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   nextStepContent: {
     flex: 1,
   },
   nextStepText: {
-    fontSize: FONT_SIZES.sm,
-    fontFamily: FONTS.medium,
-    marginBottom: 2,
+    fontSize: 15,
+    fontWeight: '500',
   },
-  nextStepSubtext: {
-    fontSize: FONT_SIZES.xs,
-    fontFamily: FONTS.regular,
+  nextStepLine: {
+    width: 2,
+    height: 16,
+    marginLeft: 13,
+    borderRadius: 1,
   },
+  // Buttons - iOS Style
   buttonContainer: {
-    paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.lg,
-    gap: SPACING.md,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    gap: 12,
   },
-  trackButton: {
-    borderRadius: BORDER_RADIUS.lg,
-    overflow: 'hidden',
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  trackButtonGradient: {
+  primaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: SPACING.sm,
-    paddingVertical: SPACING.md + 2,
+    gap: 8,
+    paddingVertical: 16,
+    borderRadius: 14,
+    shadowColor: '#34C759',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  trackButtonText: {
-    fontSize: FONT_SIZES.md,
-    fontFamily: FONTS.semiBold,
+  primaryButtonText: {
+    fontSize: 17,
+    fontWeight: '600',
     color: '#FFFFFF',
   },
-  continueButton: {
-    paddingVertical: SPACING.md,
-    borderRadius: BORDER_RADIUS.lg,
+  secondaryButton: {
+    paddingVertical: 16,
+    borderRadius: 14,
     alignItems: 'center',
   },
-  continueButtonText: {
-    fontSize: FONT_SIZES.md,
-    fontFamily: FONTS.medium,
+  secondaryButtonText: {
+    fontSize: 17,
+    fontWeight: '600',
   },
 });

@@ -107,7 +107,7 @@ const Stack = createNativeStackNavigator<FarmerStackParamList>();
 const TAB_ICONS: Record<string, { active: keyof typeof Ionicons.glyphMap; inactive: keyof typeof Ionicons.glyphMap }> = {
   Dashboard: { active: 'home', inactive: 'home-outline' },
   Products: { active: 'storefront', inactive: 'storefront-outline' },
-  Orders: { active: 'clipboard', inactive: 'clipboard-outline' },
+  Orders: { active: 'bag-handle', inactive: 'bag-handle-outline' },
   Messages: { active: 'chatbubbles', inactive: 'chatbubbles-outline' },
   Profile: { active: 'person', inactive: 'person-outline' },
 };

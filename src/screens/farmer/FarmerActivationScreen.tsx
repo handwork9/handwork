@@ -196,19 +196,38 @@ export default function FarmerActivationScreen() {
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       
       {/* Fixed Header */}
-      <View style={[styles.fixedHeader, { paddingTop: insets.top, backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
+      <View style={[styles.fixedHeader, { paddingTop: insets.top, backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+        {/* SVG Background Decoration */}
+        <View style={styles.headerSvgBackground}>
+          <Svg width="100%" height="120" viewBox="0 0 400 120" preserveAspectRatio="xMidYMid slice">
+            <Defs>
+              <SvgLinearGradient id="activationHeaderGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                <Stop offset="0%" stopColor="#34C759" stopOpacity={isDark ? 0.2 : 0.12} />
+                <Stop offset="100%" stopColor="#30D158" stopOpacity={isDark ? 0.12 : 0.06} />
+              </SvgLinearGradient>
+              <SvgLinearGradient id="activationHeaderGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+                <Stop offset="0%" stopColor="#30D158" stopOpacity={isDark ? 0.15 : 0.08} />
+                <Stop offset="100%" stopColor="#34C759" stopOpacity={isDark ? 0.08 : 0.03} />
+              </SvgLinearGradient>
+            </Defs>
+            <Circle cx="350" cy="15" r="70" fill="url(#activationHeaderGrad1)" />
+            <Circle cx="380" cy="70" r="45" fill="url(#activationHeaderGrad2)" />
+            <Circle cx="30" cy="90" r="55" fill="url(#activationHeaderGrad2)" />
+            <Path d="M0,80 Q100,40 200,80 T400,60" fill="none" stroke="url(#activationHeaderGrad1)" strokeWidth="35" opacity={0.3} />
+          </Svg>
+        </View>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backButton, { backgroundColor: isDark ? 'rgba(52, 199, 89, 0.2)' : '#E8F5E9' }]}>
+          <Ionicons name="arrow-back" size={24} color={isDark ? '#FFFFFF' : '#1C1C1E'} />
         </TouchableOpacity>
         <View style={styles.headerContent}>
-          <Animated.Text style={[styles.headerTitle, { color: colors.text, opacity: titleOpacity, position: 'absolute' }]}>
+          <Animated.Text style={[styles.headerTitle, { color: isDark ? '#FFFFFF' : '#1C1C1E', opacity: titleOpacity, position: 'absolute' }]}>
             Become a Seller
           </Animated.Text>
           <Animated.View style={[styles.headerCompact, { opacity: headerOpacity }]}>
-            <View style={styles.headerLeaf}>
-              <Ionicons name="storefront" size={18} color="#4CAF50" />
+            <View style={[styles.headerLeaf, { backgroundColor: isDark ? 'rgba(52, 199, 89, 0.2)' : '#E8F5E9' }]}>
+              <Ionicons name="storefront" size={18} color="#34C759" />
             </View>
-            <Text style={[styles.headerCompactTitle, { color: colors.text }]}>Become a Seller</Text>
+            <Text style={[styles.headerCompactTitle, { color: isDark ? '#FFFFFF' : '#1C1C1E' }]}>Become a Seller</Text>
           </Animated.View>
         </View>
         <View style={styles.headerSpacer} />
@@ -216,7 +235,7 @@ export default function FarmerActivationScreen() {
 
       <Animated.ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 140 }}
+        contentContainerStyle={{ paddingBottom: 140, paddingTop: 16 }}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
           { useNativeDriver: true }
@@ -600,10 +619,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: SPACING.md,
     paddingBottom: SPACING.sm,
+    position: 'relative',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  headerSvgBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   backButton: {
     width: 40,
     height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },

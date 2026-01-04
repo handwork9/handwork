@@ -789,7 +789,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 34,
     fontWeight: '700',
-    fontFamily: FONTS.bold,
   },
   totalUnreadBadge: {
     marginLeft: 8,
@@ -801,7 +800,6 @@ const styles = StyleSheet.create({
   totalUnreadText: {
     fontSize: 13,
     fontWeight: '600',
-    fontFamily: FONTS.semiBold,
     color: '#FFFFFF',
   },
   searchContainer: {
@@ -809,13 +807,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 10,
-    borderRadius: 10,
+    borderRadius: 12,
     gap: 8,
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
-    fontFamily: FONTS.regular,
+    fontSize: 17,
+    fontWeight: '400',
     padding: 0,
   },
   listContent: {
@@ -827,7 +825,7 @@ const styles = StyleSheet.create({
   conversationItem: {
     flexDirection: 'row',
     padding: 12,
-    borderRadius: 12,
+    borderRadius: 14,
     marginBottom: 2,
   },
   avatarContainer: {
@@ -849,7 +847,6 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 20,
     fontWeight: '600',
-    fontFamily: FONTS.semiBold,
     color: '#FFFFFF',
   },
   onlineIndicator: {
@@ -874,15 +871,14 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   buyerName: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '600',
-    fontFamily: FONTS.semiBold,
     flex: 1,
     marginRight: 8,
   },
   timeText: {
     fontSize: 13,
-    fontFamily: FONTS.regular,
+    fontWeight: '400',
   },
   productBadge: {
     flexDirection: 'row',
@@ -897,7 +893,6 @@ const styles = StyleSheet.create({
   productBadgeText: {
     fontSize: 11,
     fontWeight: '500',
-    fontFamily: FONTS.medium,
     color: '#34C759',
   },
   messageRow: {
@@ -906,8 +901,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   lastMessage: {
-    fontSize: 14,
-    fontFamily: FONTS.regular,
+    fontSize: 15,
+    fontWeight: '400',
     flex: 1,
     marginRight: 8,
   },
@@ -923,7 +918,6 @@ const styles = StyleSheet.create({
   unreadText: {
     fontSize: 12,
     fontWeight: '600',
-    fontFamily: FONTS.semiBold,
     color: '#FFFFFF',
   },
   separator: {
@@ -939,13 +933,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 22,
     fontWeight: '700',
-    fontFamily: FONTS.bold,
     marginBottom: 8,
     marginTop: 24,
   },
   emptySubtitle: {
     fontSize: 15,
-    fontFamily: FONTS.regular,
+    fontWeight: '400',
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 24,
@@ -958,7 +951,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 15,
-    fontFamily: FONTS.regular,
+    fontWeight: '400',
   },
   // Connection banner styles
   connectionBanner: {
@@ -972,7 +965,7 @@ const styles = StyleSheet.create({
   connectionBannerText: {
     color: '#FFFFFF',
     fontSize: 13,
-    fontFamily: FONTS.medium,
+    fontWeight: '500',
   },
   // Swipe action styles
   swipeActionsLeft: {
@@ -997,7 +990,7 @@ const styles = StyleSheet.create({
   swipeText: {
     color: '#FFFFFF',
     fontSize: 12,
-    fontFamily: FONTS.medium,
+    fontWeight: '500',
     marginTop: 4,
   },
   // Pin indicator styles
@@ -1030,7 +1023,7 @@ const styles = StyleSheet.create({
   },
   typingText: {
     fontSize: 14,
-    fontFamily: FONTS.medium,
+    fontWeight: '500',
     fontStyle: 'italic',
   },
   // Clear button style
@@ -1039,12 +1032,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 24,
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: 14,
     gap: 8,
   },
   clearButtonText: {
     fontSize: 16,
-    fontFamily: FONTS.semiBold,
+    fontWeight: '600',
     color: '#FFFFFF',
   },
   // Archive styles
@@ -1068,7 +1061,7 @@ const styles = StyleSheet.create({
   archiveBadgeText: {
     color: '#FFFFFF',
     fontSize: 11,
-    fontFamily: FONTS.semiBold,
+    fontWeight: '600',
   },
   backToMessages: {
     flexDirection: 'row',
@@ -1079,7 +1072,7 @@ const styles = StyleSheet.create({
   backText: {
     marginLeft: 4,
     fontSize: 16,
-    fontFamily: FONTS.medium,
+    fontWeight: '500',
     color: '#34C759',
   },
   emptyArchiveIcon: {

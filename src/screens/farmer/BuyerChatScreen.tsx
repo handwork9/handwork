@@ -16,6 +16,7 @@ import {
   Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Svg, { Circle, Path, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, NavigationProp } from '@react-navigation/native';
@@ -771,45 +772,62 @@ const BuyerChatScreen: React.FC = () => {
           },
         ]}
       >
-        <LinearGradient
-          colors={['#34C759', '#28A745']}
-          style={[styles.header, { paddingTop: insets.top + SPACING.sm }]}
-        >
+        <View style={[styles.header, { paddingTop: insets.top + SPACING.sm, backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+          {/* SVG Background Decoration */}
+          <View style={styles.headerSvgBackground}>
+            <Svg width="100%" height="140" viewBox="0 0 400 140" preserveAspectRatio="xMidYMid slice">
+              <Defs>
+                <SvgLinearGradient id="chatHeaderGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <Stop offset="0%" stopColor="#34C759" stopOpacity={isDark ? 0.2 : 0.12} />
+                  <Stop offset="100%" stopColor="#30D158" stopOpacity={isDark ? 0.12 : 0.06} />
+                </SvgLinearGradient>
+                <SvgLinearGradient id="chatHeaderGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <Stop offset="0%" stopColor="#30D158" stopOpacity={isDark ? 0.15 : 0.08} />
+                  <Stop offset="100%" stopColor="#34C759" stopOpacity={isDark ? 0.08 : 0.03} />
+                </SvgLinearGradient>
+              </Defs>
+              <Circle cx="350" cy="20" r="80" fill="url(#chatHeaderGrad1)" />
+              <Circle cx="380" cy="80" r="50" fill="url(#chatHeaderGrad2)" />
+              <Circle cx="30" cy="100" r="60" fill="url(#chatHeaderGrad2)" />
+              <Path d="M0,100 Q100,60 200,100 T400,80" fill="none" stroke="url(#chatHeaderGrad1)" strokeWidth="40" opacity={0.3} />
+            </Svg>
+          </View>
+
           <TouchableOpacity
-            style={styles.backButton}
+            style={[styles.backButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#F2F2F7' }]}
             onPress={() => navigation.goBack()}
           >
-            <Ionicons name="arrow-back" size={24} color={COLORS.white} />
+            <Ionicons name="arrow-back" size={24} color={isDark ? '#FFFFFF' : '#1C1C1E'} />
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.headerInfo} onPress={handleViewBuyerProfile}>
             <View style={styles.avatarWrapper}>
               {buyer.avatar && buyer.avatar.trim() !== '' ? (
-                <Image source={{ uri: buyer.avatar }} style={styles.headerAvatar} />
+                <Image source={{ uri: buyer.avatar }} style={[styles.headerAvatar, { borderColor: '#34C759' }]} />
               ) : (
-                <View style={[styles.headerAvatar, styles.avatarFallbackHeader]}>
+                <View style={[styles.headerAvatar, styles.avatarFallbackHeader, { backgroundColor: '#34C759' }]}>
                   <Ionicons name="person" size={18} color={COLORS.white} />
                 </View>
               )}
               {buyer.isOnline && <View style={styles.onlineIndicator} />}
             </View>
             <View style={styles.headerText}>
-              <Text style={styles.headerName}>{buyer.name}</Text>
-              <Text style={styles.headerStatus}>
+              <Text style={[styles.headerName, { color: isDark ? '#FFFFFF' : '#1C1C1E' }]}>{buyer.name}</Text>
+              <Text style={[styles.headerStatus, { color: '#8E8E93' }]}>
                 {buyer.isOnline ? '🟢 Online' : `Last seen ${formatLastSeen(buyer.lastSeen)}`}
               </Text>
             </View>
           </TouchableOpacity>
 
           <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.headerActionBtn} onPress={handleCall}>
-              <Ionicons name="call" size={22} color={COLORS.white} />
+            <TouchableOpacity style={[styles.headerActionBtn, { backgroundColor: isDark ? 'rgba(52, 199, 89, 0.2)' : '#E8F8EE' }]} onPress={handleCall}>
+              <Ionicons name="call" size={22} color="#34C759" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.headerActionBtn} onPress={handleVideoCall}>
-              <Ionicons name="videocam" size={24} color={COLORS.white} />
+            <TouchableOpacity style={[styles.headerActionBtn, { backgroundColor: isDark ? 'rgba(52, 199, 89, 0.2)' : '#E8F8EE' }]} onPress={handleVideoCall}>
+              <Ionicons name="videocam" size={24} color="#34C759" />
             </TouchableOpacity>
           </View>
-        </LinearGradient>
+        </View>
       </Animated.View>
 
       {/* Messages */}
@@ -974,12 +992,26 @@ const styles = StyleSheet.create({
   },
   headerWrapper: {
     zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: SPACING.md,
     paddingBottom: SPACING.md,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  headerSvgBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   backButton: {
     width: 40,

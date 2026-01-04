@@ -11,7 +11,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Circle } from 'react-native-svg';
+import Svg, { Circle, Path, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { useTheme } from '../../context/ThemeContext';
 import { FONTS } from '../../constants/theme';
 
@@ -154,14 +154,33 @@ export default function BecomeFarmerInfoScreen() {
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top, backgroundColor: isDark ? colors.background : '#F5F5F5' }]}>
+      <View style={[styles.header, { paddingTop: insets.top, backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+        {/* SVG Background Decoration */}
+        <View style={styles.headerSvgBackground}>
+          <Svg width="100%" height="120" viewBox="0 0 400 120" preserveAspectRatio="xMidYMid slice">
+            <Defs>
+              <SvgLinearGradient id="sellerHeaderGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                <Stop offset="0%" stopColor="#34C759" stopOpacity={isDark ? 0.2 : 0.12} />
+                <Stop offset="100%" stopColor="#30D158" stopOpacity={isDark ? 0.12 : 0.06} />
+              </SvgLinearGradient>
+              <SvgLinearGradient id="sellerHeaderGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+                <Stop offset="0%" stopColor="#30D158" stopOpacity={isDark ? 0.15 : 0.08} />
+                <Stop offset="100%" stopColor="#34C759" stopOpacity={isDark ? 0.08 : 0.03} />
+              </SvgLinearGradient>
+            </Defs>
+            <Circle cx="350" cy="15" r="70" fill="url(#sellerHeaderGrad1)" />
+            <Circle cx="380" cy="70" r="45" fill="url(#sellerHeaderGrad2)" />
+            <Circle cx="30" cy="90" r="55" fill="url(#sellerHeaderGrad2)" />
+            <Path d="M0,80 Q100,40 200,80 T400,60" fill="none" stroke="url(#sellerHeaderGrad1)" strokeWidth="35" opacity={0.3} />
+          </Svg>
+        </View>
         <TouchableOpacity
-          style={[styles.backButton, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}
+          style={[styles.backButton, { backgroundColor: isDark ? 'rgba(52, 199, 89, 0.2)' : '#E8F5E9' }]}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="chevron-back" size={22} color={colors.text} />
+          <Ionicons name="chevron-back" size={22} color={isDark ? '#FFFFFF' : '#1C1C1E'} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Become a Seller</Text>
+        <Text style={[styles.headerTitle, { color: isDark ? '#FFFFFF' : '#1C1C1E' }]}>Become a Seller</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -273,18 +292,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 12,
     paddingTop: 8,
+    position: 'relative',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  headerSvgBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   backButton: {
     width: 40,
     height: 40,
-    borderRadius: 12,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
   },
   headerTitle: {
     fontSize: 18,

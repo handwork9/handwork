@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Circle, Path, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
@@ -1524,14 +1525,32 @@ const LiveChatScreen: React.FC = () => {
       >
         {/* Header */}
         <View
-          style={[styles.header, { paddingTop: insets.top, backgroundColor: isDark ? colors.background : '#F2F2F7' }]}
+          style={[styles.header, { paddingTop: insets.top, backgroundColor: isDark ? colors.card : '#FFFFFF' }]}
         >
+          {/* SVG Background Decoration */}
+          <View style={styles.headerSvgBackground}>
+            <Svg width="100%" height="120" viewBox="0 0 400 120" preserveAspectRatio="xMidYMid slice">
+              <Defs>
+                <SvgLinearGradient id="liveChatGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <Stop offset="0%" stopColor="#7C3AED" stopOpacity={isDark ? 0.2 : 0.12} />
+                  <Stop offset="100%" stopColor="#A855F7" stopOpacity={isDark ? 0.12 : 0.06} />
+                </SvgLinearGradient>
+                <SvgLinearGradient id="liveChatGrad2" x1="100%" y1="0%" x2="0%" y2="100%">
+                  <Stop offset="0%" stopColor="#A855F7" stopOpacity={isDark ? 0.18 : 0.10} />
+                  <Stop offset="100%" stopColor="#7C3AED" stopOpacity={isDark ? 0.08 : 0.04} />
+                </SvgLinearGradient>
+              </Defs>
+              <Circle cx="350" cy="15" r="70" fill="url(#liveChatGrad1)" />
+              <Circle cx="30" cy="90" r="50" fill="url(#liveChatGrad2)" />
+              <Path d="M0,80 Q100,40 200,70 T400,50 L400,120 L0,120 Z" fill="url(#liveChatGrad1)" />
+            </Svg>
+          </View>
           <View style={styles.headerContent}>
             <TouchableOpacity 
-              style={[styles.backButton, { backgroundColor: isDark ? colors.card : '#DEDEE0' }]}
+              style={[styles.backButton, { backgroundColor: isDark ? 'rgba(124, 58, 237, 0.2)' : '#F3E8FF' }]}
               onPress={() => navigation.goBack()}
             >
-              <Ionicons name="arrow-back" size={24} color={colors.text} />
+              <Ionicons name="arrow-back" size={24} color={isDark ? '#FFFFFF' : '#1C1C1E'} />
             </TouchableOpacity>
             
             <View style={styles.headerInfo}>
@@ -1542,13 +1561,13 @@ const LiveChatScreen: React.FC = () => {
                 <View style={[styles.onlineIndicator, { backgroundColor: '#22C55E' }]} />
               </View>
               <View style={styles.headerText}>
-                <Text style={[styles.headerTitle, { color: colors.text }]}>Handwork Support</Text>
+                <Text style={[styles.headerTitle, { color: isDark ? '#FFFFFF' : '#1C1C1E' }]}>Handwork Support</Text>
                 <Text style={[styles.headerSubtitle, { color: '#22C55E' }]}>● Online Now</Text>
               </View>
             </View>
             
             <TouchableOpacity 
-              style={[styles.backButton, { backgroundColor: isDark ? colors.card : '#DEDEE0' }]}
+              style={[styles.backButton, { backgroundColor: isDark ? 'rgba(124, 58, 237, 0.2)' : '#F3E8FF' }]}
               onPress={handleContactWhatsApp}
             >
               <Ionicons name="logo-whatsapp" size={22} color="#22C55E" />
@@ -1689,14 +1708,32 @@ const LiveChatScreen: React.FC = () => {
     <View style={[styles.container, dynamicStyles.container]}>
       {/* Header */}
       <View
-        style={[styles.header, { paddingTop: insets.top, backgroundColor: isDark ? colors.background : '#F2F2F7' }]}
+        style={[styles.header, { paddingTop: insets.top, backgroundColor: isDark ? colors.card : '#FFFFFF' }]}
       >
+        {/* SVG Background Decoration */}
+        <View style={styles.headerSvgBackground}>
+          <Svg width="100%" height="120" viewBox="0 0 400 120" preserveAspectRatio="xMidYMid slice">
+            <Defs>
+              <SvgLinearGradient id="liveChatAuthGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                <Stop offset="0%" stopColor="#7C3AED" stopOpacity={isDark ? 0.2 : 0.12} />
+                <Stop offset="100%" stopColor="#A855F7" stopOpacity={isDark ? 0.12 : 0.06} />
+              </SvgLinearGradient>
+              <SvgLinearGradient id="liveChatAuthGrad2" x1="100%" y1="0%" x2="0%" y2="100%">
+                <Stop offset="0%" stopColor="#A855F7" stopOpacity={isDark ? 0.18 : 0.10} />
+                <Stop offset="100%" stopColor="#7C3AED" stopOpacity={isDark ? 0.08 : 0.04} />
+              </SvgLinearGradient>
+            </Defs>
+            <Circle cx="350" cy="15" r="70" fill="url(#liveChatAuthGrad1)" />
+            <Circle cx="30" cy="90" r="50" fill="url(#liveChatAuthGrad2)" />
+            <Path d="M0,80 Q100,40 200,70 T400,50 L400,120 L0,120 Z" fill="url(#liveChatAuthGrad1)" />
+          </Svg>
+        </View>
         <View style={styles.headerContent}>
           <TouchableOpacity 
-            style={[styles.backButton, { backgroundColor: isDark ? colors.card : '#DEDEE0' }]}
+            style={[styles.backButton, { backgroundColor: isDark ? 'rgba(124, 58, 237, 0.2)' : '#F3E8FF' }]}
             onPress={() => navigation.goBack()}
           >
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
+            <Ionicons name="arrow-back" size={24} color={isDark ? '#FFFFFF' : '#1C1C1E'} />
           </TouchableOpacity>
           
           <View style={styles.headerInfo}>
@@ -1717,10 +1754,10 @@ const LiveChatScreen: React.FC = () => {
               ]} />
             </View>
             <View style={styles.headerText}>
-              <Text style={[styles.headerTitle, { color: colors.text }]}>
+              <Text style={[styles.headerTitle, { color: isDark ? '#FFFFFF' : '#1C1C1E' }]}>
                 {ticket?.assignedTo?.name || 'Handwork Support'}
               </Text>
-              <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
+              <Text style={[styles.headerSubtitle, { color: '#8E8E93' }]}>
                 {isAgentTyping 
                   ? 'Typing...' 
                   : ticket?.assignedTo 
@@ -1733,8 +1770,8 @@ const LiveChatScreen: React.FC = () => {
             </View>
           </View>
           
-          <TouchableOpacity style={[styles.menuButton, { backgroundColor: isDark ? colors.card : '#DEDEE0' }]} onPress={handleMenuPress}>
-            <Ionicons name="ellipsis-vertical" size={24} color={colors.text} />
+          <TouchableOpacity style={[styles.menuButton, { backgroundColor: isDark ? 'rgba(124, 58, 237, 0.2)' : '#F3E8FF' }]} onPress={handleMenuPress}>
+            <Ionicons name="ellipsis-vertical" size={24} color={isDark ? '#FFFFFF' : '#1C1C1E'} />
           </TouchableOpacity>
         </View>
       </View>
@@ -2096,6 +2133,20 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingBottom: 12,
+    position: 'relative',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  headerSvgBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   headerContent: {
     flexDirection: 'row',
