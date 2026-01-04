@@ -13,49 +13,44 @@ import { apiClient } from '../../services/apiClient';
 import { useTheme } from '../../context/ThemeContext';
 import { getBadgeIllustration } from '../../assets/illustrations/badges';
 
-// SVG Stat Icons
+// SVG Stat Icons - Clean iOS-style design
 const ProductsStatIcon = ({ size = 32, color = '#007AFF' }: { size?: number; color?: string }) => (
-  <Svg width={size} height={size} viewBox="0 0 32 32" fill="none">
-    <Defs>
-      <SvgLinearGradient id="productGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <Stop offset="0%" stopColor={color} stopOpacity={1} />
-        <Stop offset="100%" stopColor={color} stopOpacity={0.7} />
-      </SvgLinearGradient>
-    </Defs>
-    {/* Main box */}
-    <Rect x="5" y="10" width="22" height="16" rx="3" fill="url(#productGrad)" />
-    {/* Box opening flaps */}
-    <Path d="M5 13L16 6L27 13" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-    {/* Inner crease */}
-    <Path d="M16 6V14" stroke="white" strokeWidth="1.5" strokeLinecap="round" opacity={0.6} />
-    {/* Shine */}
-    <Rect x="8" y="14" width="6" height="2" rx="1" fill="white" opacity={0.4} />
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    {/* Shopping bag body */}
+    <Path 
+      d="M6 6.5V5.5C6 3.567 7.567 2 9.5 2h5C16.433 2 18 3.567 18 5.5v1"
+      stroke={color}
+      strokeWidth="1.8"
+      strokeLinecap="round"
+    />
+    <Path 
+      d="M3.5 8.5C3.5 7.395 4.395 6.5 5.5 6.5h13c1.105 0 2 .895 2 2v10c0 1.657-1.343 3-3 3H6.5c-1.657 0-3-1.343-3-3v-10z"
+      fill={color}
+      opacity={0.15}
+    />
+    <Path 
+      d="M3.5 8.5C3.5 7.395 4.395 6.5 5.5 6.5h13c1.105 0 2 .895 2 2v10c0 1.657-1.343 3-3 3H6.5c-1.657 0-3-1.343-3-3v-10z"
+      stroke={color}
+      strokeWidth="1.8"
+    />
+    {/* Basket lines */}
+    <Path d="M8 11h8" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+    <Path d="M8 14.5h5" stroke={color} strokeWidth="1.5" strokeLinecap="round" opacity={0.6} />
   </Svg>
 );
 
 const JoinedStatIcon = ({ size = 32, color = '#43A047' }: { size?: number; color?: string }) => (
-  <Svg width={size} height={size} viewBox="0 0 32 32" fill="none">
-    <Defs>
-      <SvgLinearGradient id="calGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <Stop offset="0%" stopColor={color} stopOpacity={1} />
-        <Stop offset="100%" stopColor={color} stopOpacity={0.7} />
-      </SvgLinearGradient>
-    </Defs>
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     {/* Calendar body */}
-    <Rect x="5" y="8" width="22" height="19" rx="3" fill="url(#calGrad)" />
-    {/* Calendar top header */}
-    <Rect x="5" y="8" width="22" height="7" rx="3" fill={color} />
-    {/* Rings */}
-    <Rect x="10" y="5" width="2" height="6" rx="1" fill={color} />
-    <Rect x="20" y="5" width="2" height="6" rx="1" fill={color} />
-    {/* Calendar days - dots */}
-    <Circle cx="11" cy="20" r="1.5" fill="white" opacity={0.8} />
-    <Circle cx="16" cy="20" r="1.5" fill="white" opacity={0.8} />
-    <Circle cx="21" cy="20" r="1.5" fill="white" opacity={0.8} />
-    <Circle cx="11" cy="24" r="1.5" fill="white" opacity={0.5} />
-    <Circle cx="16" cy="24" r="1.5" fill="white" opacity={0.5} />
-    {/* Checkmark on active day */}
-    <Path d="M19 23L20.5 24.5L23 22" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    <Rect x="3" y="5" width="18" height="16" rx="3" fill={color} opacity={0.15} />
+    <Rect x="3" y="5" width="18" height="16" rx="3" stroke={color} strokeWidth="1.8" />
+    {/* Calendar header line */}
+    <Path d="M3 10h18" stroke={color} strokeWidth="1.8" />
+    {/* Calendar rings */}
+    <Path d="M8 3v4" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+    <Path d="M16 3v4" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+    {/* Calendar date */}
+    <Circle cx="12" cy="15" r="2" fill={color} />
   </Svg>
 );
 
