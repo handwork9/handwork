@@ -123,6 +123,7 @@ export default function App() {
     'Poppins-Medium': Poppins_500Medium,
     'Poppins-SemiBold': Poppins_600SemiBold,
     'Poppins-Bold': Poppins_700Bold,
+    'Billabong': require('./assets/fonts/Billabong.otf'),
   });
 
   const [showSplash, setShowSplash] = useState(true);

@@ -663,7 +663,9 @@ const FarmerChatScreen: React.FC = () => {
     avatar: farmer.avatar,
     phone: farmer.phone,
     email: farmer.email,
-    location: farmer.location,
+    location: typeof farmer.location === 'object' && farmer.location 
+      ? (farmer.location as any).city || (farmer.location as any).state || (farmer.location as any).address || ''
+      : farmer.location || '',
     role: 'farmer',
     rating: farmer.rating,
     totalOrders: farmer.totalOrders,

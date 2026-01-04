@@ -165,11 +165,8 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             style={styles.tabButton}
             activeOpacity={0.7}
           >
-            <View style={[
-              styles.tabCard,
-              { backgroundColor: isDark ? '#2C2C2E' : '#DEDEE0' }
-            ]}>
-              <Ionicons name={iconName} size={28} color={isFocused ? '#34C759' : colors.textSecondary} />
+            <View style={styles.tabIconContainer}>
+              <Ionicons name={iconName} size={26} color={isFocused ? '#34C759' : colors.textSecondary} />
               <Text style={[styles.tabLabel, { color: isFocused ? '#34C759' : colors.textSecondary }]}>{label}</Text>
             </View>
           </TouchableOpacity>
@@ -716,13 +713,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 4,
   },
-  tabCard: {
+  tabIconContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    minWidth: 72,
+    paddingVertical: 4,
   },
   tabLabel: {
     fontSize: 11,

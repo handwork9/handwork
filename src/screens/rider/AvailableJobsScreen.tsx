@@ -231,6 +231,16 @@ export default function AvailableJobsScreen() {
     enabled: !!location,
   });
 
+  // Helper to extract address string from potentially object address
+  const getAddressString = (addr: any): string => {
+    if (!addr) return '';
+    if (typeof addr === 'string') return addr;
+    if (typeof addr === 'object') {
+      return addr.address || addr.city || addr.state || '';
+    }
+    return '';
+  };
+
   // Combine REST API jobs with WebSocket offers, de-duplicating by ID
   const combinedJobs: DeliveryJob[] = useMemo(() => {
     const allJobs = [
@@ -238,8 +248,8 @@ export default function AvailableJobsScreen() {
       ...pendingOffers.map(offer => ({
         id: offer.orderId,
         orderId: offer.orderId,
-        pickupAddress: offer.pickupAddress,
-        deliveryAddress: offer.deliveryAddress,
+        pickupAddress: getAddressString(offer.pickupAddress),
+        deliveryAddress: getAddressString(offer.deliveryAddress),
         distance: parseFloat(offer.estimatedDistance) || 0,
         estimatedTime: offer.estimatedEta,
         earnings: offer.earnings || offer.totalAmount * 0.15, // Rider gets ~15% of total
@@ -252,7 +262,12 @@ export default function AvailableJobsScreen() {
         timeoutSeconds: offer.timeoutSeconds,
       })),
       // Then show REST API jobs
-      ...(jobs || []).map(job => ({ ...job, isRealTimeOffer: false })),
+      ...(jobs || []).map(job => ({ 
+        ...job, 
+        pickupAddress: getAddressString(job.pickupAddress),
+        deliveryAddress: getAddressString(job.deliveryAddress),
+        isRealTimeOffer: false 
+      })),
     ];
     
     // De-duplicate by id
@@ -413,7 +428,9 @@ export default function AvailableJobsScreen() {
               <Text style={[styles.locationLabel, { color: colors.textSecondary }]}>PICKUP</Text>
               <Text style={[styles.locationName, { color: colors.text }]}>{item.farmerName}</Text>
               <Text style={[styles.locationAddress, { color: colors.textSecondary }]} numberOfLines={1}>
-                {item.pickupAddress}
+                {typeof item.pickupAddress === 'object' && item.pickupAddress 
+                  ? (item.pickupAddress as any).address || (item.pickupAddress as any).city || (item.pickupAddress as any).state || ''
+                  : item.pickupAddress || ''}
               </Text>
             </View>
           </View>
@@ -428,7 +445,9 @@ export default function AvailableJobsScreen() {
               <Text style={[styles.locationLabel, { color: colors.textSecondary }]}>DELIVERY</Text>
               <Text style={[styles.locationName, { color: colors.text }]}>{item.buyerName}</Text>
               <Text style={[styles.locationAddress, { color: colors.textSecondary }]} numberOfLines={1}>
-                {item.deliveryAddress}
+                {typeof item.deliveryAddress === 'object' && item.deliveryAddress 
+                  ? (item.deliveryAddress as any).address || (item.deliveryAddress as any).city || (item.deliveryAddress as any).state || ''
+                  : item.deliveryAddress || ''}
               </Text>
             </View>
           </View>
@@ -496,25 +515,33 @@ export default function AvailableJobsScreen() {
     <View style={[styles.container, { backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       
-      {/* Fixed Header */}
-      <View style={[styles.fixedHeader, { paddingTop: insets.top, backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
+      {/* Fixed Header - Instagram Style */}
+      <View style={[styles.fixedHeader, { paddingTop: insets.top, backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
         <View style={styles.headerRow}>
-          <View style={{ width: 44 }} />
-          <View style={styles.headerTitleContainer}>
-            <Animated.View style={[styles.headerTitleRow, { opacity: headerOpacity }]}>
-              <View style={styles.headerIconBg}>
-                <Ionicons name="bicycle" size={18} color={COLORS.primary} />
-              </View>
-              <Text style={[styles.fixedHeaderTitle, { color: colors.text }]}>Available Jobs</Text>
-            </Animated.View>
-          </View>
           <TouchableOpacity 
-            style={[styles.notificationButton, { backgroundColor: isDark ? '#2C2C2E' : '#DEDEE0' }]}
-            onPress={() => navigation.navigate('Notifications' as any)}
+            style={styles.brandButton}
             activeOpacity={0.7}
+            onPress={() => navigation.navigate('EditProfile' as any)}
           >
-            <Ionicons name="notifications-outline" size={28} color={colors.text} />
+            <View style={{ position: 'relative' }}>
+              <Text style={[styles.brandText, { color: colors.text }]}>Handwork</Text>
+              <Text style={[styles.brandText, { color: colors.text, position: 'absolute', left: 0.5, top: 0 }]}>Handwork</Text>
+              <Text style={[styles.brandText, { color: colors.text, position: 'absolute', left: 1, top: 0 }]}>Handwork</Text>
+              <Text style={[styles.brandText, { color: colors.text, position: 'absolute', left: 1.5, top: 0 }]}>Handwork</Text>
+              <Text style={[styles.brandText, { color: colors.text, position: 'absolute', left: 0.25, top: 0.25 }]}>Handwork</Text>
+            </View>
+            <Ionicons name="chevron-down" size={18} color={colors.text} style={{ marginLeft: 4 }} />
           </TouchableOpacity>
+          
+          <View style={styles.headerActions}>
+            <TouchableOpacity 
+              style={styles.headerIconButton}
+              onPress={() => navigation.navigate('Notifications' as any)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="notifications-outline" size={24} color={colors.text} />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
@@ -736,11 +763,36 @@ const styles = StyleSheet.create({
   fixedHeader: {
     paddingHorizontal: SPACING.md,
     paddingBottom: SPACING.sm,
+    backgroundColor: '#FFFFFF',
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingTop: 10,
+  },
+  brandButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  brandText: {
+    fontSize: 38,
+    fontFamily: 'Billabong',
+    letterSpacing: 0.5,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  headerIconButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
   },
   headerTitleContainer: {
     flex: 1,
@@ -954,6 +1006,7 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.semiBold,
   },
   listContent: {
+    paddingTop: SPACING.md,
     paddingBottom: SPACING.xxl,
   },
   jobCard: {

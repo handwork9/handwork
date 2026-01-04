@@ -590,13 +590,19 @@ export default function HomeScreen() {
             setAddressDropdownVisible(true);
           }}
         >
-          <Text style={[styles.brandText, { color: colors.text }]}>handwork</Text>
-          <Ionicons name="chevron-down" size={16} color={colors.text} style={{ marginLeft: 2 }} />
+          <View style={{ position: 'relative' }}>
+            <Text style={[styles.brandText, { color: colors.text }]}>Handwork</Text>
+            <Text style={[styles.brandText, { color: colors.text, position: 'absolute', left: 0.5, top: 0 }]}>Handwork</Text>
+            <Text style={[styles.brandText, { color: colors.text, position: 'absolute', left: 1, top: 0 }]}>Handwork</Text>
+            <Text style={[styles.brandText, { color: colors.text, position: 'absolute', left: 1.5, top: 0 }]}>Handwork</Text>
+            <Text style={[styles.brandText, { color: colors.text, position: 'absolute', left: 0.25, top: 0.25 }]}>Handwork</Text>
+          </View>
+          <Ionicons name="chevron-down" size={18} color={colors.text} style={{ marginLeft: 4 }} />
         </TouchableOpacity>
         
         <View style={styles.headerActions}>
           <TouchableOpacity
-            style={[styles.headerIconButton, { backgroundColor: isDark ? '#2C2C2E' : '#F5F5F5' }]}
+            style={styles.headerIconButton}
             onPress={() => {
               triggerHaptic();
               navigation.navigate('Notifications');
@@ -612,7 +618,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
           
           <TouchableOpacity
-            style={[styles.headerIconButton, { backgroundColor: isDark ? '#2C2C2E' : '#F5F5F5' }]}
+            style={styles.headerIconButton}
             onPress={() => {
               triggerHaptic();
               navigation.navigate('Cart');
@@ -2624,10 +2630,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   brandText: {
-    fontSize: 26,
-    fontFamily: 'Poppins-Bold',
-    fontStyle: 'italic',
-    letterSpacing: -0.5,
+    fontSize: 38,
+    fontFamily: 'Billabong',
+    letterSpacing: 0.5,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   headerLeft: {
     flex: 1,
@@ -2699,8 +2706,6 @@ const styles = StyleSheet.create({
   headerIconButton: {
     width: 40,
     height: 40,
-    borderRadius: 12,
-    backgroundColor: '#F5F5F5',
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',

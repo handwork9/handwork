@@ -118,6 +118,15 @@ export default function NearbyFarmersMapScreen() {
   const farmerMarkers: FarmerMarker[] = React.useMemo(() => {
     const farmersMap = new Map<string, FarmerMarker>();
     
+    const getLocationString = (loc: any): string => {
+      if (!loc) return '';
+      if (typeof loc === 'string') return loc;
+      if (typeof loc === 'object') {
+        return loc.city || loc.state || loc.address || '';
+      }
+      return '';
+    };
+    
     products.forEach((product: Product) => {
       if (!product.pickupLat || !product.pickupLng) return;
       
@@ -127,7 +136,7 @@ export default function NearbyFarmersMapScreen() {
           id: farmerId,
           name: product.farmerName || 'Unknown Farmer',
           avatar: product.farmerAvatar,
-          location: product.farmerLocation || product.pickupAddress || '',
+          location: getLocationString(product.farmerLocation) || getLocationString(product.pickupAddress) || '',
           lat: product.pickupLat,
           lng: product.pickupLng,
           rating: product.farmerRating || 0,
@@ -400,7 +409,9 @@ export default function NearbyFarmersMapScreen() {
                     )}
                   </View>
                   <Text style={[styles.farmerLocation, { color: colors.textSecondary }]} numberOfLines={1}>
-                    <Ionicons name="location-outline" size={12} /> {selectedFarmer.location}
+                    <Ionicons name="location-outline" size={12} /> {typeof selectedFarmer.location === 'object' && selectedFarmer.location 
+                      ? (selectedFarmer.location as any).city || (selectedFarmer.location as any).state || (selectedFarmer.location as any).address || ''
+                      : selectedFarmer.location || ''}
                   </Text>
                   <View style={styles.farmerStats}>
                     <View style={styles.statItem}>

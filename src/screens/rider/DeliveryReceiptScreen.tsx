@@ -99,13 +99,22 @@ export default function DeliveryReceiptScreen() {
         const result = await orderService.getOrderById(deliveryId);
         const order: any = (result as any)?.data || result;
         
+        const getAddressString = (addr: any): string => {
+          if (!addr) return '';
+          if (typeof addr === 'string') return addr;
+          if (typeof addr === 'object') {
+            return addr.address || addr.city || addr.state || '';
+          }
+          return '';
+        };
+        
         // Map order to delivery details format
         return {
           id: order.id,
           orderId: order.id?.slice(0, 8)?.toUpperCase() || deliveryId.slice(0, 8).toUpperCase(),
           status: order.status || 'DELIVERED',
-          pickupAddress: order.pickupPoint?.address || order.pickupAddress || 'Farm Location',
-          deliveryAddress: order.deliveryAddress?.address || order.deliveryLocation || 'Buyer Location',
+          pickupAddress: order.pickupPoint?.address || getAddressString(order.pickupAddress) || 'Farm Location',
+          deliveryAddress: order.deliveryAddress?.address || getAddressString(order.deliveryLocation) || 'Buyer Location',
           farmer: {
             name: order.farmer?.name || order.items?.[0]?.farmerName || 'Farmer',
             phone: order.farmer?.phone,
@@ -193,14 +202,14 @@ Delivered with Handwork 🚚
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + SPACING.sm, backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
         <TouchableOpacity 
-          style={[styles.backButton, { backgroundColor: isDark ? colors.card : COLORS.surface }]}
+          style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Delivery Receipt</Text>
         <TouchableOpacity 
-          style={[styles.shareButton, { backgroundColor: isDark ? colors.card : COLORS.surface }]}
+          style={styles.shareButton}
           onPress={handleShare}
         >
           <Ionicons name="share-outline" size={22} color={colors.text} />
@@ -439,10 +448,8 @@ const styles = StyleSheet.create({
   backButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    ...SHADOWS.small,
   },
   headerTitle: {
     fontSize: FONT_SIZES.lg,
@@ -452,10 +459,8 @@ const styles = StyleSheet.create({
   shareButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    ...SHADOWS.small,
   },
   content: {
     flex: 1,

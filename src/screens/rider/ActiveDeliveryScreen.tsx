@@ -355,6 +355,15 @@ export default function ActiveDeliveryScreen() {
     }
   };
 
+  const getAddressString = (addr: any): string => {
+    if (!addr) return '';
+    if (typeof addr === 'string') return addr;
+    if (typeof addr === 'object') {
+      return addr.address || addr.city || addr.state || '';
+    }
+    return '';
+  };
+
   const getCurrentDestination = () => {
     if (!delivery) return null;
     
@@ -362,7 +371,7 @@ export default function ActiveDeliveryScreen() {
       return {
         label: 'Pickup Location',
         name: delivery.farmer.name,
-        address: delivery.pickupAddress,
+        address: getAddressString(delivery.pickupAddress),
         location: delivery.pickupLocation,
         phone: delivery.farmer.phone,
       };
@@ -371,7 +380,7 @@ export default function ActiveDeliveryScreen() {
     return {
       label: 'Delivery Location',
       name: delivery.buyer.name,
-      address: delivery.deliveryAddress,
+      address: getAddressString(delivery.deliveryAddress),
       location: delivery.deliveryLocation,
       phone: delivery.buyer.phone,
     };

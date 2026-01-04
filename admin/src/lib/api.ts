@@ -97,6 +97,8 @@ export const authApi = {
   me: () => api.get('/auth/me'),
   refreshToken: (refreshToken: string) =>
     api.post('/auth/refresh', { refreshToken }),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    api.post('/auth/change-password', { currentPassword, newPassword }),
 };
 
 // Two-Factor Authentication API

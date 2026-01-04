@@ -412,7 +412,7 @@ export default function RiderSubscriptionScreen() {
       {/* Initial Back Button (visible before scroll) */}
       <View style={[styles.initialBackButton, { top: insets.top + 10 }]}>
         <TouchableOpacity 
-          style={[styles.backButtonCircle, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}
+          style={styles.backButtonCircle}
           onPress={() => navigation.goBack()}
         >
           <Ionicons name="chevron-back" size={24} color={colors.text} />
@@ -720,14 +720,8 @@ const styles = StyleSheet.create({
   backButtonCircle: {
     width: 44,
     height: 44,
-    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   fixedHeaderTitle: {
     fontSize: FONT_SIZES.lg,

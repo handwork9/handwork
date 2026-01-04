@@ -458,7 +458,9 @@ const DeliveryChatScreen: React.FC = () => {
     avatar: contact.avatar,
     phone: contact.phone,
     email: contact.email,
-    location: contact.location,
+    location: typeof contact.location === 'object' && contact.location 
+      ? (contact.location as any).city || (contact.location as any).state || (contact.location as any).address || ''
+      : contact.location || '',
     role: contact.role,
     rating: contact.rating,
     totalOrders: contact.totalOrders,

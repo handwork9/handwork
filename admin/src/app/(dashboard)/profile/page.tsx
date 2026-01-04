@@ -55,7 +55,7 @@ import {
 } from '@ant-design/icons';
 import type { UploadProps } from 'antd';
 import { useAuthStore, AdminRole, PERMISSIONS, ROLE_PERMISSIONS } from '@/store/auth';
-import { sessionsApi, twoFactorApi } from '@/lib/api';
+import { authApi, sessionsApi, twoFactorApi } from '@/lib/api';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 
@@ -243,19 +243,17 @@ export default function ProfilePage() {
   // Change password mutation
   const changePasswordMutation = useMutation({
     mutationFn: async (
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      _data: { currentPassword: string; newPassword: string }
+      data: { currentPassword: string; newPassword: string }
     ) => {
-      // Simulate API call - _data will be used when connected to real API
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      return true;
+      const response = await authApi.changePassword(data.currentPassword, data.newPassword);
+      return response.data;
     },
     onSuccess: () => {
       message.success('Password changed successfully');
       setChangePasswordModal(false);
     },
-    onError: () => {
-      message.error('Failed to change password');
+    onError: (error: Error & { response?: { data?: { message?: string } } }) => {
+      message.error(error.response?.data?.message || 'Failed to change password');
     },
   });
 

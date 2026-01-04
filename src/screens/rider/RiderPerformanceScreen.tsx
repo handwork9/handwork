@@ -541,14 +541,14 @@ export default function RiderPerformanceScreen() {
       <View style={[styles.header, { paddingTop: insets.top, backgroundColor: isDark ? '#000' : '#F2F2F7' }]}>
         <View style={styles.headerTop}>
           <TouchableOpacity
-            style={[styles.backButton, { backgroundColor: isDark ? colors.card : '#DEDEE0' }]}
+            style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>Performance</Text>
-          <TouchableOpacity style={[styles.shareButton, { backgroundColor: isDark ? 'rgba(16,185,129,0.3)' : 'rgba(16,185,129,0.15)' }]}>
-            <Ionicons name="share-outline" size={24} color="#10B981" />
+          <TouchableOpacity style={styles.shareButton}>
+            <Ionicons name="share-outline" size={24} color={colors.text} />
           </TouchableOpacity>
         </View>
         
@@ -675,7 +675,6 @@ const styles = StyleSheet.create({
   backButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -687,7 +686,6 @@ const styles = StyleSheet.create({
   shareButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },

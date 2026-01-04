@@ -474,7 +474,9 @@ const BuyerChatScreen: React.FC = () => {
     avatar: buyer.avatar,
     phone: buyer.phone,
     email: buyer.email,
-    location: buyer.location,
+    location: typeof buyer.location === 'object' && buyer.location 
+      ? (buyer.location as any).city || (buyer.location as any).state || (buyer.location as any).address || ''
+      : buyer.location || '',
     role: 'buyer',
     rating: buyer.rating,
     totalOrders: buyer.totalOrders,

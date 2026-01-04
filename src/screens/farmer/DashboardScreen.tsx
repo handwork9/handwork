@@ -229,7 +229,15 @@ export default function DashboardScreen() {
       return parts.join(', ');
     }
     if (user?.businessAddress) {
-      return user.businessAddress;
+      // Handle both string and object formats
+      if (typeof user.businessAddress === 'string') {
+        return user.businessAddress;
+      }
+      if (typeof user.businessAddress === 'object') {
+        const addr = user.businessAddress as { address?: string; city?: string; state?: string };
+        const parts = [addr.address, addr.city, addr.state].filter(Boolean);
+        return parts.join(', ') || t('home.selectLocation');
+      }
     }
     if (user?.city && user?.state) {
       return `${user.city}, ${user.state}`;
@@ -506,38 +514,30 @@ export default function DashboardScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
-      {/* Fixed Header - Address Style */}
+      {/* Fixed Header - Instagram Style */}
       <View style={[styles.fixedHeader, { paddingTop: insets.top, backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
         <View style={styles.topBar}>
-          <View style={styles.headerLeft}>
-            <TouchableOpacity 
-              style={styles.locationButton}
-              activeOpacity={0.7}
-              onPress={() => {
-                triggerHaptic();
-                // Navigate to edit profile where farmers can edit their business address
-                navigation.navigate('EditProfile' as never);
-              }}
-            >
-              <Ionicons name="location" size={20} color={colors.primary} />
-              <View style={styles.locationTextContainer}>
-                <View style={styles.locationRow}>
-                  <Text 
-                    style={[styles.locationText, { color: colors.text }]}
-                    numberOfLines={1}
-                    ellipsizeMode="tail"
-                  >
-                    {getLocationText()}
-                  </Text>
-                  <Ionicons name="chevron-down" size={14} color={colors.textSecondary} style={{ marginLeft: 4 }} />
-                </View>
-              </View>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity 
+            style={styles.brandButton}
+            activeOpacity={0.7}
+            onPress={() => {
+              triggerHaptic();
+              navigation.navigate('EditProfile' as never);
+            }}
+          >
+            <View style={{ position: 'relative' }}>
+              <Text style={[styles.brandText, { color: colors.text }]}>Handwork</Text>
+              <Text style={[styles.brandText, { color: colors.text, position: 'absolute', left: 0.5, top: 0 }]}>Handwork</Text>
+              <Text style={[styles.brandText, { color: colors.text, position: 'absolute', left: 1, top: 0 }]}>Handwork</Text>
+              <Text style={[styles.brandText, { color: colors.text, position: 'absolute', left: 1.5, top: 0 }]}>Handwork</Text>
+              <Text style={[styles.brandText, { color: colors.text, position: 'absolute', left: 0.25, top: 0.25 }]}>Handwork</Text>
+            </View>
+            <Ionicons name="chevron-down" size={18} color={colors.text} style={{ marginLeft: 4 }} />
+          </TouchableOpacity>
           
           <View style={styles.headerActions}>
             <TouchableOpacity
-              style={[styles.headerIconButton, { backgroundColor: isDark ? '#2C2C2E' : '#F5F5F5' }]}
+              style={styles.headerIconButton}
               onPress={() => {
                 triggerHaptic();
                 navigation.navigate('Notifications');
@@ -1513,6 +1513,17 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 12,
   },
+  brandButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  brandText: {
+    fontSize: 38,
+    fontFamily: 'Billabong',
+    letterSpacing: 0.5,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
+  },
   headerLeft: {
     flex: 1,
     marginRight: 12,
@@ -1542,7 +1553,6 @@ const styles = StyleSheet.create({
   headerIconButton: {
     width: 40,
     height: 40,
-    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
