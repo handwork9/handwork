@@ -17,6 +17,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableWithoutFeedback,
+  Modal,
+  Share,
+  Linking,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -252,6 +255,9 @@ const StoriesScreen = () => {
   const [isPaused, setIsPaused] = useState(false);
   const [isLongPressed, setIsLongPressed] = useState(false);
   const [showMoreOptions, setShowMoreOptions] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
+  const [likeAnimation] = useState(new Animated.Value(0));
+  const [showLikeHeart, setShowLikeHeart] = useState(false);
   
   const translateX = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(0)).current;
@@ -293,6 +299,104 @@ const StoriesScreen = () => {
       setProgress(0);
     }
   }, [currentStoryIndex, currentFarmerIndex, stories]);
+
+  // Reset like state when story changes
+  useEffect(() => {
+    setIsLiked(false);
+  }, [currentStoryIndex, currentFarmerIndex]);
+
+  // Handle liking a story
+  const handleLikeStory = useCallback(async () => {
+    if (!currentStory) return;
+    
+    // Optimistic update with animation
+    setIsLiked(!isLiked);
+    setShowLikeHeart(true);
+    
+    // Animate the like heart
+    Animated.sequence([
+      Animated.spring(likeAnimation, {
+        toValue: 1,
+        useNativeDriver: true,
+        friction: 3,
+      }),
+      Animated.timing(likeAnimation, {
+        toValue: 0,
+        duration: 500,
+        delay: 500,
+        useNativeDriver: true,
+      }),
+    ]).start(() => setShowLikeHeart(false));
+    
+    try {
+      await socialService.reactToStory(currentStory.id, 'love');
+    } catch (error) {
+      console.error('Failed to like story:', error);
+      // Revert on error
+      setIsLiked(isLiked);
+    }
+  }, [currentStory, isLiked, likeAnimation]);
+
+  // Handle share story
+  const handleShareStory = useCallback(async () => {
+    if (!currentFarmer || !currentStory) return;
+    
+    setShowMoreOptions(false);
+    setIsPaused(false);
+    
+    try {
+      await Share.share({
+        message: `Check out this story from ${currentFarmer.farmer.farmName} on Handwork! 🌾`,
+        title: `${currentFarmer.farmer.farmName}'s Story`,
+      });
+    } catch (error) {
+      console.error('Failed to share story:', error);
+    }
+  }, [currentFarmer, currentStory]);
+
+  // Handle report story
+  const handleReportStory = useCallback(() => {
+    setShowMoreOptions(false);
+    setIsPaused(false);
+    
+    Alert.alert(
+      'Report Story',
+      'Are you sure you want to report this story?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Report', 
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert('Reported', 'Thank you for your report. We will review this story.');
+          }
+        },
+      ]
+    );
+  }, []);
+
+  // Handle mute farmer
+  const handleMuteFarmer = useCallback(() => {
+    if (!currentFarmer) return;
+    
+    setShowMoreOptions(false);
+    setIsPaused(false);
+    
+    Alert.alert(
+      'Mute Stories',
+      `Mute stories from ${currentFarmer.farmer.farmName}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Mute', 
+          onPress: () => {
+            Alert.alert('Muted', `You won't see stories from ${currentFarmer.farmer.farmName} anymore.`);
+            navigation.goBack();
+          }
+        },
+      ]
+    );
+  }, [currentFarmer, navigation]);
 
   // Handle sending reply to farmer
   const handleSendReply = useCallback(async () => {
@@ -542,7 +646,10 @@ const StoriesScreen = () => {
             <View style={styles.headerActions}>
               <TouchableOpacity 
                 style={styles.headerIconBtn}
-                onPress={() => setShowMoreOptions(!showMoreOptions)}
+                onPress={() => {
+                  setShowMoreOptions(true);
+                  setIsPaused(true);
+                }}
               >
                 <Ionicons name="ellipsis-horizontal" size={22} color="white" />
               </TouchableOpacity>
@@ -555,6 +662,26 @@ const StoriesScreen = () => {
             </View>
           </View>
         </View>
+
+        {/* Like Heart Animation - Instagram style double tap */}
+        {showLikeHeart && (
+          <Animated.View 
+            style={[
+              styles.likeHeartOverlay,
+              {
+                transform: [
+                  { scale: likeAnimation.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 1.2],
+                  })},
+                ],
+                opacity: likeAnimation,
+              }
+            ]}
+          >
+            <Ionicons name="heart" size={100} color="#ed4956" />
+          </Animated.View>
+        )}
 
         {/* Paused Indicator */}
         {isLongPressed && (
@@ -593,14 +720,19 @@ const StoriesScreen = () => {
               />
             </View>
             
-            {/* Action buttons */}
+            {/* Like button */}
             <TouchableOpacity 
               style={styles.actionBtn}
-              onPress={() => {/* Like story */}}
+              onPress={handleLikeStory}
             >
-              <Ionicons name="heart-outline" size={26} color="white" />
+              <Ionicons 
+                name={isLiked ? "heart" : "heart-outline"} 
+                size={26} 
+                color={isLiked ? "#ed4956" : "white"} 
+              />
             </TouchableOpacity>
             
+            {/* Send button */}
             <TouchableOpacity 
               style={[styles.sendMsgBtn, (!replyMessage.trim() || isSendingReply) && styles.sendBtnDisabled]}
               onPress={handleSendReply}
@@ -614,6 +746,66 @@ const StoriesScreen = () => {
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
+
+        {/* More Options Modal */}
+        <Modal
+          visible={showMoreOptions}
+          transparent
+          animationType="fade"
+          onRequestClose={() => {
+            setShowMoreOptions(false);
+            setIsPaused(false);
+          }}
+        >
+          <TouchableWithoutFeedback 
+            onPress={() => {
+              setShowMoreOptions(false);
+              setIsPaused(false);
+            }}
+          >
+            <View style={styles.modalOverlay}>
+              <TouchableWithoutFeedback>
+                <View style={styles.modalContent}>
+                  <View style={styles.modalHandle} />
+                  
+                  <TouchableOpacity 
+                    style={styles.modalOption}
+                    onPress={handleShareStory}
+                  >
+                    <Ionicons name="share-outline" size={24} color="white" />
+                    <Text style={styles.modalOptionText}>Share</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={styles.modalOption}
+                    onPress={handleMuteFarmer}
+                  >
+                    <Ionicons name="volume-mute-outline" size={24} color="white" />
+                    <Text style={styles.modalOptionText}>Mute {currentFarmer?.farmer.farmName}</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={styles.modalOption}
+                    onPress={handleReportStory}
+                  >
+                    <Ionicons name="flag-outline" size={24} color="#ed4956" />
+                    <Text style={[styles.modalOptionText, { color: '#ed4956' }]}>Report</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={[styles.modalOption, styles.modalCancel]}
+                    onPress={() => {
+                      setShowMoreOptions(false);
+                      setIsPaused(false);
+                    }}
+                  >
+                    <Text style={styles.modalCancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </Modal>
       </Animated.View>
     </View>
   );
@@ -866,6 +1058,60 @@ const styles = StyleSheet.create({
   },
   sendBtnDisabled: {
     opacity: 0.5,
+  },
+  // Like heart animation overlay
+  likeHeartOverlay: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    marginTop: -50,
+    marginLeft: -50,
+    zIndex: 100,
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#262626',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+    paddingTop: SPACING.sm,
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: SPACING.md,
+  },
+  modalOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    gap: SPACING.md,
+  },
+  modalOptionText: {
+    color: 'white',
+    fontSize: FONT_SIZES.md,
+    fontFamily: FONTS.regular,
+  },
+  modalCancel: {
+    marginTop: SPACING.sm,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
+  },
+  modalCancelText: {
+    color: 'white',
+    fontSize: FONT_SIZES.md,
+    fontFamily: FONTS.semiBold,
+    textAlign: 'center',
   },
   // Empty & Loading states
   centerContent: {

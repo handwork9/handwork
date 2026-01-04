@@ -302,6 +302,11 @@ class SocialService {
     return response.data || response as unknown as { users: any[]; total: number };
   }
 
+  async reactToStory(storyId: string, reaction: 'like' | 'love' | 'wow' | 'sad' | 'angry' = 'love'): Promise<{ reacted: boolean; reactionCount: number }> {
+    const response = await apiClient.post<ApiResponse<{ reacted: boolean; reactionCount: number }>>(`/social/stories/${storyId}/react`, { reaction });
+    return response.data || response as unknown as { reacted: boolean; reactionCount: number };
+  }
+
   async deleteStory(storyId: string): Promise<void> {
     await apiClient.delete(`/social/stories/${storyId}`);
   }
