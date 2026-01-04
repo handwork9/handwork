@@ -30,6 +30,8 @@ import { formatDistanceToNow } from 'date-fns';
 import { COLORS, SPACING, FONT_SIZES, FONTS } from '../../constants/theme';
 import { socialService, FarmerStories, FarmStory } from '../../services/socialService';
 import { chatService } from '../../services/chatService';
+import apiClient from '../../services/apiClient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
 const STORY_DURATION = 5000; // 5 seconds per story
@@ -347,56 +349,127 @@ const StoriesScreen = () => {
     if (!currentFarmer || !currentStory) return;
     
     setShowMoreOptions(false);
-    setIsPaused(false);
     
     try {
-      await Share.share({
-        message: `Check out this story from ${currentFarmer.farmer.farmName} on Handwork! 🌾`,
+      const result = await Share.share({
+        message: `Check out this story from ${currentFarmer.farmer.farmName} on Handwork! 🌾\n\nDownload the app to see more: https://handwork.app`,
         title: `${currentFarmer.farmer.farmName}'s Story`,
       });
+      
+      if (result.action === Share.sharedAction) {
+        // Shared successfully
+      }
     } catch (error) {
       console.error('Failed to share story:', error);
+    } finally {
+      setIsPaused(false);
     }
   }, [currentFarmer, currentStory]);
 
   // Handle report story
   const handleReportStory = useCallback(() => {
+    if (!currentStory) return;
+    
     setShowMoreOptions(false);
-    setIsPaused(false);
     
     Alert.alert(
       'Report Story',
-      'Are you sure you want to report this story?',
+      'Why are you reporting this story?',
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel', onPress: () => setIsPaused(false) },
         { 
-          text: 'Report', 
-          style: 'destructive',
-          onPress: () => {
-            Alert.alert('Reported', 'Thank you for your report. We will review this story.');
+          text: 'Inappropriate Content', 
+          onPress: async () => {
+            try {
+              await apiClient.post('/moderation/report', {
+                contentType: 'farm_story',
+                contentId: currentStory.id,
+                reason: 'Inappropriate content',
+              });
+              Alert.alert('Reported', 'Thank you for your report. We will review this story.');
+            } catch (error) {
+              console.error('Failed to report story:', error);
+              Alert.alert('Error', 'Failed to submit report. Please try again.');
+            } finally {
+              setIsPaused(false);
+            }
+          }
+        },
+        { 
+          text: 'Spam or Misleading', 
+          onPress: async () => {
+            try {
+              await apiClient.post('/moderation/report', {
+                contentType: 'farm_story',
+                contentId: currentStory.id,
+                reason: 'Spam or misleading content',
+              });
+              Alert.alert('Reported', 'Thank you for your report. We will review this story.');
+            } catch (error) {
+              console.error('Failed to report story:', error);
+              Alert.alert('Error', 'Failed to submit report. Please try again.');
+            } finally {
+              setIsPaused(false);
+            }
+          }
+        },
+        { 
+          text: 'Other', 
+          onPress: async () => {
+            try {
+              await apiClient.post('/moderation/report', {
+                contentType: 'farm_story',
+                contentId: currentStory.id,
+                reason: 'Other violation',
+              });
+              Alert.alert('Reported', 'Thank you for your report. We will review this story.');
+            } catch (error) {
+              console.error('Failed to report story:', error);
+              Alert.alert('Error', 'Failed to submit report. Please try again.');
+            } finally {
+              setIsPaused(false);
+            }
           }
         },
       ]
     );
-  }, []);
+  }, [currentStory]);
 
-  // Handle mute farmer
-  const handleMuteFarmer = useCallback(() => {
+  // Handle mute farmer - stores locally and skips their stories
+  const handleMuteFarmer = useCallback(async () => {
     if (!currentFarmer) return;
     
     setShowMoreOptions(false);
-    setIsPaused(false);
     
     Alert.alert(
       'Mute Stories',
-      `Mute stories from ${currentFarmer.farmer.farmName}?`,
+      `Mute stories from ${currentFarmer.farmer.farmName}?\n\nYou won't see their stories in your feed anymore.`,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel', onPress: () => setIsPaused(false) },
         { 
           text: 'Mute', 
-          onPress: () => {
-            Alert.alert('Muted', `You won't see stories from ${currentFarmer.farmer.farmName} anymore.`);
-            navigation.goBack();
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Store muted farmer ID locally
+              const mutedFarmersJson = await AsyncStorage.getItem('mutedFarmers');
+              const mutedFarmers: string[] = mutedFarmersJson ? JSON.parse(mutedFarmersJson) : [];
+              
+              if (!mutedFarmers.includes(currentFarmer.farmer.id)) {
+                mutedFarmers.push(currentFarmer.farmer.id);
+                await AsyncStorage.setItem('mutedFarmers', JSON.stringify(mutedFarmers));
+              }
+              
+              Alert.alert(
+                'Muted', 
+                `You won't see stories from ${currentFarmer.farmer.farmName} anymore.\n\nYou can unmute them from Settings.`,
+                [{ text: 'OK', onPress: () => navigation.goBack() }]
+              );
+            } catch (error) {
+              console.error('Failed to mute farmer:', error);
+              Alert.alert('Error', 'Failed to mute. Please try again.');
+              setIsPaused(false);
+            }
           }
         },
       ]
