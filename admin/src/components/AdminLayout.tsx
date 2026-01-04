@@ -100,10 +100,17 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   };
 
   const menuItems: MenuProps['items'] = [
+    // Dashboard Group
     {
-      key: '/',
-      icon: <DashboardOutlined />,
-      label: 'Dashboard',
+      type: 'group',
+      label: 'MAIN',
+      children: [
+        {
+          key: '/',
+          icon: <DashboardOutlined />,
+          label: 'Dashboard',
+        },
+      ],
     },
     // Operations Group
     {
