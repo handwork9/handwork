@@ -873,98 +873,166 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           </div>
         </div>
       </Sider>
-      <Layout style={{ marginLeft: 280 }}>
+      <Layout style={{ marginLeft: 280, background: '#f2f2f7' }}>
         <Header 
           style={{ 
-            background: 'rgba(255, 255, 255, 0.72)', 
+            background: 'rgba(255, 255, 255, 0.85)', 
             backdropFilter: 'blur(20px) saturate(180%)',
             WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-            padding: '0 28px', 
+            padding: '0 24px', 
             display: 'flex', 
             alignItems: 'center', 
             justifyContent: 'space-between', 
-            borderBottom: '0.5px solid rgba(0, 0, 0, 0.08)',
+            borderBottom: '0.5px solid rgba(60, 60, 67, 0.12)',
             position: 'sticky', 
             top: 0, 
             zIndex: 10, 
-            height: 64,
+            height: 56,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          {/* Left Section - Greeting & Role */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <span style={{ 
+                color: '#8e8e93', 
+                fontSize: 12,
+                fontWeight: 500,
+                fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
+                letterSpacing: '-0.1px',
+              }}>Welcome back</span>
+              <span style={{ 
+                color: '#1c1c1e', 
+                fontSize: 17,
+                fontWeight: 600,
+                fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif',
+                letterSpacing: '-0.4px',
+              }}>{user?.name || 'Admin'}</span>
+            </div>
+            <div style={{ 
+              height: 24,
+              width: 1,
+              background: 'rgba(60, 60, 67, 0.12)',
+              margin: '0 8px',
+            }} />
             <span style={{ 
-              color: '#3c3c43', 
-              fontSize: 15,
-              fontWeight: 500,
-              fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
-              letterSpacing: '-0.2px',
-            }}>Welcome back, {user?.name || 'Admin'}</span>
-            <span style={{ 
-              padding: '6px 12px', 
-              background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(74, 222, 128, 0.1) 100%)',
+              padding: '5px 10px', 
+              background: 'rgba(34, 197, 94, 0.1)',
               color: '#16a34a', 
-              borderRadius: 20, 
-              fontSize: 11, 
-              textTransform: 'uppercase',
+              borderRadius: 6, 
+              fontSize: 12, 
+              textTransform: 'capitalize',
               fontWeight: 600,
-              letterSpacing: '0.5px',
-              border: '1px solid rgba(34, 197, 94, 0.2)',
+              fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
+              letterSpacing: '0.2px',
             }}>
               {user?.role || 'admin'}
             </span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+
+          {/* Right Section - Actions */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {/* Search Button */}
+            <div style={{
+              width: 36,
+              height: 36,
+              borderRadius: 10,
+              background: 'rgba(118, 118, 128, 0.08)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(118, 118, 128, 0.12)'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(118, 118, 128, 0.08)'}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8e8e93" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+              </svg>
+            </div>
+
+            {/* Notifications */}
             <Dropdown 
               menu={{ items: notificationMenuItems }} 
               placement="bottomRight"
               trigger={['click']}
-              styles={{ root: { minWidth: 360 } }}
+              styles={{ root: { minWidth: 380, borderRadius: 14 } }}
             >
-              <Badge count={totalUnreadCount} size="small">
+              <Badge count={totalUnreadCount} size="small" offset={[-2, 2]}>
                 <div style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 12,
-                  background: 'rgba(0, 0, 0, 0.04)',
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  background: totalUnreadCount > 0 ? 'rgba(255, 59, 48, 0.1)' : 'rgba(118, 118, 128, 0.08)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                }}>
-                  <BellOutlined style={{ fontSize: 20, color: '#3c3c43' }} />
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = totalUnreadCount > 0 ? 'rgba(255, 59, 48, 0.15)' : 'rgba(118, 118, 128, 0.12)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = totalUnreadCount > 0 ? 'rgba(255, 59, 48, 0.1)' : 'rgba(118, 118, 128, 0.08)'}
+                >
+                  <BellOutlined style={{ fontSize: 18, color: totalUnreadCount > 0 ? '#ff3b30' : '#8e8e93' }} />
                 </div>
               </Badge>
             </Dropdown>
+
+            {/* Divider */}
+            <div style={{ 
+              height: 24,
+              width: 1,
+              background: 'rgba(60, 60, 67, 0.12)',
+              margin: '0 4px',
+            }} />
+
+            {/* User Profile */}
             <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
               <div style={{
-                padding: '4px',
-                borderRadius: 14,
-                background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: '6px 10px 6px 6px',
+                borderRadius: 12,
+                background: 'rgba(118, 118, 128, 0.08)',
                 cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(34, 197, 94, 0.3)',
-              }}>
-                <Avatar
-                  src={normalizeImageUrl(user?.avatar)}
-                  icon={!user?.avatar && <UserOutlined />}
-                  style={{ 
-                    cursor: 'pointer',
-                    border: '2px solid rgba(255, 255, 255, 0.9)',
-                  }}
-                  size={36}
-                />
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(118, 118, 128, 0.12)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(118, 118, 128, 0.08)'}
+              >
+                <div style={{
+                  padding: '2px',
+                  borderRadius: 10,
+                  background: 'linear-gradient(135deg, #34d399 0%, #16a34a 100%)',
+                }}>
+                  <Avatar
+                    src={normalizeImageUrl(user?.avatar)}
+                    icon={!user?.avatar && <UserOutlined />}
+                    style={{ 
+                      cursor: 'pointer',
+                      border: '2px solid #fff',
+                      background: '#e5e5ea',
+                    }}
+                    size={30}
+                  />
+                </div>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8e8e93" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m6 9 6 6 6-6"/>
+                </svg>
               </div>
             </Dropdown>
           </div>
         </Header>
         <Content style={{ 
-          margin: 24, 
-          padding: 28, 
-          background: 'rgba(255, 255, 255, 0.9)', 
-          backdropFilter: 'blur(10px)',
-          borderRadius: 20, 
-          minHeight: 'calc(100vh - 112px)',
-          boxShadow: '0 4px 24px rgba(0, 0, 0, 0.06)',
-          border: '0.5px solid rgba(0, 0, 0, 0.04)',
+          margin: 20, 
+          padding: 24, 
+          background: '#fff', 
+          borderRadius: 16, 
+          minHeight: 'calc(100vh - 96px)',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+          border: '0.5px solid rgba(0, 0, 0, 0.06)',
         }}>
           {children}
         </Content>
