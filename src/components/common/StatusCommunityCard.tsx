@@ -167,7 +167,7 @@ const StatusCommunityCard: React.FC<StatusCommunityCardProps> = ({
 
   const shimmerTranslate = shimmerAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [-200, 200],
+    outputRange: [-400, 400],
   });
 
   const ringRotation = ringRotateAnim.interpolate({
@@ -206,12 +206,19 @@ const StatusCommunityCard: React.FC<StatusCommunityCardProps> = ({
           {hasNewContent && (
             <Animated.View
               style={[
-                styles.shimmerOverlay,
+                styles.shimmerContainer,
                 {
                   transform: [{ translateX: shimmerTranslate }],
                 },
               ]}
-            />
+            >
+              <LinearGradient
+                colors={['transparent', 'rgba(255,255,255,0.3)', 'rgba(255,255,255,0.5)', 'rgba(255,255,255,0.3)', 'transparent']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.shimmerGradient}
+              />
+            </Animated.View>
           )}
 
           <View style={styles.content}>
@@ -337,15 +344,16 @@ const styles = StyleSheet.create({
     bottom: -30,
     left: -20,
   },
-  shimmerOverlay: {
+  shimmerContainer: {
     position: 'absolute',
     top: 0,
-    left: 0,
-    right: 0,
     bottom: 0,
-    width: 100,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    transform: [{ skewX: '-20deg' }],
+    width: '100%',
+    overflow: 'hidden',
+  },
+  shimmerGradient: {
+    width: '100%',
+    height: '100%',
   },
   content: {
     flexDirection: 'row',
