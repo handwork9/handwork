@@ -5,7 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { FONTS } from '../../constants/theme';
@@ -26,18 +26,15 @@ const StatusCommunityCard: React.FC<StatusCommunityCardProps> = ({
   const navigation = useNavigation();
   const { colors, isDark } = useTheme();
 
-  const handleStatusPress = () => {
+  const handlePress = () => {
     triggerHaptic();
     (navigation as any).navigate('Social');
   };
 
-  const handleCommunityPress = () => {
-    triggerHaptic();
-    (navigation as any).navigate('Community');
-  };
+  const totalActivity = storiesCount + liveCount;
 
   return (
-    <View
+    <TouchableOpacity
       style={[
         styles.container,
         {
@@ -50,112 +47,68 @@ const StatusCommunityCard: React.FC<StatusCommunityCardProps> = ({
         },
         style,
       ]}
+      onPress={handlePress}
+      activeOpacity={0.7}
     >
-      {/* Status Row */}
-      <TouchableOpacity
-        style={styles.row}
-        onPress={handleStatusPress}
-        activeOpacity={0.7}
+      <LinearGradient
+        colors={isDark ? ['#7C3AED', '#6D28D9'] : ['#8B5CF6', '#7C3AED']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.iconGradient}
       >
-        <LinearGradient
-          colors={isDark ? ['#7C3AED', '#6D28D9'] : ['#8B5CF6', '#7C3AED']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.iconGradient}
-        >
-          <MaterialCommunityIcons name="camera-iris" size={20} color="#FFFFFF" />
-        </LinearGradient>
-        <View style={styles.rowContent}>
-          <Text style={[styles.rowTitle, { color: colors.text }]}>Status</Text>
-          <Text style={[styles.rowSubtitle, { color: colors.textSecondary }]}>
-            {storiesCount > 0 ? `${storiesCount} new updates` : 'View farmer stories'}
-          </Text>
+        <Ionicons name="people" size={22} color="#FFFFFF" />
+      </LinearGradient>
+      <View style={styles.content}>
+        <Text style={[styles.title, { color: colors.text }]}>Status & Community</Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+          Stories, updates & connect with farmers
+        </Text>
+      </View>
+      {totalActivity > 0 && (
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>{totalActivity > 99 ? '99+' : totalActivity}</Text>
         </View>
-        {storiesCount > 0 && (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{storiesCount > 99 ? '99+' : storiesCount}</Text>
-          </View>
-        )}
-        <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-      </TouchableOpacity>
-
-      {/* Divider */}
-      <View style={[styles.divider, { backgroundColor: isDark ? '#333' : '#F0F0F0' }]} />
-
-      {/* Community Row */}
-      <TouchableOpacity
-        style={styles.row}
-        onPress={handleCommunityPress}
-        activeOpacity={0.7}
-      >
-        <LinearGradient
-          colors={isDark ? ['#059669', '#047857'] : ['#10B981', '#059669']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.iconGradient}
-        >
-          <Ionicons name="people" size={20} color="#FFFFFF" />
-        </LinearGradient>
-        <View style={styles.rowContent}>
-          <Text style={[styles.rowTitle, { color: colors.text }]}>Community</Text>
-          <Text style={[styles.rowSubtitle, { color: colors.textSecondary }]}>
-            Connect with farmers
-          </Text>
-        </View>
-        {liveCount > 0 && (
-          <View style={styles.liveBadge}>
-            <View style={styles.liveDot} />
-            <Text style={styles.liveText}>{liveCount} Live</Text>
-          </View>
-        )}
-        <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-      </TouchableOpacity>
-    </View>
+      )}
+      <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+    </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginHorizontal: 8,
     marginTop: 12,
     borderRadius: 14,
-    overflow: 'hidden',
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 14,
   },
   iconGradient: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
+    width: 42,
+    height: 42,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  rowContent: {
+  content: {
     flex: 1,
     marginLeft: 12,
   },
-  rowTitle: {
+  title: {
     fontFamily: FONTS.semiBold,
-    fontSize: 14,
+    fontSize: 15,
     marginBottom: 2,
   },
-  rowSubtitle: {
+  subtitle: {
     fontFamily: FONTS.regular,
     fontSize: 12,
-  },
-  divider: {
-    height: 1,
-    marginLeft: 64,
   },
   badge: {
     backgroundColor: '#EF4444',
     borderRadius: 10,
-    minWidth: 20,
-    height: 20,
+    minWidth: 22,
+    height: 22,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 6,
@@ -163,28 +116,7 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontFamily: FONTS.bold,
-    fontSize: 10,
-    color: '#FFFFFF',
-  },
-  liveBadge: {
-    backgroundColor: '#EF4444',
-    borderRadius: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    gap: 4,
-    marginRight: 8,
-  },
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#FFFFFF',
-  },
-  liveText: {
-    fontFamily: FONTS.semiBold,
-    fontSize: 10,
+    fontSize: 11,
     color: '#FFFFFF',
   },
 });
