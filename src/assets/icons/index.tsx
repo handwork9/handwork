@@ -213,6 +213,106 @@ export const TruckIcon = ({ size = 24, color = '#FF9500' }: IconProps) => (
   </Svg>
 );
 
+/**
+ * Add To Bag Icon - Compact bag with plus for product cards
+ */
+export const AddToBagIcon = ({ size = 18, color = '#FFFFFF' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    {/* Bag handle */}
+    <Path 
+      d="M8 8V6a4 4 0 118 0v2"
+      stroke={color}
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+    {/* Bag body */}
+    <Path 
+      d="M5 8h14l1 13H4L5 8z"
+      stroke={color}
+      strokeWidth="2"
+      strokeLinejoin="round"
+    />
+    {/* Plus */}
+    <Path d="M12 12v5" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <Path d="M9.5 14.5h5" stroke={color} strokeWidth="2" strokeLinecap="round" />
+  </Svg>
+);
+
+/**
+ * Heart Icon - For favorites (outline)
+ */
+export const HeartIcon = ({ size = 18, color = '#FF4757', filled = false }: IconProps & { filled?: boolean }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path 
+      d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+      fill={filled ? color : 'none'}
+      stroke={color}
+      strokeWidth="2"
+    />
+  </Svg>
+);
+
+/**
+ * Star Icon - For ratings
+ */
+export const StarIcon = ({ size = 14, color = '#FFB800', filled = true }: IconProps & { filled?: boolean }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path 
+      d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+      fill={filled ? color : 'none'}
+      stroke={color}
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+/**
+ * Verified Badge Icon - Checkmark circle
+ */
+export const VerifiedIcon = ({ size = 14, color = '#007AFF' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Circle cx="12" cy="12" r="10" fill={color} />
+    <Path 
+      d="M8 12l3 3 5-6"
+      stroke="#FFFFFF"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+/**
+ * Organic Leaf Icon - Small badge for organic products
+ */
+export const OrganicLeafIcon = ({ size = 10, color = '#34C759' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path 
+      d="M12 3c-4 0-8 4-8 10 0 0 4-2 8-2s8 2 8 2c0-6-4-10-8-10z"
+      fill={color}
+    />
+    <Path d="M12 13v8" stroke={color} strokeWidth="2" strokeLinecap="round" />
+  </Svg>
+);
+
+/**
+ * Fresh Sun Icon - For fresh products
+ */
+export const FreshSunIcon = ({ size = 10, color = '#FF9500' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Circle cx="12" cy="12" r="5" fill={color} />
+    <Path d="M12 2v3" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <Path d="M12 19v3" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <Path d="M4.22 4.22l2.12 2.12" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <Path d="M17.66 17.66l2.12 2.12" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <Path d="M2 12h3" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <Path d="M19 12h3" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <Path d="M4.22 19.78l2.12-2.12" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <Path d="M17.66 6.34l2.12-2.12" stroke={color} strokeWidth="2" strokeLinecap="round" />
+  </Svg>
+);
+
 export default {
   ProductPlusIcon,
   ProductsIcon,
@@ -222,4 +322,10 @@ export default {
   StoreIcon,
   LeafIcon,
   TruckIcon,
+  AddToBagIcon,
+  HeartIcon,
+  StarIcon,
+  VerifiedIcon,
+  OrganicLeafIcon,
+  FreshSunIcon,
 };

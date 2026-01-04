@@ -9,6 +9,7 @@ import { triggerHaptic, triggerSuccessHaptic } from '../../utils/haptics';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { toggleFavorite, selectFavoriteIds } from '../../store/slices/favoritesSlice';
 import { getFirstValidImageUrl } from '../../utils/formatters';
+import { AddToBagIcon, HeartIcon, StarIcon, VerifiedIcon } from '../../assets/icons';
 
 const PLACEHOLDER_IMAGE = 'https://placehold.co/300x300/E8F5E9/4CAF50/png?text=Product';
 
@@ -301,7 +302,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
                 onQuickView?.(product);
               }}
             >
-                <Ionicons name="add" size={18} color="#FFFFFF" />
+                <AddToBagIcon size={18} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
           </View>
@@ -368,7 +369,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
                 onQuickView?.(product);
               }}
             >
-                <Ionicons name="add" size={18} color="#FFFFFF" />
+                <AddToBagIcon size={18} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
           </View>
@@ -439,7 +440,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
                 onQuickView?.(product);
               }}
             >
-                <Ionicons name="add" size={18} color="#FFFFFF" />
+                <AddToBagIcon size={18} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
           </View>
@@ -503,7 +504,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
                 onQuickView?.(product);
               }}
             >
-                <Ionicons name="add" size={18} color="#FFFFFF" />
+                <AddToBagIcon size={18} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
           </View>
@@ -580,7 +581,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
                 onQuickView?.(product);
               }}
             >
-                <Ionicons name="add" size={18} color="#FFFFFF" />
+                <AddToBagIcon size={18} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
           </View>
@@ -664,7 +665,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
                 onQuickView?.(product);
               }}
             >
-              <Ionicons name="add" size={18} color="#FFFFFF" />
+              <AddToBagIcon size={18} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
         </View>
@@ -743,7 +744,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
                 onQuickView?.(product);
               }}
             >
-              <Ionicons name="add" size={18} color="#FFFFFF" />
+              <AddToBagIcon size={18} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
         </View>
@@ -838,7 +839,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
                 onQuickView?.(product);
               }}
             >
-              <Ionicons name="add" size={18} color="#FFFFFF" />
+              <AddToBagIcon size={18} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
         </View>
@@ -907,7 +908,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
                 onQuickView?.(product);
               }}
             >
-                <Ionicons name="add" size={18} color="#FFFFFF" />
+                <AddToBagIcon size={18} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
           </View>
@@ -975,7 +976,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
                 onQuickView?.(product);
               }}
             >
-                <Ionicons name="add" size={18} color="#FFFFFF" />
+                <AddToBagIcon size={18} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
           </View>
@@ -1054,7 +1055,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
                 onQuickView?.(product);
               }}
             >
-                <Ionicons name="add" size={18} color="#FFFFFF" />
+                <AddToBagIcon size={18} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
           </View>
@@ -1120,7 +1121,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
                 onQuickView?.(product);
               }}
             >
-                <Ionicons name="add" size={18} color="#FFFFFF" />
+                <AddToBagIcon size={18} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
           </View>
@@ -1186,7 +1187,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
                 onQuickView?.(product);
               }}
             >
-                <Ionicons name="add" size={18} color="#FFFFFF" />
+                <AddToBagIcon size={18} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
           </View>
@@ -1253,7 +1254,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
                 onQuickView?.(product);
               }}
             >
-                <Ionicons name="add" size={18} color="#FFFFFF" />
+                <AddToBagIcon size={18} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
           </View>
@@ -1323,7 +1324,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
                 onQuickView?.(product);
               }}
             >
-                <Ionicons name="add" size={18} color="#FFFFFF" />
+                <AddToBagIcon size={18} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
           </View>
@@ -1387,7 +1388,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
                 onQuickView?.(product);
               }}
             >
-                <Ionicons name="add" size={18} color="#FFFFFF" />
+                <AddToBagIcon size={18} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
           </View>
@@ -1450,7 +1451,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
                 onQuickView?.(product);
               }}
             >
-                <Ionicons name="add" size={18} color="#FFFFFF" />
+                <AddToBagIcon size={18} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
           </View>
@@ -1514,7 +1515,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
                 onQuickView?.(product);
               }}
             >
-                <Ionicons name="add" size={18} color="#FFFFFF" />
+                <AddToBagIcon size={18} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
           </View>
@@ -1582,7 +1583,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
                 onQuickView?.(product);
               }}
             >
-                <Ionicons name="add" size={18} color="#FFFFFF" />
+                <AddToBagIcon size={18} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
           </View>
@@ -1830,7 +1831,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
                 onQuickView?.(product);
               }}
             >
-              <Ionicons name="add" size={18} color="#FFFFFF" />
+              <AddToBagIcon size={18} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
         </View>
@@ -1900,7 +1901,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
                 />
               </TouchableOpacity>
               <TouchableOpacity style={[styles.wideAddBtn, { backgroundColor: colors.primary }]}>
-                <Ionicons name="add" size={18} color="#FFFFFF" />
+                <AddToBagIcon size={18} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
           </View>
