@@ -877,7 +877,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         <Header 
           style={{ 
             background: '#ffffff', 
-            padding: '0 20px', 
+            padding: '0 24px', 
             display: 'flex', 
             alignItems: 'center', 
             justifyContent: 'space-between', 
@@ -885,34 +885,27 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             position: 'sticky', 
             top: 0, 
             zIndex: 10, 
-            height: 60,
-            overflow: 'hidden',
+            height: 64,
           }}
         >
           {/* Left Section - Greeting & Role */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: '0 1 auto' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               <span style={{ 
                 color: '#8e8e93', 
-                fontSize: 11,
+                fontSize: 12,
                 fontWeight: 500,
                 fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
-                letterSpacing: '-0.1px',
               }}>Welcome back</span>
               <span style={{ 
                 color: '#1c1c1e', 
-                fontSize: 15,
+                fontSize: 16,
                 fontWeight: 600,
                 fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif',
-                letterSpacing: '-0.3px',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                maxWidth: 150,
               }}>{user?.name || 'Admin'}</span>
             </div>
             <span style={{ 
-              padding: '4px 8px', 
+              padding: '4px 10px', 
               background: '#e8f5e9',
               color: '#16a34a', 
               borderRadius: 6, 
@@ -920,14 +913,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               textTransform: 'capitalize',
               fontWeight: 600,
               fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
-              letterSpacing: '0.2px',
             }}>
               {user?.role || 'admin'}
             </span>
           </div>
 
           {/* Right Section - Actions */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             {/* Notifications */}
             <Dropdown 
               menu={{ items: notificationMenuItems }} 
@@ -937,18 +929,17 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             >
               <Badge count={totalUnreadCount} size="small" offset={[-2, 2]}>
                 <div style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 8,
+                  width: 40,
+                  height: 40,
+                  borderRadius: 10,
                   background: totalUnreadCount > 0 ? '#ffebee' : '#f5f5f5',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   cursor: 'pointer',
-                  transition: 'all 0.15s ease',
                 }}
                 >
-                  <BellOutlined style={{ fontSize: 18, color: totalUnreadCount > 0 ? '#ff3b30' : '#8e8e93' }} />
+                  <BellOutlined style={{ fontSize: 20, color: totalUnreadCount > 0 ? '#ff3b30' : '#6b7280' }} />
                 </div>
               </Badge>
             </Dropdown>
@@ -959,15 +950,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
-                padding: '4px 8px 4px 4px',
-                borderRadius: 10,
+                padding: '6px 12px 6px 6px',
+                borderRadius: 12,
                 background: '#f5f5f5',
                 cursor: 'pointer',
-                transition: 'all 0.15s ease',
               }}>
                 <div style={{
                   padding: '2px',
-                  borderRadius: 8,
+                  borderRadius: 10,
                   background: 'linear-gradient(135deg, #34d399 0%, #16a34a 100%)',
                 }}>
                   <Avatar
@@ -978,10 +968,16 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                       border: '2px solid #fff',
                       background: '#e5e5ea',
                     }}
-                    size={28}
+                    size={32}
                   />
                 </div>
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#8e8e93" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <span style={{
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: '#1c1c1e',
+                  fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
+                }}>Account</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8e8e93" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="m6 9 6 6 6-6"/>
                 </svg>
               </div>
