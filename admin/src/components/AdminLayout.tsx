@@ -105,13 +105,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       icon: <DashboardOutlined />,
       label: 'Dashboard',
     },
+    // Operations Group
     {
-      type: 'divider',
-    },
-    {
-      key: 'operations',
-      icon: <AppstoreOutlined />,
-      label: 'Operations',
+      type: 'group',
+      label: 'OPERATIONS',
       children: [
         {
           key: '/orders',
@@ -162,10 +159,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         },
       ],
     },
+    // Engagement Group
     {
-      key: 'engagement',
-      icon: <StarOutlined />,
-      label: 'Engagement',
+      type: 'group',
+      label: 'ENGAGEMENT',
       children: [
         {
           key: '/price-alerts',
@@ -179,10 +176,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         },
       ],
     },
+    // User Management Group
     {
-      key: 'users-management',
-      icon: <TeamOutlined />,
-      label: 'User Management',
+      type: 'group',
+      label: 'USER MANAGEMENT',
       children: [
         {
           key: '/farmers',
@@ -210,10 +207,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         },
       ],
     },
+    // Catalog Group
     {
-      key: 'catalog',
-      icon: <ShopOutlined />,
-      label: 'Catalog',
+      type: 'group',
+      label: 'CATALOG',
       children: [
         {
           key: '/products',
@@ -223,10 +220,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         },
       ],
     },
+    // Marketing Group
     {
-      key: 'marketing',
-      icon: <GiftOutlined />,
-      label: 'Marketing',
+      type: 'group',
+      label: 'MARKETING',
       children: [
         {
           key: '/flash-sales',
@@ -260,13 +257,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         },
       ],
     },
+    // Analytics Group
     {
-      type: 'divider',
-    },
-    {
-      key: 'analytics',
-      icon: <BarChartOutlined />,
-      label: 'Analytics',
+      type: 'group',
+      label: 'ANALYTICS',
       children: [
         {
           key: '/reports',
@@ -302,25 +296,29 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         },
       ],
     },
+    // Communication Group
     {
-      key: '/notifications',
-      icon: <BellOutlined />,
-      label: 'Notifications',
-      disabled: !hasPermission(user, PERMISSIONS.SEND_NOTIFICATIONS),
+      type: 'group',
+      label: 'COMMUNICATION',
+      children: [
+        {
+          key: '/notifications',
+          icon: <BellOutlined />,
+          label: 'Notifications',
+          disabled: !hasPermission(user, PERMISSIONS.SEND_NOTIFICATIONS),
+        },
+        {
+          key: '/promotional-emails',
+          icon: <MailOutlined />,
+          label: 'Promotional Emails',
+          disabled: !hasPermission(user, PERMISSIONS.SEND_NOTIFICATIONS),
+        },
+      ],
     },
+    // Integrations Group
     {
-      key: '/promotional-emails',
-      icon: <MailOutlined />,
-      label: 'Promotional Emails',
-      disabled: !hasPermission(user, PERMISSIONS.SEND_NOTIFICATIONS),
-    },
-    {
-      type: 'divider',
-    },
-    {
-      key: 'integrations',
-      icon: <ApiOutlined />,
-      label: 'Integrations',
+      type: 'group',
+      label: 'INTEGRATIONS',
       children: [
         {
           key: '/integrations',
@@ -344,26 +342,30 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         },
       ],
     },
+    // System Group
     {
-      type: 'divider',
-    },
-    {
-      key: '/team',
-      icon: <TeamOutlined />,
-      label: 'Team Management',
-      disabled: !hasPermission(user, PERMISSIONS.MANAGE_ADMINS),
-    },
-    {
-      key: '/audit-logs',
-      icon: <AuditOutlined />,
-      label: 'Audit Logs',
-      disabled: !hasPermission(user, PERMISSIONS.VIEW_AUDIT_LOGS),
-    },
-    {
-      key: '/settings',
-      icon: <SettingOutlined />,
-      label: 'Settings',
-      disabled: !hasPermission(user, PERMISSIONS.MANAGE_CONFIG),
+      type: 'group',
+      label: 'SYSTEM',
+      children: [
+        {
+          key: '/team',
+          icon: <TeamOutlined />,
+          label: 'Team Management',
+          disabled: !hasPermission(user, PERMISSIONS.MANAGE_ADMINS),
+        },
+        {
+          key: '/audit-logs',
+          icon: <AuditOutlined />,
+          label: 'Audit Logs',
+          disabled: !hasPermission(user, PERMISSIONS.VIEW_AUDIT_LOGS),
+        },
+        {
+          key: '/settings',
+          icon: <SettingOutlined />,
+          label: 'Settings',
+          disabled: !hasPermission(user, PERMISSIONS.MANAGE_CONFIG),
+        },
+      ],
     },
   ];
 
@@ -535,19 +537,19 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       theme={{
         components: {
           Menu: {
-            itemHeight: 42,
-            itemMarginInline: 12,
-            itemBorderRadius: 12,
+            itemHeight: 40,
+            itemMarginInline: 8,
+            itemBorderRadius: 10,
             subMenuItemBorderRadius: 10,
-            itemSelectedBg: 'rgba(34, 197, 94, 0.15)',
+            itemSelectedBg: 'rgba(34, 197, 94, 0.12)',
             itemSelectedColor: '#15803d',
-            itemHoverBg: 'rgba(0, 0, 0, 0.06)',
+            itemHoverBg: 'rgba(0, 0, 0, 0.04)',
             itemHoverColor: '#111827',
             itemColor: '#1f2937',
-            iconSize: 18,
-            collapsedIconSize: 18,
-            groupTitleFontSize: 12,
-            groupTitleColor: '#6b7280',
+            iconSize: 20,
+            collapsedIconSize: 20,
+            groupTitleFontSize: 11,
+            groupTitleColor: '#8e8e93',
             itemBg: 'transparent',
             subMenuItemBg: 'transparent',
           },
@@ -648,71 +650,102 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         <div style={{ 
           height: 'calc(100vh - 100px - 180px)', 
           overflow: 'auto', 
-          padding: '4px 8px',
+          padding: '8px 12px',
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
         }}>
           <style>{`
             .ios-sidebar-menu::-webkit-scrollbar { display: none; }
-            .ant-menu-submenu-title, .ant-menu-item {
-              transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+            
+            /* iOS Group Titles */
+            .ios-sidebar-menu .ant-menu-item-group-title {
               font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif !important;
-              font-weight: 500 !important;
-              letter-spacing: -0.2px !important;
-              color: #1f2937 !important;
-            }
-            .ant-menu-submenu-title .ant-menu-title-content,
-            .ant-menu-item .ant-menu-title-content {
-              color: #1f2937 !important;
-            }
-            .ant-menu-submenu .ant-menu-submenu-title .anticon,
-            .ant-menu-item .anticon {
-              color: #4b5563 !important;
-            }
-            .ant-menu-item:active {
-              transform: scale(0.98) !important;
-            }
-            .ant-menu-submenu-title:active {
-              transform: scale(0.98) !important;
-            }
-            .ant-menu-item-selected {
+              font-size: 11px !important;
               font-weight: 600 !important;
-              background: rgba(34, 197, 94, 0.15) !important;
+              letter-spacing: 0.5px !important;
+              color: #8e8e93 !important;
+              padding: 20px 16px 8px 16px !important;
+              text-transform: uppercase !important;
             }
-            .ant-menu-item-selected .ant-menu-title-content {
-              color: #15803d !important;
+            
+            /* iOS Menu Items */
+            .ios-sidebar-menu .ant-menu-item {
+              transition: all 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+              font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif !important;
+              font-weight: 400 !important;
+              font-size: 15px !important;
+              letter-spacing: -0.2px !important;
+              color: #1c1c1e !important;
+              margin: 2px 0 !important;
+              padding-left: 16px !important;
+              border-radius: 10px !important;
             }
-            .ant-menu-item-selected .anticon {
+            
+            .ios-sidebar-menu .ant-menu-item .ant-menu-title-content {
+              color: #1c1c1e !important;
+            }
+            
+            .ios-sidebar-menu .ant-menu-item .anticon {
+              color: #8e8e93 !important;
+              font-size: 18px !important;
+            }
+            
+            .ios-sidebar-menu .ant-menu-item:hover {
+              background: rgba(0, 0, 0, 0.04) !important;
+            }
+            
+            .ios-sidebar-menu .ant-menu-item:active {
+              transform: scale(0.98) !important;
+              background: rgba(0, 0, 0, 0.08) !important;
+            }
+            
+            /* iOS Selected State */
+            .ios-sidebar-menu .ant-menu-item-selected {
+              font-weight: 500 !important;
+              background: rgba(34, 197, 94, 0.1) !important;
+            }
+            
+            .ios-sidebar-menu .ant-menu-item-selected .ant-menu-title-content {
               color: #16a34a !important;
             }
-            .ant-menu-item-selected::before {
+            
+            .ios-sidebar-menu .ant-menu-item-selected .anticon {
+              color: #16a34a !important;
+            }
+            
+            .ios-sidebar-menu .ant-menu-item-selected::before {
               content: '';
               position: absolute;
               left: 0;
               top: 50%;
               transform: translateY(-50%);
-              width: 4px;
-              height: 24px;
-              background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
-              border-radius: 0 4px 4px 0;
+              width: 3px;
+              height: 20px;
+              background: #16a34a;
+              border-radius: 0 3px 3px 0;
             }
-            .ant-menu-sub.ant-menu-inline {
-              background: transparent !important;
+            
+            /* iOS Group List Container */
+            .ios-sidebar-menu .ant-menu-item-group-list {
+              background: rgba(255, 255, 255, 0.6) !important;
+              border-radius: 12px !important;
+              margin: 0 4px 8px 4px !important;
+              padding: 4px !important;
+              box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
             }
-            .ant-menu-submenu-arrow {
-              color: #6b7280 !important;
+            
+            /* Disabled Items */
+            .ios-sidebar-menu .ant-menu-item-disabled {
+              opacity: 0.4 !important;
             }
           `}</style>
           <Menu
             className="ios-sidebar-menu"
             mode="inline"
             selectedKeys={[pathname || '/']}
-            defaultOpenKeys={['operations', 'users-management', 'catalog', 'analytics']}
             items={menuItems}
             onClick={({ key }) => {
-              if (!key.startsWith('operations') && !key.startsWith('users') && !key.startsWith('analytics') && !key.startsWith('catalog')) {
-                router.push(key);
-              }
+              router.push(key);
             }}
             style={{ 
               borderRight: 'none',
@@ -725,9 +758,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         {/* Status Section - iOS Style */}
         <div style={{ 
           padding: '16px 16px 24px', 
-          background: 'rgba(248, 248, 248, 0.8)',
+          background: 'rgba(248, 248, 248, 0.95)',
           backdropFilter: 'blur(10px)',
-          borderTop: '0.5px solid rgba(0, 0, 0, 0.06)',
+          borderTop: '0.5px solid rgba(0, 0, 0, 0.08)',
           position: 'absolute', 
           bottom: 0, 
           left: 0, 
