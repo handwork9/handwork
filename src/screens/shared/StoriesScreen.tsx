@@ -348,22 +348,34 @@ const StoriesScreen = () => {
   const handleShareStory = useCallback(async () => {
     if (!currentFarmer || !currentStory) return;
     
+    // Close modal first
     setShowMoreOptions(false);
     
-    try {
-      const result = await Share.share({
-        message: `Check out this story from ${currentFarmer.farmer.farmName} on Handwork! 🌾\n\nDownload the app to see more: https://handwork.app`,
-        title: `${currentFarmer.farmer.farmName}'s Story`,
-      });
-      
-      if (result.action === Share.sharedAction) {
-        // Shared successfully
+    // Small delay to let modal close before opening share sheet
+    setTimeout(async () => {
+      try {
+        const shareContent = Platform.select({
+          ios: {
+            message: `Check out this story from ${currentFarmer.farmer.farmName} on Handwork! 🌾`,
+            url: 'https://handwork.app',
+          },
+          android: {
+            message: `Check out this story from ${currentFarmer.farmer.farmName} on Handwork! 🌾\n\nDownload the app: https://handwork.app`,
+          },
+          default: {
+            message: `Check out this story from ${currentFarmer.farmer.farmName} on Handwork! 🌾\n\nhttps://handwork.app`,
+          },
+        });
+        
+        await Share.share(shareContent as any);
+      } catch (error: any) {
+        if (error?.message !== 'User did not share') {
+          console.error('Failed to share story:', error);
+        }
+      } finally {
+        setIsPaused(false);
       }
-    } catch (error) {
-      console.error('Failed to share story:', error);
-    } finally {
-      setIsPaused(false);
-    }
+    }, 300);
   }, [currentFarmer, currentStory]);
 
   // Handle report story
