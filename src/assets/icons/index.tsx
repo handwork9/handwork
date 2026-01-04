@@ -439,6 +439,24 @@ export const DeliveryHomeIcon = ({ size = 24, color = '#22C55E' }: IconProps) =>
   </Svg>
 );
 
+/**
+ * View All Stories Icon - Multiple circles representing more stories
+ */
+export const ViewAllStoriesIcon = ({ size = 24, color = '#007AFF' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    {/* Top left circle */}
+    <Circle cx="7" cy="7" r="3" fill={color} opacity={0.9} />
+    {/* Top right circle */}
+    <Circle cx="17" cy="7" r="3" fill={color} opacity={0.7} />
+    {/* Bottom left circle */}
+    <Circle cx="7" cy="17" r="3" fill={color} opacity={0.5} />
+    {/* Bottom right - plus symbol */}
+    <Circle cx="17" cy="17" r="3.5" stroke={color} strokeWidth="1.5" fill="none" />
+    <Path d="M17 15v4" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+    <Path d="M15 17h4" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+  </Svg>
+);
+
 export default {
   ProductPlusIcon,
   ProductsIcon,
@@ -458,4 +476,5 @@ export default {
   HarvestIcon,
   QualityCheckIcon,
   DeliveryHomeIcon,
+  ViewAllStoriesIcon,
 };

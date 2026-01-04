@@ -64,6 +64,7 @@ import { FarmerActivationIllustration, GoPremiumIllustration, VerifiedSellerIllu
 import LiveSupportBanner from '../../components/common/LiveSupportBanner';
 import FlashSaleBanner from '../../components/common/FlashSaleBanner';
 import { socialService, FarmerStories, LiveStream } from '../../services/socialService';
+import { ViewAllStoriesIcon } from '../../assets/icons';
 
 type NavigationProp = CompositeNavigationProp<
   BottomTabNavigationProp<BuyerTabParamList, 'Home'>,
@@ -2079,7 +2080,7 @@ export default function HomeScreen() {
             activeOpacity={0.8}
           >
             <View style={[styles.viewAllCircle, { backgroundColor: isDark ? '#2C2C2E' : '#F5F5F5', borderColor: isDark ? '#444' : '#E0E0E0' }]}>
-              <Ionicons name="grid" size={26} color={colors.primary} />
+              <ViewAllStoriesIcon size={28} color={colors.primary} />
             </View>
             <Text 
               style={[styles.viewAllText, { color: colors.textSecondary }]} 
