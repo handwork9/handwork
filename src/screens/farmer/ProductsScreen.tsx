@@ -25,6 +25,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
+import { ProductPlusIcon } from '../../assets/icons';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, FONTS, SHADOWS } from '../../constants/theme';
 import { LoadingState, Button } from '../../components/common';
 import { productService } from '../../services/productService';
@@ -686,7 +687,7 @@ export default function ProductsScreen() {
             onPress={() => navigation.navigate('AddProduct')}
             activeOpacity={0.7}
           >
-            <Ionicons name="add" size={22} color="#FFFFFF" />
+            <ProductPlusIcon size={22} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
       </View>

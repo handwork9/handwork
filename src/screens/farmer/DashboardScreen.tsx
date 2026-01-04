@@ -21,6 +21,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import Svg, { Circle, Path, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
+import { ProductPlusIcon } from '../../assets/icons';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, FONTS } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
 import { LoadingState, OrderCard } from '../../components/common';
@@ -1332,7 +1333,7 @@ export default function DashboardScreen() {
               activeOpacity={0.6}
             >
               <View style={[styles.iosListIcon, { backgroundColor: '#34C759' }]}>
-                <Ionicons name="add" size={20} color="#FFFFFF" />
+                <ProductPlusIcon size={20} color="#FFFFFF" />
               </View>
               <View style={styles.iosListContent}>
                 <Text style={[styles.iosListTitle, { color: colors.text }]}>Add Product</Text>

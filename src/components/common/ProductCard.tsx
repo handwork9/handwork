@@ -2034,7 +2034,7 @@ export function ProductCard({ product, onPress, onQuickView, variant = 'default'
             <Text style={[styles.unit, dynamicStyles.unit]}>/{product.unit}</Text>
           </View>
           <TouchableOpacity style={[styles.addButton, dynamicStyles.addButton]} activeOpacity={0.8}>
-            <Ionicons name="add" size={18} color={colors.primary} />
+            <AddToBagIcon size={18} color={colors.primary} />
           </TouchableOpacity>
         </View>
       </View>
