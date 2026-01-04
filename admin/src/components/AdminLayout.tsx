@@ -539,15 +539,15 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             itemMarginInline: 12,
             itemBorderRadius: 12,
             subMenuItemBorderRadius: 10,
-            itemSelectedBg: 'rgba(34, 197, 94, 0.12)',
-            itemSelectedColor: '#16a34a',
-            itemHoverBg: 'rgba(0, 0, 0, 0.04)',
-            itemHoverColor: '#1e293b',
-            itemColor: '#3c3c43',
+            itemSelectedBg: 'rgba(34, 197, 94, 0.15)',
+            itemSelectedColor: '#15803d',
+            itemHoverBg: 'rgba(0, 0, 0, 0.06)',
+            itemHoverColor: '#111827',
+            itemColor: '#1f2937',
             iconSize: 18,
             collapsedIconSize: 18,
             groupTitleFontSize: 12,
-            groupTitleColor: '#8e8e93',
+            groupTitleColor: '#6b7280',
             itemBg: 'transparent',
             subMenuItemBg: 'transparent',
           },
@@ -586,10 +586,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           left: 0, 
           top: 0, 
           bottom: 0,
-          background: 'rgba(255, 255, 255, 0.72)',
+          background: 'rgba(255, 255, 255, 0.95)',
           backdropFilter: 'blur(20px) saturate(180%)',
           WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-          borderRight: '0.5px solid rgba(0, 0, 0, 0.08)',
+          borderRight: '1px solid rgba(0, 0, 0, 0.08)',
           zIndex: 100,
         }}
       >
@@ -659,6 +659,15 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif !important;
               font-weight: 500 !important;
               letter-spacing: -0.2px !important;
+              color: #1f2937 !important;
+            }
+            .ant-menu-submenu-title .ant-menu-title-content,
+            .ant-menu-item .ant-menu-title-content {
+              color: #1f2937 !important;
+            }
+            .ant-menu-submenu .ant-menu-submenu-title .anticon,
+            .ant-menu-item .anticon {
+              color: #4b5563 !important;
             }
             .ant-menu-item:active {
               transform: scale(0.98) !important;
@@ -668,6 +677,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             }
             .ant-menu-item-selected {
               font-weight: 600 !important;
+              background: rgba(34, 197, 94, 0.15) !important;
+            }
+            .ant-menu-item-selected .ant-menu-title-content {
+              color: #15803d !important;
+            }
+            .ant-menu-item-selected .anticon {
+              color: #16a34a !important;
             }
             .ant-menu-item-selected::before {
               content: '';
@@ -679,6 +695,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               height: 24px;
               background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
               border-radius: 0 4px 4px 0;
+            }
+            .ant-menu-sub.ant-menu-inline {
+              background: transparent !important;
+            }
+            .ant-menu-submenu-arrow {
+              color: #6b7280 !important;
             }
           `}</style>
           <Menu
