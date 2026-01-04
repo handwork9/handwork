@@ -195,26 +195,15 @@ export const walletService = {
    * Get wallet balance
    */
   async getBalance(): Promise<WalletBalance> {
-    try {
-      console.log('[walletService] Fetching balance...');
-      const response = await apiClient.get<{ success: boolean; data: WalletBalance }>('/wallet/balance');
-      console.log('[walletService] Balance response:', JSON.stringify(response));
-      
-      // API returns {success: true, data: {...}}, extract the data
-      const balanceData = (response as any)?.data || response;
-      console.log('[walletService] Extracted balance data:', JSON.stringify(balanceData));
-      
-      return balanceData;
-    } catch (error) {
-      console.error('[walletService] Error fetching balance:', error);
-      // Mock data for development
-      return {
-        available: 15000,
-        pending: 500,
-        total: 15500,
-        currency: 'NGN',
-      };
-    }
+    console.log('[walletService] Fetching balance...');
+    const response = await apiClient.get<{ success: boolean; data: WalletBalance }>('/wallet/balance');
+    console.log('[walletService] Balance response:', JSON.stringify(response));
+    
+    // API returns {success: true, data: {...}}, extract the data
+    const balanceData = (response as any)?.data || response;
+    console.log('[walletService] Extracted balance data:', JSON.stringify(balanceData));
+    
+    return balanceData;
   },
 
   /**
@@ -225,129 +214,22 @@ export const walletService = {
     page?: number;
     limit?: number;
   }): Promise<PaginatedResponse<WalletTransaction>> {
-    try {
-      const response = await apiClient.get<{ success: boolean; data: PaginatedResponse<WalletTransaction> } | PaginatedResponse<WalletTransaction>>(
-        '/wallet/transactions',
-        { params }
-      );
-      // API wraps response in { success: true, data: {...} }
-      const result = (response as any)?.data || response;
-      console.log('[walletService] getTransactions result:', JSON.stringify(result));
-      return result;
-    } catch (error) {
-      // Mock data for development
-      const now = new Date();
-      const mockTransactions = [
-        {
-          id: 'txn_1',
-          userId: 'user_1',
-          type: 'top_up' as WalletTransactionType,
-          amount: 5000,
-          fee: 0,
-          netAmount: 5000,
-          status: 'completed' as WalletTransactionStatus,
-          reference: 'TOP_ABC123',
-          description: 'Wallet top-up via Card',
-          metadata: { paymentMethod: 'Visa ****4242' },
-          createdAt: new Date(now.getTime() - 3600000).toISOString(),
-          updatedAt: new Date(now.getTime() - 3600000).toISOString(),
-        },
-        {
-          id: 'txn_2',
-          userId: 'user_1',
-          type: 'payment' as WalletTransactionType,
-          amount: 2500,
-          fee: 0,
-          netAmount: 2500,
-          status: 'completed' as WalletTransactionStatus,
-          reference: 'PAY_DEF456',
-          description: 'Order #12345',
-          metadata: { orderId: 'order_123', orderNumber: '12345' },
-          createdAt: new Date(now.getTime() - 86400000).toISOString(),
-          updatedAt: new Date(now.getTime() - 86400000).toISOString(),
-        },
-        {
-          id: 'txn_3',
-          userId: 'user_1',
-          type: 'refund' as WalletTransactionType,
-          amount: 1500,
-          fee: 0,
-          netAmount: 1500,
-          status: 'completed' as WalletTransactionStatus,
-          reference: 'REF_GHI789',
-          description: 'Refund for Order #12340',
-          metadata: { orderId: 'order_120', orderNumber: '12340' },
-          createdAt: new Date(now.getTime() - 172800000).toISOString(),
-          updatedAt: new Date(now.getTime() - 172800000).toISOString(),
-        },
-        {
-          id: 'txn_4',
-          userId: 'user_1',
-          type: 'cashback' as WalletTransactionType,
-          amount: 250,
-          fee: 0,
-          netAmount: 250,
-          status: 'completed' as WalletTransactionStatus,
-          reference: 'CB_JKL012',
-          description: 'Cashback for Order #12344',
-          metadata: { orderId: 'order_124', orderNumber: '12344' },
-          createdAt: new Date(now.getTime() - 259200000).toISOString(),
-          updatedAt: new Date(now.getTime() - 259200000).toISOString(),
-        },
-        {
-          id: 'txn_5',
-          userId: 'user_1',
-          type: 'premium' as WalletTransactionType,
-          amount: 5000,
-          fee: 0,
-          netAmount: 5000,
-          status: 'completed' as WalletTransactionStatus,
-          reference: 'PREM_MNO345',
-          description: 'Gold Premium Subscription',
-          metadata: { premiumTier: 'gold' },
-          createdAt: new Date(now.getTime() - 604800000).toISOString(),
-          updatedAt: new Date(now.getTime() - 604800000).toISOString(),
-        },
-      ];
-      
-      const page = params?.page || 1;
-      const limit = params?.limit || 20;
-      
-      return {
-        data: mockTransactions,
-        total: mockTransactions.length,
-        page,
-        limit,
-        totalPages: Math.ceil(mockTransactions.length / limit),
-        hasNextPage: false,
-        hasPreviousPage: false,
-      };
-    }
+    const response = await apiClient.get<{ success: boolean; data: PaginatedResponse<WalletTransaction> } | PaginatedResponse<WalletTransaction>>(
+      '/wallet/transactions',
+      { params }
+    );
+    // API wraps response in { success: true, data: {...} }
+    const result = (response as any)?.data || response;
+    console.log('[walletService] getTransactions result:', JSON.stringify(result));
+    return result;
   },
 
   /**
    * Top up wallet
    */
   async topUp(data: TopUpRequest): Promise<WalletTransaction> {
-    try {
-      const response = await apiClient.post<WalletTransaction>('/wallet/top-up', data);
-      return response;
-    } catch (error) {
-      // Mock response for development
-      return {
-        id: `txn_${Date.now()}`,
-        userId: 'user_1',
-        type: 'top_up',
-        amount: data.amount,
-        fee: 0,
-        netAmount: data.amount,
-        status: 'completed',
-        reference: `TOP_${Date.now().toString(36).toUpperCase()}`,
-        description: 'Wallet top-up via Card',
-        metadata: { paymentMethod: 'Visa ****4242' },
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+    const response = await apiClient.post<WalletTransaction>('/wallet/top-up', data);
+    return response;
     }
   },
 
@@ -381,30 +263,12 @@ export const walletService = {
    * Process refund to wallet (called by order service when order is cancelled)
    */
   async processRefund(orderId: string, orderNumber: string, amount: number): Promise<WalletTransaction> {
-    try {
-      const response = await apiClient.post<WalletTransaction>('/wallet/refund', {
-        orderId,
-        orderNumber,
-        amount,
-      });
-      return response;
-    } catch (error) {
-      // Mock response for development
-      return {
-        id: `txn_${Date.now()}`,
-        userId: 'user_1',
-        type: 'refund',
-        amount: amount,
-        fee: 0,
-        netAmount: amount,
-        status: 'completed',
-        reference: `REF_${Date.now().toString(36).toUpperCase()}`,
-        description: `Refund for Order #${orderNumber}`,
-        metadata: { orderId, orderNumber },
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-    }
+    const response = await apiClient.post<WalletTransaction>('/wallet/refund', {
+      orderId,
+      orderNumber,
+      amount,
+    });
+    return response;
   },
 
   /**
@@ -432,23 +296,13 @@ export const walletService = {
     totalRefunds: number;
     totalCashback: number;
   }> {
-    try {
-      const response = await apiClient.get<{
-        totalTopUps: number;
-        totalSpent: number;
-        totalRefunds: number;
-        totalCashback: number;
-      }>('/wallet/stats');
-      return response;
-    } catch (error) {
-      // Mock data
-      return {
-        totalTopUps: 50000,
-        totalSpent: 35000,
-        totalRefunds: 2500,
-        totalCashback: 1250,
-      };
-    }
+    const response = await apiClient.get<{
+      totalTopUps: number;
+      totalSpent: number;
+      totalRefunds: number;
+      totalCashback: number;
+    }>('/wallet/stats');
+    return response;
   },
 
   // ============================================

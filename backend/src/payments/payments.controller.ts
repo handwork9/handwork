@@ -18,6 +18,7 @@ import {
   ApiBody,
   ApiParam,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { PaymentsService, PaymentResult } from './payments.service';
 import { PaystackService } from './paystack.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -40,6 +41,7 @@ export class PaymentsController {
 
   @Post('intent')
   @Roles(UserRole.BUYER)
+  @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 payment intents per minute
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create payment intent for order' })
   @ApiBody({
@@ -70,6 +72,7 @@ export class PaymentsController {
   }
 
   @Post('wallet/topup')
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 top-ups per minute
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create wallet top-up payment' })
   @ApiBody({
@@ -99,6 +102,7 @@ export class PaymentsController {
 
   @Post('wallet/pay')
   @Roles(UserRole.BUYER)
+  @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 wallet payments per minute
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Pay for order with wallet balance' })
   @ApiBody({
@@ -123,6 +127,7 @@ export class PaymentsController {
 
   @Post(':paymentId/refund')
   @Roles(UserRole.ADMIN)
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 refunds per minute
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Refund a payment (admin)' })
   @ApiParam({ name: 'paymentId', description: 'Payment ID' })

@@ -108,6 +108,28 @@ export class RewardsController {
     return { success: !!result, points: result ? 5 : 0, message: result ? 'Points earned!' : 'Daily limit reached' };
   }
 
+  @Get('challenges/daily')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get daily challenges for current user' })
+  @ApiResponse({ status: 200, description: 'Daily challenges retrieved' })
+  async getDailyChallenges(@CurrentUser('id') userId: string) {
+    return this.rewardsService.getDailyChallenges(userId);
+  }
+
+  @Post('challenges/:challengeId/complete')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Mark a challenge as completed' })
+  @ApiResponse({ status: 200, description: 'Challenge completed' })
+  async completeChallenge(
+    @CurrentUser('id') userId: string,
+    @Param('challengeId') challengeId: string,
+  ) {
+    return this.rewardsService.completeChallenge(userId, challengeId);
+  }
+
   // ============ Admin Endpoints ============
 
   @Get('admin/all')

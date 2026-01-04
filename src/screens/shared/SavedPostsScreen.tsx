@@ -32,9 +32,23 @@ const SavedPostsScreen = () => {
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, refetch, error } = useQuery({
     queryKey: ['saved-posts'],
-    queryFn: () => socialService.getSavedPosts(1, 50),
+    queryFn: async () => {
+      console.log('[SavedPostsScreen] Fetching saved posts...');
+      const response = await socialService.getSavedPosts(1, 50);
+      console.log('[SavedPostsScreen] Response:', response);
+      // Log the farmer structure for debugging
+      if (response.posts?.length > 0) {
+        const firstPost = response.posts[0];
+        console.log('[SavedPostsScreen] First post farmer structure:', {
+          farmerId: firstPost.farmerId,
+          farmer: firstPost.farmer,
+          userId: firstPost.farmer?.user?.id,
+        });
+      }
+      return response;
+    },
   });
 
   const unsaveMutation = useMutation({
@@ -116,7 +130,7 @@ const SavedPostsScreen = () => {
         {/* Header */}
         <TouchableOpacity 
           style={styles.postHeader}
-          onPress={() => navigation.navigate('FarmerProfile', { farmerId: item.farmerId })}
+          onPress={() => navigation.navigate('FarmerProfile', { farmerId: item.farmer?.user?.id || item.farmerId })}
         >
           {item.farmer?.user?.avatar ? (
             <Image source={{ uri: item.farmer.user.avatar }} style={styles.postAvatar} />

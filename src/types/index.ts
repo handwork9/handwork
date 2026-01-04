@@ -670,6 +670,7 @@ export type FarmerTabParamList = {
   Dashboard: undefined;
   Products: undefined;
   Orders: undefined;
+  Messages: undefined;
   Profile: undefined;
 };
 

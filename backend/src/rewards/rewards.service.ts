@@ -796,4 +796,175 @@ export class RewardsService {
       },
     ];
   }
+
+  /**
+   * Get daily challenges for a user
+   */
+  async getDailyChallenges(userId: string) {
+    const account = await this.getOrCreateLoyaltyAccount(userId);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Get today's transactions to determine challenge progress
+    const todayTransactions = await this.pointTransactionRepository.find({
+      where: {
+        loyaltyAccountId: account.id,
+        createdAt: MoreThan(today),
+      },
+    });
+
+    // Define daily challenges
+    const challenges = [
+      {
+        id: 'daily-checkin',
+        title: 'Daily Check-in',
+        description: 'Check in to earn points',
+        icon: 'calendar-check-outline',
+        points: this.DAILY_CHECKIN_POINTS,
+        progress: todayTransactions.some(t => t.source === PointSource.DAILY_CHECKIN) ? 1 : 0,
+        target: 1,
+        completed: todayTransactions.some(t => t.source === PointSource.DAILY_CHECKIN),
+        type: 'checkin',
+      },
+      {
+        id: 'share-product',
+        title: 'Share a Product',
+        description: 'Share any product with friends',
+        icon: 'share-social-outline',
+        points: this.SHARE_PRODUCT_POINTS,
+        progress: todayTransactions.filter(t => t.source === PointSource.SHARE_PRODUCT).length,
+        target: 1,
+        completed: todayTransactions.some(t => t.source === PointSource.SHARE_PRODUCT),
+        type: 'share',
+      },
+      {
+        id: 'add-to-favorites',
+        title: 'Add to Favorites',
+        description: 'Add a product to your favorites',
+        icon: 'heart-outline',
+        points: 5,
+        progress: todayTransactions.filter(t => t.description?.includes('favorite')).length,
+        target: 3,
+        completed: todayTransactions.filter(t => t.description?.includes('favorite')).length >= 3,
+        type: 'favorite',
+      },
+      {
+        id: 'browse-categories',
+        title: 'Explore Categories',
+        description: 'Browse 3 different categories',
+        icon: 'grid-outline',
+        points: 10,
+        progress: 0, // This would be tracked separately
+        target: 3,
+        completed: false,
+        type: 'browse',
+      },
+      {
+        id: 'rate-product',
+        title: 'Rate a Product',
+        description: 'Leave a review on a purchased product',
+        icon: 'star-outline',
+        points: this.RATING_POINTS,
+        progress: todayTransactions.filter(t => t.source === PointSource.RATING).length,
+        target: 1,
+        completed: todayTransactions.some(t => t.source === PointSource.RATING),
+        type: 'rating',
+      },
+    ];
+
+    // Calculate total points available and earned
+    const totalPointsAvailable = challenges.reduce((sum, c) => sum + c.points, 0);
+    const pointsEarned = challenges
+      .filter(c => c.completed)
+      .reduce((sum, c) => sum + c.points, 0);
+
+    return {
+      date: today.toISOString(),
+      challenges,
+      totalPointsAvailable,
+      pointsEarned,
+      allCompleted: challenges.every(c => c.completed),
+      streakDays: account.currentStreak || 0,
+    };
+  }
+
+  /**
+   * Complete a specific challenge
+   */
+  async completeChallenge(userId: string, challengeId: string) {
+    const account = await this.getOrCreateLoyaltyAccount(userId);
+    
+    // Map challenge types to point sources
+    const challengeConfig: Record<string, { points: number; source: PointSource; description: string }> = {
+      'daily-checkin': { 
+        points: this.DAILY_CHECKIN_POINTS, 
+        source: PointSource.DAILY_CHECKIN, 
+        description: 'Daily check-in challenge' 
+      },
+      'share-product': { 
+        points: this.SHARE_PRODUCT_POINTS, 
+        source: PointSource.SHARE_PRODUCT, 
+        description: 'Share product challenge' 
+      },
+      'add-to-favorites': { 
+        points: 5, 
+        source: PointSource.PROMOTION, 
+        description: 'Add to favorites challenge' 
+      },
+      'browse-categories': { 
+        points: 10, 
+        source: PointSource.PROMOTION, 
+        description: 'Browse categories challenge' 
+      },
+      'rate-product': { 
+        points: this.RATING_POINTS, 
+        source: PointSource.RATING, 
+        description: 'Rate product challenge' 
+      },
+    };
+
+    const config = challengeConfig[challengeId];
+    if (!config) {
+      throw new BadRequestException('Invalid challenge ID');
+    }
+
+    // Check if already completed today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const existingTransaction = await this.pointTransactionRepository.findOne({
+      where: {
+        loyaltyAccountId: account.id,
+        description: config.description,
+        createdAt: MoreThan(today),
+      },
+    });
+
+    if (existingTransaction) {
+      throw new BadRequestException('Challenge already completed today');
+    }
+
+    // Award points
+    const transaction = this.pointTransactionRepository.create({
+      loyaltyAccountId: account.id,
+      points: config.points,
+      type: PointTransactionType.EARNED,
+      source: config.source,
+      description: config.description,
+    });
+
+    await this.pointTransactionRepository.save(transaction);
+
+    // Update account
+    account.currentPoints += config.points;
+    account.lifetimePoints += config.points;
+    await this.loyaltyAccountRepository.save(account);
+
+    return {
+      success: true,
+      pointsEarned: config.points,
+      newBalance: account.currentPoints,
+      message: `Challenge completed! You earned ${config.points} points.`,
+    };
+  }
 }

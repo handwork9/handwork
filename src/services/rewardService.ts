@@ -97,6 +97,27 @@ export interface PointsHistoryParams {
   type?: 'earned' | 'redeemed';
 }
 
+export interface DailyChallenge {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  points: number;
+  progress: number;
+  target: number;
+  completed: boolean;
+  type: string;
+}
+
+export interface DailyChallengesResponse {
+  date: string;
+  challenges: DailyChallenge[];
+  totalPointsAvailable: number;
+  pointsEarned: number;
+  allCompleted: boolean;
+  streakDays: number;
+}
+
 class RewardService {
   /**
    * Get rewards summary for the current user
@@ -156,6 +177,24 @@ class RewardService {
   async shareProduct(productId: string): Promise<{ success: boolean; points: number; message: string }> {
     const response = await apiClient.post<{ success: boolean; data: { success: boolean; points: number; message: string } }>(
       `/rewards/share/${productId}`
+    );
+    return response.data;
+  }
+
+  /**
+   * Get daily challenges for the current user
+   */
+  async getDailyChallenges(): Promise<DailyChallengesResponse> {
+    const response = await apiClient.get<{ success: boolean; data: DailyChallengesResponse }>('/rewards/challenges/daily');
+    return response.data;
+  }
+
+  /**
+   * Complete a challenge
+   */
+  async completeChallenge(challengeId: string): Promise<{ success: boolean; pointsEarned: number; newBalance: number; message: string }> {
+    const response = await apiClient.post<{ success: boolean; data: { success: boolean; pointsEarned: number; newBalance: number; message: string } }>(
+      `/rewards/challenges/${challengeId}/complete`
     );
     return response.data;
   }

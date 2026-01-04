@@ -362,18 +362,15 @@ export default function FlashSalesScreen({ navigation }: Props) {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 10, backgroundColor: '#EF4444' }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 10, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>Flash Sales</Text>
-          <Text style={styles.headerSubtitle}>
-            Limited time offers
-          </Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Flash Sales</Text>
         </View>
-        <View style={styles.headerBadge}>
-          <Ionicons name="flash" size={24} color="#FFD700" />
+        <View style={[styles.headerBadge, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}>
+          <Ionicons name="flash" size={22} color="#EF4444" />
         </View>
       </View>
 
@@ -453,6 +450,7 @@ const styles = StyleSheet.create({
   headerBadge: {
     width: 40,
     height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },

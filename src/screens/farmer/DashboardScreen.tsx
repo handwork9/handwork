@@ -560,7 +560,7 @@ export default function DashboardScreen() {
               }}
               activeOpacity={0.7}
             >
-              <Ionicons name="notifications-outline" size={24} color={colors.text} />
+              <Ionicons name="notifications-outline" size={26} color={colors.text} />
               {unreadOrdersCount > 0 && (
                 <View style={styles.notificationBadge}>
                   <Text style={styles.notificationBadgeText}>
@@ -1560,22 +1560,6 @@ export default function DashboardScreen() {
         </View>
       </ScrollView>
 
-      {/* Floating Messages FAB */}
-      <TouchableOpacity
-        style={styles.messagesFab}
-        onPress={() => navigation.navigate('FarmerMessages')}
-        activeOpacity={0.8}
-      >
-        <View style={styles.messagesFabInner}>
-          <Ionicons name="chatbubbles" size={26} color="#FFFFFF" />
-        </View>
-        {unreadMessagesCount > 0 && (
-          <View style={styles.fabBadge}>
-            <Text style={styles.fabBadgeText}>{unreadMessagesCount > 9 ? '9+' : unreadMessagesCount}</Text>
-          </View>
-        )}
-      </TouchableOpacity>
-
       {/* Floating Social Menu */}
       <FloatingSocialMenu isFarmer={true} />
     </View>
@@ -2189,39 +2173,6 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.sm,
     fontFamily: FONTS.regular,
     color: 'rgba(255, 255, 255, 0.9)',
-  },
-  messagesFab: {
-    position: 'absolute',
-    right: SPACING.md,
-    bottom: SPACING.xl,
-    ...SHADOWS.medium,
-  },
-  messagesFabInner: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#34C759',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  fabBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    minWidth: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: '#FF3B30',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
-  fabBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-    fontFamily: FONTS.bold,
-    color: '#FFFFFF',
   },
   // Sparkline styles
   sparklineCard: {

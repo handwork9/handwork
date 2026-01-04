@@ -59,6 +59,7 @@ import { PickupLocationsModule } from './pickup-locations/pickup-locations.modul
 import { PriceAlertsModule } from './price-alerts/price-alerts.module';
 import { DeliverySchedulingModule } from './delivery-scheduling/delivery-scheduling.module';
 import { BundlesModule } from './bundles/bundles.module';
+import { FeatureFlagsModule } from './config/feature-flags.module';
 
 @Module({
   imports: [
@@ -207,6 +208,7 @@ import { BundlesModule } from './bundles/bundles.module';
     PriceAlertsModule,
     DeliverySchedulingModule,
     BundlesModule,
+    FeatureFlagsModule,
   ],
 })
 export class AppModule {}

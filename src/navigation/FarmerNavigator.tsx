@@ -108,6 +108,7 @@ const TAB_ICONS: Record<string, { active: keyof typeof Ionicons.glyphMap; inacti
   Dashboard: { active: 'home', inactive: 'home-outline' },
   Products: { active: 'storefront', inactive: 'storefront-outline' },
   Orders: { active: 'clipboard', inactive: 'clipboard-outline' },
+  Messages: { active: 'chatbubbles', inactive: 'chatbubbles-outline' },
   Profile: { active: 'person', inactive: 'person-outline' },
 };
 
@@ -159,7 +160,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
               styles.tabCard,
               { backgroundColor: isDark ? '#2C2C2E' : '#DEDEE0' }
             ]}>
-              <Ionicons name={iconName} size={28} color={isFocused ? '#34C759' : colors.textSecondary} />
+              <Ionicons name={iconName} size={26} color={isFocused ? '#34C759' : colors.textSecondary} />
               <Text style={[styles.tabLabel, { color: isFocused ? '#34C759' : colors.textSecondary }]}>{label}</Text>
             </View>
           </TouchableOpacity>
@@ -180,6 +181,7 @@ function FarmerTabs() {
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
       <Tab.Screen name="Products" component={ProductsScreen} />
       <Tab.Screen name="Orders" component={FarmerOrdersScreen} />
+      <Tab.Screen name="Messages" component={FarmerMessagesScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
@@ -667,20 +669,21 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 4,
+    paddingHorizontal: 2,
   },
   tabCard: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingHorizontal: 8,
     borderRadius: 12,
-    minWidth: 72,
+    minWidth: 56,
   },
   tabLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
     marginTop: 4,
     fontFamily: FONTS.semiBold,
+    textAlign: 'center',
   },
 });

@@ -17,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { FONTS } from '../../constants/theme';
-import rewardService from '../../services/rewardService';
+import rewardService, { DailyChallenge as BackendChallenge } from '../../services/rewardService';
 import { formatNumber } from '../../utils/formatters';
 
 const PRIMARY_COLOR = '#16A34A';
@@ -35,6 +35,31 @@ interface DailyChallenge {
   type: 'daily' | 'weekly' | 'special';
   expiresAt?: string;
 }
+
+// Map backend challenges to UI format
+const mapBackendChallenge = (challenge: BackendChallenge): DailyChallenge => {
+  const iconColors: Record<string, string> = {
+    'daily-checkin': '#3B82F6',
+    'share-product': '#EC4899',
+    'add-to-favorites': '#EF4444',
+    'browse-categories': '#8B5CF6',
+    'rate-product': '#F59E0B',
+  };
+  
+  return {
+    id: challenge.id,
+    title: challenge.title,
+    description: challenge.description,
+    icon: challenge.icon || 'star-outline',
+    iconColor: iconColors[challenge.id] || '#16A34A',
+    points: challenge.points,
+    progress: challenge.progress,
+    target: challenge.target,
+    isCompleted: challenge.completed,
+    type: 'daily',
+    expiresAt: new Date(new Date().setHours(23, 59, 59, 999)).toISOString(),
+  };
+};
 
 // Mock challenges - In production, these would come from the backend
 const generateDailyChallenges = (streak: number): DailyChallenge[] => {
@@ -218,12 +243,22 @@ export default function DailyChallengesScreen() {
       if (isRefresh) setRefreshing(true);
       else setLoading(true);
 
-      // Get rewards summary to get streak info
-      const summary = await rewardService.getRewardsSummary();
-      setCurrentStreak(summary.currentStreak || 0);
+      // Fetch daily challenges from backend
+      try {
+        const challengesResponse = await rewardService.getDailyChallenges();
+        setCurrentStreak(challengesResponse.streakDays || 0);
+        
+        // Map backend challenges to UI format
+        const mappedChallenges = challengesResponse.challenges.map(mapBackendChallenge);
+        setDailyChallenges(mappedChallenges);
+      } catch (err) {
+        // Fallback to local generation if backend fails
+        const summary = await rewardService.getRewardsSummary();
+        setCurrentStreak(summary.currentStreak || 0);
+        setDailyChallenges(generateDailyChallenges(summary.currentStreak || 0));
+      }
       
-      // Generate challenges (in production, these would come from the API)
-      setDailyChallenges(generateDailyChallenges(summary.currentStreak || 0));
+      // These still use local generation (could be moved to backend later)
       setWeeklyChallenges(generateWeeklyChallenges());
       setSpecialChallenges(generateSpecialChallenges());
     } catch (err: any) {

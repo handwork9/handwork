@@ -22,6 +22,11 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.handwork.app",
+      "associatedDomains": [
+        "applinks:handwork.ng",
+        "applinks:www.handwork.ng",
+        "applinks:api.handwork.ng"
+      ],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -33,7 +38,36 @@
         "backgroundColor": "#FFFFFF"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "handwork.ng",
+              "pathPrefix": "/product"
+            },
+            {
+              "scheme": "https",
+              "host": "handwork.ng",
+              "pathPrefix": "/farmer"
+            },
+            {
+              "scheme": "https",
+              "host": "handwork.ng",
+              "pathPrefix": "/post"
+            },
+            {
+              "scheme": "https",
+              "host": "handwork.ng",
+              "pathPrefix": "/invite"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"

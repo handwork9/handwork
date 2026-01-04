@@ -46,25 +46,40 @@ export default function FarmerProfileScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
   const [showReportModal, setShowReportModal] = useState(false);
 
-  const { data: farmerData, isLoading: farmerLoading } = useQuery({
+  const { data: farmerResponse, isLoading: farmerLoading, error: farmerError } = useQuery({
     queryKey: ['farmer', farmerId],
-    queryFn: () => apiClient.get<{ success: boolean; data: FarmerData }>(`/farmers/profile/${farmerId}`),
+    queryFn: async () => {
+      console.log('[FarmerProfileScreen] Fetching farmer:', farmerId);
+      const response = await apiClient.get<{ success: boolean; data: FarmerData }>(`/farmers/profile/${farmerId}`);
+      console.log('[FarmerProfileScreen] API Response:', response);
+      return response;
+    },
+    enabled: !!farmerId,
   });
 
   const { data: productsData, isLoading: productsLoading } = useQuery({
     queryKey: ['farmer-products', farmerId],
     queryFn: () => productService.getFarmerProducts(farmerId),
+    enabled: !!farmerId,
   });
 
   // Fetch farmer badges
-  const { data: badgesData } = useQuery({
+  const { data: badgesResponse } = useQuery({
     queryKey: ['farmer-badges', farmerId],
-    queryFn: () => apiClient.get<FarmerBadge[]>(`/badges/farmer/${farmerId}`),
+    queryFn: () => apiClient.get<{ success: boolean; data: FarmerBadge[] }>(`/badges/farmer/${farmerId}`),
+    enabled: !!farmerId,
   });
 
-  const farmer = farmerData?.data;
-  const badges = badgesData || [];
+  // Extract data from API response wrapper
+  const farmer = farmerResponse?.data;
+  const badges = badgesResponse?.data || [];
   const products = productsData?.data?.data || [];
+
+  // Debug logging
+  console.log('[FarmerProfileScreen] farmerId:', farmerId);
+  console.log('[FarmerProfileScreen] farmerResponse:', farmerResponse);
+  console.log('[FarmerProfileScreen] farmer:', farmer);
+  console.log('[FarmerProfileScreen] farmerError:', farmerError);
 
   if (farmerLoading) {
     return <LoadingSpinner fullScreen />;

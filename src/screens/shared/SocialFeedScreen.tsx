@@ -1150,7 +1150,7 @@ const SocialFeedScreen = () => {
       onComment={() => handleOpenComments(item)}
       onShare={() => handleShare(item)}
       onSave={() => handleSavePost(item)}
-      onProfilePress={() => navigation.navigate('FarmerProfile', { farmerId: item.farmerId })}
+      onProfilePress={() => navigation.navigate('FarmerProfile', { farmerId: item.farmer?.user?.id || item.farmerId })}
       onMorePress={() => handleOpenOptions(item)}
     />
   );
