@@ -727,11 +727,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             
             /* iOS Group List Container */
             .ios-sidebar-menu .ant-menu-item-group-list {
-              background: rgba(255, 255, 255, 0.6) !important;
+              background: #ffffff !important;
               border-radius: 12px !important;
-              margin: 0 4px 8px 4px !important;
+              margin: 0 4px 12px 4px !important;
               padding: 4px !important;
-              box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+              box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.04) !important;
             }
             
             /* Disabled Items */
@@ -876,47 +876,44 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       <Layout style={{ marginLeft: 280, background: '#f2f2f7' }}>
         <Header 
           style={{ 
-            background: 'rgba(255, 255, 255, 0.85)', 
-            backdropFilter: 'blur(20px) saturate(180%)',
-            WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-            padding: '0 24px', 
+            background: '#ffffff', 
+            padding: '0 20px', 
             display: 'flex', 
             alignItems: 'center', 
             justifyContent: 'space-between', 
-            borderBottom: '0.5px solid rgba(60, 60, 67, 0.12)',
+            borderBottom: '1px solid #e5e5ea',
             position: 'sticky', 
             top: 0, 
             zIndex: 10, 
-            height: 56,
+            height: 60,
+            overflow: 'hidden',
           }}
         >
           {/* Left Section - Greeting & Role */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: '0 1 auto' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
               <span style={{ 
                 color: '#8e8e93', 
-                fontSize: 12,
+                fontSize: 11,
                 fontWeight: 500,
                 fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
                 letterSpacing: '-0.1px',
               }}>Welcome back</span>
               <span style={{ 
                 color: '#1c1c1e', 
-                fontSize: 17,
+                fontSize: 15,
                 fontWeight: 600,
                 fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif',
-                letterSpacing: '-0.4px',
+                letterSpacing: '-0.3px',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                maxWidth: 150,
               }}>{user?.name || 'Admin'}</span>
             </div>
-            <div style={{ 
-              height: 24,
-              width: 1,
-              background: 'rgba(60, 60, 67, 0.12)',
-              margin: '0 8px',
-            }} />
             <span style={{ 
-              padding: '5px 10px', 
-              background: 'rgba(34, 197, 94, 0.1)',
+              padding: '4px 8px', 
+              background: '#e8f5e9',
               color: '#16a34a', 
               borderRadius: 6, 
               fontSize: 12, 
@@ -930,81 +927,47 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           </div>
 
           {/* Right Section - Actions */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {/* Search Button */}
-            <div style={{
-              width: 36,
-              height: 36,
-              borderRadius: 10,
-              background: 'rgba(118, 118, 128, 0.08)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(118, 118, 128, 0.12)'}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(118, 118, 128, 0.08)'}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8e8e93" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="11" cy="11" r="8"></circle>
-                <path d="m21 21-4.35-4.35"></path>
-              </svg>
-            </div>
-
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
             {/* Notifications */}
             <Dropdown 
               menu={{ items: notificationMenuItems }} 
               placement="bottomRight"
               trigger={['click']}
-              styles={{ root: { minWidth: 380, borderRadius: 14 } }}
+              styles={{ root: { minWidth: 360, borderRadius: 12 } }}
             >
               <Badge count={totalUnreadCount} size="small" offset={[-2, 2]}>
                 <div style={{
                   width: 36,
                   height: 36,
-                  borderRadius: 10,
-                  background: totalUnreadCount > 0 ? 'rgba(255, 59, 48, 0.1)' : 'rgba(118, 118, 128, 0.08)',
+                  borderRadius: 8,
+                  background: totalUnreadCount > 0 ? '#ffebee' : '#f5f5f5',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   cursor: 'pointer',
                   transition: 'all 0.15s ease',
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.background = totalUnreadCount > 0 ? 'rgba(255, 59, 48, 0.15)' : 'rgba(118, 118, 128, 0.12)'}
-                onMouseLeave={(e) => e.currentTarget.style.background = totalUnreadCount > 0 ? 'rgba(255, 59, 48, 0.1)' : 'rgba(118, 118, 128, 0.08)'}
                 >
                   <BellOutlined style={{ fontSize: 18, color: totalUnreadCount > 0 ? '#ff3b30' : '#8e8e93' }} />
                 </div>
               </Badge>
             </Dropdown>
 
-            {/* Divider */}
-            <div style={{ 
-              height: 24,
-              width: 1,
-              background: 'rgba(60, 60, 67, 0.12)',
-              margin: '0 4px',
-            }} />
-
             {/* User Profile */}
             <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 10,
-                padding: '6px 10px 6px 6px',
-                borderRadius: 12,
-                background: 'rgba(118, 118, 128, 0.08)',
+                gap: 8,
+                padding: '4px 8px 4px 4px',
+                borderRadius: 10,
+                background: '#f5f5f5',
                 cursor: 'pointer',
                 transition: 'all 0.15s ease',
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(118, 118, 128, 0.12)'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(118, 118, 128, 0.08)'}
-              >
+              }}>
                 <div style={{
                   padding: '2px',
-                  borderRadius: 10,
+                  borderRadius: 8,
                   background: 'linear-gradient(135deg, #34d399 0%, #16a34a 100%)',
                 }}>
                   <Avatar
@@ -1015,10 +978,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                       border: '2px solid #fff',
                       background: '#e5e5ea',
                     }}
-                    size={30}
+                    size={28}
                   />
                 </div>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8e8e93" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#8e8e93" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                   <path d="m6 9 6 6 6-6"/>
                 </svg>
               </div>
