@@ -4,7 +4,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Circle, Path, Defs, LinearGradient as SvgLinearGradient, Stop, Rect, G } from 'react-native-svg';
+import Svg, { Circle, Path, Defs, LinearGradient as SvgLinearGradient, Stop, Rect } from 'react-native-svg';
 import { BuyerStackParamList, Product } from '../../types';
 import { ProductCard, LoadingSpinner, EmptyState, ReportModal } from '../../components/common';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, FONTS } from '../../constants/theme';
@@ -12,47 +12,8 @@ import { productService } from '../../services/productService';
 import { apiClient } from '../../services/apiClient';
 import { useTheme } from '../../context/ThemeContext';
 import { getBadgeIllustration } from '../../assets/illustrations/badges';
+import { ProductsIcon, CalendarIcon } from '../../assets/icons';
 
-// SVG Stat Icons - Clean iOS-style design
-const ProductsStatIcon = ({ size = 32, color = '#007AFF' }: { size?: number; color?: string }) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    {/* Shopping bag body */}
-    <Path 
-      d="M6 6.5V5.5C6 3.567 7.567 2 9.5 2h5C16.433 2 18 3.567 18 5.5v1"
-      stroke={color}
-      strokeWidth="1.8"
-      strokeLinecap="round"
-    />
-    <Path 
-      d="M3.5 8.5C3.5 7.395 4.395 6.5 5.5 6.5h13c1.105 0 2 .895 2 2v10c0 1.657-1.343 3-3 3H6.5c-1.657 0-3-1.343-3-3v-10z"
-      fill={color}
-      opacity={0.15}
-    />
-    <Path 
-      d="M3.5 8.5C3.5 7.395 4.395 6.5 5.5 6.5h13c1.105 0 2 .895 2 2v10c0 1.657-1.343 3-3 3H6.5c-1.657 0-3-1.343-3-3v-10z"
-      stroke={color}
-      strokeWidth="1.8"
-    />
-    {/* Basket lines */}
-    <Path d="M8 11h8" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
-    <Path d="M8 14.5h5" stroke={color} strokeWidth="1.5" strokeLinecap="round" opacity={0.6} />
-  </Svg>
-);
-
-const JoinedStatIcon = ({ size = 32, color = '#43A047' }: { size?: number; color?: string }) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    {/* Calendar body */}
-    <Rect x="3" y="5" width="18" height="16" rx="3" fill={color} opacity={0.15} />
-    <Rect x="3" y="5" width="18" height="16" rx="3" stroke={color} strokeWidth="1.8" />
-    {/* Calendar header line */}
-    <Path d="M3 10h18" stroke={color} strokeWidth="1.8" />
-    {/* Calendar rings */}
-    <Path d="M8 3v4" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
-    <Path d="M16 3v4" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
-    {/* Calendar date */}
-    <Circle cx="12" cy="15" r="2" fill={color} />
-  </Svg>
-);
 
 // Badge type definitions
 interface FarmerBadge {
@@ -277,7 +238,7 @@ export default function FarmerProfileScreen({ navigation, route }: Props) {
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
               <View style={[styles.statIconContainer, { backgroundColor: isDark ? 'rgba(0, 122, 255, 0.15)' : '#E5F1FF' }]}>
-                <ProductsStatIcon size={24} color={colors.primary} />
+                <ProductsIcon size={24} color={colors.primary} />
               </View>
               <View style={styles.statContent}>
                 <Text style={[styles.statValue, { color: colors.text }]}>{products.length}</Text>
@@ -287,7 +248,7 @@ export default function FarmerProfileScreen({ navigation, route }: Props) {
             <View style={[styles.statSeparator, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60, 60, 67, 0.12)' }]} />
             <View style={styles.statItem}>
               <View style={[styles.statIconContainer, { backgroundColor: isDark ? 'rgba(67, 160, 71, 0.15)' : '#E8F5E9' }]}>
-                <JoinedStatIcon size={24} color="#43A047" />
+                <CalendarIcon size={24} color="#43A047" />
               </View>
               <View style={styles.statContent}>
                 <Text style={[styles.statValue, { color: colors.text }]}>{formatJoinDate(farmer?.joinedDate)}</Text>
