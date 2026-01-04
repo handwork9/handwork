@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
+  Animated,
+  Easing,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -27,55 +29,266 @@ const StatusCommunityCard: React.FC<StatusCommunityCardProps> = ({
   const navigation = useNavigation();
   const { colors, isDark } = useTheme();
 
+  const totalActivity = storiesCount + liveCount;
+  const hasNewContent = totalActivity > 0;
+  const hasLive = liveCount > 0;
+
+  // Animation values
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const glowAnim = useRef(new Animated.Value(0)).current;
+  const dotPulseAnim = useRef(new Animated.Value(1)).current;
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
+  const bounceAnim = useRef(new Animated.Value(0)).current;
+  const ringRotateAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (hasNewContent) {
+      // Pulse animation for the badge
+      const pulse = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.1,
+            duration: 800,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 800,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+        ])
+      );
+
+      // Glow animation for the card border
+      const glow = Animated.loop(
+        Animated.sequence([
+          Animated.timing(glowAnim, {
+            toValue: 1,
+            duration: 1500,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: false,
+          }),
+          Animated.timing(glowAnim, {
+            toValue: 0,
+            duration: 1500,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: false,
+          }),
+        ])
+      );
+
+      // Dot pulse animation
+      const dotPulse = Animated.loop(
+        Animated.sequence([
+          Animated.timing(dotPulseAnim, {
+            toValue: 1.5,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+          Animated.timing(dotPulseAnim, {
+            toValue: 1,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+
+      // Shimmer effect
+      const shimmer = Animated.loop(
+        Animated.timing(shimmerAnim, {
+          toValue: 1,
+          duration: 2000,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
+      );
+
+      // Bounce animation for illustration
+      const bounce = Animated.loop(
+        Animated.sequence([
+          Animated.timing(bounceAnim, {
+            toValue: -5,
+            duration: 1000,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(bounceAnim, {
+            toValue: 0,
+            duration: 1000,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+        ])
+      );
+
+      pulse.start();
+      glow.start();
+      dotPulse.start();
+      shimmer.start();
+      bounce.start();
+
+      return () => {
+        pulse.stop();
+        glow.stop();
+        dotPulse.stop();
+        shimmer.stop();
+        bounce.stop();
+      };
+    }
+  }, [hasNewContent]);
+
+  // Ring rotation animation for live content
+  useEffect(() => {
+    if (hasLive) {
+      const rotate = Animated.loop(
+        Animated.timing(ringRotateAnim, {
+          toValue: 1,
+          duration: 3000,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
+      );
+      rotate.start();
+      return () => rotate.stop();
+    }
+  }, [hasLive]);
+
   const handlePress = () => {
     triggerHaptic();
     (navigation as any).navigate('SocialFeed');
   };
 
-  const totalActivity = storiesCount + liveCount;
+  const animatedShadowOpacity = glowAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.25, 0.5],
+  });
+
+  const shimmerTranslate = shimmerAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-200, 200],
+  });
+
+  const ringRotation = ringRotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
 
   return (
-    <TouchableOpacity
-      style={[styles.container, style]}
-      onPress={handlePress}
-      activeOpacity={0.9}
+    <Animated.View
+      style={[
+        styles.container,
+        hasNewContent && {
+          shadowOpacity: animatedShadowOpacity,
+        },
+        style,
+      ]}
     >
-      <LinearGradient
-        colors={isDark ? ['#581C87', '#4C1D95'] : ['#A855F7', '#7C3AED']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.gradient}
+      <TouchableOpacity
+        style={styles.touchable}
+        onPress={handlePress}
+        activeOpacity={0.9}
       >
-        {/* Background pattern */}
-        <View style={styles.patternContainer}>
-          <View style={[styles.patternCircle, styles.patternCircle1]} />
-          <View style={[styles.patternCircle, styles.patternCircle2]} />
-        </View>
+        <LinearGradient
+          colors={isDark ? ['#581C87', '#4C1D95'] : ['#A855F7', '#7C3AED']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.gradient}
+        >
+          {/* Background pattern */}
+          <View style={styles.patternContainer}>
+            <View style={[styles.patternCircle, styles.patternCircle1]} />
+            <View style={[styles.patternCircle, styles.patternCircle2]} />
+          </View>
 
-        <View style={styles.content}>
-          <View style={styles.textContainer}>
-            {totalActivity > 0 && (
-              <View style={styles.activityBadge}>
-                <View style={styles.activityDot} />
-                <Text style={styles.activityText}>{totalActivity} New</Text>
+          {/* Shimmer effect overlay */}
+          {hasNewContent && (
+            <Animated.View
+              style={[
+                styles.shimmerOverlay,
+                {
+                  transform: [{ translateX: shimmerTranslate }],
+                },
+              ]}
+            />
+          )}
+
+          <View style={styles.content}>
+            <View style={styles.textContainer}>
+              {hasNewContent && (
+                <Animated.View 
+                  style={[
+                    styles.activityBadge,
+                    { transform: [{ scale: pulseAnim }] }
+                  ]}
+                >
+                  <Animated.View 
+                    style={[
+                      styles.activityDot,
+                      hasLive && styles.liveDot,
+                      { transform: [{ scale: dotPulseAnim }] }
+                    ]} 
+                  />
+                  <Text style={styles.activityText}>
+                    {hasLive ? `${liveCount} Live` : `${totalActivity} New`}
+                  </Text>
+                </Animated.View>
+              )}
+              <Text style={styles.title}>Status & Community</Text>
+              <Text style={styles.subtitle}>
+                View stories, updates & connect with farmers
+              </Text>
+              <View style={styles.button}>
+                <Text style={styles.buttonText}>Explore</Text>
+                <Ionicons name="arrow-forward" size={14} color="#7C3AED" />
               </View>
-            )}
-            <Text style={styles.title}>Status & Community</Text>
-            <Text style={styles.subtitle}>
-              View stories, updates & connect with farmers
-            </Text>
-            <View style={styles.button}>
-              <Text style={styles.buttonText}>Explore</Text>
-              <Ionicons name="arrow-forward" size={14} color="#7C3AED" />
             </View>
+
+            <Animated.View 
+              style={[
+                styles.illustrationContainer,
+                hasNewContent && {
+                  transform: [
+                    { translateY: bounceAnim },
+                    ...(hasLive ? [{ rotate: ringRotation }] : []),
+                  ],
+                },
+              ]}
+            >
+              {/* Animated ring around illustration when live */}
+              {hasLive && (
+                <Animated.View 
+                  style={[
+                    styles.liveRing,
+                    { transform: [{ rotate: ringRotation }] }
+                  ]}
+                />
+              )}
+              <StatusCommunityIllustration size={80} />
+            </Animated.View>
           </View>
 
-          <View style={styles.illustrationContainer}>
-            <StatusCommunityIllustration size={80} />
-          </View>
-        </View>
-      </LinearGradient>
-    </TouchableOpacity>
+          {/* Live indicator badge */}
+          {hasLive && (
+            <Animated.View 
+              style={[
+                styles.liveBadge,
+                { transform: [{ scale: pulseAnim }] }
+              ]}
+            >
+              <Animated.View 
+                style={[
+                  styles.liveBadgeDot,
+                  { transform: [{ scale: dotPulseAnim }] }
+                ]} 
+              />
+              <Text style={styles.liveBadgeText}>LIVE</Text>
+            </Animated.View>
+          )}
+        </LinearGradient>
+      </TouchableOpacity>
+    </Animated.View>
   );
 };
 
@@ -90,6 +303,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 6,
+  },
+  touchable: {
+    borderRadius: 16,
+    overflow: 'hidden',
   },
   gradient: {
     padding: 16,
@@ -120,6 +337,16 @@ const styles = StyleSheet.create({
     bottom: -30,
     left: -20,
   },
+  shimmerOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: 100,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    transform: [{ skewX: '-20deg' }],
+  },
   content: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -145,6 +372,9 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: '#4ADE80',
     marginRight: 6,
+  },
+  liveDot: {
+    backgroundColor: '#EF4444',
   },
   activityText: {
     fontFamily: FONTS.semiBold,
@@ -181,6 +411,42 @@ const styles = StyleSheet.create({
   },
   illustrationContainer: {
     marginLeft: 8,
+    position: 'relative',
+  },
+  liveRing: {
+    position: 'absolute',
+    top: -8,
+    left: -8,
+    right: -8,
+    bottom: -8,
+    borderRadius: 50,
+    borderWidth: 3,
+    borderColor: 'transparent',
+    borderTopColor: '#EF4444',
+    borderRightColor: '#F472B6',
+  },
+  liveBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    gap: 4,
+  },
+  liveBadgeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FFFFFF',
+  },
+  liveBadgeText: {
+    fontFamily: FONTS.bold,
+    fontSize: 10,
+    color: '#FFFFFF',
   },
 });
 
