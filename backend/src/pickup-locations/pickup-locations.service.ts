@@ -217,8 +217,9 @@ export class PickupLocationsService {
     const total = await countQuery.getCount();
 
     // Apply pagination and ordering
+    // Use quoted alias to preserve case in PostgreSQL
     queryBuilder
-      .orderBy('distanceKm', 'ASC')
+      .orderBy('"distanceKm"', 'ASC')
       .skip((page - 1) * limit)
       .take(limit);
 

@@ -10,6 +10,7 @@ import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, FONTS } from '../.
 import { productService } from '../../services/productService';
 import { apiClient } from '../../services/apiClient';
 import { useTheme } from '../../context/ThemeContext';
+import { getBadgeIllustration } from '../../assets/illustrations/badges';
 
 // Badge type definitions
 interface FarmerBadge {
@@ -242,19 +243,26 @@ export default function FarmerProfileScreen({ navigation, route }: Props) {
             <View style={[styles.insetCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', padding: 12 }]}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <View style={styles.badgesRow}>
-                  {badges.slice(0, 6).map((badge: FarmerBadge) => (
-                    <View key={badge.id} style={styles.badgeItem}>
-                      <View style={[styles.badgeIconContainer, { backgroundColor: badge.color + '20' }]}>
-                        <Text style={styles.badgeEmoji}>{badge.icon}</Text>
+                  {badges.slice(0, 6).map((badge: FarmerBadge) => {
+                    const BadgeIllustration = getBadgeIllustration(badge.type);
+                    return (
+                      <View key={badge.id} style={styles.badgeItem}>
+                        <View style={[styles.badgeIconContainer, { backgroundColor: badge.color + '15' }]}>
+                          {BadgeIllustration ? (
+                            <BadgeIllustration size={40} />
+                          ) : (
+                            <Text style={styles.badgeEmoji}>{badge.icon}</Text>
+                          )}
+                        </View>
+                        <Text style={[styles.badgeName, { color: colors.text }]} numberOfLines={1}>
+                          {badge.name}
+                        </Text>
+                        <Text style={[styles.badgePoints, { color: badge.color }]}>
+                          +{badge.points} pts
+                        </Text>
                       </View>
-                      <Text style={[styles.badgeName, { color: colors.text }]} numberOfLines={1}>
-                        {badge.name}
-                      </Text>
-                      <Text style={[styles.badgePoints, { color: badge.color }]}>
-                        +{badge.points} pts
-                      </Text>
-                    </View>
-                  ))}
+                    );
+                  })}
                 </View>
               </ScrollView>
               {badges.length > 6 && (
