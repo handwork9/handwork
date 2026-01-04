@@ -368,6 +368,57 @@ export const LiveSupportIllustration: React.FC<IllustrationProps> = ({ size = 12
   </Svg>
 );
 
+// Status & Community - Camera/Stories with people
+export const StatusCommunityIllustration: React.FC<IllustrationProps> = ({ size = 120 }) => (
+  <Svg width={size} height={size} viewBox="0 0 120 120" fill="none">
+    <Defs>
+      <LinearGradient id="sc_purple" x1="0%" y1="0%" x2="100%" y2="100%">
+        <Stop offset="0%" stopColor="#A855F7" />
+        <Stop offset="100%" stopColor="#7C3AED" />
+      </LinearGradient>
+      <LinearGradient id="sc_ring" x1="0%" y1="0%" x2="100%" y2="100%">
+        <Stop offset="0%" stopColor="#F472B6" />
+        <Stop offset="50%" stopColor="#A855F7" />
+        <Stop offset="100%" stopColor="#6366F1" />
+      </LinearGradient>
+      <LinearGradient id="sc_green" x1="0%" y1="0%" x2="0%" y2="100%">
+        <Stop offset="0%" stopColor="#34D399" />
+        <Stop offset="100%" stopColor="#10B981" />
+      </LinearGradient>
+    </Defs>
+    {/* Outer glow */}
+    <Circle cx="60" cy="60" r="55" fill="rgba(168, 85, 247, 0.1)" />
+    {/* Story ring - main circle */}
+    <Circle cx="60" cy="50" r="28" fill="none" stroke="url(#sc_ring)" strokeWidth="4" strokeDasharray="12 3" />
+    {/* Camera lens/status icon */}
+    <Circle cx="60" cy="50" r="22" fill="url(#sc_purple)" />
+    <Circle cx="60" cy="50" r="16" fill="rgba(255,255,255,0.15)" />
+    <Circle cx="60" cy="50" r="10" fill="rgba(255,255,255,0.2)" />
+    <Circle cx="60" cy="50" r="5" fill="#FFF" />
+    {/* Camera flash/shine */}
+    <Circle cx="72" cy="38" r="4" fill="#FFF" opacity={0.9} />
+    {/* People icons at bottom */}
+    <Circle cx="35" cy="92" r="8" fill="url(#sc_green)" />
+    <Circle cx="35" cy="92" r="5" fill="rgba(255,255,255,0.3)" />
+    <Path d="M25 108 Q25 100 35 100 Q45 100 45 108" fill="url(#sc_green)" />
+    <Circle cx="60" cy="88" r="10" fill="url(#sc_purple)" />
+    <Circle cx="60" cy="88" r="6" fill="rgba(255,255,255,0.3)" />
+    <Path d="M47 108 Q47 98 60 98 Q73 98 73 108" fill="url(#sc_purple)" />
+    <Circle cx="85" cy="92" r="8" fill="url(#sc_green)" />
+    <Circle cx="85" cy="92" r="5" fill="rgba(255,255,255,0.3)" />
+    <Path d="M75 108 Q75 100 85 100 Q95 100 95 108" fill="url(#sc_green)" />
+    {/* Decorative sparkles */}
+    <Circle cx="18" cy="40" r="2" fill="#A855F7" opacity={0.8} />
+    <Circle cx="102" cy="45" r="2" fill="#A855F7" opacity={0.7} />
+    <Path d="M95 70 L97 75 L95 80 L93 75 Z" fill="#F472B6" opacity={0.7} />
+    <Path d="M20 70 L22 75 L20 80 L18 75 Z" fill="#34D399" opacity={0.7} />
+    {/* Plus icon for add story */}
+    <Circle cx="85" cy="35" r="8" fill="url(#sc_green)" />
+    <Path d="M85 31 L85 39" stroke="#FFF" strokeWidth="2" strokeLinecap="round" />
+    <Path d="M81 35 L89 35" stroke="#FFF" strokeWidth="2" strokeLinecap="round" />
+  </Svg>
+);
+
 export default {
   FarmerActivationIllustration,
   GoPremiumIllustration,
@@ -380,4 +431,5 @@ export default {
   CreditTransactionIllustration,
   DebitTransactionIllustration,
   LiveSupportIllustration,
+  StatusCommunityIllustration,
 };
