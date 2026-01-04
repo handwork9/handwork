@@ -824,67 +824,71 @@ const StoriesScreen = () => {
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
+      </Animated.View>
 
-        {/* More Options Modal */}
-        <Modal
-          visible={showMoreOptions}
-          transparent
-          animationType="fade"
-          onRequestClose={() => {
+      {/* More Options Modal - Outside animated container for proper touch handling */}
+      <Modal
+        visible={showMoreOptions}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          setShowMoreOptions(false);
+          setIsPaused(false);
+        }}
+      >
+        <TouchableWithoutFeedback 
+          onPress={() => {
             setShowMoreOptions(false);
             setIsPaused(false);
           }}
         >
-          <TouchableWithoutFeedback 
-            onPress={() => {
-              setShowMoreOptions(false);
-              setIsPaused(false);
-            }}
-          >
-            <View style={styles.modalOverlay}>
-              <TouchableWithoutFeedback>
-                <View style={styles.modalContent}>
-                  <View style={styles.modalHandle} />
-                  
-                  <TouchableOpacity 
-                    style={styles.modalOption}
-                    onPress={handleShareStory}
-                  >
-                    <Ionicons name="share-outline" size={24} color="white" />
-                    <Text style={styles.modalOptionText}>Share</Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity 
-                    style={styles.modalOption}
-                    onPress={handleMuteFarmer}
-                  >
-                    <Ionicons name="volume-mute-outline" size={24} color="white" />
-                    <Text style={styles.modalOptionText}>Mute {currentFarmer?.farmer.farmName}</Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity 
-                    style={styles.modalOption}
-                    onPress={handleReportStory}
-                  >
-                    <Ionicons name="flag-outline" size={24} color="#ed4956" />
-                    <Text style={[styles.modalOptionText, { color: '#ed4956' }]}>Report</Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity 
-                    style={[styles.modalOption, styles.modalCancel]}
-                    onPress={() => {
-                      setShowMoreOptions(false);
-                      setIsPaused(false);
-                    }}
-                  >
-                    <Text style={styles.modalCancelText}>Cancel</Text>
-                  </TouchableOpacity>
-                </View>
-              </TouchableWithoutFeedback>
-            </View>
-          </TouchableWithoutFeedback>
-        </Modal>
-      </Animated.View>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View style={styles.modalContent}>
+                <View style={styles.modalHandle} />
+                
+                <TouchableOpacity 
+                  style={styles.modalOption}
+                  onPress={handleShareStory}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="share-outline" size={24} color="white" />
+                  <Text style={styles.modalOptionText}>Share</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.modalOption}
+                  onPress={handleMuteFarmer}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="volume-mute-outline" size={24} color="white" />
+                  <Text style={styles.modalOptionText}>Mute {currentFarmer?.farmer.farmName}</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.modalOption}
+                  onPress={handleReportStory}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="flag-outline" size={24} color="#ed4956" />
+                  <Text style={[styles.modalOptionText, { color: '#ed4956' }]}>Report</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={[styles.modalOption, styles.modalCancel]}
+                  onPress={() => {
+                    setShowMoreOptions(false);
+                    setIsPaused(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
   );
 };
