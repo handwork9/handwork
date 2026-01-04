@@ -2071,18 +2071,18 @@ export default function HomeScreen() {
           ))}
           {/* View All Circle */}
           <TouchableOpacity 
-            style={styles.storyItem}
+            style={styles.viewAllItem}
             onPress={() => {
               triggerHaptic();
               navigation.navigate('SocialFeed' as never);
             }}
             activeOpacity={0.8}
           >
-            <View style={[styles.viewAllCircle, { backgroundColor: isDark ? '#2C2C2E' : '#F0F0F0' }]}>
-              <Ionicons name="chevron-forward" size={24} color={colors.primary} />
+            <View style={[styles.viewAllCircle, { backgroundColor: isDark ? '#2C2C2E' : '#F5F5F5', borderColor: isDark ? '#444' : '#E0E0E0' }]}>
+              <Ionicons name="grid" size={26} color={colors.primary} />
             </View>
             <Text 
-              style={[styles.storyFarmName, { color: colors.textSecondary }]} 
+              style={[styles.viewAllText, { color: colors.textSecondary }]} 
               numberOfLines={1}
             >
               View All
@@ -2364,15 +2364,23 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     maxWidth: 68,
   },
+  viewAllItem: {
+    alignItems: 'center',
+    width: 76,
+  },
   viewAllCircle: {
     width: 68,
     height: 68,
     borderRadius: 34,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: '#E0E0E0',
-    borderStyle: 'dashed',
+    borderWidth: 2,
+  },
+  viewAllText: {
+    fontSize: 11,
+    fontFamily: FONTS.medium,
+    marginTop: 4,
+    textAlign: 'center',
   },
 
   // Live Now Section Styles
