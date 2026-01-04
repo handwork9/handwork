@@ -535,21 +535,21 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       theme={{
         components: {
           Menu: {
-            itemHeight: 44,
-            itemMarginInline: 8,
-            itemBorderRadius: 8,
-            subMenuItemBorderRadius: 8,
-            itemSelectedBg: '#f0fdf4',
+            itemHeight: 42,
+            itemMarginInline: 12,
+            itemBorderRadius: 12,
+            subMenuItemBorderRadius: 10,
+            itemSelectedBg: 'rgba(34, 197, 94, 0.12)',
             itemSelectedColor: '#16a34a',
-            itemHoverBg: '#f8fafc',
+            itemHoverBg: 'rgba(0, 0, 0, 0.04)',
             itemHoverColor: '#1e293b',
-            itemColor: '#374151',
-            iconSize: 16,
-            collapsedIconSize: 16,
-            groupTitleFontSize: 11,
-            groupTitleColor: '#94a3b8',
-            itemBg: '#fff',
-            subMenuItemBg: '#fff',
+            itemColor: '#3c3c43',
+            iconSize: 18,
+            collapsedIconSize: 18,
+            groupTitleFontSize: 12,
+            groupTitleColor: '#8e8e93',
+            itemBg: 'transparent',
+            subMenuItemBg: 'transparent',
           },
         },
       }}
@@ -579,56 +579,110 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     <Layout className="min-h-screen">
       <Sider
         theme="light"
-        width={260}
+        width={280}
         style={{ 
           position: 'fixed', 
           height: '100vh', 
           left: 0, 
           top: 0, 
           bottom: 0,
-          boxShadow: '2px 0 8px rgba(0,0,0,0.06)',
-          background: '#fff',
+          background: 'rgba(255, 255, 255, 0.72)',
+          backdropFilter: 'blur(20px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+          borderRight: '0.5px solid rgba(0, 0, 0, 0.08)',
           zIndex: 100,
         }}
       >
-        {/* Logo Section */}
+        {/* Logo Section - iOS Style */}
         <div style={{ 
-          height: 88, 
+          height: 100, 
           display: 'flex', 
           alignItems: 'center', 
-          justifyContent: 'center', 
-          borderBottom: '1px solid rgba(255,255,255,0.1)',
-          background: 'linear-gradient(145deg, #0f7335 0%, #16a34a 50%, #22c55e 100%)',
-          padding: '16px 20px',
+          justifyContent: 'center',
+          background: 'linear-gradient(135deg, #16a34a 0%, #22c55e 50%, #4ade80 100%)',
+          borderRadius: '0 0 24px 0',
+          margin: '0 0 8px 0',
+          boxShadow: '0 4px 24px rgba(34, 197, 94, 0.25), inset 0 1px 0 rgba(255,255,255,0.2)',
+          padding: '16px 24px',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <div style={{
-              background: '#fff',
-              borderRadius: 14,
-              padding: 6,
-              boxShadow: '0 4px 14px rgba(0,0,0,0.2), 0 0 0 2px rgba(255,255,255,0.3)',
+              background: 'rgba(255, 255, 255, 0.95)',
+              borderRadius: 18,
+              padding: 8,
+              boxShadow: '0 8px 24px rgba(0,0,0,0.15), 0 0 0 1px rgba(255,255,255,0.4) inset',
             }}>
               <img 
                 src="/logo.png" 
                 alt="Handwork Logo" 
                 style={{ 
-                  width: 48, 
-                  height: 48, 
+                  width: 44, 
+                  height: 44, 
                   objectFit: 'contain',
                   display: 'block',
                 }} 
               />
             </div>
             <div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', lineHeight: 1.1, textShadow: '0 1px 2px rgba(0,0,0,0.15)' }}>Handwork</div>
-              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.95)', letterSpacing: 2.5, fontWeight: 600, marginTop: 2 }}>ADMIN PANEL</div>
+              <div style={{ 
+                fontSize: 24, 
+                fontWeight: 700, 
+                color: '#fff', 
+                lineHeight: 1.1, 
+                letterSpacing: '-0.5px',
+                fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif',
+              }}>Handwork</div>
+              <div style={{ 
+                fontSize: 11, 
+                color: 'rgba(255,255,255,0.9)', 
+                letterSpacing: '1.5px', 
+                fontWeight: 600, 
+                marginTop: 4,
+                fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
+              }}>ADMIN PANEL</div>
             </div>
           </div>
         </div>
 
-        {/* Menu Section */}
-        <div style={{ height: 'calc(100vh - 64px - 140px)', overflow: 'auto', padding: '8px 0', background: '#fff' }}>
+        {/* Menu Section - iOS Style */}
+        <div style={{ 
+          height: 'calc(100vh - 100px - 180px)', 
+          overflow: 'auto', 
+          padding: '4px 8px',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
+        }}>
+          <style>{`
+            .ios-sidebar-menu::-webkit-scrollbar { display: none; }
+            .ant-menu-submenu-title, .ant-menu-item {
+              transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+              font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif !important;
+              font-weight: 500 !important;
+              letter-spacing: -0.2px !important;
+            }
+            .ant-menu-item:active {
+              transform: scale(0.98) !important;
+            }
+            .ant-menu-submenu-title:active {
+              transform: scale(0.98) !important;
+            }
+            .ant-menu-item-selected {
+              font-weight: 600 !important;
+            }
+            .ant-menu-item-selected::before {
+              content: '';
+              position: absolute;
+              left: 0;
+              top: 50%;
+              transform: translateY(-50%);
+              width: 4px;
+              height: 24px;
+              background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
+              border-radius: 0 4px 4px 0;
+            }
+          `}</style>
           <Menu
+            className="ios-sidebar-menu"
             mode="inline"
             selectedKeys={[pathname || '/']}
             defaultOpenKeys={['operations', 'users-management', 'catalog', 'analytics']}
@@ -640,71 +694,141 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             }}
             style={{ 
               borderRight: 'none',
-              background: '#fff',
-              color: '#1e293b',
+              background: 'transparent',
+              fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
             }}
           />
         </div>
 
-        {/* Status Section */}
-        <div style={{ padding: 16, borderTop: '1px solid #f0f0f0', background: '#fff', position: 'absolute', bottom: 0, left: 0, right: 0 }}>
+        {/* Status Section - iOS Style */}
+        <div style={{ 
+          padding: '16px 16px 24px', 
+          background: 'rgba(248, 248, 248, 0.8)',
+          backdropFilter: 'blur(10px)',
+          borderTop: '0.5px solid rgba(0, 0, 0, 0.06)',
+          position: 'absolute', 
+          bottom: 0, 
+          left: 0, 
+          right: 0,
+          borderRadius: '20px 20px 0 0',
+        }}>
+          {/* Connection Status - iOS Pill */}
           <div style={{ 
             display: 'flex', 
             alignItems: 'center', 
-            gap: 8, 
-            padding: '10px 12px', 
-            borderRadius: 8, 
-            background: isConnected ? '#f0fdf4' : '#fef2f2',
-            marginBottom: 12,
+            gap: 10, 
+            padding: '12px 16px', 
+            borderRadius: 14, 
+            background: isConnected 
+              ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.12) 0%, rgba(74, 222, 128, 0.08) 100%)'
+              : 'linear-gradient(135deg, rgba(239, 68, 68, 0.12) 0%, rgba(248, 113, 113, 0.08) 100%)',
+            border: isConnected 
+              ? '1px solid rgba(34, 197, 94, 0.2)' 
+              : '1px solid rgba(239, 68, 68, 0.2)',
+            marginBottom: 16,
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
           }}>
             <div style={{ 
-              width: 8, 
-              height: 8, 
+              width: 10, 
+              height: 10, 
               borderRadius: '50%', 
-              background: isConnected ? '#22c55e' : '#ef4444',
-              boxShadow: isConnected ? '0 0 8px #22c55e' : '0 0 8px #ef4444',
+              background: isConnected 
+                ? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)' 
+                : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+              boxShadow: isConnected 
+                ? '0 0 12px rgba(34, 197, 94, 0.6)' 
+                : '0 0 12px rgba(239, 68, 68, 0.6)',
+              animation: 'pulse 2s infinite',
             }} />
-            <span style={{ fontSize: 12, color: isConnected ? '#16a34a' : '#dc2626', fontWeight: 500 }}>
+            <style>{`
+              @keyframes pulse {
+                0%, 100% { opacity: 1; transform: scale(1); }
+                50% { opacity: 0.7; transform: scale(1.1); }
+              }
+            `}</style>
+            <span style={{ 
+              fontSize: 13, 
+              color: isConnected ? '#16a34a' : '#dc2626', 
+              fontWeight: 600,
+              fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
+              letterSpacing: '-0.2px',
+            }}>
               {isConnected ? 'System Online' : 'Reconnecting...'}
             </span>
           </div>
           
-          {/* Quick Stats */}
+          {/* Quick Stats - iOS Card Style */}
           <div style={{ 
             display: 'grid', 
             gridTemplateColumns: '1fr 1fr', 
-            gap: 8,
+            gap: 12,
           }}>
             <div style={{ 
-              padding: '8px 12px', 
-              background: '#f8fafc', 
-              borderRadius: 6,
+              padding: '14px 16px', 
+              background: 'rgba(255, 255, 255, 0.9)',
+              borderRadius: 16,
               textAlign: 'center',
+              boxShadow: '0 2px 12px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04)',
+              border: '0.5px solid rgba(0, 0, 0, 0.04)',
+              transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+              cursor: 'pointer',
             }}>
-              <div style={{ fontSize: 18, fontWeight: 600, color: '#1e293b' }}>{newOrdersCount}</div>
-              <div style={{ fontSize: 10, color: '#64748b' }}>Pending</div>
+              <div style={{ 
+                fontSize: 28, 
+                fontWeight: 700, 
+                color: '#1e293b',
+                fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif',
+                letterSpacing: '-1px',
+              }}>{newOrdersCount}</div>
+              <div style={{ 
+                fontSize: 11, 
+                color: '#8e8e93', 
+                fontWeight: 500,
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                marginTop: 2,
+              }}>Pending</div>
             </div>
             <div style={{ 
-              padding: '8px 12px', 
-              background: '#f8fafc', 
-              borderRadius: 6,
+              padding: '14px 16px', 
+              background: 'rgba(255, 255, 255, 0.9)',
+              borderRadius: 16,
               textAlign: 'center',
+              boxShadow: '0 2px 12px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04)',
+              border: '0.5px solid rgba(0, 0, 0, 0.04)',
+              transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+              cursor: 'pointer',
             }}>
-              <div style={{ fontSize: 18, fontWeight: 600, color: '#1e293b' }}>{recentOrders.length}</div>
-              <div style={{ fontSize: 10, color: '#64748b' }}>Recent</div>
+              <div style={{ 
+                fontSize: 28, 
+                fontWeight: 700, 
+                color: '#1e293b',
+                fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif',
+                letterSpacing: '-1px',
+              }}>{recentOrders.length}</div>
+              <div style={{ 
+                fontSize: 11, 
+                color: '#8e8e93', 
+                fontWeight: 500,
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                marginTop: 2,
+              }}>Recent</div>
             </div>
           </div>
         </div>
       </Sider>
-      <Layout style={{ marginLeft: 260 }}>
+      <Layout style={{ marginLeft: 280 }}>
         <Header 
           style={{ 
-            background: '#fff', 
-            padding: '0 24px', 
+            background: 'rgba(255, 255, 255, 0.72)', 
+            backdropFilter: 'blur(20px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+            padding: '0 28px', 
             display: 'flex', 
             alignItems: 'center', 
             justifyContent: 'space-between', 
-            boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+            borderBottom: '0.5px solid rgba(0, 0, 0, 0.08)',
             position: 'sticky', 
             top: 0, 
             zIndex: 10, 
@@ -712,34 +836,81 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <span style={{ color: '#4b5563', fontSize: 14 }}>Welcome back, {user?.name || 'Admin'}</span>
-            <span style={{ padding: '4px 8px', background: '#dbeafe', color: '#2563eb', borderRadius: 4, fontSize: 12, textTransform: 'uppercase' }}>
+            <span style={{ 
+              color: '#3c3c43', 
+              fontSize: 15,
+              fontWeight: 500,
+              fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
+              letterSpacing: '-0.2px',
+            }}>Welcome back, {user?.name || 'Admin'}</span>
+            <span style={{ 
+              padding: '6px 12px', 
+              background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(74, 222, 128, 0.1) 100%)',
+              color: '#16a34a', 
+              borderRadius: 20, 
+              fontSize: 11, 
+              textTransform: 'uppercase',
+              fontWeight: 600,
+              letterSpacing: '0.5px',
+              border: '1px solid rgba(34, 197, 94, 0.2)',
+            }}>
               {user?.role || 'admin'}
             </span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
             <Dropdown 
               menu={{ items: notificationMenuItems }} 
               placement="bottomRight"
               trigger={['click']}
-              styles={{ root: { minWidth: 340 } }}
+              styles={{ root: { minWidth: 360 } }}
             >
               <Badge count={totalUnreadCount} size="small">
-                <BellOutlined 
-                  style={{ fontSize: 20, cursor: 'pointer', color: '#4b5563' }}
-                />
+                <div style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 12,
+                  background: 'rgba(0, 0, 0, 0.04)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}>
+                  <BellOutlined style={{ fontSize: 20, color: '#3c3c43' }} />
+                </div>
               </Badge>
             </Dropdown>
             <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-              <Avatar
-                src={normalizeImageUrl(user?.avatar)}
-                icon={!user?.avatar && <UserOutlined />}
-                style={{ cursor: 'pointer' }}
-              />
+              <div style={{
+                padding: '4px',
+                borderRadius: 14,
+                background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(34, 197, 94, 0.3)',
+              }}>
+                <Avatar
+                  src={normalizeImageUrl(user?.avatar)}
+                  icon={!user?.avatar && <UserOutlined />}
+                  style={{ 
+                    cursor: 'pointer',
+                    border: '2px solid rgba(255, 255, 255, 0.9)',
+                  }}
+                  size={36}
+                />
+              </div>
             </Dropdown>
           </div>
         </Header>
-        <Content style={{ margin: 24, padding: 24, background: '#fff', borderRadius: 8, minHeight: 'calc(100vh - 112px)' }}>
+        <Content style={{ 
+          margin: 24, 
+          padding: 28, 
+          background: 'rgba(255, 255, 255, 0.9)', 
+          backdropFilter: 'blur(10px)',
+          borderRadius: 20, 
+          minHeight: 'calc(100vh - 112px)',
+          boxShadow: '0 4px 24px rgba(0, 0, 0, 0.06)',
+          border: '0.5px solid rgba(0, 0, 0, 0.04)',
+        }}>
           {children}
         </Content>
       </Layout>
