@@ -4,6 +4,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Circle, Path, Defs, LinearGradient as SvgLinearGradient, Stop, Rect, G } from 'react-native-svg';
 import { BuyerStackParamList, Product } from '../../types';
 import { ProductCard, LoadingSpinner, EmptyState, ReportModal } from '../../components/common';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, FONTS } from '../../constants/theme';
@@ -11,6 +12,52 @@ import { productService } from '../../services/productService';
 import { apiClient } from '../../services/apiClient';
 import { useTheme } from '../../context/ThemeContext';
 import { getBadgeIllustration } from '../../assets/illustrations/badges';
+
+// SVG Stat Icons
+const ProductsStatIcon = ({ size = 32, color = '#007AFF' }: { size?: number; color?: string }) => (
+  <Svg width={size} height={size} viewBox="0 0 32 32" fill="none">
+    <Defs>
+      <SvgLinearGradient id="productGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <Stop offset="0%" stopColor={color} stopOpacity={1} />
+        <Stop offset="100%" stopColor={color} stopOpacity={0.7} />
+      </SvgLinearGradient>
+    </Defs>
+    {/* Main box */}
+    <Rect x="5" y="10" width="22" height="16" rx="3" fill="url(#productGrad)" />
+    {/* Box opening flaps */}
+    <Path d="M5 13L16 6L27 13" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    {/* Inner crease */}
+    <Path d="M16 6V14" stroke="white" strokeWidth="1.5" strokeLinecap="round" opacity={0.6} />
+    {/* Shine */}
+    <Rect x="8" y="14" width="6" height="2" rx="1" fill="white" opacity={0.4} />
+  </Svg>
+);
+
+const JoinedStatIcon = ({ size = 32, color = '#43A047' }: { size?: number; color?: string }) => (
+  <Svg width={size} height={size} viewBox="0 0 32 32" fill="none">
+    <Defs>
+      <SvgLinearGradient id="calGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <Stop offset="0%" stopColor={color} stopOpacity={1} />
+        <Stop offset="100%" stopColor={color} stopOpacity={0.7} />
+      </SvgLinearGradient>
+    </Defs>
+    {/* Calendar body */}
+    <Rect x="5" y="8" width="22" height="19" rx="3" fill="url(#calGrad)" />
+    {/* Calendar top header */}
+    <Rect x="5" y="8" width="22" height="7" rx="3" fill={color} />
+    {/* Rings */}
+    <Rect x="10" y="5" width="2" height="6" rx="1" fill={color} />
+    <Rect x="20" y="5" width="2" height="6" rx="1" fill={color} />
+    {/* Calendar days - dots */}
+    <Circle cx="11" cy="20" r="1.5" fill="white" opacity={0.8} />
+    <Circle cx="16" cy="20" r="1.5" fill="white" opacity={0.8} />
+    <Circle cx="21" cy="20" r="1.5" fill="white" opacity={0.8} />
+    <Circle cx="11" cy="24" r="1.5" fill="white" opacity={0.5} />
+    <Circle cx="16" cy="24" r="1.5" fill="white" opacity={0.5} />
+    {/* Checkmark on active day */}
+    <Path d="M19 23L20.5 24.5L23 22" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
 
 // Badge type definitions
 interface FarmerBadge {
@@ -158,8 +205,29 @@ export default function FarmerProfileScreen({ navigation, route }: Props) {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* Profile Card */}
+        {/* Profile Card with SVG Background */}
         <View style={[styles.profileCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+          {/* SVG Background Decoration */}
+          <View style={styles.profileCardSvgBackground}>
+            <Svg width="100%" height="100%" viewBox="0 0 400 200" preserveAspectRatio="xMidYMid slice">
+              <Defs>
+                <SvgLinearGradient id="farmerProfileGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <Stop offset="0%" stopColor={colors.primary} stopOpacity={isDark ? 0.15 : 0.08} />
+                  <Stop offset="100%" stopColor={colors.primary} stopOpacity={isDark ? 0.08 : 0.03} />
+                </SvgLinearGradient>
+                <SvgLinearGradient id="farmerProfileGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <Stop offset="0%" stopColor="#34C759" stopOpacity={isDark ? 0.12 : 0.06} />
+                  <Stop offset="100%" stopColor={colors.primary} stopOpacity={isDark ? 0.06 : 0.02} />
+                </SvgLinearGradient>
+              </Defs>
+              <Circle cx="350" cy="30" r="80" fill="url(#farmerProfileGrad1)" />
+              <Circle cx="380" cy="100" r="50" fill="url(#farmerProfileGrad2)" />
+              <Circle cx="40" cy="150" r="60" fill="url(#farmerProfileGrad2)" />
+              <Circle cx="-20" cy="50" r="70" fill="url(#farmerProfileGrad1)" />
+              <Path d="M0,160 Q150,100 300,140 T400,120" fill="none" stroke="url(#farmerProfileGrad1)" strokeWidth="40" opacity={0.4} />
+            </Svg>
+          </View>
+          
           <View style={[styles.avatarContainer, { backgroundColor: isDark ? 'rgba(0, 122, 255, 0.15)' : '#E5F1FF' }]}>
             <MaterialCommunityIcons name="account-cowboy-hat" size={48} color={colors.primary} />
           </View>
@@ -174,7 +242,7 @@ export default function FarmerProfileScreen({ navigation, route }: Props) {
 
           {farmer?.rating != null && Number(farmer.rating) > 0 && (
             <View style={styles.ratingRow}>
-              <View style={[styles.ratingBadge, { backgroundColor: '#FFF8E1' }]}>
+              <View style={[styles.ratingBadge, { backgroundColor: isDark ? 'rgba(255, 184, 0, 0.2)' : '#FFF8E1' }]}>
                 <Ionicons name="star" size={14} color="#FFB800" />
                 <Text style={styles.ratingText}>{Number(farmer.rating).toFixed(1)}</Text>
               </View>
@@ -214,7 +282,7 @@ export default function FarmerProfileScreen({ navigation, route }: Props) {
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
               <View style={[styles.statIconContainer, { backgroundColor: isDark ? 'rgba(0, 122, 255, 0.15)' : '#E5F1FF' }]}>
-                <Ionicons name="cube" size={18} color={colors.primary} />
+                <ProductsStatIcon size={24} color={colors.primary} />
               </View>
               <View style={styles.statContent}>
                 <Text style={[styles.statValue, { color: colors.text }]}>{products.length}</Text>
@@ -223,8 +291,8 @@ export default function FarmerProfileScreen({ navigation, route }: Props) {
             </View>
             <View style={[styles.statSeparator, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(60, 60, 67, 0.12)' }]} />
             <View style={styles.statItem}>
-              <View style={[styles.statIconContainer, { backgroundColor: '#E8F5E9' }]}>
-                <Ionicons name="calendar" size={18} color="#43A047" />
+              <View style={[styles.statIconContainer, { backgroundColor: isDark ? 'rgba(67, 160, 71, 0.15)' : '#E8F5E9' }]}>
+                <JoinedStatIcon size={24} color="#43A047" />
               </View>
               <View style={styles.statContent}>
                 <Text style={[styles.statValue, { color: colors.text }]}>{formatJoinDate(farmer?.joinedDate)}</Text>
@@ -371,6 +439,14 @@ const styles = StyleSheet.create({
     paddingTop: 24,
     paddingBottom: 16,
     paddingHorizontal: 16,
+    overflow: 'hidden',
+  },
+  profileCardSvgBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   avatarContainer: {
     width: 88,
