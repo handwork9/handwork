@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, MoreThan, LessThan, ILike } from 'typeorm';
 import { User, Order, Product, Rider, Payment, DispatchLog, FarmerProfile, AuditLog, AppSettings, PlatformRevenue, FarmerSubscription, RiderSubscription } from '../database/entities';
@@ -8,6 +8,7 @@ import { FarmerSubscriptionStatus, FarmerSubscriptionTier } from '../database/en
 import { SubscriptionStatus as RiderSubscriptionStatus, SubscriptionTier as RiderSubscriptionTier } from '../database/entities/rider-subscription.entity';
 import { UserRole, OrderStatus, PaymentStatus, RiderStatus, FarmerApplicationStatus, RiderApplicationStatus, ProductApprovalStatus } from '../common/enums';
 import { EmailService } from '../email/email.service';
+import { NotificationsService, NotificationType } from '../notifications/notifications.service';
 
 // Default settings structure
 export interface SettingsData {
@@ -149,6 +150,7 @@ export class AdminService {
     @InjectRepository(RiderSubscription)
     private readonly riderSubscriptionRepository: Repository<RiderSubscription>,
     private readonly emailService: EmailService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   /**
@@ -2115,15 +2117,15 @@ export class AdminService {
     product.approvalStatus = ProductApprovalStatus.APPROVED;
     product.approvedAt = new Date();
     product.approvedById = adminId;
-    product.rejectionReason = null;
+    product.rejectionReason = null as any;
 
     const savedProduct = await this.productRepository.save(product);
 
     // Notify farmer
     if (product.farmer) {
-      await this.notificationsService.sendNotification({
+      await this.notificationsService.sendPushNotification({
         userId: product.farmerId,
-        type: NotificationType.IN_APP,
+        type: NotificationType.GENERAL,
         title: 'Product Approved ✅',
         body: `Your product "${product.title}" has been approved and is now visible to buyers.`,
         data: { productId: product.id },
@@ -2163,9 +2165,9 @@ export class AdminService {
 
     // Notify farmer
     if (product.farmer) {
-      await this.notificationsService.sendNotification({
+      await this.notificationsService.sendPushNotification({
         userId: product.farmerId,
-        type: NotificationType.IN_APP,
+        type: NotificationType.GENERAL,
         title: 'Product Rejected',
         body: `Your product "${product.title}" was not approved. Reason: ${reason}`,
         data: { productId: product.id },
