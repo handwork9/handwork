@@ -10,7 +10,7 @@ import { NotificationsService, NotificationType } from '../notifications/notific
 import { ContentModerationService } from '../admin/content-moderation.service';
 import { ContentType } from '../database/entities/content-moderation.entity';
 import { PriceAlertsService } from '../price-alerts/price-alerts.service';
-import { FarmerApplicationStatus } from '../common/enums';
+import { FarmerApplicationStatus, ProductApprovalStatus } from '../common/enums';
 
 // Low stock threshold - notify farmer when stock falls below this
 const LOW_STOCK_THRESHOLD = 10;
@@ -128,7 +128,8 @@ export class ProductsService {
       .createQueryBuilder('product')
       .leftJoinAndSelect('product.farmer', 'farmer')
       .where('product.isAvailable = :isAvailable', { isAvailable: true })
-      .andWhere('product.stock > 0');
+      .andWhere('product.stock > 0')
+      .andWhere('product.approvalStatus = :approvalStatus', { approvalStatus: ProductApprovalStatus.APPROVED });
 
     // Filter by state
     if (state) {

@@ -43,6 +43,9 @@ import {
   PlusOutlined,
   RocketOutlined,
   SafetyCertificateOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  ClockCircleOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 import { adminApi, normalizeImageUrl } from '@/lib/api';
@@ -64,6 +67,9 @@ interface Product {
   isAdminProduct?: boolean;
   promotionExpiresAt?: string;
   recommendationScore?: number;
+  approvalStatus?: 'pending' | 'approved' | 'rejected';
+  rejectionReason?: string;
+  approvedAt?: string;
   farmerId: string;
   farmerName?: string;
   farmerPhone?: string;
@@ -330,11 +336,14 @@ export default function ProductsPage() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [createFileList, setCreateFileList] = useState<UploadFile[]>([]);
   const [editFileList, setEditFileList] = useState<UploadFile[]>([]);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState('');
+  const [approvalFilter, setApprovalFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [form] = Form.useForm();
   const [createForm] = Form.useForm();
   const queryClient = useQueryClient();
@@ -652,6 +661,40 @@ export default function ProductsPage() {
     }
   };
 
+  // Handle product approval
+  const handleApproveProduct = async (product: Product) => {
+    try {
+      await adminApi.approveProduct(product.id);
+      message.success(`Product "${product.title}" approved successfully!`);
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+    } catch {
+      message.error('Failed to approve product');
+    }
+  };
+
+  // Handle product rejection
+  const handleRejectProduct = (product: Product) => {
+    setSelectedProduct(product);
+    setRejectModalOpen(true);
+  };
+
+  const submitRejection = async () => {
+    if (!selectedProduct || !rejectionReason.trim()) {
+      message.error('Please provide a rejection reason');
+      return;
+    }
+    try {
+      await adminApi.rejectProduct(selectedProduct.id, rejectionReason.trim());
+      message.success(`Product "${selectedProduct.title}" rejected`);
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      setRejectModalOpen(false);
+      setRejectionReason('');
+      setSelectedProduct(null);
+    } catch {
+      message.error('Failed to reject product');
+    }
+  };
+
   // Stats
   const totalProducts = data?.total || 0;
   const inStockProducts = products.filter(p => p.stock > 0).length;
@@ -660,6 +703,7 @@ export default function ProductsPage() {
   const promotedProducts = products.filter(p => p.isPromoted).length;
   const officialProducts = products.filter(p => p.isAdminProduct).length;
   const hiddenProducts = products.filter(p => !p.isAvailable).length;
+  const pendingApprovalProducts = products.filter(p => p.approvalStatus === 'pending').length;
 
   const columns: ColumnsType<Product> = [
     {
@@ -733,6 +777,52 @@ export default function ProductsPage() {
           />
         </Tooltip>
       ),
+    },
+    {
+      title: 'Approval',
+      dataIndex: 'approvalStatus',
+      key: 'approvalStatus',
+      width: 150,
+      render: (status: string, record: Product) => {
+        const statusConfig: Record<string, { color: string; icon: React.ReactNode; text: string }> = {
+          pending: { color: 'gold', icon: <ClockCircleOutlined />, text: 'Pending' },
+          approved: { color: 'green', icon: <CheckCircleOutlined />, text: 'Approved' },
+          rejected: { color: 'red', icon: <CloseCircleOutlined />, text: 'Rejected' },
+        };
+        const config = statusConfig[status || 'pending'] || statusConfig.pending;
+        return (
+          <Space direction="vertical" size="small">
+            <Tag color={config.color} icon={config.icon}>{config.text}</Tag>
+            {status === 'pending' && (
+              <Space size="small">
+                <Button 
+                  type="primary" 
+                  size="small" 
+                  icon={<CheckCircleOutlined />}
+                  onClick={() => handleApproveProduct(record)}
+                >
+                  Approve
+                </Button>
+                <Button 
+                  danger 
+                  size="small" 
+                  icon={<CloseCircleOutlined />}
+                  onClick={() => handleRejectProduct(record)}
+                >
+                  Reject
+                </Button>
+              </Space>
+            )}
+            {status === 'rejected' && record.rejectionReason && (
+              <Tooltip title={record.rejectionReason}>
+                <Text type="secondary" style={{ fontSize: 11, cursor: 'help' }}>
+                  View reason
+                </Text>
+              </Tooltip>
+            )}
+          </Space>
+        );
+      },
     },
     {
       title: 'Promotion',
@@ -849,6 +939,16 @@ export default function ProductsPage() {
               value={hiddenProducts} 
               prefix={<EyeInvisibleOutlined />}
               styles={{ content: { color: '#8c8c8c' } }}
+            />
+          </Card>
+        </Col>
+        <Col xs={12} sm={6} md={4}>
+          <Card size="small" style={{ borderColor: pendingApprovalProducts > 0 ? '#faad14' : undefined }}>
+            <Statistic 
+              title="Pending Approval" 
+              value={pendingApprovalProducts} 
+              prefix={<ClockCircleOutlined />}
+              styles={{ content: { color: '#faad14' } }}
             />
           </Card>
         </Col>
@@ -1345,6 +1445,40 @@ export default function ProductsPage() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Rejection Modal */}
+      <Modal
+        title="Reject Product"
+        open={rejectModalOpen}
+        onCancel={() => {
+          setRejectModalOpen(false);
+          setRejectionReason('');
+          setSelectedProduct(null);
+        }}
+        onOk={submitRejection}
+        okText="Reject Product"
+        okButtonProps={{ danger: true }}
+      >
+        <div style={{ marginBottom: 16 }}>
+          <Text>
+            You are about to reject the product: <strong>{selectedProduct?.title}</strong>
+          </Text>
+        </div>
+        <Form layout="vertical">
+          <Form.Item 
+            label="Rejection Reason" 
+            required
+            help="This will be sent to the farmer via email and in-app notification"
+          >
+            <Input.TextArea
+              rows={4}
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              placeholder="Please provide a clear reason for rejection (e.g., unclear images, misleading description, incorrect category, etc.)"
+            />
+          </Form.Item>
+        </Form>
       </Modal>
     </div>
   );

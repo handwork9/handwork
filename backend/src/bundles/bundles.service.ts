@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, MoreThanOrEqual, LessThanOrEqual, And } from 'typeorm';
 import { ProductBundle, BundleItem } from '../database/entities/product-bundle.entity';
 import { Product } from '../database/entities/product.entity';
+import { ProductApprovalStatus } from '../common/enums';
 
 export interface CreateBundleDto {
   title: string;
@@ -38,14 +39,14 @@ export class BundlesService {
    * Create a new product bundle
    */
   async createBundle(farmerId: string, dto: CreateBundleDto): Promise<ProductBundle> {
-    // Get all products for this bundle
+    // Get all products for this bundle (only approved products)
     const productIds = dto.items.map(item => item.productId);
     const products = await this.productRepository.find({
-      where: { id: In(productIds), farmerId },
+      where: { id: In(productIds), farmerId, approvalStatus: ProductApprovalStatus.APPROVED },
     });
 
     if (products.length !== productIds.length) {
-      throw new BadRequestException('Some products not found or do not belong to you');
+      throw new BadRequestException('Some products not found, not approved, or do not belong to you');
     }
 
     // Build bundle items with pricing
@@ -175,7 +176,7 @@ export class BundlesService {
     if (dto.items && dto.bundlePrice) {
       const productIds = dto.items.map(item => item.productId);
       const products = await this.productRepository.find({
-        where: { id: In(productIds), farmerId },
+        where: { id: In(productIds), farmerId, approvalStatus: ProductApprovalStatus.APPROVED },
       });
 
       const bundleItems: BundleItem[] = [];

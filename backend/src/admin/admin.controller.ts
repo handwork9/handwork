@@ -771,6 +771,54 @@ export class AdminController {
     return this.adminService.getAdminCuratedProducts(page, limit);
   }
 
+  // ==================== PRODUCT APPROVAL ENDPOINTS ====================
+
+  @Get('products/pending-approval')
+  @ApiOperation({ summary: 'Get all products pending approval' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiResponse({ status: 200, description: 'List of products pending approval' })
+  async getPendingApprovalProducts(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ): Promise<{ products: Product[]; total: number; pages: number }> {
+    return this.adminService.getPendingApprovalProducts(page, limit);
+  }
+
+  @Patch('products/:productId/approve')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Approve a product listing' })
+  @ApiParam({ name: 'productId', description: 'Product ID' })
+  @ApiResponse({ status: 200, description: 'Product approved successfully' })
+  async approveProduct(
+    @Param('productId') productId: string,
+    @CurrentUser() user: User,
+  ): Promise<Product> {
+    return this.adminService.approveProduct(productId, user.id);
+  }
+
+  @Patch('products/:productId/reject')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reject a product listing' })
+  @ApiParam({ name: 'productId', description: 'Product ID' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        reason: { type: 'string', description: 'Rejection reason' },
+      },
+      required: ['reason'],
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Product rejected successfully' })
+  async rejectProduct(
+    @Param('productId') productId: string,
+    @Body() data: { reason: string },
+    @CurrentUser() user: User,
+  ): Promise<Product> {
+    return this.adminService.rejectProduct(productId, data.reason, user.id);
+  }
+
   // ==================== PLATFORM REVENUE ENDPOINTS ====================
 
   @Get('revenue/dashboard')

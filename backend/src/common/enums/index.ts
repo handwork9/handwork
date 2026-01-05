@@ -109,3 +109,9 @@ export enum FarmerApplicationStatus {
   APPROVED = 'approved',
   REJECTED = 'rejected',
 }
+
+export enum ProductApprovalStatus {
+  PENDING = 'pending',
+  APPROVED = 'approved',
+  REJECTED = 'rejected',
+}

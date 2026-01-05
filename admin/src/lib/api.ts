@@ -253,6 +253,14 @@ export const adminApi = {
   getAdminCuratedProducts: (params?: { page?: number; limit?: number }) =>
     api.get('/admin/products/admin-products', { params }),
   
+  // Product Approval Management
+  getPendingApprovalProducts: (params?: { page?: number; limit?: number }) =>
+    api.get('/admin/products/pending-approval', { params }),
+  approveProduct: (productId: string) =>
+    api.patch(`/admin/products/${productId}/approve`),
+  rejectProduct: (productId: string, reason: string) =>
+    api.patch(`/admin/products/${productId}/reject`, { reason }),
+  
   // Farmers dropdown for product creation
   getFarmersForDropdown: () => api.get('/admin/farmers/dropdown'),
   

@@ -2717,4 +2717,115 @@ export class EmailService {
       text: `Your rider application was not approved. Reason: ${details.reason}. You can update your profile and reapply.`,
     });
   }
+
+  /**
+   * Send product approval email to farmer
+   */
+  async sendProductApprovalEmail(email: string, farmerName: string, productTitle: string): Promise<boolean> {
+    if (!email) {
+      this.logger.warn(`Cannot send product approval email - no email provided`);
+      return false;
+    }
+
+    const content = `
+      <p class="greeting">Hi ${farmerName}! 🎉</p>
+      <h1 class="main-title">✅ Your Product Has Been Approved!</h1>
+      <p class="subtitle">Great news! Your product listing has been reviewed and approved. It is now visible to buyers on Handwork.</p>
+      
+      <div class="highlight-box success">
+        <strong style="font-size: 16px;">🛍️ Product Now Live</strong><br>
+        <span style="color: #166534;">"${productTitle}" is now available for purchase!</span>
+      </div>
+
+      <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 24px 0;">
+        <div class="info-row">
+          <span class="info-label">Product</span>
+          <span class="info-value">${productTitle}</span>
+        </div>
+        <div class="info-row" style="border-bottom: none;">
+          <span class="info-label">Status</span>
+          <span class="info-value" style="color: #16a34a; font-weight: 600;">✅ APPROVED</span>
+        </div>
+      </div>
+
+      <h3 style="font-size: 16px; font-weight: 600; color: #1a1a2e; margin: 24px 0 12px;">💡 Tips to Boost Sales:</h3>
+      <ul style="color: #4b5563; font-size: 14px; padding-left: 20px; line-height: 2;">
+        <li><strong>Add More Photos</strong> - Products with 3+ images sell faster</li>
+        <li><strong>Keep Stock Updated</strong> - Avoid disappointing customers</li>
+        <li><strong>Respond Quickly</strong> - Fast response times improve ratings</li>
+        <li><strong>Consider Promotions</strong> - Boost visibility with promotional features</li>
+      </ul>
+
+      <div style="text-align: center; margin-top: 24px;">
+        <a href="https://handwork.ng" class="cta-button">View Your Product</a>
+      </div>
+      
+      <p style="color: #6b7280; font-size: 13px; margin-top: 24px; text-align: center;">Keep up the great work! Your customers are waiting.</p>
+    `;
+
+    const html = this.wrapInTemplate(content, 'Product Approved!');
+
+    return this.sendEmail({
+      to: email,
+      subject: `✅ Product Approved - "${productTitle}" is Now Live!`,
+      html,
+      text: `Great news! Your product "${productTitle}" has been approved and is now visible to buyers on Handwork.`,
+    });
+  }
+
+  /**
+   * Send product rejection email to farmer
+   */
+  async sendProductRejectionEmail(email: string, farmerName: string, productTitle: string, reason: string): Promise<boolean> {
+    if (!email) {
+      this.logger.warn(`Cannot send product rejection email - no email provided`);
+      return false;
+    }
+
+    const content = `
+      <p class="greeting">Hi ${farmerName},</p>
+      <h1 class="main-title">Product Listing Update</h1>
+      <p class="subtitle">We've reviewed your product listing and unfortunately it could not be approved at this time.</p>
+      
+      <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 24px 0;">
+        <div class="info-row">
+          <span class="info-label">Product</span>
+          <span class="info-value">${productTitle}</span>
+        </div>
+        <div class="info-row" style="border-bottom: none;">
+          <span class="info-label">Status</span>
+          <span class="info-value" style="color: #dc2626; font-weight: 600;">❌ NOT APPROVED</span>
+        </div>
+      </div>
+
+      <div class="highlight-box warning">
+        <strong style="font-size: 16px;">📝 Reason:</strong><br>
+        <span style="color: #92400e;">${reason}</span>
+      </div>
+
+      <h3 style="font-size: 16px; font-weight: 600; color: #1a1a2e; margin: 24px 0 12px;">How to Fix This:</h3>
+      <ul style="color: #4b5563; font-size: 14px; padding-left: 20px; line-height: 2;">
+        <li>Review the reason above for specific issues</li>
+        <li>Update your product listing with the necessary changes</li>
+        <li>Ensure photos are clear and show the actual product</li>
+        <li>Make sure the description is accurate and complete</li>
+        <li>Check that pricing is reasonable and competitive</li>
+      </ul>
+
+      <div style="text-align: center; margin-top: 24px;">
+        <a href="https://handwork.ng" class="cta-button" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">Edit Product</a>
+      </div>
+      
+      <p style="color: #6b7280; font-size: 13px; margin-top: 24px; text-align: center;">Questions? Contact us at support@handwork.ng</p>
+    `;
+
+    const html = this.wrapInTemplate(content, 'Product Update');
+
+    return this.sendEmail({
+      to: email,
+      subject: `Product Listing Update - "${productTitle}"`,
+      html,
+      text: `Your product "${productTitle}" was not approved. Reason: ${reason}. Please update your listing and try again.`,
+    });
+  }
 }

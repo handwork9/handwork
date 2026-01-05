@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, Not, IsNull } from 'typeorm';
 import { Product, User, Order, UserPreference, Favorite } from '../database/entities';
+import { ProductApprovalStatus } from '../common/enums';
 
 export interface RecommendedProduct extends Product {
   recommendationReason?: string;
@@ -177,7 +178,8 @@ export class RecommendationService {
       .createQueryBuilder('product')
       .leftJoinAndSelect('product.farmer', 'farmer')
       .where('product.isAvailable = :isAvailable', { isAvailable: true })
-      .andWhere('product.stock > 0');
+      .andWhere('product.stock > 0')
+      .andWhere('product.approvalStatus = :approvalStatus', { approvalStatus: ProductApprovalStatus.APPROVED });
 
     if (state) {
       qb.andWhere('LOWER(product.pickupState) = LOWER(:state)', { state });
@@ -364,6 +366,7 @@ export class RecommendationService {
         where: {
           id: In(sortedProductIds),
           isAvailable: true,
+          approvalStatus: ProductApprovalStatus.APPROVED,
         },
         relations: ['farmer'],
       });

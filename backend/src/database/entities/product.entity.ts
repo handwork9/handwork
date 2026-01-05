@@ -8,7 +8,7 @@ import {
   JoinColumn,
   Index,
 } from 'typeorm';
-import { ProductCategory } from '../../common/enums';
+import { ProductCategory, ProductApprovalStatus } from '../../common/enums';
 import { User } from './user.entity';
 
 @Entity('products')
@@ -74,6 +74,23 @@ export class Product {
 
   @Column({ default: true })
   isAvailable: boolean;
+
+  @Column({
+    type: 'enum',
+    enum: ProductApprovalStatus,
+    default: ProductApprovalStatus.PENDING,
+  })
+  @Index()
+  approvalStatus: ProductApprovalStatus;
+
+  @Column({ type: 'text', nullable: true })
+  rejectionReason: string;
+
+  @Column({ type: 'timestamp', nullable: true })
+  approvedAt: Date;
+
+  @Column({ type: 'uuid', nullable: true })
+  approvedById: string;
 
   @Column({ default: false })
   isOrganic: boolean;

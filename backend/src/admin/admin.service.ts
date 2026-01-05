@@ -6,7 +6,7 @@ import { AuditAction, AuditCategory } from '../database/entities/audit-log.entit
 import { RevenueType, RevenueStatus } from '../database/entities/platform-revenue.entity';
 import { FarmerSubscriptionStatus, FarmerSubscriptionTier } from '../database/entities/farmer-subscription.entity';
 import { SubscriptionStatus as RiderSubscriptionStatus, SubscriptionTier as RiderSubscriptionTier } from '../database/entities/rider-subscription.entity';
-import { UserRole, OrderStatus, PaymentStatus, RiderStatus, FarmerApplicationStatus, RiderApplicationStatus } from '../common/enums';
+import { UserRole, OrderStatus, PaymentStatus, RiderStatus, FarmerApplicationStatus, RiderApplicationStatus, ProductApprovalStatus } from '../common/enums';
 import { EmailService } from '../email/email.service';
 
 // Default settings structure
@@ -2076,6 +2076,113 @@ export class AdminService {
       total,
       pages: Math.ceil(total / limit),
     };
+  }
+
+  // ==================== PRODUCT APPROVAL MANAGEMENT ====================
+
+  /**
+   * Get all products pending approval
+   */
+  async getPendingApprovalProducts(page = 1, limit = 20): Promise<{ products: Product[]; total: number; pages: number }> {
+    const [products, total] = await this.productRepository.findAndCount({
+      where: { approvalStatus: ProductApprovalStatus.PENDING },
+      relations: ['farmer'],
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    return {
+      products,
+      total,
+      pages: Math.ceil(total / limit),
+    };
+  }
+
+  /**
+   * Approve a product listing
+   */
+  async approveProduct(productId: string, adminId: string): Promise<Product> {
+    const product = await this.productRepository.findOne({ 
+      where: { id: productId },
+      relations: ['farmer'],
+    });
+
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    product.approvalStatus = ProductApprovalStatus.APPROVED;
+    product.approvedAt = new Date();
+    product.approvedById = adminId;
+    product.rejectionReason = null;
+
+    const savedProduct = await this.productRepository.save(product);
+
+    // Notify farmer
+    if (product.farmer) {
+      await this.notificationsService.sendNotification({
+        userId: product.farmerId,
+        type: NotificationType.IN_APP,
+        title: 'Product Approved ✅',
+        body: `Your product "${product.title}" has been approved and is now visible to buyers.`,
+        data: { productId: product.id },
+      });
+
+      // Send email notification
+      if (product.farmer.email) {
+        await this.emailService.sendProductApprovalEmail(
+          product.farmer.email,
+          product.farmer.name || 'Farmer',
+          product.title,
+        );
+      }
+    }
+
+    return savedProduct;
+  }
+
+  /**
+   * Reject a product listing
+   */
+  async rejectProduct(productId: string, reason: string, adminId: string): Promise<Product> {
+    const product = await this.productRepository.findOne({ 
+      where: { id: productId },
+      relations: ['farmer'],
+    });
+
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    product.approvalStatus = ProductApprovalStatus.REJECTED;
+    product.rejectionReason = reason;
+    product.isAvailable = false;
+
+    const savedProduct = await this.productRepository.save(product);
+
+    // Notify farmer
+    if (product.farmer) {
+      await this.notificationsService.sendNotification({
+        userId: product.farmerId,
+        type: NotificationType.IN_APP,
+        title: 'Product Rejected',
+        body: `Your product "${product.title}" was not approved. Reason: ${reason}`,
+        data: { productId: product.id },
+      });
+
+      // Send email notification
+      if (product.farmer.email) {
+        await this.emailService.sendProductRejectionEmail(
+          product.farmer.email,
+          product.farmer.name || 'Farmer',
+          product.title,
+          reason,
+        );
+      }
+    }
+
+    return savedProduct;
   }
 
   // ==================== SUBSCRIPTION MANAGEMENT ====================
