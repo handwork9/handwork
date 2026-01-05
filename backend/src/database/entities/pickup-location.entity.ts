@@ -68,10 +68,10 @@ export class PickupLocation {
   @Index()
   state: string;
 
-  @Column({ type: 'decimal', precision: 10, scale: 7 })
+  @Column({ type: 'decimal', precision: 12, scale: 8 })
   latitude: number;
 
-  @Column({ type: 'decimal', precision: 10, scale: 7 })
+  @Column({ type: 'decimal', precision: 12, scale: 8 })
   longitude: number;
 
   @Column({ nullable: true })

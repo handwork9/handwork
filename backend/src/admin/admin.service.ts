@@ -1199,8 +1199,11 @@ export class AdminService {
       throw new Error('User not found');
     }
 
+    // Admin roles that can create products
+    const adminRoles = [UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.OPERATIONS, UserRole.FINANCE, UserRole.SUPPORT];
+    
     // Only allow farmers or admins to create products
-    if (farmer.role !== UserRole.FARMER && farmer.role !== UserRole.ADMIN) {
+    if (farmer.role !== UserRole.FARMER && !adminRoles.includes(farmer.role)) {
       throw new Error('Only farmers or admins can create products');
     }
 

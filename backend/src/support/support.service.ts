@@ -380,15 +380,15 @@ export class SupportService {
     // Calculate average response time from first agent response
     const responseTimeResult = await this.messageRepository
       .createQueryBuilder('msg')
-      .innerJoin('support_tickets', 'ticket', 'ticket.id = msg.ticketId')
-      .select('AVG(EXTRACT(EPOCH FROM (msg.createdAt - ticket.createdAt)) / 60)', 'avgMinutes')
-      .where('msg.senderType = :agentType', { agentType: MessageSender.AGENT })
+      .innerJoin('support_tickets', 'ticket', 'ticket.id = msg."ticketId"')
+      .select('AVG(EXTRACT(EPOCH FROM (msg."createdAt" - ticket."createdAt")) / 60)', 'avgMinutes')
+      .where('msg."senderType" = :agentType', { agentType: MessageSender.AGENT })
       .andWhere(
         `msg.id = (
           SELECT m2.id FROM support_messages m2 
-          WHERE m2.ticketId = msg.ticketId 
-          AND m2.senderType = :agentType 
-          ORDER BY m2.createdAt ASC 
+          WHERE m2."ticketId" = msg."ticketId" 
+          AND m2."senderType" = :agentType 
+          ORDER BY m2."createdAt" ASC 
           LIMIT 1
         )`,
         { agentType: MessageSender.AGENT }
