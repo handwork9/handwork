@@ -22,7 +22,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useMutation } from '@tanstack/react-query';
 import { useFocusEffect } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BuyerStackParamList, DeliveryType, DeliveryMethod, DeliverySpeed, DeliveryTimeSlot, PickupLocationOption } from '../../types';
 import { Button, TextInput } from '../../components/common';
@@ -45,6 +44,29 @@ import CouponInput from '../../components/cart/CouponInput';
 import { Coupon, CouponValidationResult } from '../../services/couponService';
 import DeliveryOptions from '../../components/checkout/DeliveryOptions';
 import deliverySchedulingService, { DeliverySlot } from '../../services/deliverySchedulingService';
+import {
+  ChevronBackIcon,
+  ChevronForwardIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
+  LockClosedIcon,
+  CheckmarkIcon,
+  CheckmarkCircleIcon,
+  CheckmarkCircleOutlineIcon,
+  CubeOutlineIcon,
+  LocationOutlineIcon,
+  GiftOutlineIcon,
+  WalletIcon,
+  CardIcon,
+  PeopleIcon,
+  ArrowForwardIcon,
+  LinkIcon,
+  ShareOutlineIcon,
+  CopyOutlineIcon,
+  BagCheckIcon,
+  TimeOutlineIcon,
+  AddCircleOutlineIcon,
+} from '../../assets/icons';
 
 type Props = NativeStackScreenProps<BuyerStackParamList, 'Checkout'>;
 
@@ -119,11 +141,11 @@ const Section: React.FC<SectionProps> = ({
             )}
           </View>
           {collapsible && (
-            <Ionicons
-              name={expanded ? 'chevron-up' : 'chevron-down'}
-              size={16}
-              color={colors.textSecondary}
-            />
+            expanded ? (
+              <ChevronUpIcon size={16} color={colors.textSecondary} />
+            ) : (
+              <ChevronDownIcon size={16} color={colors.textSecondary} />
+            )
           )}
         </TouchableOpacity>
       )}
@@ -148,8 +170,7 @@ interface RowItemProps {
   subtitle?: string;
   valueColor?: string;
   onPress?: () => void;
-  leftIcon?: keyof typeof Ionicons.glyphMap;
-  leftIconColor?: string;
+  leftIconElement?: React.ReactNode;
   rightElement?: React.ReactNode;
   showChevron?: boolean;
   isLast?: boolean;
@@ -163,8 +184,7 @@ const RowItem: React.FC<RowItemProps> = ({
   subtitle,
   valueColor,
   onPress,
-  leftIcon,
-  leftIconColor,
+  leftIconElement,
   rightElement,
   showChevron = true,
   isLast = false,
@@ -180,8 +200,8 @@ const RowItem: React.FC<RowItemProps> = ({
     activeOpacity={onPress ? 0.6 : 1}
     disabled={!onPress}
   >
-    {leftIcon && (
-      <Ionicons name={leftIcon} size={20} color={leftIconColor || colors.primary} style={styles.iosRowIcon} />
+    {leftIconElement && (
+      <View style={styles.iosRowIcon}>{leftIconElement}</View>
     )}
     <View style={styles.iosRowContent}>
       <Text style={[styles.iosRowLabel, { color: colors.text }]} numberOfLines={1}>{label}</Text>
@@ -189,7 +209,7 @@ const RowItem: React.FC<RowItemProps> = ({
     </View>
     {value && <Text style={[styles.iosRowValue, { color: valueColor || colors.textSecondary }]} numberOfLines={1}>{value}</Text>}
     {rightElement}
-    {showChevron && onPress && <Ionicons name="chevron-forward" size={18} color={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(60,60,67,0.3)'} style={{ marginLeft: 2 }} />}
+    {showChevron && onPress && <View style={{ marginLeft: 2 }}><ChevronForwardIcon size={18} color={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(60,60,67,0.3)'} /></View>}
   </TouchableOpacity>
 );
 
@@ -210,7 +230,7 @@ const CheckoutProgress: React.FC<{ currentStep: number; colors: any; isDark: boo
                 isActive && { backgroundColor: colors.primary },
                 !isActive && { backgroundColor: isDark ? 'rgba(255,255,255,0.2)' : '#E5E5EA' },
               ]}>
-                {isComplete && <Ionicons name="checkmark" size={10} color="#FFFFFF" />}
+                {isComplete && <CheckmarkIcon size={10} color="#FFFFFF" />}
               </View>
               <Text style={[
                 styles.iosProgressLabel,
@@ -245,7 +265,7 @@ const OrderItemPreview: React.FC<{ items: any[]; colors: any; isDark: boolean; t
               <Image source={{ uri: item.product.images[0] }} style={styles.iosOrderImage} resizeMode="cover" />
             ) : (
               <View style={[styles.iosOrderImagePlaceholder, { backgroundColor: isDark ? colors.surface : '#F2F2F7' }]}>
-                <Ionicons name="cube-outline" size={14} color={colors.textSecondary} />
+                <CubeOutlineIcon size={14} color={colors.textSecondary} />
               </View>
             )}
             {item.quantity > 1 && (
@@ -1157,11 +1177,11 @@ export default function CheckoutScreen({ navigation }: Props) {
       {/* iOS-style Header */}
       <View style={[styles.iosHeader, { paddingTop: insets.top, backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iosHeaderBtn}>
-          <Ionicons name="chevron-back" size={28} color={colors.primary} />
+          <ChevronBackIcon size={28} color={colors.primary} />
         </TouchableOpacity>
         <Text style={[styles.iosHeaderTitle, { color: colors.text }]}>Checkout</Text>
         <View style={styles.iosHeaderBtn}>
-          <Ionicons name="lock-closed" size={18} color={colors.textSecondary} />
+          <LockClosedIcon size={18} color={colors.textSecondary} />
         </View>
       </View>
 
@@ -1189,8 +1209,7 @@ export default function CheckoutScreen({ navigation }: Props) {
           <RowItem
             label={selectedAddress?.addressLine1 || user?.address || 'Add delivery address'}
             subtitle={selectedAddress ? `${selectedAddress.city}, ${selectedAddress.state}` : (user?.city ? `${user.city}, ${user.state}` : 'Tap to select')}
-            leftIcon="location-outline"
-            leftIconColor={addressError ? '#EF4444' : colors.primary}
+            leftIconElement={<LocationOutlineIcon size={20} color={addressError ? '#EF4444' : colors.primary} />}
             onPress={() => { setAddressError(false); setShowAddressPicker(true); }}
             colors={colors}
             isDark={isDark}
@@ -1222,7 +1241,7 @@ export default function CheckoutScreen({ navigation }: Props) {
             <RowItem
               label={selectedSlot?.name || 'Select time slot'}
               subtitle={selectedSlot ? selectedSlot.displayTime : 'Choose delivery window'}
-              leftIcon="time-outline"
+              leftIconElement={<TimeOutlineIcon size={20} color={colors.textSecondary} />}
               onPress={() => setShowTimeSlotModal(true)}
               colors={colors}
               isDark={isDark}
@@ -1235,7 +1254,7 @@ export default function CheckoutScreen({ navigation }: Props) {
             onPress={() => setIsGift(!isGift)}
             activeOpacity={0.6}
           >
-            <Ionicons name="gift-outline" size={20} color="#E91E63" style={styles.iosRowIcon} />
+            <View style={styles.iosRowIcon}><GiftOutlineIcon size={20} color="#E91E63" /></View>
             <View style={styles.iosRowContent}>
               <Text style={[styles.iosRowLabel, { color: colors.text }]}>Send as Gift</Text>
             </View>
@@ -1319,7 +1338,7 @@ export default function CheckoutScreen({ navigation }: Props) {
             activeOpacity={0.6}
           >
             <View style={[styles.iosPaymentIcon, { backgroundColor: '#E8F5E9' }]}>
-              <Ionicons name="wallet" size={18} color="#43A047" />
+              <WalletIcon size={18} color="#43A047" />
             </View>
             <View style={styles.iosRowContent}>
               <Text style={[styles.iosRowLabel, { color: colors.text }]}>Wallet</Text>
@@ -1343,7 +1362,7 @@ export default function CheckoutScreen({ navigation }: Props) {
             activeOpacity={0.6}
           >
             <View style={[styles.iosPaymentIcon, { backgroundColor: '#E3F2FD' }]}>
-              <Ionicons name="card" size={18} color="#1976D2" />
+              <CardIcon size={18} color="#1976D2" />
             </View>
             <View style={styles.iosRowContent}>
               <Text style={[styles.iosRowLabel, { color: colors.text }]}>
@@ -1363,7 +1382,7 @@ export default function CheckoutScreen({ navigation }: Props) {
             activeOpacity={0.6}
           >
             <View style={[styles.iosPaymentIcon, { backgroundColor: '#FFF3E0' }]}>
-              <Ionicons name="people" size={18} color="#FF6B00" />
+              <PeopleIcon size={18} color="#FF6B00" />
             </View>
             <View style={styles.iosRowContent}>
               <Text style={[styles.iosRowLabel, { color: colors.text }]}>Pay for Me</Text>
@@ -1381,7 +1400,7 @@ export default function CheckoutScreen({ navigation }: Props) {
               onPress={() => navigation.navigate('TopUp' as any)}
             >
               <Text style={[styles.iosTopUpText, { color: colors.primary }]}>Top up wallet</Text>
-              <Ionicons name="arrow-forward" size={16} color={colors.primary} />
+              <ArrowForwardIcon size={16} color={colors.primary} />
             </TouchableOpacity>
           )}
         </Section>
@@ -1635,7 +1654,7 @@ export default function CheckoutScreen({ navigation }: Props) {
               {payForMeStatus === 'pending' && (
                 <>
                   <View style={[styles.iosSuccessIcon, { backgroundColor: '#E5F1FF' }]}>
-                    <Ionicons name="link" size={40} color={colors.primary} />
+                    <LinkIcon size={40} color={colors.primary} />
                   </View>
                   <Text style={[styles.iosSuccessTitle, { color: colors.text }]}>Link Ready!</Text>
                   <Text style={[styles.iosSuccessDesc, { color: colors.textSecondary }]}>
@@ -1646,14 +1665,14 @@ export default function CheckoutScreen({ navigation }: Props) {
                       style={[styles.iosActionBtn, { backgroundColor: colors.primary }]}
                       onPress={handleSharePayForMeLink}
                     >
-                      <Ionicons name="share-outline" size={20} color="#FFFFFF" />
+                      <ShareOutlineIcon size={20} color="#FFFFFF" />
                       <Text style={styles.iosActionBtnText}>Share</Text>
                     </TouchableOpacity>
                     <TouchableOpacity 
                       style={[styles.iosActionBtn, { backgroundColor: isDark ? colors.surface : '#F2F2F7' }]}
                       onPress={handleCopyPayForMeLink}
                     >
-                      <Ionicons name="copy-outline" size={20} color={colors.text} />
+                      <CopyOutlineIcon size={20} color={colors.text} />
                       <Text style={[styles.iosActionBtnText, { color: colors.text }]}>Copy</Text>
                     </TouchableOpacity>
                   </View>
@@ -1666,7 +1685,7 @@ export default function CheckoutScreen({ navigation }: Props) {
               {payForMeStatus === 'paid' && (
                 <>
                   <View style={[styles.iosSuccessIcon, { backgroundColor: '#E8F5E9' }]}>
-                    <Ionicons name="checkmark-circle" size={40} color="#43A047" />
+                    <CheckmarkCircleIcon size={40} color="#43A047" />
                   </View>
                   <Text style={[styles.iosSuccessTitle, { color: colors.text }]}>Paid! 🎉</Text>
                   <Text style={[styles.iosSuccessDesc, { color: colors.textSecondary }]}>Creating order...</Text>
@@ -1676,7 +1695,7 @@ export default function CheckoutScreen({ navigation }: Props) {
               {payForMeStatus === 'completed' && (
                 <>
                   <View style={[styles.iosSuccessIcon, { backgroundColor: '#E8F5E9' }]}>
-                    <Ionicons name="bag-check" size={40} color="#43A047" />
+                    <BagCheckIcon size={40} color="#43A047" />
                   </View>
                   <Text style={[styles.iosSuccessTitle, { color: colors.text }]}>Order Placed!</Text>
                   <Button
@@ -1766,7 +1785,7 @@ export default function CheckoutScreen({ navigation }: Props) {
                         </View>
                         {slot.isAvailable ? (
                           selectedSlot?.id === slot.id ? (
-                            <Ionicons name="checkmark-circle-outline" size={24} color={colors.primary} />
+                            <CheckmarkCircleOutlineIcon size={24} color={colors.primary} />
                           ) : (
                             <Text style={[styles.iosSlotCapacity, { color: '#34C759' }]}>{slot.availableCapacity} left</Text>
                           )
@@ -1780,7 +1799,7 @@ export default function CheckoutScreen({ navigation }: Props) {
               </>
             ) : (
               <View style={styles.iosEmptyState}>
-                <Ionicons name="time-outline" size={48} color={colors.textSecondary} />
+                <TimeOutlineIcon size={48} color={colors.textSecondary} />
                 <Text style={[styles.iosEmptyText, { color: colors.textSecondary }]}>No slots available</Text>
               </View>
             )}
@@ -1807,7 +1826,7 @@ export default function CheckoutScreen({ navigation }: Props) {
           <ScrollView style={styles.iosModalContent}>
             {allAddresses.length === 0 ? (
               <View style={styles.iosEmptyState}>
-                <Ionicons name="location-outline" size={48} color={colors.textSecondary} />
+                <LocationOutlineIcon size={48} color={colors.textSecondary} />
                 <Text style={[styles.iosEmptyText, { color: colors.textSecondary }]}>No saved addresses</Text>
                 <Button
                   title="Add Address"
@@ -1841,7 +1860,7 @@ export default function CheckoutScreen({ navigation }: Props) {
                       </Text>
                     </View>
                     {selectedAddress?.id === address.id && (
-                      <Ionicons name="checkmark-circle" size={24} color={colors.primary} />
+                      <CheckmarkCircleIcon size={24} color={colors.primary} />
                     )}
                   </TouchableOpacity>
                 ))}
@@ -1852,7 +1871,7 @@ export default function CheckoutScreen({ navigation }: Props) {
                 style={styles.iosAddNewBtn}
                 onPress={() => { setShowAddressPicker(false); navigation.navigate('MyAddress' as any); }}
               >
-                <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
+                <AddCircleOutlineIcon size={20} color={colors.primary} />
                 <Text style={[styles.iosAddNewText, { color: colors.primary }]}>Add New Address</Text>
               </TouchableOpacity>
             )}

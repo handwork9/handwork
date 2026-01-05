@@ -926,26 +926,26 @@ export default function EarningsScreen() {
                   </View>
                   <Text style={[styles.sheetTipsTitle, { color: '#10B981' }]}>Pro Tips to Earn More</Text>
                 </View>
-                <View style={styles.tipsList}>
-                  <View style={styles.tipItem}>
+                <View style={styles.sheetTipsList}>
+                  <View style={styles.sheetTipItem}>
                     <Text style={styles.tipBullet}>⭐</Text>
                     <Text style={[styles.sheetTipText, { color: colors.text }]}>
                       Maintain 4.5+ rating for priority job access
                     </Text>
                   </View>
-                  <View style={styles.tipItem}>
+                  <View style={styles.sheetTipItem}>
                     <Text style={styles.tipBullet}>🔥</Text>
                     <Text style={[styles.sheetTipText, { color: colors.text }]}>
                       7+ day streaks unlock bonus rewards
                     </Text>
                   </View>
-                  <View style={styles.tipItem}>
+                  <View style={styles.sheetTipItem}>
                     <Text style={styles.tipBullet}>✅</Text>
                     <Text style={[styles.sheetTipText, { color: colors.text }]}>
                       High completion rate = more job offers
                     </Text>
                   </View>
-                  <View style={styles.tipItem}>
+                  <View style={styles.sheetTipItem}>
                     <Text style={styles.tipBullet}>📍</Text>
                     <Text style={[styles.sheetTipText, { color: colors.text }]}>
                       Position yourself in high-demand areas
@@ -1660,10 +1660,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontFamily: FONTS.semiBold,
   },
-  tipsList: {
+  sheetTipsList: {
     gap: SPACING.sm,
   },
-  tipItem: {
+  sheetTipItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: SPACING.sm,

@@ -2286,4 +2286,435 @@ export class EmailService {
     this.logger.log(`📧 Bulk promotional email completed: ${sent} sent, ${failed} failed`);
     return { sent, failed };
   }
+
+  /**
+   * Send farmer application submitted email
+   */
+  async sendFarmerApplicationSubmittedEmail(user: User, farmDetails: {
+    farmName: string;
+    farmType?: string;
+    primaryProducts?: string;
+  }): Promise<boolean> {
+    if (!user.email) {
+      this.logger.warn(`Cannot send farmer application email - user ${user.id} has no email`);
+      return false;
+    }
+
+    const submittedDate = new Date().toLocaleString('en-NG', {
+      dateStyle: 'long',
+      timeStyle: 'short',
+    });
+
+    const content = `
+      <p class="greeting">Hi ${user.name || 'there'},</p>
+      <h1 class="main-title">🌾 Farmer Application Received!</h1>
+      <p class="subtitle">Thank you for applying to become a farmer on Handwork. We're excited to have you join our community!</p>
+      
+      <div class="highlight-box info">
+        <strong style="font-size: 16px;">Application Details</strong>
+      </div>
+
+      <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 24px 0;">
+        <div class="info-row">
+          <span class="info-label">Farm Name</span>
+          <span class="info-value">${farmDetails.farmName || 'Not specified'}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Farm Type</span>
+          <span class="info-value">${farmDetails.farmType || 'Not specified'}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Primary Products</span>
+          <span class="info-value">${farmDetails.primaryProducts || 'Not specified'}</span>
+        </div>
+        <div class="info-row" style="border-bottom: none;">
+          <span class="info-label">Submitted On</span>
+          <span class="info-value">${submittedDate}</span>
+        </div>
+      </div>
+
+      <div class="highlight-box warning">
+        <strong style="font-size: 16px;">⏳ What Happens Next?</strong><br>
+        <span style="color: #92400e;">Our team will review your application within 24-48 hours. You'll receive an email once your application is approved.</span>
+      </div>
+
+      <h3 style="font-size: 16px; font-weight: 600; color: #1a1a2e; margin: 24px 0 12px;">While You Wait:</h3>
+      <ul style="color: #4b5563; font-size: 14px; padding-left: 20px; line-height: 2;">
+        <li>Prepare high-quality photos of your products</li>
+        <li>Plan your product pricing and descriptions</li>
+        <li>Set up your bank account for withdrawals</li>
+        <li>Familiarize yourself with the seller guidelines</li>
+      </ul>
+      
+      <p style="color: #6b7280; font-size: 13px; margin-top: 24px; text-align: center;">Questions? Contact us at support@handwork.ng</p>
+    `;
+
+    const html = this.wrapInTemplate(content, 'Application Received');
+
+    return this.sendEmail({
+      to: user.email,
+      subject: `🌾 Farmer Application Received - ${farmDetails.farmName}`,
+      html,
+      text: `Your farmer application for ${farmDetails.farmName} has been received. Our team will review it within 24-48 hours.`,
+    });
+  }
+
+  /**
+   * Send farmer application approved email
+   */
+  async sendFarmerApprovalEmail(user: User, farmDetails: {
+    farmName: string;
+    approvedAt: Date;
+  }): Promise<boolean> {
+    if (!user.email) {
+      this.logger.warn(`Cannot send farmer approval email - user ${user.id} has no email`);
+      return false;
+    }
+
+    const approvalDate = farmDetails.approvedAt.toLocaleString('en-NG', {
+      dateStyle: 'long',
+      timeStyle: 'short',
+    });
+
+    const content = `
+      <p class="greeting">Congratulations ${user.name || 'there'}! 🎉</p>
+      <h1 class="main-title">✅ Your Farmer Application is Approved!</h1>
+      <p class="subtitle">Great news! Your application to become a farmer on Handwork has been approved. You can now start listing your products and reaching thousands of buyers!</p>
+      
+      <div class="highlight-box success">
+        <strong style="font-size: 16px;">🎊 Welcome to Handwork Farmers!</strong><br>
+        <span style="color: #166534;">You're now part of our growing community of verified farmers.</span>
+      </div>
+
+      <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 24px 0;">
+        <div class="info-row">
+          <span class="info-label">Farm Name</span>
+          <span class="info-value">${farmDetails.farmName}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Status</span>
+          <span class="info-value" style="color: #16a34a; font-weight: 600;">✅ APPROVED</span>
+        </div>
+        <div class="info-row" style="border-bottom: none;">
+          <span class="info-label">Approved On</span>
+          <span class="info-value">${approvalDate}</span>
+        </div>
+      </div>
+
+      <h3 style="font-size: 16px; font-weight: 600; color: #1a1a2e; margin: 24px 0 12px;">🚀 Get Started Now:</h3>
+      <ul style="color: #4b5563; font-size: 14px; padding-left: 20px; line-height: 2;">
+        <li><strong>List Your Products</strong> - Add photos, descriptions, and pricing</li>
+        <li><strong>Set Up Pickup Location</strong> - Where buyers or riders will collect orders</li>
+        <li><strong>Complete Bank Details</strong> - To receive your earnings</li>
+        <li><strong>Enable Notifications</strong> - Get instant alerts when you receive orders</li>
+      </ul>
+
+      <div style="text-align: center; margin-top: 24px;">
+        <a href="https://handwork.ng" class="cta-button">Start Selling Now</a>
+      </div>
+      
+      <div class="highlight-box info" style="margin-top: 24px;">
+        <strong style="font-size: 14px;">💡 Pro Tip:</strong><br>
+        <span style="color: #1e40af; font-size: 13px;">Complete products with high-quality photos and detailed descriptions sell 3x faster!</span>
+      </div>
+      
+      <p style="color: #6b7280; font-size: 13px; margin-top: 24px; text-align: center;">Need help? Contact us at support@handwork.ng</p>
+    `;
+
+    const html = this.wrapInTemplate(content, 'Application Approved!');
+
+    return this.sendEmail({
+      to: user.email,
+      subject: `🎉 Congratulations! Your Farmer Application is Approved - ${farmDetails.farmName}`,
+      html,
+      text: `Congratulations! Your farmer application for ${farmDetails.farmName} has been approved. You can now start listing your products on Handwork.`,
+    });
+  }
+
+  /**
+   * Send farmer application rejected email
+   */
+  async sendFarmerRejectionEmail(user: User, details: {
+    farmName: string;
+    reason: string;
+    rejectedAt: Date;
+  }): Promise<boolean> {
+    if (!user.email) {
+      this.logger.warn(`Cannot send farmer rejection email - user ${user.id} has no email`);
+      return false;
+    }
+
+    const rejectionDate = details.rejectedAt.toLocaleString('en-NG', {
+      dateStyle: 'long',
+      timeStyle: 'short',
+    });
+
+    const content = `
+      <p class="greeting">Hi ${user.name || 'there'},</p>
+      <h1 class="main-title">Farmer Application Update</h1>
+      <p class="subtitle">We've reviewed your application to become a farmer on Handwork. Unfortunately, we're unable to approve it at this time.</p>
+      
+      <div class="highlight-box error">
+        <strong style="font-size: 16px;">❌ Application Not Approved</strong><br>
+        <span style="color: #991b1b;">Your application requires some changes before it can be approved.</span>
+      </div>
+
+      <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 24px 0;">
+        <div class="info-row">
+          <span class="info-label">Farm Name</span>
+          <span class="info-value">${details.farmName}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Status</span>
+          <span class="info-value" style="color: #dc2626; font-weight: 600;">❌ NOT APPROVED</span>
+        </div>
+        <div class="info-row" style="border-bottom: none;">
+          <span class="info-label">Reviewed On</span>
+          <span class="info-value">${rejectionDate}</span>
+        </div>
+      </div>
+
+      <div class="highlight-box warning">
+        <strong style="font-size: 16px;">📝 Reason for Decision:</strong><br>
+        <span style="color: #92400e;">${details.reason}</span>
+      </div>
+
+      <h3 style="font-size: 16px; font-weight: 600; color: #1a1a2e; margin: 24px 0 12px;">What You Can Do:</h3>
+      <ul style="color: #4b5563; font-size: 14px; padding-left: 20px; line-height: 2;">
+        <li>Review the reason for rejection above</li>
+        <li>Update your profile with the required information</li>
+        <li>Ensure all documents are clear and valid</li>
+        <li>Reapply once you've made the necessary changes</li>
+      </ul>
+
+      <div style="text-align: center; margin-top: 24px;">
+        <a href="https://handwork.ng" class="cta-button" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">Update & Reapply</a>
+      </div>
+      
+      <p style="color: #6b7280; font-size: 13px; margin-top: 24px; text-align: center;">Questions? Contact us at support@handwork.ng</p>
+    `;
+
+    const html = this.wrapInTemplate(content, 'Application Update');
+
+    return this.sendEmail({
+      to: user.email,
+      subject: `Farmer Application Update - ${details.farmName}`,
+      html,
+      text: `Your farmer application for ${details.farmName} was not approved. Reason: ${details.reason}. You can update your profile and reapply.`,
+    });
+  }
+
+  /**
+   * Send rider application submitted email
+   */
+  async sendRiderApplicationSubmittedEmail(user: User, riderDetails: {
+    vehicleType: string;
+    state: string;
+    city?: string;
+  }): Promise<boolean> {
+    if (!user.email) {
+      this.logger.warn(`Cannot send rider application email - user ${user.id} has no email`);
+      return false;
+    }
+
+    const submittedDate = new Date().toLocaleString('en-NG', {
+      dateStyle: 'long',
+      timeStyle: 'short',
+    });
+
+    const content = `
+      <p class="greeting">Hi ${user.name || 'there'},</p>
+      <h1 class="main-title">🚴 Rider Application Received!</h1>
+      <p class="subtitle">Thank you for applying to become a delivery rider on Handwork. We're excited to have you join our fleet!</p>
+      
+      <div class="highlight-box info">
+        <strong style="font-size: 16px;">Application Details</strong>
+      </div>
+
+      <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 24px 0;">
+        <div class="info-row">
+          <span class="info-label">Vehicle Type</span>
+          <span class="info-value">${riderDetails.vehicleType || 'Not specified'}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Location</span>
+          <span class="info-value">${riderDetails.city ? `${riderDetails.city}, ` : ''}${riderDetails.state}</span>
+        </div>
+        <div class="info-row" style="border-bottom: none;">
+          <span class="info-label">Submitted On</span>
+          <span class="info-value">${submittedDate}</span>
+        </div>
+      </div>
+
+      <div class="highlight-box warning">
+        <strong style="font-size: 16px;">⏳ What Happens Next?</strong><br>
+        <span style="color: #92400e;">Our team will verify your documents and guarantor information within 2-3 business days. You'll receive an email once your application is approved.</span>
+      </div>
+
+      <h3 style="font-size: 16px; font-weight: 600; color: #1a1a2e; margin: 24px 0 12px;">While You Wait:</h3>
+      <ul style="color: #4b5563; font-size: 14px; padding-left: 20px; line-height: 2;">
+        <li>Ensure your vehicle is in good condition</li>
+        <li>Confirm your guarantor information is correct</li>
+        <li>Set up your bank account for earnings withdrawals</li>
+        <li>Familiarize yourself with the delivery guidelines</li>
+      </ul>
+      
+      <p style="color: #6b7280; font-size: 13px; margin-top: 24px; text-align: center;">Questions? Contact us at support@handwork.ng</p>
+    `;
+
+    const html = this.wrapInTemplate(content, 'Application Received');
+
+    return this.sendEmail({
+      to: user.email,
+      subject: `🚴 Rider Application Received - Handwork`,
+      html,
+      text: `Your rider application has been received. Our team will review it within 2-3 business days.`,
+    });
+  }
+
+  /**
+   * Send rider application approved email
+   */
+  async sendRiderApprovalEmail(user: User, riderDetails: {
+    vehicleType: string;
+    state: string;
+    approvedAt: Date;
+  }): Promise<boolean> {
+    if (!user.email) {
+      this.logger.warn(`Cannot send rider approval email - user ${user.id} has no email`);
+      return false;
+    }
+
+    const approvalDate = riderDetails.approvedAt.toLocaleString('en-NG', {
+      dateStyle: 'long',
+      timeStyle: 'short',
+    });
+
+    const content = `
+      <p class="greeting">Congratulations ${user.name || 'there'}! 🎉</p>
+      <h1 class="main-title">✅ Your Rider Application is Approved!</h1>
+      <p class="subtitle">Great news! Your application to become a delivery rider on Handwork has been approved. You can now start accepting deliveries and earning money!</p>
+      
+      <div class="highlight-box success">
+        <strong style="font-size: 16px;">🎊 Welcome to Handwork Riders!</strong><br>
+        <span style="color: #166534;">You're now part of our verified delivery fleet.</span>
+      </div>
+
+      <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 24px 0;">
+        <div class="info-row">
+          <span class="info-label">Vehicle</span>
+          <span class="info-value">${riderDetails.vehicleType}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Operating Area</span>
+          <span class="info-value">${riderDetails.state}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Status</span>
+          <span class="info-value" style="color: #16a34a; font-weight: 600;">✅ APPROVED & VERIFIED</span>
+        </div>
+        <div class="info-row" style="border-bottom: none;">
+          <span class="info-label">Approved On</span>
+          <span class="info-value">${approvalDate}</span>
+        </div>
+      </div>
+
+      <h3 style="font-size: 16px; font-weight: 600; color: #1a1a2e; margin: 24px 0 12px;">🚀 Get Started Now:</h3>
+      <ul style="color: #4b5563; font-size: 14px; padding-left: 20px; line-height: 2;">
+        <li><strong>Go Online</strong> - Toggle your status to start receiving delivery requests</li>
+        <li><strong>Accept Deliveries</strong> - Review and accept jobs in your area</li>
+        <li><strong>Complete Deliveries</strong> - Pick up and deliver to earn money</li>
+        <li><strong>Get Paid</strong> - Withdraw your earnings to your bank account</li>
+      </ul>
+
+      <div style="text-align: center; margin-top: 24px;">
+        <a href="https://handwork.ng" class="cta-button">Start Delivering Now</a>
+      </div>
+      
+      <div class="highlight-box info" style="margin-top: 24px;">
+        <strong style="font-size: 14px;">💡 Pro Tip:</strong><br>
+        <span style="color: #1e40af; font-size: 13px;">Stay online during peak hours (11am-2pm, 5pm-8pm) to get more delivery requests and maximize your earnings!</span>
+      </div>
+      
+      <p style="color: #6b7280; font-size: 13px; margin-top: 24px; text-align: center;">Need help? Contact us at support@handwork.ng</p>
+    `;
+
+    const html = this.wrapInTemplate(content, 'Application Approved!');
+
+    return this.sendEmail({
+      to: user.email,
+      subject: `🎉 Congratulations! Your Rider Application is Approved - Handwork`,
+      html,
+      text: `Congratulations! Your rider application has been approved. You can now go online and start accepting deliveries on Handwork.`,
+    });
+  }
+
+  /**
+   * Send rider application rejected email
+   */
+  async sendRiderRejectionEmail(user: User, details: {
+    reason: string;
+    rejectedAt: Date;
+  }): Promise<boolean> {
+    if (!user.email) {
+      this.logger.warn(`Cannot send rider rejection email - user ${user.id} has no email`);
+      return false;
+    }
+
+    const rejectionDate = details.rejectedAt.toLocaleString('en-NG', {
+      dateStyle: 'long',
+      timeStyle: 'short',
+    });
+
+    const content = `
+      <p class="greeting">Hi ${user.name || 'there'},</p>
+      <h1 class="main-title">Rider Application Update</h1>
+      <p class="subtitle">We've reviewed your application to become a delivery rider on Handwork. Unfortunately, we're unable to approve it at this time.</p>
+      
+      <div class="highlight-box error">
+        <strong style="font-size: 16px;">❌ Application Not Approved</strong><br>
+        <span style="color: #991b1b;">Your application requires some changes before it can be approved.</span>
+      </div>
+
+      <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 24px 0;">
+        <div class="info-row">
+          <span class="info-label">Status</span>
+          <span class="info-value" style="color: #dc2626; font-weight: 600;">❌ NOT APPROVED</span>
+        </div>
+        <div class="info-row" style="border-bottom: none;">
+          <span class="info-label">Reviewed On</span>
+          <span class="info-value">${rejectionDate}</span>
+        </div>
+      </div>
+
+      <div class="highlight-box warning">
+        <strong style="font-size: 16px;">📝 Reason for Decision:</strong><br>
+        <span style="color: #92400e;">${details.reason}</span>
+      </div>
+
+      <h3 style="font-size: 16px; font-weight: 600; color: #1a1a2e; margin: 24px 0 12px;">What You Can Do:</h3>
+      <ul style="color: #4b5563; font-size: 14px; padding-left: 20px; line-height: 2;">
+        <li>Review the reason for rejection above</li>
+        <li>Update your documents if they were unclear or invalid</li>
+        <li>Ensure your guarantor information is accurate</li>
+        <li>Verify your vehicle meets our requirements</li>
+        <li>Reapply once you've made the necessary changes</li>
+      </ul>
+
+      <div style="text-align: center; margin-top: 24px;">
+        <a href="https://handwork.ng" class="cta-button" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">Update & Reapply</a>
+      </div>
+      
+      <p style="color: #6b7280; font-size: 13px; margin-top: 24px; text-align: center;">Questions? Contact us at support@handwork.ng</p>
+    `;
+
+    const html = this.wrapInTemplate(content, 'Application Update');
+
+    return this.sendEmail({
+      to: user.email,
+      subject: `Rider Application Update - Handwork`,
+      html,
+      text: `Your rider application was not approved. Reason: ${details.reason}. You can update your profile and reapply.`,
+    });
+  }
 }

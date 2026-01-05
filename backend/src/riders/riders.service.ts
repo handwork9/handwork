@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  ForbiddenException,
   Inject,
   forwardRef,
   Logger,
@@ -19,7 +20,7 @@ import { FarmerProfile } from '../database/entities/farmer-profile.entity';
 import { Product } from '../database/entities/product.entity';
 import { RegisterRiderDto, UpdateRiderLocationDto, UpdateRiderStatusDto } from './dto';
 import { calculateDistance } from '../common/utils/helpers';
-import { UserRole, OrderStatus, VehicleType } from '../common/enums';
+import { UserRole, OrderStatus, VehicleType, RiderApplicationStatus } from '../common/enums';
 import { DispatchGateway } from '../dispatch/dispatch.gateway';
 import { WalletService } from '../wallet/wallet.service';
 
@@ -163,6 +164,27 @@ export class RidersService {
 
   async updateStatus(riderId: string, dto: UpdateRiderStatusDto): Promise<Rider> {
     const rider = await this.findById(riderId);
+
+    // Check if rider is approved by admin before allowing them to go online
+    if (dto.isOnline === true || dto.isAvailable === true) {
+      if (rider.applicationStatus === RiderApplicationStatus.PENDING) {
+        throw new ForbiddenException(
+          'Your rider account is pending admin approval. You will be able to go online once approved. This usually takes 2-3 days.'
+        );
+      }
+
+      if (rider.applicationStatus === RiderApplicationStatus.REJECTED) {
+        throw new ForbiddenException(
+          `Your rider application was rejected. Reason: ${rider.rejectionReason || 'Not specified'}. Please contact support or update your documents and reapply.`
+        );
+      }
+
+      if (!rider.isVerified) {
+        throw new ForbiddenException(
+          'Your rider account is not yet verified. Please wait for admin approval before going online.'
+        );
+      }
+    }
 
     if (dto.isOnline !== undefined) {
       rider.isOnline = dto.isOnline;

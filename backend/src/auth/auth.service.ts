@@ -1214,6 +1214,9 @@ export class AuthService {
    */
   private async createRiderProfile(userId: string, dto: SignupDto): Promise<Rider> {
     try {
+      // Get user for email
+      const user = await this.userRepository.findOne({ where: { id: userId } });
+
       // Create rider profile
       const rider = this.riderRepository.create({
         userId,
@@ -1245,6 +1248,15 @@ export class AuthService {
         );
 
         await this.guarantorRepository.save(guarantors);
+      }
+
+      // Send rider application submitted email
+      if (user) {
+        this.emailService.sendRiderApplicationSubmittedEmail(user, {
+          vehicleType: dto.bikeModel || 'Motorcycle',
+          state: dto.state || 'Nigeria',
+          city: dto.city,
+        }).catch(err => this.logger.error(`Failed to send rider application email: ${err.message}`));
       }
 
       this.logger.log(`Rider profile created for user ${userId}`);

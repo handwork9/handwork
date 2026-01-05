@@ -1,5 +1,5 @@
-import React, { useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import React, { useCallback, useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, Animated, Dimensions } from 'react-native';
 import { createBottomTabNavigator, BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,6 +11,8 @@ import { COLORS, FONT_SIZES, FONTS } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 import { useToast } from '../context/ToastContext';
 import { useNotificationSocket } from '../hooks/useNotificationSocket';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // Buyer Screens
 import HomeScreen from '../screens/buyer/HomeScreen';
@@ -123,6 +125,37 @@ const TAB_ICONS: Record<string, { active: keyof typeof Ionicons.glyphMap; inacti
 function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
+  const tabCount = state.routes.length;
+  const tabWidth = (SCREEN_WIDTH - 16) / tabCount; // 16 is horizontal padding
+  
+  // Animated value for the floating indicator
+  const translateX = useRef(new Animated.Value(state.index * tabWidth)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  
+  useEffect(() => {
+    // Animate indicator to new position
+    Animated.parallel([
+      Animated.spring(translateX, {
+        toValue: state.index * tabWidth,
+        useNativeDriver: true,
+        tension: 68,
+        friction: 10,
+      }),
+      Animated.sequence([
+        Animated.timing(scaleAnim, {
+          toValue: 0.9,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          useNativeDriver: true,
+          tension: 100,
+          friction: 8,
+        }),
+      ]),
+    ]).start();
+  }, [state.index, tabWidth]);
 
   return (
     <View style={[
@@ -133,6 +166,21 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         borderTopColor: colors.border,
       }
     ]}>
+      {/* Floating indicator */}
+      <Animated.View 
+        style={[
+          styles.floatingIndicator,
+          {
+            width: tabWidth - 8,
+            backgroundColor: isDark ? 'rgba(52, 199, 89, 0.15)' : 'rgba(52, 199, 89, 0.12)',
+            transform: [
+              { translateX: Animated.add(translateX, new Animated.Value(12)) },
+              { scale: scaleAnim },
+            ],
+          }
+        ]}
+      />
+      
       {state.routes.map((route, index) => {
         const { options } = descriptors[route.key];
         const label = route.name;
@@ -166,7 +214,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             activeOpacity={0.7}
           >
             <View style={styles.tabIconContainer}>
-              <Ionicons name={iconName} size={26} color={isFocused ? '#34C759' : colors.textSecondary} />
+              <Ionicons name={iconName} size={28} color={isFocused ? '#34C759' : colors.textSecondary} />
               <Text style={[styles.tabLabel, { color: isFocused ? '#34C759' : colors.textSecondary }]}>{label}</Text>
             </View>
           </TouchableOpacity>
@@ -706,12 +754,20 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingHorizontal: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
+    position: 'relative',
+  },
+  floatingIndicator: {
+    position: 'absolute',
+    top: 6,
+    height: 52,
+    borderRadius: 8,
   },
   tabButton: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4,
+    zIndex: 1,
   },
   tabIconContainer: {
     alignItems: 'center',

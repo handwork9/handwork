@@ -800,46 +800,32 @@ export default function MessagesScreen() {
     { id: 'pinned', label: 'Pinned', icon: 'pin-outline', count: stats.pinned },
   ];
 
-  // Stats Header Component
-  const renderStatsHeader = () => (
-    <View style={styles.statsHeader}>
-      {/* Main Stats Card */}
-      <LinearGradient
-        colors={['#22C55E', '#16A34A']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.mainStatCard}
-      >
-        <View style={styles.statIconBg}>
-          <Ionicons name="chatbubbles" size={24} color="#fff" />
-        </View>
-        <Text style={styles.mainStatNumber}>{stats.total}</Text>
-        <Text style={styles.mainStatLabel}>Total Chats</Text>
-        {isConnected && (
-          <View style={styles.liveIndicator}>
-            <View style={styles.liveDot} />
-            <Text style={styles.liveText}>Live</Text>
-          </View>
-        )}
-      </LinearGradient>
-
-      {/* Secondary Stats */}
-      <View style={styles.secondaryStats}>
-        <View style={[styles.secondaryStatCard, dynamicStyles.cardBg, dynamicStyles.statCardBorder]}>
-          <View style={[styles.secondaryIconBg, { backgroundColor: '#FEE2E2' }]}>
-            <Ionicons name="mail-unread" size={18} color="#EF4444" />
-          </View>
-          <Text style={[styles.secondaryStatNumber, { color: colors.text }]}>{stats.unread}</Text>
-          <Text style={[styles.secondaryStatLabel, { color: colors.textSecondary }]}>Unread</Text>
-        </View>
-        <View style={[styles.secondaryStatCard, dynamicStyles.cardBg, dynamicStyles.statCardBorder]}>
-          <View style={[styles.secondaryIconBg, { backgroundColor: '#DBEAFE' }]}>
-            <Ionicons name="pin" size={18} color="#3B82F6" />
-          </View>
-          <Text style={[styles.secondaryStatNumber, { color: colors.text }]}>{stats.pinned}</Text>
-          <Text style={[styles.secondaryStatLabel, { color: colors.textSecondary }]}>Pinned</Text>
-        </View>
+  // Compact summary row (replaces stat cards)
+  const renderSummaryRow = () => (
+    <View style={styles.summaryRow}>
+      <View style={styles.summaryItem}>
+        <Text style={[styles.summaryNumber, { color: colors.text }]}>{stats.total}</Text>
+        <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Chats</Text>
       </View>
+      <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
+      <View style={styles.summaryItem}>
+        <Text style={[styles.summaryNumber, { color: stats.unread > 0 ? '#EF4444' : colors.text }]}>{stats.unread}</Text>
+        <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Unread</Text>
+      </View>
+      <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
+      <View style={styles.summaryItem}>
+        <Text style={[styles.summaryNumber, { color: colors.text }]}>{stats.pinned}</Text>
+        <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Pinned</Text>
+      </View>
+      {isConnected && (
+        <>
+          <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
+          <View style={styles.liveStatusContainer}>
+            <View style={styles.liveDotSmall} />
+            <Text style={styles.liveTextSmall}>Live</Text>
+          </View>
+        </>
+      )}
     </View>
   );
 
@@ -907,7 +893,6 @@ export default function MessagesScreen() {
   // List Header
   const renderListHeader = () => (
     <View style={styles.listHeader}>
-      {renderStatsHeader()}
       {!showArchived && renderFilterPills()}
     </View>
   );
@@ -1058,89 +1043,48 @@ const styles = StyleSheet.create({
   listHeader: {
     paddingBottom: 8,
   },
-  statsHeader: {
+  // Summary Row Styles (replaces stat cards)
+  summaryRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
-  },
-  mainStatCard: {
-    flex: 1,
-    padding: 16,
-    borderRadius: 16,
-    minHeight: 120,
-  },
-  statIconBg: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    paddingVertical: 12,
+    marginBottom: 12,
   },
-  mainStatNumber: {
-    fontSize: 32,
-    fontWeight: '800',
-    fontFamily: FONTS.bold,
-    color: '#fff',
-  },
-  mainStatLabel: {
-    fontSize: 14,
-    fontFamily: FONTS.medium,
-    color: 'rgba(255,255,255,0.9)',
-    marginTop: 2,
-  },
-  liveIndicator: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    flexDirection: 'row',
+  summaryItem: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 4,
+    paddingHorizontal: 16,
   },
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#fff',
-  },
-  liveText: {
-    fontSize: 10,
-    fontFamily: FONTS.semiBold,
-    color: '#fff',
-  },
-  secondaryStats: {
-    flex: 1,
-    gap: 8,
-  },
-  secondaryStatCard: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 10,
-  },
-  secondaryIconBg: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  secondaryStatNumber: {
+  summaryNumber: {
     fontSize: 20,
     fontWeight: '700',
     fontFamily: FONTS.bold,
   },
-  secondaryStatLabel: {
+  summaryLabel: {
     fontSize: 12,
     fontFamily: FONTS.regular,
+    marginTop: 2,
+  },
+  summaryDivider: {
+    width: 1,
+    height: 28,
+  },
+  liveStatusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    gap: 4,
+  },
+  liveDotSmall: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#22C55E',
+  },
+  liveTextSmall: {
+    fontSize: 12,
+    fontFamily: FONTS.medium,
+    color: '#22C55E',
   },
   // Filter Styles
   filterContainer: {

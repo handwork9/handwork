@@ -93,18 +93,6 @@ const OrdersScreen: React.FC = () => {
       color: colors.text,
     },
     menuIcon: colors.icon,
-    smallStatCard: {
-      backgroundColor: isDark ? colors.surface : '#EFF6FF',
-    },
-    smallStatCardGreen: {
-      backgroundColor: isDark ? colors.surface : '#F0FDF4',
-    },
-    smallStatLabel: {
-      color: colors.textSecondary,
-    },
-    liveIndicator: {
-      backgroundColor: isDark ? 'rgba(34, 197, 94, 0.15)' : '#ECFDF5',
-    },
     filterPill: {
       backgroundColor: colors.card,
       borderColor: colors.border,
@@ -318,62 +306,10 @@ const OrdersScreen: React.FC = () => {
     return `₦${amount?.toLocaleString() || '0'}`;
   };
 
-  // Header with stats
+  // Header with filters only (no stat cards)
   const renderHeader = () => {
-    const headerOpacity = scrollY.interpolate({
-      inputRange: [0, 100],
-      outputRange: [1, 0],
-      extrapolate: 'clamp',
-    });
-
     return (
-      <Animated.View style={[styles.header, { opacity: headerOpacity }]}>
-        {/* Stats Cards */}
-        <View style={styles.statsContainer}>
-          <LinearGradient
-            colors={['#22C55E', '#16A34A']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.statCard}
-          >
-            <View style={styles.statIconContainer}>
-              <Ionicons name="cube-outline" size={24} color="#fff" />
-            </View>
-            <Text style={styles.statNumber}>{stats.total}</Text>
-            <Text style={styles.statLabel}>Total Orders</Text>
-          </LinearGradient>
-
-          <View style={styles.statsRow}>
-            <View style={[styles.smallStatCard, dynamicStyles.smallStatCard]}>
-              <View style={[styles.smallStatIcon, { backgroundColor: '#3B82F6' }]}>
-                <Ionicons name="sync" size={14} color="#fff" />
-              </View>
-              <View style={styles.smallStatContent}>
-                <Text style={[styles.smallStatLabel, dynamicStyles.smallStatLabel]}>Active</Text>
-                <Text style={[styles.smallStatNumber, { color: '#3B82F6' }]}>{stats.active}</Text>
-              </View>
-            </View>
-
-            <View style={[styles.smallStatCard, dynamicStyles.smallStatCardGreen]}>
-              <View style={[styles.smallStatIcon, { backgroundColor: '#22C55E' }]}>
-                <Ionicons name="checkmark-done" size={14} color="#fff" />
-              </View>
-              <View style={styles.smallStatContent}>
-                <Text style={[styles.smallStatLabel, dynamicStyles.smallStatLabel]}>Delivered</Text>
-                <Text style={[styles.smallStatNumber, { color: '#22C55E' }]}>{stats.delivered}</Text>
-              </View>
-            </View>
-          </View>
-        </View>
-
-        {/* Live Connection Status */}
-        {isConnected && (
-          <View style={[styles.liveIndicator, dynamicStyles.liveIndicator]}>
-            <View style={styles.liveDot} />
-            <Text style={styles.liveText}>Live Updates Active</Text>
-          </View>
-        )}
-
+      <View style={styles.header}>
         {/* Filter Pills */}
         <View style={styles.filterContainer}>
           <FlatList
@@ -409,7 +345,7 @@ const OrdersScreen: React.FC = () => {
             )}
           />
         </View>
-      </Animated.View>
+      </View>
     );
   };
 
@@ -866,97 +802,50 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   header: {
-    paddingTop: 16,
+    paddingTop: 8,
   },
-  statsContainer: {
+  // Summary Row Styles (replaces stat cards)
+  summaryRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
-  },
-  statCard: {
-    flex: 1,
-    padding: 16,
-    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 12,
+    marginBottom: 12,
   },
-  statIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.25)',
+  summaryItem: {
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
+    paddingHorizontal: 16,
   },
-  statNumber: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#fff',
+  summaryNumber: {
+    fontSize: 20,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
   },
-  statLabel: {
+  summaryLabel: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.9)',
+    fontFamily: FONTS.regular,
     marginTop: 2,
   },
-  statsRow: {
-    flex: 1,
-    flexDirection: 'column',
-    justifyContent: 'space-between',
-    gap: 6,
-  },
-  smallStatCard: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-  },
-  smallStatIcon: {
-    width: 28,
+  summaryDivider: {
+    width: 1,
     height: 28,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
   },
-  smallStatContent: {
-    flex: 1,
+  liveStatusContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+    gap: 4,
   },
-  smallStatNumber: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  smallStatLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  liveIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ECFDF5',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    alignSelf: 'flex-start',
-    marginBottom: 16,
-  },
-  liveDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  liveDotSmall: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: '#22C55E',
-    marginRight: 8,
   },
-  liveText: {
+  liveTextSmall: {
     fontSize: 12,
-    color: '#22C55E',
     fontWeight: '600',
+    color: '#22C55E',
   },
   filterContainer: {
     marginBottom: 8,

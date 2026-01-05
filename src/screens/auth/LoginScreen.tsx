@@ -18,18 +18,15 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as Google from 'expo-auth-session/providers/google';
-import * as WebBrowser from 'expo-web-browser';
+import * as LocalAuthentication from 'expo-local-authentication';
+import { FaceIDIcon, FingerprintIcon } from '../../assets/icons';
 import { AuthStackParamList } from '../../types';
 import { useAppDispatch } from '../../store';
 import { setAuth } from '../../store/slices/authSlice';
 import { authService } from '../../services/authService';
 import { useTheme } from '../../context/ThemeContext';
 import { COLORS, SPACING, FONT_SIZES, FONTS } from '../../constants/theme';
-import { GOOGLE_WEB_CLIENT_ID, GOOGLE_IOS_CLIENT_ID, GOOGLE_ANDROID_CLIENT_ID } from '../../constants/config';
-
-// Complete auth session for web browser
-WebBrowser.maybeCompleteAuthSession();
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
@@ -42,7 +39,10 @@ type FormData = yup.InferType<typeof schema>;
 
 export default function LoginScreen({ navigation }: Props) {
   const [isLoading, setIsLoading] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isBiometricLoading, setIsBiometricLoading] = useState(false);
+  const [isBiometricAvailable, setIsBiometricAvailable] = useState(false);
+  const [hasSavedCredentials, setHasSavedCredentials] = useState(false);
+  const [biometricType, setBiometricType] = useState<string>('fingerprint');
   const [showPassword, setShowPassword] = useState(false);
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
@@ -55,12 +55,33 @@ export default function LoginScreen({ navigation }: Props) {
   const emailAnimValue = useRef(new Animated.Value(0)).current;
   const passwordAnimValue = useRef(new Animated.Value(0)).current;
 
-  // Google Sign-In configuration
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    webClientId: GOOGLE_WEB_CLIENT_ID,
-    iosClientId: GOOGLE_IOS_CLIENT_ID,
-    androidClientId: GOOGLE_ANDROID_CLIENT_ID,
-  });
+  // Check biometric availability on mount
+  useEffect(() => {
+    checkBiometricAvailability();
+  }, []);
+
+  const checkBiometricAvailability = async () => {
+    try {
+      const compatible = await LocalAuthentication.hasHardwareAsync();
+      const enrolled = await LocalAuthentication.isEnrolledAsync();
+      const savedCredentials = await AsyncStorage.getItem('biometric_credentials');
+      
+      // Biometric is available if device has hardware and user has enrolled
+      setIsBiometricAvailable(compatible && enrolled);
+      setHasSavedCredentials(!!savedCredentials);
+      
+      if (compatible) {
+        const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
+        if (types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)) {
+          setBiometricType('face');
+        } else {
+          setBiometricType('fingerprint');
+        }
+      }
+    } catch (error) {
+      console.log('Biometric check error:', error);
+    }
+  };
 
   const {
     control,
@@ -94,47 +115,60 @@ export default function LoginScreen({ navigation }: Props) {
     }).start();
   }, [passwordFocused, passwordValue]);
 
-  // Handle Google Sign-In response
-  useEffect(() => {
-    if (response?.type === 'success') {
-      handleGoogleSignIn(response.authentication?.idToken);
-    } else if (response?.type === 'error') {
-      Alert.alert('Error', 'Google Sign-In failed. Please try again.');
-      setIsGoogleLoading(false);
-    }
-  }, [response]);
-
-  const handleGoogleSignIn = async (idToken: string | undefined) => {
-    if (!idToken) {
-      Alert.alert('Error', 'Failed to get Google ID token');
-      setIsGoogleLoading(false);
+  // Handle Biometric Authentication
+  const handleBiometricAuth = async () => {
+    // If no saved credentials, prompt user to login with email first
+    if (!hasSavedCredentials) {
+      Alert.alert(
+        'Setup Required',
+        'Please login with your email and password first. After successful login, biometric will be enabled for future logins.',
+        [{ text: 'OK' }]
+      );
       return;
     }
 
+    setIsBiometricLoading(true);
     try {
-      const result = await authService.googleLogin(idToken);
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: biometricType === 'face' ? 'Scan your face to login' : 'Scan your fingerprint to login',
+        cancelLabel: 'Cancel',
+        disableDeviceFallback: false,
+        fallbackLabel: 'Use password',
+      });
 
-      if (result.success && result.data) {
-        dispatch(
-          setAuth({
-            user: result.data.user,
-            accessToken: result.data.accessToken,
-            refreshToken: result.data.refreshToken,
-          })
-        );
-      } else {
-        Alert.alert('Error', result.message || 'Google Sign-In failed');
+      if (result.success) {
+        // Get saved credentials
+        const savedCredentials = await AsyncStorage.getItem('biometric_credentials');
+        if (savedCredentials) {
+          const { email, password } = JSON.parse(savedCredentials);
+          
+          // Login with saved credentials
+          const response = await authService.login({ email, password });
+          
+          if (response.success) {
+            if (authService.requiresTwoFactor(response.data)) {
+              navigation.navigate('TwoFactorVerification', {
+                tempToken: response.data.tempToken,
+              });
+            } else {
+              dispatch(setAuth({
+                user: response.data.user,
+                accessToken: response.data.accessToken,
+                refreshToken: response.data.refreshToken,
+              }));
+            }
+          } else {
+            Alert.alert('Login Failed', response.message || 'Please try again');
+          }
+        } else {
+          Alert.alert('Setup Required', 'Please login with email first to enable biometric login');
+        }
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Google Sign-In failed');
+      Alert.alert('Error', error.message || 'Biometric authentication failed');
     } finally {
-      setIsGoogleLoading(false);
+      setIsBiometricLoading(false);
     }
-  };
-
-  const onGoogleSignIn = () => {
-    setIsGoogleLoading(true);
-    promptAsync();
   };
 
   const onSubmit = async (data: FormData) => {
@@ -146,6 +180,17 @@ export default function LoginScreen({ navigation }: Props) {
       });
 
       if (response.success) {
+        // Save credentials for biometric login
+        try {
+          await AsyncStorage.setItem('biometric_credentials', JSON.stringify({
+            email: data.email,
+            password: data.password,
+          }));
+          setHasSavedCredentials(true);
+        } catch (e) {
+          console.log('Failed to save biometric credentials:', e);
+        }
+
         if (authService.requiresTwoFactor(response.data)) {
           navigation.navigate('TwoFactorVerification', {
             tempToken: response.data.tempToken,
@@ -367,44 +412,39 @@ export default function LoginScreen({ navigation }: Props) {
             <View style={[styles.dividerLine, { backgroundColor: isDark ? '#374151' : '#E5E7EB' }]} />
           </View>
 
-          {/* Social Login */}
+          {/* Quick Login Options */}
           <View style={styles.socialSection}>
+            {/* Biometric Login */}
             <TouchableOpacity
               style={[
                 styles.socialButton, 
                 { backgroundColor: isDark ? '#1F2937' : '#FFFFFF' },
-                (isGoogleLoading || !request) && styles.socialButtonDisabled
+                (!isBiometricAvailable || isBiometricLoading) && styles.socialButtonDisabled
               ]}
               activeOpacity={0.7}
-              onPress={onGoogleSignIn}
-              disabled={isGoogleLoading || !request}
+              onPress={handleBiometricAuth}
+              disabled={!isBiometricAvailable || isBiometricLoading}
             >
-              <Ionicons name="logo-google" size={22} color="#EA4335" />
-              <Text style={[styles.socialButtonText, { color: colors.text }]}>
-                {isGoogleLoading ? 'Signing in...' : 'Google'}
+              {biometricType === 'face' ? (
+                <FaceIDIcon size={26} color={isBiometricAvailable ? COLORS.primary : '#9CA3AF'} />
+              ) : (
+                <FingerprintIcon size={26} color={isBiometricAvailable ? COLORS.primary : '#9CA3AF'} />
+              )}
+              <Text style={[styles.socialButtonText, { color: isBiometricAvailable ? colors.text : '#9CA3AF' }]}>
+                {isBiometricLoading ? 'Verifying...' : biometricType === 'face' ? 'Face ID' : 'Fingerprint'}
               </Text>
             </TouchableOpacity>
             
+            {/* Phone Login */}
             <TouchableOpacity
               style={[styles.socialButton, { backgroundColor: isDark ? '#1F2937' : '#FFFFFF' }]}
               activeOpacity={0.7}
+              onPress={() => navigation.navigate('PhoneLogin')}
             >
-              <Ionicons name="logo-apple" size={22} color={isDark ? '#FFFFFF' : '#000000'} />
-              <Text style={[styles.socialButtonText, { color: colors.text }]}>Apple</Text>
+              <Ionicons name="call" size={22} color="#10B981" />
+              <Text style={[styles.socialButtonText, { color: colors.text }]}>Phone</Text>
             </TouchableOpacity>
           </View>
-
-          {/* Phone Login Option */}
-          <TouchableOpacity
-            style={[styles.phoneLoginButton, { borderColor: isDark ? '#374151' : '#E5E7EB' }]}
-            onPress={() => navigation.navigate('PhoneLogin')}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="phone-portrait-outline" size={22} color={COLORS.primary} />
-            <Text style={[styles.phoneLoginText, { color: colors.text }]}>
-              Login with Phone OTP
-            </Text>
-          </TouchableOpacity>
 
           {/* Footer */}
           <View style={styles.footer}>
@@ -566,20 +606,6 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   socialButtonText: {
-    fontSize: FONT_SIZES.md,
-    fontFamily: FONTS.semiBold,
-  },
-  phoneLoginButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 52,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 10,
-    marginBottom: SPACING.xl,
-  },
-  phoneLoginText: {
     fontSize: FONT_SIZES.md,
     fontFamily: FONTS.semiBold,
   },

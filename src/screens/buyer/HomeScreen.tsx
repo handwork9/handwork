@@ -65,7 +65,7 @@ import { FarmerActivationIllustration, GoPremiumIllustration, VerifiedSellerIllu
 import StatusCommunityCard from '../../components/common/StatusCommunityCard';
 import FlashSaleBanner from '../../components/common/FlashSaleBanner';
 import { socialService, FarmerStories, LiveStream } from '../../services/socialService';
-import { ViewAllStoriesIcon } from '../../assets/icons';
+import { ViewAllStoriesIcon, FilterIcon } from '../../assets/icons';
 
 type NavigationProp = CompositeNavigationProp<
   BottomTabNavigationProp<BuyerTabParamList, 'Home'>,
@@ -609,7 +609,7 @@ export default function HomeScreen() {
             }}
             activeOpacity={0.7}
           >
-            <Ionicons name="notifications-outline" size={24} color={colors.text} />
+            <Ionicons name="notifications-outline" size={26} color={colors.text} />
             {unreadCount > 0 && (
               <Animated.View style={[styles.notificationBadge, { transform: [{ scale: pulseAnim }] }]}>
                 <Text style={styles.notificationBadgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
@@ -625,7 +625,7 @@ export default function HomeScreen() {
             }}
             activeOpacity={0.7}
           >
-            <Ionicons name="bag-outline" size={24} color={colors.text} />
+            <Ionicons name="bag-outline" size={26} color={colors.text} />
             {itemCount > 0 && (
               <View style={styles.cartBadge}>
                 <Text style={styles.cartBadgeText}>{itemCount > 9 ? '9+' : itemCount}</Text>
@@ -634,14 +634,14 @@ export default function HomeScreen() {
           </TouchableOpacity>
           
           <TouchableOpacity
-            style={[styles.menuButton, { backgroundColor: colors.primary }]}
+            style={styles.headerIconButton}
             onPress={() => {
               triggerHaptic();
               setQuickMenuVisible(true);
             }}
             activeOpacity={0.7}
           >
-            <Ionicons name="menu" size={22} color="#FFFFFF" />
+            <FilterIcon size={26} color={colors.text} />
           </TouchableOpacity>
         </View>
       </View>
@@ -2704,18 +2704,11 @@ const styles = StyleSheet.create({
     maxWidth: 80,
   },
   headerIconButton: {
-    width: 40,
-    height: 40,
+    width: 42,
+    height: 42,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
-  },
-  menuButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   // Address Dropdown Styles
   addressDropdownOverlay: {

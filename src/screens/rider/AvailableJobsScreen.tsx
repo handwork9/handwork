@@ -590,12 +590,38 @@ export default function AvailableJobsScreen() {
                     </View>
                     <Switch
                       value={isOnline === true}
+                      disabled={profile?.applicationStatus === 'pending' || profile?.applicationStatus === 'rejected' || !profile?.isVerified}
                       onValueChange={async (value) => {
+                        // Check approval status before allowing rider to go online
+                        if (value && profile?.applicationStatus === 'pending') {
+                          Alert.alert(
+                            'Pending Approval',
+                            'Your rider account is pending admin approval. You will be able to go online once approved. This usually takes 2-3 days.',
+                            [{ text: 'OK' }]
+                          );
+                          return;
+                        }
+                        if (value && profile?.applicationStatus === 'rejected') {
+                          Alert.alert(
+                            'Application Rejected',
+                            `Your rider application was rejected. Reason: ${profile?.rejectionReason || 'Not specified'}. Please contact support or update your documents and reapply.`,
+                            [{ text: 'OK' }]
+                          );
+                          return;
+                        }
+                        if (value && !profile?.isVerified) {
+                          Alert.alert(
+                            'Verification Required',
+                            'Your rider account is not yet verified. Please wait for admin approval before going online.',
+                            [{ text: 'OK' }]
+                          );
+                          return;
+                        }
                         try {
                           await dispatch(updateRiderStatus({ isOnline: value })).unwrap();
                           await dispatch(fetchRiderProfile()).unwrap();
-                        } catch (error) {
-                          Alert.alert('Error', `Failed to go ${value ? 'online' : 'offline'}. Please try again.`);
+                        } catch (error: any) {
+                          Alert.alert('Error', error?.message || `Failed to go ${value ? 'online' : 'offline'}. Please try again.`);
                         }
                       }}
                       trackColor={{ false: 'rgba(0,0,0,0.1)', true: COLORS.success }}
@@ -631,6 +657,42 @@ export default function AvailableJobsScreen() {
                 </View>
               </View>
             </View>
+
+            {/* Pending/Rejected Approval Banner */}
+            {(profile?.applicationStatus === 'pending' || profile?.applicationStatus === 'rejected' || !profile?.isVerified) && (
+              <View style={[
+                styles.approvalBanner,
+                { 
+                  backgroundColor: profile?.applicationStatus === 'rejected' 
+                    ? (isDark ? '#4A1C1C' : '#FEE2E2')
+                    : (isDark ? '#3D3514' : '#FEF3C7'),
+                  borderColor: profile?.applicationStatus === 'rejected'
+                    ? (isDark ? '#DC2626' : '#EF4444')
+                    : (isDark ? '#D97706' : '#F59E0B'),
+                }
+              ]}>
+                <Ionicons 
+                  name={profile?.applicationStatus === 'rejected' ? 'close-circle' : 'time'} 
+                  size={24} 
+                  color={profile?.applicationStatus === 'rejected' ? '#EF4444' : '#F59E0B'} 
+                />
+                <View style={styles.approvalBannerContent}>
+                  <Text style={[
+                    styles.approvalBannerTitle,
+                    { color: profile?.applicationStatus === 'rejected' ? '#EF4444' : '#D97706' }
+                  ]}>
+                    {profile?.applicationStatus === 'rejected' 
+                      ? 'Application Rejected' 
+                      : 'Pending Approval'}
+                  </Text>
+                  <Text style={[styles.approvalBannerText, { color: isDark ? colors.textSecondary : '#6B7280' }]}>
+                    {profile?.applicationStatus === 'rejected'
+                      ? `Reason: ${profile?.rejectionReason || 'Not specified'}. Please contact support.`
+                      : 'Your account is pending admin approval. This usually takes 2-3 days.'}
+                  </Text>
+                </View>
+              </View>
+            )}
 
             {/* Sort Options */}
             <View style={[styles.sortContainer, { backgroundColor: isDark ? colors.background : '#F2F2F7' }]}>
@@ -1302,5 +1364,29 @@ const styles = StyleSheet.create({
     width: 1,
     height: 16,
     backgroundColor: COLORS.border,
+  },
+  approvalBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.md,
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    gap: SPACING.sm,
+  },
+  approvalBannerContent: {
+    flex: 1,
+  },
+  approvalBannerTitle: {
+    fontSize: FONT_SIZES.md,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+    marginBottom: 4,
+  },
+  approvalBannerText: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: FONTS.regular,
+    lineHeight: 18,
   },
 });

@@ -7,6 +7,7 @@ import { WalletService } from '../wallet/wallet.service';
 import { NotificationsService, NotificationType } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { CouponsService } from '../coupons/coupons.service';
+import { EmailService } from '../email/email.service';
 import { generateReference } from '../common/utils/helpers';
 import { FarmerApplicationStatus, UserRole } from '../common/enums';
 import * as bcrypt from 'bcrypt';
@@ -50,6 +51,7 @@ export class UsersService {
     private readonly notificationsGateway: NotificationsGateway,
     @Inject(forwardRef(() => CouponsService))
     private readonly couponsService: CouponsService,
+    private readonly emailService: EmailService,
   ) {}
 
   async findById(id: string): Promise<User> {
@@ -395,6 +397,13 @@ export class UsersService {
     const savedProfile = await this.farmerProfileRepository.save(farmerProfile);
 
     this.logger.log(`User ${userId} applied to become a farmer`);
+
+    // Send email notification to user about application submission
+    this.emailService.sendFarmerApplicationSubmittedEmail(user, {
+      farmName: dto.farmName,
+      farmType: dto.farmType,
+      primaryProducts: dto.categories.join(', '),
+    }).catch(err => this.logger.error(`Failed to send farmer application email: ${err.message}`));
 
     // Notify user via push
     await this.notificationsService.sendPushNotification({

@@ -540,11 +540,29 @@ export default function DashboardScreen() {
               style={styles.headerIconButton}
               onPress={() => {
                 triggerHaptic();
+                navigation.navigate('FarmerMessages');
+              }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="chatbubbles-outline" size={28} color={colors.text} />
+              {unreadMessagesCount > 0 && (
+                <View style={styles.notificationBadge}>
+                  <Text style={styles.notificationBadgeText}>
+                    {unreadMessagesCount > 9 ? '9+' : unreadMessagesCount}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.headerIconButton}
+              onPress={() => {
+                triggerHaptic();
                 navigation.navigate('Notifications');
               }}
               activeOpacity={0.7}
             >
-              <Ionicons name="notifications-outline" size={26} color={colors.text} />
+              <Ionicons name="notifications-outline" size={28} color={colors.text} />
               {unreadOrdersCount > 0 && (
                 <View style={styles.notificationBadge}>
                   <Text style={styles.notificationBadgeText}>

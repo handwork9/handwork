@@ -1,10 +1,455 @@
 import React from 'react';
-import Svg, { Path, Rect, Circle, G } from 'react-native-svg';
+import Svg, { Path, Rect, Circle, G, Line, Polyline } from 'react-native-svg';
 
 interface IconProps {
   size?: number;
   color?: string;
 }
+
+// ============================================
+// CHECKOUT SCREEN ICONS
+// ============================================
+
+/**
+ * Chevron Back Icon - iOS style back arrow
+ */
+export const ChevronBackIcon = ({ size = 24, color = '#007AFF' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path 
+      d="M15 19l-7-7 7-7" 
+      stroke={color} 
+      strokeWidth="2.5" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+/**
+ * Chevron Forward Icon - iOS style forward arrow
+ */
+export const ChevronForwardIcon = ({ size = 24, color = '#C7C7CC' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path 
+      d="M9 5l7 7-7 7" 
+      stroke={color} 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+/**
+ * Chevron Up Icon
+ */
+export const ChevronUpIcon = ({ size = 24, color = '#8E8E93' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path 
+      d="M18 15l-6-6-6 6" 
+      stroke={color} 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+/**
+ * Chevron Down Icon
+ */
+export const ChevronDownIcon = ({ size = 24, color = '#8E8E93' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path 
+      d="M6 9l6 6 6-6" 
+      stroke={color} 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+/**
+ * Lock Closed Icon - Security indicator
+ */
+export const LockClosedIcon = ({ size = 24, color = '#8E8E93' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect x="5" y="11" width="14" height="10" rx="2" stroke={color} strokeWidth="1.8" />
+    <Path 
+      d="M8 11V7a4 4 0 0 1 8 0v4" 
+      stroke={color} 
+      strokeWidth="1.8" 
+      strokeLinecap="round"
+    />
+    <Circle cx="12" cy="16" r="1.5" fill={color} />
+  </Svg>
+);
+
+/**
+ * Checkmark Icon - Simple checkmark
+ */
+export const CheckmarkIcon = ({ size = 24, color = '#FFFFFF' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path 
+      d="M5 12l5 5L20 7" 
+      stroke={color} 
+      strokeWidth="2.5" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+/**
+ * Checkmark Circle Icon - Filled circle with checkmark
+ */
+export const CheckmarkCircleIcon = ({ size = 24, color = '#34C759' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Circle cx="12" cy="12" r="10" fill={color} />
+    <Path 
+      d="M7 12l3.5 3.5L17 9" 
+      stroke="#FFFFFF" 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+/**
+ * Checkmark Circle Outline Icon
+ */
+export const CheckmarkCircleOutlineIcon = ({ size = 24, color = '#007AFF' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Circle cx="12" cy="12" r="9" stroke={color} strokeWidth="2" />
+    <Path 
+      d="M8 12l2.5 2.5L16 10" 
+      stroke={color} 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+/**
+ * Cube Outline Icon - Package/box outline
+ */
+export const CubeOutlineIcon = ({ size = 24, color = '#8E8E93' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path 
+      d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" 
+      stroke={color} 
+      strokeWidth="1.8" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    />
+    <Path d="M3.27 6.96L12 12.01l8.73-5.05" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M12 22.08V12" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+/**
+ * Location Outline Icon - Map pin
+ */
+export const LocationOutlineIcon = ({ size = 24, color = '#007AFF' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path 
+      d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" 
+      stroke={color} 
+      strokeWidth="1.8" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    />
+    <Circle cx="12" cy="9" r="2.5" stroke={color} strokeWidth="1.8" />
+  </Svg>
+);
+
+/**
+ * Gift Outline Icon - Gift box
+ */
+export const GiftOutlineIcon = ({ size = 24, color = '#E91E63' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect x="3" y="8" width="18" height="4" rx="1" stroke={color} strokeWidth="1.8" />
+    <Path d="M12 8v13" stroke={color} strokeWidth="1.8" />
+    <Path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" stroke={color} strokeWidth="1.8" />
+    <Path 
+      d="M7.5 8C7.5 8 7.5 4.5 9.75 4.5S12 8 12 8" 
+      stroke={color} 
+      strokeWidth="1.8" 
+      strokeLinecap="round"
+    />
+    <Path 
+      d="M16.5 8C16.5 8 16.5 4.5 14.25 4.5S12 8 12 8" 
+      stroke={color} 
+      strokeWidth="1.8" 
+      strokeLinecap="round"
+    />
+  </Svg>
+);
+
+/**
+ * Wallet Icon - Payment wallet
+ */
+export const WalletIcon = ({ size = 24, color = '#43A047' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect x="2" y="6" width="20" height="14" rx="2" stroke={color} strokeWidth="1.8" />
+    <Path d="M2 10h20" stroke={color} strokeWidth="1.8" />
+    <Circle cx="16" cy="14" r="1.5" fill={color} />
+    <Path d="M6 6V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+  </Svg>
+);
+
+/**
+ * Card Icon - Credit/debit card
+ */
+export const CardIcon = ({ size = 24, color = '#1976D2' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect x="2" y="5" width="20" height="14" rx="2" stroke={color} strokeWidth="1.8" />
+    <Path d="M2 10h20" stroke={color} strokeWidth="1.8" />
+    <Path d="M6 15h4" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+  </Svg>
+);
+
+/**
+ * People Icon - Multiple users
+ */
+export const PeopleIcon = ({ size = 24, color = '#FF6B00' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Circle cx="9" cy="7" r="3" stroke={color} strokeWidth="1.8" />
+    <Path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+    <Circle cx="17" cy="7" r="2.5" stroke={color} strokeWidth="1.5" />
+    <Path d="M17 11.5a3.5 3.5 0 0 1 3.5 3.5v2" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+  </Svg>
+);
+
+/**
+ * Arrow Forward Icon
+ */
+export const ArrowForwardIcon = ({ size = 24, color = '#007AFF' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path 
+      d="M5 12h14M13 6l6 6-6 6" 
+      stroke={color} 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+/**
+ * Link Icon - Chain link
+ */
+export const LinkIcon = ({ size = 24, color = '#007AFF' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path 
+      d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" 
+      stroke={color} 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    />
+    <Path 
+      d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" 
+      stroke={color} 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+/**
+ * Share Outline Icon
+ */
+export const ShareOutlineIcon = ({ size = 24, color = '#FFFFFF' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path 
+      d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" 
+      stroke={color} 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    />
+    <Polyline 
+      points="16 6 12 2 8 6" 
+      stroke={color} 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    />
+    <Line x1="12" y1="2" x2="12" y2="15" stroke={color} strokeWidth="2" strokeLinecap="round" />
+  </Svg>
+);
+
+/**
+ * Copy Outline Icon
+ */
+export const CopyOutlineIcon = ({ size = 24, color = '#000000' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect x="9" y="9" width="11" height="11" rx="2" stroke={color} strokeWidth="1.8" />
+    <Path 
+      d="M5 15H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1" 
+      stroke={color} 
+      strokeWidth="1.8" 
+      strokeLinecap="round"
+    />
+  </Svg>
+);
+
+/**
+ * Bag Check Icon - Shopping bag with checkmark
+ */
+export const BagCheckIcon = ({ size = 24, color = '#43A047' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path 
+      d="M6 6h12l1.5 14H4.5L6 6z" 
+      stroke={color} 
+      strokeWidth="1.8" 
+      strokeLinejoin="round"
+    />
+    <Path 
+      d="M9 6V5a3 3 0 0 1 6 0v1" 
+      stroke={color} 
+      strokeWidth="1.8" 
+      strokeLinecap="round"
+    />
+    <Path 
+      d="M9 13l2 2 4-4" 
+      stroke={color} 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+/**
+ * Time Outline Icon - Clock
+ */
+export const TimeOutlineIcon = ({ size = 24, color = '#8E8E93' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Circle cx="12" cy="12" r="9" stroke={color} strokeWidth="1.8" />
+    <Path d="M12 6v6l4 2" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+/**
+ * Add Circle Outline Icon
+ */
+export const AddCircleOutlineIcon = ({ size = 24, color = '#007AFF' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Circle cx="12" cy="12" r="9" stroke={color} strokeWidth="1.8" />
+    <Path d="M12 8v8M8 12h8" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+  </Svg>
+);
+
+// ============================================
+// ORIGINAL ICONS
+// ============================================
+
+/**
+ * Face ID Icon - Apple-style Face ID scanning icon
+ * Used for biometric authentication
+ */
+export const FaceIDIcon = ({ size = 24, color = '#007AFF' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    {/* Corner brackets */}
+    {/* Top left */}
+    <Path 
+      d="M4 8V6C4 4.895 4.895 4 6 4H8"
+      stroke={color}
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+    {/* Top right */}
+    <Path 
+      d="M16 4H18C19.105 4 20 4.895 20 6V8"
+      stroke={color}
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+    {/* Bottom left */}
+    <Path 
+      d="M4 16V18C4 19.105 4.895 20 6 20H8"
+      stroke={color}
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+    {/* Bottom right */}
+    <Path 
+      d="M16 20H18C19.105 20 20 19.105 20 18V16"
+      stroke={color}
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+    {/* Face elements - eyes */}
+    <Circle cx="9" cy="10" r="1.2" fill={color} />
+    <Circle cx="15" cy="10" r="1.2" fill={color} />
+    {/* Nose */}
+    <Path 
+      d="M12 10.5V13"
+      stroke={color}
+      strokeWidth="1.5"
+      strokeLinecap="round"
+    />
+    {/* Mouth smile */}
+    <Path 
+      d="M9.5 15C10 16 11 16.5 12 16.5C13 16.5 14 16 14.5 15"
+      stroke={color}
+      strokeWidth="1.5"
+      strokeLinecap="round"
+    />
+  </Svg>
+);
+
+/**
+ * Fingerprint Icon - Custom fingerprint scanning icon
+ * Used for biometric authentication
+ */
+export const FingerprintIcon = ({ size = 24, color = '#007AFF' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    {/* Fingerprint ridges */}
+    <Path 
+      d="M12 3C8.134 3 5 6.134 5 10C5 11.5 5.5 13.5 6.5 15.5"
+      stroke={color}
+      strokeWidth="1.8"
+      strokeLinecap="round"
+    />
+    <Path 
+      d="M7.5 7C9 5.5 10.5 5 12 5C14.761 5 17 7.239 17 10C17 12 16.5 14 15.5 16"
+      stroke={color}
+      strokeWidth="1.8"
+      strokeLinecap="round"
+    />
+    <Path 
+      d="M9 9C9.5 8 10.5 7 12 7C13.657 7 15 8.343 15 10C15 11.5 14.5 13.5 13.5 15.5"
+      stroke={color}
+      strokeWidth="1.8"
+      strokeLinecap="round"
+    />
+    <Path 
+      d="M12 9V10C12 12 11.5 14 10.5 16.5C10 18 9 20 8 21"
+      stroke={color}
+      strokeWidth="1.8"
+      strokeLinecap="round"
+    />
+    <Path 
+      d="M17.5 13C17 15 16 17.5 14.5 20"
+      stroke={color}
+      strokeWidth="1.8"
+      strokeLinecap="round"
+    />
+    <Path 
+      d="M19 10C19.5 12 19 14 18 16.5"
+      stroke={color}
+      strokeWidth="1.8"
+      strokeLinecap="round"
+    />
+  </Svg>
+);
 
 /**
  * Product Plus Icon - Shopping bag with plus sign
@@ -457,7 +902,100 @@ export const ViewAllStoriesIcon = ({ size = 24, color = '#007AFF' }: IconProps) 
   </Svg>
 );
 
+/**
+ * Menu Icon - Modern hamburger menu with staggered lines
+ * Used for main navigation/quick menu access
+ */
+export const MenuIcon = ({ size = 24, color = '#FFFFFF' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    {/* Top line - shorter */}
+    <Rect x="4" y="6" width="10" height="2.5" rx="1.25" fill={color} />
+    {/* Middle line - full width */}
+    <Rect x="4" y="10.75" width="16" height="2.5" rx="1.25" fill={color} />
+    {/* Bottom line - medium */}
+    <Rect x="4" y="15.5" width="13" height="2.5" rx="1.25" fill={color} />
+  </Svg>
+);
+
+/**
+ * Menu Grid Icon - Modern grid-based menu icon
+ * Alternative style for quick actions menu
+ */
+export const MenuGridIcon = ({ size = 24, color = '#FFFFFF' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    {/* Top row dots */}
+    <Circle cx="6" cy="6" r="2.5" fill={color} />
+    <Circle cx="12" cy="6" r="2.5" fill={color} />
+    <Circle cx="18" cy="6" r="2.5" fill={color} opacity={0.6} />
+    {/* Bottom row dots */}
+    <Circle cx="6" cy="12" r="2.5" fill={color} />
+    <Circle cx="12" cy="12" r="2.5" fill={color} opacity={0.8} />
+    <Circle cx="18" cy="12" r="2.5" fill={color} opacity={0.4} />
+    {/* Third row - just two */}
+    <Circle cx="6" cy="18" r="2.5" fill={color} opacity={0.6} />
+    <Circle cx="12" cy="18" r="2.5" fill={color} opacity={0.4} />
+  </Svg>
+);
+
+/**
+ * Apps Menu Icon - Clean 4-dot bento/apps style menu
+ * Modern minimal design
+ */
+export const AppsMenuIcon = ({ size = 24, color = '#000000' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    {/* 2x2 grid of rounded squares */}
+    <Rect x="4" y="4" width="6.5" height="6.5" rx="2" fill={color} />
+    <Rect x="13.5" y="4" width="6.5" height="6.5" rx="2" fill={color} opacity={0.7} />
+    <Rect x="4" y="13.5" width="6.5" height="6.5" rx="2" fill={color} opacity={0.7} />
+    <Rect x="13.5" y="13.5" width="6.5" height="6.5" rx="2" fill={color} opacity={0.5} />
+  </Svg>
+);
+
+/**
+ * Filter Icon - Modern sliders/filter icon
+ * Used for filtering or settings menu
+ */
+export const FilterIcon = ({ size = 24, color = '#000000' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    {/* Top line with circle */}
+    <Path d="M4 6h4" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <Circle cx="11" cy="6" r="2.5" stroke={color} strokeWidth="2" fill="none" />
+    <Path d="M13.5 6h6.5" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    {/* Middle line with circle */}
+    <Path d="M4 12h8" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <Circle cx="16" cy="12" r="2.5" stroke={color} strokeWidth="2" fill="none" />
+    <Path d="M18.5 12h1.5" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    {/* Bottom line with circle */}
+    <Path d="M4 18h2" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <Circle cx="9" cy="18" r="2.5" stroke={color} strokeWidth="2" fill="none" />
+    <Path d="M11.5 18h8.5" stroke={color} strokeWidth="2" strokeLinecap="round" />
+  </Svg>
+);
+
 export default {
+  // Checkout icons
+  ChevronBackIcon,
+  ChevronForwardIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
+  LockClosedIcon,
+  CheckmarkIcon,
+  CheckmarkCircleIcon,
+  CheckmarkCircleOutlineIcon,
+  CubeOutlineIcon,
+  LocationOutlineIcon,
+  GiftOutlineIcon,
+  WalletIcon,
+  CardIcon,
+  PeopleIcon,
+  ArrowForwardIcon,
+  LinkIcon,
+  ShareOutlineIcon,
+  CopyOutlineIcon,
+  BagCheckIcon,
+  TimeOutlineIcon,
+  AddCircleOutlineIcon,
+  // Original icons
   ProductPlusIcon,
   ProductsIcon,
   CalendarIcon,
@@ -477,4 +1015,8 @@ export default {
   QualityCheckIcon,
   DeliveryHomeIcon,
   ViewAllStoriesIcon,
+  MenuIcon,
+  MenuGridIcon,
+  AppsMenuIcon,
+  FilterIcon,
 };

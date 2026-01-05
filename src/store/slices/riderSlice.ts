@@ -14,6 +14,8 @@ export interface RiderProfile {
   isOnline: boolean;
   isAvailable: boolean;
   isVerified: boolean;
+  applicationStatus: 'pending' | 'approved' | 'rejected';
+  rejectionReason?: string;
   rating: number;
   completedDeliveries: number;
   totalEarnings: number;

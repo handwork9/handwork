@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException, ForbiddenException, Inject, forwardRef, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, Inject, forwardRef, Logger, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, ILike } from 'typeorm';
 import { Product } from '../database/entities/product.entity';
+import { FarmerProfile } from '../database/entities/farmer-profile.entity';
 import { CreateProductDto, UpdateProductDto, QueryProductsDto } from './dto';
 import { PaginatedResponseDto } from '../common/dto';
 import { calculateDistance } from '../common/utils/helpers';
@@ -9,6 +10,7 @@ import { NotificationsService, NotificationType } from '../notifications/notific
 import { ContentModerationService } from '../admin/content-moderation.service';
 import { ContentType } from '../database/entities/content-moderation.entity';
 import { PriceAlertsService } from '../price-alerts/price-alerts.service';
+import { FarmerApplicationStatus } from '../common/enums';
 
 // Low stock threshold - notify farmer when stock falls below this
 const LOW_STOCK_THRESHOLD = 10;
@@ -30,6 +32,8 @@ export class ProductsService {
   constructor(
     @InjectRepository(Product)
     private readonly productRepository: Repository<Product>,
+    @InjectRepository(FarmerProfile)
+    private readonly farmerProfileRepository: Repository<FarmerProfile>,
     @Inject(forwardRef(() => NotificationsService))
     private readonly notificationsService: NotificationsService,
     @Inject(forwardRef(() => ContentModerationService))
@@ -64,6 +68,29 @@ export class ProductsService {
   }
 
   async create(farmerId: string, dto: CreateProductDto): Promise<Product> {
+    // Check if farmer is approved by admin before allowing product listing
+    const farmerProfile = await this.farmerProfileRepository.findOne({
+      where: { userId: farmerId },
+    });
+
+    if (!farmerProfile) {
+      throw new BadRequestException(
+        'You need to complete your farmer registration before listing products. Please go to Profile → Become a Farmer to register.'
+      );
+    }
+
+    if (farmerProfile.applicationStatus === FarmerApplicationStatus.PENDING) {
+      throw new BadRequestException(
+        'Your farmer account is pending admin approval. You will be able to list products once approved. This usually takes 24-48 hours.'
+      );
+    }
+
+    if (farmerProfile.applicationStatus === FarmerApplicationStatus.REJECTED) {
+      throw new BadRequestException(
+        `Your farmer application was rejected. Reason: ${farmerProfile.rejectionReason || 'Not specified'}. Please update your profile and reapply.`
+      );
+    }
+
     const product = this.productRepository.create({
       ...dto,
       farmerId,

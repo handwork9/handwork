@@ -7,6 +7,7 @@ import { RevenueType, RevenueStatus } from '../database/entities/platform-revenu
 import { FarmerSubscriptionStatus, FarmerSubscriptionTier } from '../database/entities/farmer-subscription.entity';
 import { SubscriptionStatus as RiderSubscriptionStatus, SubscriptionTier as RiderSubscriptionTier } from '../database/entities/rider-subscription.entity';
 import { UserRole, OrderStatus, PaymentStatus, RiderStatus, FarmerApplicationStatus, RiderApplicationStatus } from '../common/enums';
+import { EmailService } from '../email/email.service';
 
 // Default settings structure
 export interface SettingsData {
@@ -147,6 +148,7 @@ export class AdminService {
     private readonly farmerSubscriptionRepository: Repository<FarmerSubscription>,
     @InjectRepository(RiderSubscription)
     private readonly riderSubscriptionRepository: Repository<RiderSubscription>,
+    private readonly emailService: EmailService,
   ) {}
 
   /**
@@ -724,6 +726,14 @@ export class AdminService {
       activatedAt: new Date(),
     });
 
+    // Send approval email notification
+    if (profile.user) {
+      this.emailService.sendFarmerApprovalEmail(profile.user, {
+        farmName: profile.farmName || 'Your Farm',
+        approvedAt: profile.approvedAt,
+      }).catch(err => this.logger.error(`Failed to send farmer approval email: ${err.message}`));
+    }
+
     this.logger.log(`Farmer application ${applicationId} approved by admin ${adminId}`);
 
     return {
@@ -772,6 +782,14 @@ export class AdminService {
       activatedAt: new Date(),
     });
 
+    // Send approval email notification
+    if (profile.user) {
+      this.emailService.sendFarmerApprovalEmail(profile.user, {
+        farmName: profile.farmName || 'Your Farm',
+        approvedAt: profile.approvedAt,
+      }).catch(err => this.logger.error(`Failed to send farmer approval email: ${err.message}`));
+    }
+
     this.logger.log(`Farmer (user: ${userId}) verified by admin ${adminId}`);
 
     return {
@@ -803,6 +821,15 @@ export class AdminService {
     profile.applicationStatus = FarmerApplicationStatus.REJECTED;
     profile.rejectionReason = reason;
     await this.farmerProfileRepository.save(profile);
+
+    // Send rejection email notification
+    if (profile.user) {
+      this.emailService.sendFarmerRejectionEmail(profile.user, {
+        farmName: profile.farmName || 'Your Farm',
+        reason: reason,
+        rejectedAt: new Date(),
+      }).catch(err => this.logger.error(`Failed to send farmer rejection email: ${err.message}`));
+    }
 
     this.logger.log(`Farmer application ${applicationId} rejected by admin ${adminId}: ${reason}`);
 
@@ -1003,6 +1030,15 @@ export class AdminService {
       isActive: true,
     });
 
+    // Send approval email notification
+    if (rider.user) {
+      this.emailService.sendRiderApprovalEmail(rider.user, {
+        vehicleType: rider.vehicleType || 'N/A',
+        state: rider.state || 'Nigeria',
+        approvedAt: rider.approvedAt,
+      }).catch(err => this.logger.error(`Failed to send rider approval email: ${err.message}`));
+    }
+
     this.logger.log(`Rider application ${applicationId} approved by admin ${adminId}`);
 
     return {
@@ -1033,6 +1069,14 @@ export class AdminService {
     rider.applicationStatus = RiderApplicationStatus.REJECTED;
     rider.rejectionReason = reason;
     await this.riderRepository.save(rider);
+
+    // Send rejection email notification
+    if (rider.user) {
+      this.emailService.sendRiderRejectionEmail(rider.user, {
+        reason: reason,
+        rejectedAt: new Date(),
+      }).catch(err => this.logger.error(`Failed to send rider rejection email: ${err.message}`));
+    }
 
     this.logger.log(`Rider application ${applicationId} rejected by admin ${adminId}: ${reason}`);
 
