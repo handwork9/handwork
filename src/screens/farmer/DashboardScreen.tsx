@@ -228,14 +228,14 @@ export default function DashboardScreen() {
       ].filter(Boolean);
       return parts.join(', ');
     }
-    if (user?.businessAddress) {
+    if (user?.address) {
       // Handle both string and object formats
-      if (typeof user.businessAddress === 'string') {
-        return user.businessAddress;
+      if (typeof user.address === 'string') {
+        return user.address;
       }
-      if (typeof user.businessAddress === 'object') {
-        const addr = user.businessAddress as { address?: string; city?: string; state?: string };
-        const parts = [addr.address, addr.city, addr.state].filter(Boolean);
+      if (typeof user.address === 'object') {
+        const addr = user.address as { addressLine1?: string; city?: string; state?: string };
+        const parts = [addr.addressLine1, addr.city, addr.state].filter(Boolean);
         return parts.join(', ') || t('home.selectLocation');
       }
     }
@@ -339,17 +339,14 @@ export default function DashboardScreen() {
     staleTime: 0, // Always refetch
   });
 
-  // Fetch products
-  const { 
-    data: productsData, 
+  // Fetch products - use getMyProducts to get farmer's own products
+  const {
+    data: productsData,
     isLoading: productsLoading,
     refetch: refetchProducts,
   } = useQuery({
-    queryKey: ['farmer-products'],
-    queryFn: () => productService.getProducts({
-      page: 1,
-      limit: 10,
-    }),
+    queryKey: ['farmer-my-products'],
+    queryFn: () => productService.getMyProducts(),
     refetchOnWindowFocus: true,
     staleTime: 0, // Always refetch
   });
@@ -453,10 +450,10 @@ export default function DashboardScreen() {
   const pendingOrders = pendingOrdersCount || orders.filter((o: Order) => 
     o?.status === 'pending' || o?.status === 'created'
   ).length;
-  // Processing orders = confirmed, assigned, picked_up, in_transit (orders being fulfilled)
-  const processingOrders = orders.filter((o: Order) => 
-    o?.status === 'confirmed' || o?.status === 'assigned' || 
-    o?.status === 'picked_up' || o?.status === 'in_transit' || 
+  // Processing orders = confirmed, rider_assigned, picked_up, in_transit (orders being fulfilled)
+  const processingOrders = orders.filter((o: Order) =>
+    o?.status === 'confirmed' || o?.status === 'rider_assigned' ||
+    o?.status === 'picked_up' || o?.status === 'in_transit' ||
     o?.status === 'ready_for_pickup'
   ).length;
   const totalProducts = productsTotalCount || products.length; // Use API total, fallback to array length
@@ -827,7 +824,7 @@ export default function DashboardScreen() {
           <View style={styles.section}>
             <TouchableOpacity 
               style={[styles.iosPendingCard, { backgroundColor: isDark ? 'rgba(52, 199, 89, 0.1)' : '#F0FDF4' }]}
-              onPress={() => navigation.navigate('Withdraw')}
+              onPress={() => navigation.navigate('Withdraw' as any)}
               activeOpacity={0.9}
             >
               {/* SVG Background */}
@@ -935,7 +932,7 @@ export default function DashboardScreen() {
             {/* Withdraw Button */}
             <TouchableOpacity 
               style={styles.iosEarningsWithdrawBtn}
-              onPress={() => navigation.navigate('Withdraw')}
+              onPress={() => (navigation.navigate as any)('Withdraw')}
               activeOpacity={0.9}
             >
               <Text style={styles.iosEarningsWithdrawText}>Withdraw Funds</Text>
@@ -1119,7 +1116,7 @@ export default function DashboardScreen() {
                           borderBottomColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
                         }
                       ]}
-                      onPress={() => product.id && navigation.navigate('ProductAnalyticsDetail', { productId: product.id })}
+                      onPress={() => product.id && (navigation.navigate as any)('ProductAnalyticsDetail', { product })}
                       activeOpacity={0.7}
                     >
                       {/* Rank */}
@@ -1383,7 +1380,7 @@ export default function DashboardScreen() {
             {/* Withdraw */}
             <TouchableOpacity
               style={styles.iosListItem}
-              onPress={() => navigation.navigate('Withdraw')}
+              onPress={() => (navigation.navigate as any)('Withdraw')}
               activeOpacity={0.6}
             >
               <View style={[styles.iosListIcon, { backgroundColor: '#FF9500' }]}>
@@ -1401,7 +1398,7 @@ export default function DashboardScreen() {
             {/* Products */}
             <TouchableOpacity
               style={styles.iosListItem}
-              onPress={() => navigation.navigate('FarmerProducts')}
+              onPress={() => navigation.navigate('FarmerProducts' as any)}
               activeOpacity={0.6}
             >
               <View style={[styles.iosListIcon, { backgroundColor: '#5856D6' }]}>
@@ -3067,30 +3064,6 @@ const styles = StyleSheet.create({
   quickActionsHeaderContent: {
     alignItems: 'flex-start',
   },
-  quickActionsBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
-    marginBottom: SPACING.sm,
-    gap: 5,
-  },
-  quickActionsBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    fontFamily: FONTS.bold,
-    color: '#FFFFFF',
-    letterSpacing: 0.8,
-  },
-  quickActionsTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    fontFamily: FONTS.bold,
-    color: '#FFFFFF',
-    marginBottom: 4,
-  },
   quickActionsSubtitle: {
     fontSize: FONT_SIZES.sm,
     fontFamily: FONTS.regular,
@@ -3508,11 +3481,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginLeft: 16,
   },
-  iosGroupedCard: {
-    borderRadius: 10,
-    overflow: 'hidden',
-    marginHorizontal: 0,
-  },
   iosListItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -3609,12 +3577,6 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     marginBottom: 6,
     gap: 4,
-  },
-  quickActionsBadgeText: {
-    fontSize: 10,
-    fontFamily: FONTS.bold,
-    fontWeight: '700',
-    letterSpacing: 0.5,
   },
   quickActionsIllustrationWrapper: {
     marginLeft: SPACING.sm,

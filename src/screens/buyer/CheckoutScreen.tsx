@@ -548,7 +548,7 @@ export default function CheckoutScreen({ navigation }: Props) {
       productId: item.productId,
       price: Number(item.product.price),
       quantity: item.quantity,
-      category: item.product.category?.name || item.product.category,
+      category: item.product.category,
     }));
   }, [items]);
 
@@ -1014,7 +1014,7 @@ export default function CheckoutScreen({ navigation }: Props) {
         const result = await paymentService.checkPayForMeStatus(reference);
         console.log('[PayForMe] Poll result:', result);
         
-        if (result.status === 'success') {
+        if (result.status === 'paid') {
           console.log('[PayForMe] Payment successful! Creating order...');
           stopPaymentPolling();
           setPayForMeStatus('paid');
